@@ -21,6 +21,8 @@ import (
 )
 
 type Emulator struct {
-    Regs [8]uint64
-    Ptrs [8]unsafe.Pointer
+    PC    int
+    Regs  [8]uint64
+    Ptrs  [8]unsafe.Pointer
+    Stack [128]byte
 }

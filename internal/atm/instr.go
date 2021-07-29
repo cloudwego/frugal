@@ -27,12 +27,12 @@ const (
     OP_ldw                  // *(*word)Pr -> Rx
     OP_ldl                  // *(*long)Pr -> Rx
     OP_ldq                  // *(*quad)Pr -> Rx
-    OP_ldp                  // Pr -> Rx
     OP_stb                  // Rx -> *(*byte)Pr
     OP_stw                  // Rx -> *(*word)Pr
     OP_stl                  // Rx -> *(*long)Pr
     OP_stq                  // Rx -> *(*quad)Pr
-    OP_stp                  // Rx -> Pr
+    OP_movpr                // Pr -> Rx
+    OP_movrp                // Rx -> Pr
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_mul                  // Rx * Ry -> Rz
@@ -44,27 +44,27 @@ const (
     OP_shl                  // Rx << Ry -> Rz
     OP_shr                  // Rx >> Ry -> Rz
     OP_inv                  // ~Rx -> Ry
-    OP_je                   // if (Rx == Ry) Rz -> PC
-    OP_jne                  // if (Rx != Ry) Rz -> PC
-    OP_jg                   // if (signed(Rx) >  signed(Ry)) PC + Rz -> PC
-    OP_jge                  // if (signed(Rx) >= signed(Ry)) PC + Rz -> PC
-    OP_jl                   // if (signed(Rx) <  signed(Ry)) PC + Rz -> PC
-    OP_jle                  // if (signed(Rx) <= signed(Ry)) PC + Rz -> PC
-    OP_ja                   // if (unsigned(Rx) >  unsigned(Ry)) PC + Rz -> PC
-    OP_jae                  // if (unsigned(Rx) >= unsigned(Ry)) PC + Rz -> PC
-    OP_jb                   // if (unsigned(Rx) <  unsigned(Ry)) PC + Rz -> PC
-    OP_jbe                  // if (unsigned(Rx) <= unsigned(Ry)) PC + Rz -> PC
-    OP_jsr                  // PC -> R7; PC + Rx -> PC
-    OP_jsrx                 // call(Rx)
-    OP_rts                  // R7 -> PC
+    OP_je                   // if (Rx == Ry) PC + Im -> PC
+    OP_jne                  // if (Rx != Ry) PC + Im -> PC
+    OP_jg                   // if (signed(Rx) >  signed(Ry)) PC + Im -> PC
+    OP_jge                  // if (signed(Rx) >= signed(Ry)) PC + Im -> PC
+    OP_jl                   // if (signed(Rx) <  signed(Ry)) PC + Im -> PC
+    OP_jle                  // if (signed(Rx) <= signed(Ry)) PC + Im -> PC
+    OP_ja                   // if (unsigned(Rx) >  unsigned(Ry)) PC + Im -> PC
+    OP_jae                  // if (unsigned(Rx) >= unsigned(Ry)) PC + Im -> PC
+    OP_jb                   // if (unsigned(Rx) <  unsigned(Ry)) PC + Im -> PC
+    OP_jbe                  // if (unsigned(Rx) <= unsigned(Ry)) PC + Im -> PC
+    OP_jmp                  // PC + Rx -> PC
+    OP_jsr                  // PC -> P7; PC + Im -> PC
+    OP_rts                  // P7 -> PC
+    OP_call                 // call(Rx)
     OP_ret                  // return Rx;
-    OP_yield                // save_state(); PC -> R7; return Rx; load_state()
+    OP_yield                // save_state(); PC -> P7; return Rx; load_state()
 )
 
 type Instr struct {
     Op OpCode
     Im uint64
-    Sv uint64
     Rx GenericRegister
     Ry GenericRegister
     Rz GenericRegister

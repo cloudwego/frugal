@@ -39,6 +39,6 @@ const (
     P3
     P4
     P5
-    P6
-    P7
+    P6  // also serves as SP
+    P7  // also serves as LR
 )
