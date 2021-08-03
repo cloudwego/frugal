@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either exPsess or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -23,16 +23,18 @@ const (
     OP_iw                   // word(Im) -> Rx
     OP_il                   // long(Im) -> Rx
     OP_iq                   // quad(Im) -> Rx
-    OP_ldb                  // *(*byte)Pr -> Rx
-    OP_ldw                  // *(*word)Pr -> Rx
-    OP_ldl                  // *(*long)Pr -> Rx
-    OP_ldq                  // *(*quad)Pr -> Rx
-    OP_stb                  // Rx -> *(*byte)Pr
-    OP_stw                  // Rx -> *(*word)Pr
-    OP_stl                  // Rx -> *(*long)Pr
-    OP_stq                  // Rx -> *(*quad)Pr
-    OP_movpr                // Pr -> Rx
-    OP_movrp                // Rx -> Pr
+    OP_ldb                  // *(*byte)Ps -> Rx
+    OP_ldw                  // *(*word)Ps -> Rx
+    OP_ldl                  // *(*long)Ps -> Rx
+    OP_ldq                  // *(*quad)Ps -> Rx
+    OP_stb                  // Rx -> *(*byte)Pd
+    OP_stw                  // Rx -> *(*word)Pd
+    OP_stl                  // Rx -> *(*long)Pd
+    OP_stq                  // Rx -> *(*quad)Pd
+    OP_movps                // Ps -> Rx
+    OP_movpd                // Rx -> Pd
+    OP_addp                 // Ps + Rx -> Pd
+    OP_subp                 // Ps - Rx -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_mul                  // Rx * Ry -> Rz
@@ -44,18 +46,18 @@ const (
     OP_shl                  // Rx << Ry -> Rz
     OP_shr                  // Rx >> Ry -> Rz
     OP_inv                  // ~Rx -> Ry
-    OP_je                   // if (Rx == Ry) PC + Im -> PC
-    OP_jne                  // if (Rx != Ry) PC + Im -> PC
-    OP_jg                   // if (signed(Rx) >  signed(Ry)) PC + Im -> PC
-    OP_jge                  // if (signed(Rx) >= signed(Ry)) PC + Im -> PC
-    OP_jl                   // if (signed(Rx) <  signed(Ry)) PC + Im -> PC
-    OP_jle                  // if (signed(Rx) <= signed(Ry)) PC + Im -> PC
-    OP_ja                   // if (unsigned(Rx) >  unsigned(Ry)) PC + Im -> PC
-    OP_jae                  // if (unsigned(Rx) >= unsigned(Ry)) PC + Im -> PC
-    OP_jb                   // if (unsigned(Rx) <  unsigned(Ry)) PC + Im -> PC
-    OP_jbe                  // if (unsigned(Rx) <= unsigned(Ry)) PC + Im -> PC
-    OP_jmp                  // PC + Rx -> PC
-    OP_jsr                  // PC -> P7; PC + Im -> PC
+    OP_je                   // if (Rx == Ry) Br.PC -> PC
+    OP_jne                  // if (Rx != Ry) Br.PC -> PC
+    OP_jg                   // if (signed(Rx) >  signed(Ry)) Br.PC -> PC
+    OP_jge                  // if (signed(Rx) >= signed(Ry)) Br.PC -> PC
+    OP_jl                   // if (signed(Rx) <  signed(Ry)) Br.PC -> PC
+    OP_jle                  // if (signed(Rx) <= signed(Ry)) Br.PC -> PC
+    OP_ja                   // if (unsigned(Rx) >  unsigned(Ry)) Br.PC -> PC
+    OP_jae                  // if (unsigned(Rx) >= unsigned(Ry)) Br.PC -> PC
+    OP_jb                   // if (unsigned(Rx) <  unsigned(Ry)) Br.PC -> PC
+    OP_jbe                  // if (unsigned(Rx) <= unsigned(Ry)) Br.PC -> PC
+    OP_jmp                  // Br.PC -> PC
+    OP_jsr                  // PC -> P7; Br.PC -> PC
     OP_rts                  // P7 -> PC
     OP_call                 // call(Rx)
     OP_ret                  // return Rx;
@@ -63,10 +65,13 @@ const (
 )
 
 type Instr struct {
+    PC int
     Op OpCode
     Im uint64
+    Br *Instr
     Rx GenericRegister
     Ry GenericRegister
     Rz GenericRegister
-    Pr PointerRegister
+    Ps PointerRegister
+    Pd PointerRegister
 }
