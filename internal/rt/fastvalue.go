@@ -70,6 +70,10 @@ type GoIface struct {
     Value unsafe.Pointer
 }
 
+func UnpackType(t reflect.Type) *GoType {
+    return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
+}
+
 func findReflectRtypeItab() *GoItab {
     v := reflect.TypeOf(struct{}{})
     return (*GoIface)(unsafe.Pointer(&v)).Itab

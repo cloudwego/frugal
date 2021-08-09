@@ -17,7 +17,12 @@
 package defs
 
 const (
-    IntSize   = 32 << (^uint(0) >> 63)
-    MaxStack  = 65536
-    MaxUint56 = (1 << 56) - 1
+    IntSize  = 32 << (^uint(0) >> 63)
+    MaxStack = 65536
+)
+
+const (
+    MinInt56  = -(1 << 55)
+    MaxInt56  = +(1 << 55) - 1
+    MaxUint56 = +(1 << 56) - 1
 )

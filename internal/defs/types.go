@@ -159,6 +159,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
 
     /* dereference the pointer */
     if vt.Kind() == reflect.Ptr {
+        ret.S = vt
         ret.T = T_pointer
         ret.V = doParseType(vt.Elem(), def, i)
         return ret
@@ -173,7 +174,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
         case reflect.Int32   : tag = T_i32
         case reflect.Int64   : tag = T_i64
         case reflect.Uint    : panic(utils.ENotSupp(vt, "int"))
-        case reflect.Uint8   : panic(utils.ENotSupp(vt, "byte"))
+        case reflect.Uint8   : panic(utils.ENotSupp(vt, "int8"))
         case reflect.Uint16  : panic(utils.ENotSupp(vt, "int16"))
         case reflect.Uint32  : panic(utils.ENotSupp(vt, "int32"))
         case reflect.Uint64  : panic(utils.ENotSupp(vt, "int64"))
@@ -194,13 +195,8 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
         } else if def == "" {
             panic(utils.ESetList(*i, def, et))
         } else {
-            return doParseSlice(et, def, i, ret)
+            return doParseSlice(vt, et, def, i, ret)
         }
-    }
-
-    /* struct types */
-    if tag == T_struct {
-        ret.S = vt
     }
 
     /* match the type if any */
@@ -214,6 +210,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
 
     /* simple types */
     if tag != T_map {
+        ret.S = vt
         ret.T = tag
         return ret
     }
@@ -248,11 +245,12 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
     }
 
     /* set the type tag */
+    ret.S = vt
     ret.T = T_map
     return ret
 }
 
-func doParseSlice(vt reflect.Type, def string, i *int, rt *Type) *Type {
+func doParseSlice(vt reflect.Type, et reflect.Type, def string, i *int, rt *Type) *Type {
     tk := nextToken(def, i)
     tp := *i - len(tk)
 
@@ -271,15 +269,17 @@ func doParseSlice(vt reflect.Type, def string, i *int, rt *Type) *Type {
     }
 
     /* set or list element */
-    rt.V = doParseType(vt, def, i)
+    rt.V = doParseType(et, def, i)
     tk   = nextToken(def, i)
 
     /* list or set end */
     if tk != ">" {
         panic(utils.ESyntax(*i - len(tk), def, "'>' expected"))
-    } else {
-        return rt
     }
+
+    /* set the type */
+    rt.S = vt
+    return rt
 }
 
 func doMatchStruct(vt reflect.Type, def string, i *int, tv *string) bool {

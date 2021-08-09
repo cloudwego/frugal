@@ -30,9 +30,9 @@ const (
     OP_double
     OP_binary
     OP_bool
-    OP_index
     OP_goto
-    OP_if_nil
+    OP_offset
+    OP_follow
     OP_map_begin
     OP_map_check_key
     OP_map_value_next
@@ -42,7 +42,6 @@ const (
     OP_field_begin
     OP_defer
     OP_save
-    OP_load
     OP_drop
 )
 
@@ -54,9 +53,9 @@ var _OpNames = [256]string {
     OP_double         : "double",
     OP_binary         : "binary",
     OP_bool           : "bool",
-    OP_index          : "index",
     OP_goto           : "goto",
-    OP_if_nil         : "if_nil",
+    OP_offset         : "offset",
+    OP_follow         : "follow",
     OP_map_begin      : "map_begin",
     OP_map_check_key  : "map_check_key",
     OP_map_value_next : "map_value_next",
@@ -66,13 +65,12 @@ var _OpNames = [256]string {
     OP_field_begin    : "field_begin",
     OP_defer          : "defer",
     OP_save           : "save",
-    OP_load           : "load",
     OP_drop           : "drop",
 }
 
 var _OpBranches = [256]bool {
     OP_goto          : true,
-    OP_if_nil        : true,
+    OP_follow        : true,
     OP_map_check_key : true,
     OP_list_advance  : true,
 }
