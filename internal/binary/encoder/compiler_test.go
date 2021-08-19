@@ -47,7 +47,7 @@ type CompilerTestSubStruct struct {
 }
 
 func TestCompiler_Compile(t *testing.T) {
-    p, err := make(Compiler).Compile(reflect.TypeOf(CompilerTest{}))
+    p, err := CreateCompiler().Compile(reflect.TypeOf(CompilerTest{}))
     require.NoError(t, err)
     println(p.Disassemble())
 }

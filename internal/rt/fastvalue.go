@@ -70,8 +70,39 @@ type GoIface struct {
     Value unsafe.Pointer
 }
 
+type GoEface struct {
+    Type  *GoType
+    Value unsafe.Pointer
+}
+
+type GoSlice struct {
+    Ptr unsafe.Pointer
+    Len int
+    Cap int
+}
+
+type GoSliceType struct {
+    GoType
+    Elem *GoType
+}
+
+func MapClear(m interface{}) {
+    v := UnpackEface(m)
+    mapclear(v.Type, v.Value)
+}
+
+func GrowSlice(s interface{}, n int) {
+    v := UnpackEface(s)
+    e := (*GoSliceType)(unsafe.Pointer(v.Type)).Elem
+    *(*GoSlice)(v.Value) = growslice(e, *(*GoSlice)(v.Value), n)
+}
+
 func UnpackType(t reflect.Type) *GoType {
     return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
+}
+
+func UnpackEface(v interface{}) GoEface {
+    return *(*GoEface)(unsafe.Pointer(&v))
 }
 
 func findReflectRtypeItab() *GoItab {

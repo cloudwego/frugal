@@ -88,8 +88,14 @@ func (self Instr) Disassemble() string {
     }
 }
 
-func (self *Program) pc() int   { return len(*self) }
-func (self *Program) pin(i int) { (*self)[i] = ((*self)[i] & 0xff) | Instr(uint64(self.pc()) << 8) }
+func (self Program) pc() int   { return len(self) }
+func (self Program) pin(i int) { self[i] = (self[i] & 0xff) | Instr(uint64(self.pc()) << 8) }
+
+func (self Program) tag(n int) {
+    if n >= defs.MaxStack {
+        panic("type nesting too deep")
+    }
+}
 
 func (self *Program) add(op OpCode)                            { self.ins(mkins(op, 0, 0, 0, 0, 0, nil)) }
 func (self *Program) jmp(op OpCode, to int)                    { self.ins(mkins(op, 0, 0, 0, to, 0, nil)) }
@@ -99,12 +105,6 @@ func (self *Program) rtt(op OpCode, vt reflect.Type)           { self.ins(mkins(
 func (self *Program) fid(op OpCode, et defs.Tag, id uint16)    { self.ins(mkins(op, et, 0, id, 0, 0, nil)) }
 func (self *Program) kvs(op OpCode, kt defs.Tag, et defs.Tag)  { self.ins(mkins(op, et, kt, 0, 0, 0, nil)) }
 
-func (self *Program) tag(n int) {
-    if n >= defs.MaxStack {
-        panic("type nesting too deep")
-    }
-}
-
 func (self *Program) ins(iv Instr) {
     if len(*self) >= defs.MaxUint56 {
         panic("program too long")
@@ -113,20 +113,24 @@ func (self *Program) ins(iv Instr) {
     }
 }
 
-func (self *Program) Disassemble() string {
-    nb  := len(*self)
+func (self Program) Free() {
+    freeProgram(self)
+}
+
+func (self Program) Disassemble() string {
+    nb  := len(self)
     tab := make([]bool, nb + 1)
     ret := make([]string, 0, nb + 1)
 
     /* prescan to get all the labels */
-    for _, ins := range *self {
+    for _, ins := range self {
         if _OpBranches[ins.Op()] {
             tab[ins.To()] = true
         }
     }
 
     /* disassemble each instruction */
-    for i, ins := range *self {
+    for i, ins := range self {
         if !tab[i] {
             ret = append(ret, "\t" + ins.Disassemble())
         } else {
@@ -141,6 +145,10 @@ func (self *Program) Disassemble() string {
 
     /* add an "end" indicator, and join all the strings */
     return strings.Join(append(ret, "\tend"), "\n")
+}
+
+func CreateCompiler() Compiler {
+    return newCompiler()
 }
 
 func (self Compiler) rescue(ep *error) {
@@ -253,8 +261,12 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     p.add(OP_drop)
 }
 
-func (self Compiler) Compile(vt reflect.Type) (ret *Program, err error) {
-    ret = new(Program)
+func (self Compiler) Free() {
+    freeCompiler(self)
+}
+
+func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
+    ret = newProgram()
     vtp := defs.ParseType(vt, "")
 
     /* catch the exceptions, and free the type */
@@ -262,6 +274,6 @@ func (self Compiler) Compile(vt reflect.Type) (ret *Program, err error) {
     defer vtp.Free()
 
     /* compile the actual type */
-    self.compileOne(ret, 0, vtp)
+    self.compileOne(&ret, 0, vtp)
     return
 }

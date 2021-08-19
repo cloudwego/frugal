@@ -16,29 +16,26 @@
 
 package atm
 
-type (
-    GenericRegister int
-    PointerRegister int
+import (
+    `unsafe`
 )
 
-const (
-    R0 GenericRegister = iota
-    R1
-    R2
-    R3
-    R4
-    R5
-    R6
-    R7
-)
+func i8toa(v int8) (r [8]uint8) {
+    r[0] = uint8(v)
+    return
+}
 
-const (
-    P0 PointerRegister = iota
-    P1
-    P2
-    P3
-    P4
-    P5
-    P6  // also serves as SP
-    P7  // also serves as LR
-)
+func i16toa(v int16) (r [8]uint8) {
+    *(*int16)(unsafe.Pointer(&r)) = v
+    return
+}
+
+func i32toa(v int32) (r [8]uint8) {
+    *(*int32)(unsafe.Pointer(&r)) = v
+    return
+}
+
+func i64toa(v int64) (r [8]uint8) {
+    *(*int64)(unsafe.Pointer(&r)) = v
+    return
+}
