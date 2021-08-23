@@ -41,11 +41,11 @@ var _PassTab = [...]func(p Program) Program {
 }
 
 const (
-    _OP_nop OpCode = 0xff
+    _OP_adjpc OpCode = 0xff
 )
 
 func init() {
-    _OpNames[_OP_nop] = "(nop)"
+    _OpNames[_OP_adjpc] = "(PC-adjustment)"
 }
 
 func checksl(s *[]byte, n int) *rt.GoSlice {
@@ -110,9 +110,9 @@ func _PASS_Compacting(p Program) Program {
     n := int64(0)
     a := newAdjustBuffer(len(p))
 
-    /* scan for NOP instructions */
+    /* scan for PC adjustments */
     for _, v := range p {
-        if v.Op() == _OP_nop { n-- }
+        if v.Op() == _OP_adjpc { n += v.Iv() }
         a = append(a, n)
     }
 
@@ -121,8 +121,8 @@ func _PASS_Compacting(p Program) Program {
         iv := p[i]
         op := iv.Op()
 
-        /* skip nop instructions */
-        if op == _OP_nop {
+        /* skip the PC adjustment */
+        if op == _OP_adjpc {
             i++
             continue
         }
@@ -179,9 +179,9 @@ func _PASS_SizeMerging(p Program) Program {
                 case OP_size : nb += iv.Iv()
             }
 
-            /* replace the size instruction with NOP */
+            /* adjust the program counter */
             if i++; op == OP_size {
-                p[i - 1] = mkins(_OP_nop, 0, nil)
+                p[i - 1] = mkins(_OP_adjpc, -1, nil)
             }
         }
 
@@ -230,8 +230,8 @@ func _PASS_LiteralMerging(p Program) Program {
                 case OP_quad : append8(&sl, uint64(iv.Iv()))
             }
 
-            /* replace the instruction with NOP */
-            p[i] = mkins(_OP_nop, 0, nil)
+            /* adjust the program counter */
+            p[i] = mkins(_OP_adjpc, -1, nil)
             i++
 
             /* commit the buffer if needed */
