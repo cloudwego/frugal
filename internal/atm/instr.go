@@ -16,6 +16,10 @@
 
 package atm
 
+import (
+    `unsafe`
+)
+
 type OpCode byte
 
 const (
@@ -24,6 +28,7 @@ const (
     OP_iw                   // i16(Im) -> Rx
     OP_il                   // i32(Im) -> Rx
     OP_iq                   // i64(Im) -> Rx
+    OP_ip                   // ptr(Pr) -> Pd
     OP_lb                   // i64(*(* i8)Ps) -> Rx
     OP_lw                   // i64(*(*i16)Ps) -> Rx
     OP_ll                   // i64(*(*i32)Ps) -> Rx
@@ -37,6 +42,10 @@ const (
     OP_mov                  // Rx -> Ry
     OP_movpr                // Ps -> Rx
     OP_movrp                // Rx -> Pd
+    OP_ldaq                 // arg[Im] -> Rx
+    OP_ldap                 // arg[Im] -> Pd
+    OP_strq                 // Rx -> ret[Im]
+    OP_strp                 // Rs -> ret[Im]
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
     OP_add                  // Rx + Ry -> Rz
@@ -48,9 +57,10 @@ const (
     OP_bge                  // if (signed(Rx) >= signed(Ry)) Br.PC -> PC
     OP_bltu                 // if (unsigned(Rx) <  unsigned(Ry)) Br.PC -> PC
     OP_bgeu                 // if (unsigned(Rx) >= unsigned(Ry)) Br.PC -> PC
-    OP_jal                  // PC -> Rx; Br.PC -> PC
-    OP_jalr                 // PC -> Rx; Ry -> PC
-    OP_call_go              // call external Go functions
+    OP_jal                  // PC -> Pd; Br.PC -> PC
+    OP_jalr                 // PC -> Pd; Ps -> PC
+    OP_jsr                  // call external C functions
+    OP_call                 // call external Go functions
     OP_ret                  // return from function
 )
 
@@ -63,7 +73,10 @@ type Instr struct {
     Pd PointerRegister
     Ar [2]uint8
     Ai [8]uint8
+    Rv [8]uint8
     An int
+    Rn int
+    Pr unsafe.Pointer
     Br *Instr
     Ln *Instr
 }
@@ -73,18 +86,28 @@ func (self *Instr) ry(v GenericRegister) *Instr { self.Ry = v; return self }
 func (self *Instr) rz(v GenericRegister) *Instr { self.Rz = v; return self }
 func (self *Instr) ps(v PointerRegister) *Instr { self.Ps = v; return self }
 func (self *Instr) pd(v PointerRegister) *Instr { self.Pd = v; return self }
+func (self *Instr) pr(v unsafe.Pointer)  *Instr { self.Pr = v; return self }
 func (self *Instr) ai(v [8]uint8)        *Instr { self.Ai = v; return self }
 
-func (self *Instr) A0(v uint8) *Instr { self.An, self.Ar[0] =  1, v; return self }
-func (self *Instr) A1(v uint8) *Instr { self.An, self.Ar[1] =  2, v; return self }
-func (self *Instr) A2(v uint8) *Instr { self.An, self.Ai[0] =  3, v; return self }
-func (self *Instr) A3(v uint8) *Instr { self.An, self.Ai[1] =  4, v; return self }
-func (self *Instr) A4(v uint8) *Instr { self.An, self.Ai[2] =  5, v; return self }
-func (self *Instr) A5(v uint8) *Instr { self.An, self.Ai[3] =  6, v; return self }
-func (self *Instr) A6(v uint8) *Instr { self.An, self.Ai[4] =  7, v; return self }
-func (self *Instr) A7(v uint8) *Instr { self.An, self.Ai[5] =  8, v; return self }
-func (self *Instr) A8(v uint8) *Instr { self.An, self.Ai[6] =  9, v; return self }
-func (self *Instr) A9(v uint8) *Instr { self.An, self.Ai[7] = 10, v; return self }
+func (self *Instr) A0(v Register) *Instr { self.An, self.Ar[0] =  1, v.id(); return self }
+func (self *Instr) A1(v Register) *Instr { self.An, self.Ar[1] =  2, v.id(); return self }
+func (self *Instr) A2(v Register) *Instr { self.An, self.Ai[0] =  3, v.id(); return self }
+func (self *Instr) A3(v Register) *Instr { self.An, self.Ai[1] =  4, v.id(); return self }
+func (self *Instr) A4(v Register) *Instr { self.An, self.Ai[2] =  5, v.id(); return self }
+func (self *Instr) A5(v Register) *Instr { self.An, self.Ai[3] =  6, v.id(); return self }
+func (self *Instr) A6(v Register) *Instr { self.An, self.Ai[4] =  7, v.id(); return self }
+func (self *Instr) A7(v Register) *Instr { self.An, self.Ai[5] =  8, v.id(); return self }
+func (self *Instr) A8(v Register) *Instr { self.An, self.Ai[6] =  9, v.id(); return self }
+func (self *Instr) A9(v Register) *Instr { self.An, self.Ai[7] = 10, v.id(); return self }
+
+func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rv[0] =  1, v.id(); return self }
+func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rv[1] =  2, v.id(); return self }
+func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rv[0] =  3, v.id(); return self }
+func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rv[1] =  4, v.id(); return self }
+func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rv[2] =  5, v.id(); return self }
+func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[3] =  6, v.id(); return self }
+func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[4] =  7, v.id(); return self }
+func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[5] =  8, v.id(); return self }
 
 func (self *Instr) isLabelBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal

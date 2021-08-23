@@ -14,48 +14,13 @@
  * limitations under the License.
  */
 
-package atm
+package encoder
 
-type Register interface {
-    id() uint8
-}
-
-type (
-    GenericRegister uint8
-    PointerRegister uint8
+import (
+    `unsafe`
 )
 
-const (
-    ArgMask    = 0x7f
-    ArgGeneric = 0x00
-    ArgPointer = 0x80
-)
-
-const (
-    R0 GenericRegister = iota
-    R1
-    R2
-    R3
-    R4
-    R5
-    R6
-    R7
-)
-
-const (
-    P0 PointerRegister = iota
-    P1
-    P2
-    P3
-    P4
-    P5
-    P6
-    P7
-    SP
-    LR
-    PC
-    Pn
-)
-
-func (self GenericRegister) id() uint8 { return uint8(self) | ArgGeneric }
-func (self PointerRegister) id() uint8 { return uint8(self) | ArgPointer }
+//go:noescape
+//go:linkname growslice runtime.growslice
+//goland:noinspection GoUnusedParameter
+func growslice(et unsafe.Pointer, old []byte, cap int) []byte

@@ -23,56 +23,59 @@ import (
 type OpCode uint8
 
 const (
-    OP_i8 OpCode = iota
-    OP_i16
-    OP_i32
-    OP_i64
-    OP_double
-    OP_binary
-    OP_bool
-    OP_goto
-    OP_offset
-    OP_follow
-    OP_map_begin
-    OP_map_check_key
-    OP_map_value_next
-    OP_list_begin
-    OP_list_advance
-    OP_field_stop
-    OP_field_begin
+    OP_byte OpCode = iota
+    OP_word
+    OP_long
+    OP_quad
+    OP_size
+    OP_copy
+    OP_vstr
+    OP_seek
+    OP_deref
     OP_defer
-    OP_save
-    OP_drop
+    OP_map_end
+    OP_map_key
+    OP_map_value
+    OP_map_begin
+    OP_map_is_end
+    OP_list_end
+    OP_list_next
+    OP_list_begin
+    OP_list_is_end
+    OP_goto
+    OP_if_nil
+    OP_if_true
 )
 
 var _OpNames = [256]string {
-    OP_i8             : "i8",
-    OP_i16            : "i16",
-    OP_i32            : "i32",
-    OP_i64            : "i64",
-    OP_double         : "double",
-    OP_binary         : "binary",
-    OP_bool           : "bool",
-    OP_goto           : "goto",
-    OP_offset         : "offset",
-    OP_follow         : "follow",
-    OP_map_begin      : "map_begin",
-    OP_map_check_key  : "map_check_key",
-    OP_map_value_next : "map_value_next",
-    OP_list_begin     : "list_begin",
-    OP_list_advance   : "list_advance",
-    OP_field_stop     : "field_stop",
-    OP_field_begin    : "field_begin",
-    OP_defer          : "defer",
-    OP_save           : "save",
-    OP_drop           : "drop",
+    OP_byte        : "byte",
+    OP_word        : "word",
+    OP_long        : "long",
+    OP_quad        : "long",
+    OP_size        : "size",
+    OP_copy        : "copy",
+    OP_vstr        : "vstr",
+    OP_seek        : "seek",
+    OP_deref       : "deref",
+    OP_defer       : "defer",
+    OP_map_end     : "map_end",
+    OP_map_key     : "map_key",
+    OP_map_value   : "map_value",
+    OP_map_begin   : "map_begin",
+    OP_map_is_end  : "map_is_end",
+    OP_list_end    : "list_end",
+    OP_list_next   : "list_next",
+    OP_list_begin  : "list_begin",
+    OP_list_is_end : "list_is_end",
+    OP_goto        : "goto",
+    OP_if_nil      : "if_nil",
+    OP_if_true     : "if_true",
 }
 
 var _OpBranches = [256]bool {
-    OP_goto          : true,
-    OP_follow        : true,
-    OP_map_check_key : true,
-    OP_list_advance  : true,
+    OP_goto    : true,
+    OP_if_nil  : true,
+    OP_if_true : true,
 }
 
 func (self OpCode) String() string {

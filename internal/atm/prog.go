@@ -17,8 +17,12 @@
 package atm
 
 import (
+    `reflect`
     `strconv`
     `strings`
+    `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 const (
@@ -182,6 +186,14 @@ func (self *ProgramBuilder) IQ(v int64, rx GenericRegister) *Instr {
     return self.add(newInstr(OP_iq).ai(i64toa(v)).rx(rx))
 }
 
+func (self *ProgramBuilder) IP(v interface{}, pd PointerRegister) *Instr {
+    if vv := rt.UnpackEface(v); vv.Type.Kind() != reflect.Ptr {
+        panic("v is not a pointer")
+    } else {
+        return self.add(newInstr(OP_ip).pr(vv.Value).pd(pd))
+    }
+}
+
 func (self *ProgramBuilder) LB(ps PointerRegister, rx GenericRegister) *Instr {
     return self.add(newInstr(OP_lb).ps(ps).rx(rx))
 }
@@ -234,6 +246,22 @@ func (self *ProgramBuilder) MOVRP(rx GenericRegister, pd PointerRegister) *Instr
     return self.add(newInstr(OP_movrp).rx(rx).pd(pd))
 }
 
+func (self *ProgramBuilder) LDAQ(id int, rx GenericRegister) *Instr {
+    return self.add(newInstr(OP_ldaq).ai(i64toa(int64(id))).rx(rx))
+}
+
+func (self *ProgramBuilder) LDAP(id int, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_ldap).ai(i64toa(int64(id))).pd(pd))
+}
+
+func (self *ProgramBuilder) STRQ(rx GenericRegister, id int) *Instr {
+    return self.add(newInstr(OP_strq).rx(rx).ai(i64toa(int64(id))))
+}
+
+func (self *ProgramBuilder) STRP(ps PointerRegister, id int) *Instr {
+    return self.add(newInstr(OP_strp).ps(ps).ai(i64toa(int64(id))))
+}
+
 func (self *ProgramBuilder) ADDP(ps PointerRegister, rx GenericRegister, pd PointerRegister) *Instr {
     return self.add(newInstr(OP_addp).ps(ps).rx(rx).pd(pd))
 }
@@ -278,20 +306,28 @@ func (self *ProgramBuilder) BGEU(rx GenericRegister, ry GenericRegister, to stri
     return self.jmp(newInstr(OP_bgeu).rx(rx).ry(ry), to)
 }
 
-func (self *ProgramBuilder) JAL(rx GenericRegister, to string) *Instr {
-    return self.jmp(newInstr(OP_jal).rx(rx), to)
+func (self *ProgramBuilder) JAL(to string, pd PointerRegister) *Instr {
+    return self.jmp(newInstr(OP_jal).pd(pd), to)
 }
 
-func (self *ProgramBuilder) JALI(rx GenericRegister, to int) *Instr {
-    return self.jmp(newInstr(OP_jal).rx(rx), _LB_jump_pc + strconv.Itoa(to))
+func (self *ProgramBuilder) JALI(to int, pd PointerRegister) *Instr {
+    return self.jmp(newInstr(OP_jal).pd(pd), _LB_jump_pc + strconv.Itoa(to))
 }
 
-func (self *ProgramBuilder) JALR(rx GenericRegister, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_jalr).rx(rx).ry(ry))
+func (self *ProgramBuilder) JALR(ps PointerRegister, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_jalr).ps(ps).pd(pd))
 }
 
-func (self *ProgramBuilder) CALL_GO() *Instr {
-    return self.add(newInstr(OP_call_go))
+func (self *ProgramBuilder) JSR(fn unsafe.Pointer) *Instr {
+    return self.add(newInstr(OP_jsr).pr(fn))
+}
+
+func (self *ProgramBuilder) CALL(fn interface{}) *Instr {
+    if vv := rt.UnpackEface(fn); vv.Type.Kind() != reflect.Func {
+        panic("fn is not a function")
+    } else {
+        return self.add(newInstr(OP_call).pr(*(*unsafe.Pointer)(vv.Value)))
+    }
 }
 
 func (self *ProgramBuilder) RET() *Instr {

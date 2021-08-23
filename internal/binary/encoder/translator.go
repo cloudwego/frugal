@@ -17,7 +17,11 @@
 package encoder
 
 import (
+    `fmt`
+    `sync/atomic`
+
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 /** Function Prototype
@@ -52,6 +56,16 @@ const (
     ST = atm.R7
 )
 
+const (
+    TR = atm.R4
+    TP = atm.P2
+)
+
+const (
+    LB_error      = "_error"
+    LB_more_space = "_more_space"
+)
+
 func Translate(s Program) atm.Program {
     p := atm.CreateProgramBuilder()
     prologue  (p)
@@ -69,139 +83,69 @@ func program(p *atm.ProgramBuilder, s Program) {
 }
 
 func prologue(p *atm.ProgramBuilder) {
-    p.MOV   (atm.Zr, ST)                // ST <=  0
-    p.MOVRP (atm.Zr, ET)                // ET <=  0
-    p.MOVRP (atm.Zr, EP)                // EP <=  0
+    p.MOV   (atm.R0, ST)                // ST <=  0
+    p.LDAP  (0, atm.P0)                 // P0 <=  a0
+    p.LDAP  (1, WP)                     // WP <=  a1
+    p.LDAP  (2, RS)                     // RS <=  a2
     p.IB    (8, atm.R1)                 // R1 <=  8
-    p.LP    (atm.SP, atm.P0)            // P0 <= *SP
     p.LP    (atm.P0, RP)                // RP <= *P0
     p.ADDP  (atm.P0, atm.R1, atm.P0)    // P0 <=  P0 + R1
     p.LQ    (atm.P0, RL)                // RL <= *P0
     p.ADDP  (atm.P0, atm.R1, atm.P0)    // P0 <=  P0 + R1
     p.LQ    (atm.P0, RC)                // RC <= *P0
-    p.ADDP  (atm.SP, atm.R1, atm.P0)    // P0 <=  SP + R1
-    p.LP    (atm.P0, WP)                // WP <= *P0
-    p.ADDP  (atm.P0, atm.R1, atm.P0)    // P0 <=  P0 + R1
-    p.LP    (atm.P0, RS)                // RS <= *P0
 }
 
 func epilogue(p *atm.ProgramBuilder) {
-    p.IB    (24, atm.R1)                //  R1 <= 24
-    p.ADDP  (atm.SP, atm.R1, atm.P0)    //  P0 <= SP + R1
-    p.SP    (ET, atm.P0)                // *P0 <= ET
-    p.IB    (8, atm.R1)                 //  R1 <= 8
-    p.ADDP  (atm.P0, atm.R1, atm.P0)    //  P0 <= P0 + R1
-    p.SP    (EP, atm.P0)                // *P0 <= EP
+    p.MOVRP (atm.R0, ET)                // ET <= 0
+    p.MOVRP (atm.R0, EP)                // EP <= 0
+    p.Label (LB_error)                  // _error:
+    p.STRP  (ET, 0)                     // r0 <= ET
+    p.STRP  (EP, 1)                     // r1 <= EP
     p.RET   ()                          // return
 }
 
-func moreSpace(p *atm.ProgramBuilder) {
+var (
+    byteType    = rt.UnpackEface(byte(0)).Type
+    moreSpaceId = uint64(0)
+)
 
+func nextId() string {
+    return fmt.Sprintf("_next_%x", atomic.AddUint64(&moreSpaceId, 1))
+}
+
+func moreSpace(p *atm.ProgramBuilder) {
+    p.Label (LB_more_space)             // _more_space:
+    p.IB    (2, TR)                     //  TR <= 2
+    p.IP    (byteType, TP)              //  TP <= byteType
+    p.MUL   (RC, TR, TR)                //  TR <= RC * TR
+    p.CALL  (growslice).                //  CALL growslice:
+      A0    (TP).                       //      et      <= TP
+      A1    (RP).                       //      old.ptr <= RP
+      A2    (RL).                       //      old.len <= RL
+      A3    (RC).                       //      old.cap <= RC
+      A4    (TR).                       //      cap     <= TR
+      R0    (RP).                       //      RET.ptr => RP
+      R1    (RL).                       //      RET.len => RL
+      R2    (RC)                        //      RET.cap => RC
+    p.LDAP  (0, TP)                     //  TP <= arg[0]
+    p.IB    (8, TR)                     //  R1 <= 8
+    p.SP    (RP, TP)                    // *TP <= RP
+    p.ADDP  (TP, TR, TP)                //  TP <= TP + R1
+    p.SQ    (RL, TP)                    // *TP <= RL
+    p.ADDP  (TP, TR, TP)                //  TP <= TP + R1
+    p.SQ    (RC, TP)                    // *TP <= RC
+    p.JALR  (atm.LR, atm.Pn)            //  PC <= LR
 }
 
 func checkSize(p *atm.ProgramBuilder, n int) {
-
+    s := nextId()
+    p.IQ    (int64(n), TR)              // TR <= n
+    p.ADD   (RL, TR, TR)                // TR <= RL + TR
+    p.BGEU  (RC, TR, s)                 // if RC >= TR then PC <= &s
+    p.JAL   (LB_more_space, atm.LR)     // JAL _more_space
+    p.Label (s)
 }
 
 var translators = [...]func(*atm.ProgramBuilder, Instr) {
-    OP_i8             : translate_OP_i8,
-    OP_i16            : translate_OP_i16,
-    OP_i32            : translate_OP_i32,
-    OP_i64            : translate_OP_i64,
-    OP_double         : translate_OP_double,
-    OP_binary         : translate_OP_binary,
-    OP_bool           : translate_OP_bool,
-    OP_goto           : translate_OP_goto,
-    OP_offset         : translate_OP_offset,
-    OP_follow         : translate_OP_follow,
-    OP_map_begin      : translate_OP_map_begin,
-    OP_map_check_key  : translate_OP_map_check_key,
-    OP_map_value_next : translate_OP_map_value_next,
-    OP_list_begin     : translate_OP_list_begin,
-    OP_list_advance   : translate_OP_list_advance,
-    OP_field_stop     : translate_OP_field_stop,
-    OP_field_begin    : translate_OP_field_begin,
-    OP_defer          : translate_OP_defer,
-    OP_save           : translate_OP_save,
-    OP_drop           : translate_OP_drop,
-}
-
-func translate_OP_i8(p *atm.ProgramBuilder, _ Instr) {
-
-}
-
-func translate_OP_i16(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_i32(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_i64(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_double(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_binary(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_bool(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_goto(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_offset(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_follow(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_map_begin(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_map_check_key(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_map_value_next(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_list_begin(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_list_advance(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_field_stop(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_field_begin(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_defer(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_save(p *atm.ProgramBuilder, v Instr) {
-
-}
-
-func translate_OP_drop(p *atm.ProgramBuilder, v Instr) {
 
 }

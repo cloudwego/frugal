@@ -81,6 +81,10 @@ type GoSlice struct {
     Cap int
 }
 
+func (self GoSlice) Set(i int, v byte) {
+    *(*byte)(unsafe.Pointer(uintptr(self.Ptr) + uintptr(i))) = v
+}
+
 type GoSliceType struct {
     GoType
     Elem *GoType

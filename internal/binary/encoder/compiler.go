@@ -32,19 +32,15 @@ type (
     Compiler map[reflect.Type]bool
 )
 
-func mkins(op OpCode, et defs.Tag, kt defs.Tag, id uint16, to int, nb int, vt reflect.Type) Instr {
+func mkins(op OpCode, iv int64, vt reflect.Type) Instr {
     return Instr(
-        (uint64(id) << 48) |
-        (uint64(et) << 24) |
-        (uint64(kt) << 16) |
-        (uint64(to) <<  8) |
-        (mkoffs(nb) <<  8) |
-        (mktype(vt) <<  8) |
-        (uint64(op) <<  0),
+        (mkiv64(iv) << 8) |
+        (mktype(vt) << 8) |
+        (uint64(op) << 0),
     )
 }
 
-func mkoffs(v int) uint64 {
+func mkiv64(v int64) uint64 {
     if v < defs.MinInt56 || v > defs.MaxInt56 {
         panic("value exceeds 56-bit integer range")
     } else {
@@ -66,30 +62,29 @@ func gettype(v Instr) (p *rt.GoType) {
 }
 
 func (self Instr) Op() OpCode     { return OpCode(self) }
-func (self Instr) To() int        { return int(self >> 8) }
-func (self Instr) Nb() int        { return int(self) / 256 }
-func (self Instr) Et() uint8      { return uint8(self >> 24) }
-func (self Instr) Kt() uint8      { return uint8(self >> 16) }
-func (self Instr) Id() uint16     { return uint16(self >> 48) }
+func (self Instr) Iv() int64      { return int64(self) / 256 }
 func (self Instr) Vt() *rt.GoType { return gettype(self >> 8) }
 
 func (self Instr) Disassemble() string {
     switch self.Op() {
-        case OP_goto           : fallthrough
-        case OP_follow         : fallthrough
-        case OP_map_check_key  : fallthrough
-        case OP_list_advance   : return fmt.Sprintf("%-18sL_%d", self.Op(), self.To())
-        case OP_defer          : return fmt.Sprintf("%-18s%s", self.Op(), self.Vt())
-        case OP_offset         : return fmt.Sprintf("%-18s%d", self.Op(), self.Nb())
-        case OP_list_begin     : return fmt.Sprintf("%-18s%d", self.Op(), self.Et())
-        case OP_field_begin    : return fmt.Sprintf("%-18s%d: %d", self.Op(), self.Id(), self.Et())
-        case OP_map_begin      : return fmt.Sprintf("%-18s%d -> %d", self.Op(), self.Kt(), self.Et())
-        default                : return self.Op().String()
+        case OP_byte        : return fmt.Sprintf("%-18s0x%02x", self.Op(), self.Iv())
+        case OP_word        : return fmt.Sprintf("%-18s0x%04x", self.Op(), self.Iv())
+        case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op(), self.Iv())
+        case OP_size        : fallthrough
+        case OP_copy        : fallthrough
+        case OP_seek        : fallthrough
+        case OP_list_next   : return fmt.Sprintf("%-18s%d", self.Op(), self.Iv())
+        case OP_defer       : fallthrough
+        case OP_map_begin   : return fmt.Sprintf("%-18s%s", self.Op(), self.Vt())
+        case OP_goto        : fallthrough
+        case OP_if_nil      : fallthrough
+        case OP_if_true     : return fmt.Sprintf("%-18sL_%d", self.Op(), self.Iv())
+        default             : return self.Op().String()
     }
 }
 
-func (self Program) pc() int   { return len(self) }
-func (self Program) pin(i int) { self[i] = (self[i] & 0xff) | Instr(uint64(self.pc()) << 8) }
+func (self Program) pc() int64   { return int64(len(self)) }
+func (self Program) pin(i int64) { self[i] = (self[i] & 0xff) | Instr(uint64(self.pc()) << 8) }
 
 func (self Program) tag(n int) {
     if n >= defs.MaxStack {
@@ -97,13 +92,9 @@ func (self Program) tag(n int) {
     }
 }
 
-func (self *Program) add(op OpCode)                            { self.ins(mkins(op, 0, 0, 0, 0, 0, nil)) }
-func (self *Program) jmp(op OpCode, to int)                    { self.ins(mkins(op, 0, 0, 0, to, 0, nil)) }
-func (self *Program) idx(op OpCode, nb int)                    { self.ins(mkins(op, 0, 0, 0, 0, nb, nil)) }
-func (self *Program) seq(op OpCode, et defs.Tag)               { self.ins(mkins(op, et, 0, 0, 0, 0, nil)) }
-func (self *Program) rtt(op OpCode, vt reflect.Type)           { self.ins(mkins(op, 0, 0, 0, 0, 0, vt))   }
-func (self *Program) fid(op OpCode, et defs.Tag, id uint16)    { self.ins(mkins(op, et, 0, id, 0, 0, nil)) }
-func (self *Program) kvs(op OpCode, kt defs.Tag, et defs.Tag)  { self.ins(mkins(op, et, kt, 0, 0, 0, nil)) }
+func (self *Program) add(op OpCode)                  { self.ins(mkins(op, 0, nil)) }
+func (self *Program) i64(op OpCode, iv int64)        { self.ins(mkins(op, iv, nil)) }
+func (self *Program) rtt(op OpCode, vt reflect.Type) { self.ins(mkins(op, 0, vt))   }
 
 func (self *Program) ins(iv Instr) {
     if len(*self) >= defs.MaxUint56 {
@@ -125,7 +116,7 @@ func (self Program) Disassemble() string {
     /* prescan to get all the labels */
     for _, ins := range self {
         if _OpBranches[ins.Op()] {
-            tab[ins.To()] = true
+            tab[ins.Iv()] = true
         }
     }
 
@@ -179,16 +170,16 @@ func (self Compiler) compileSet(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     switch vt.T {
-        case defs.T_bool   : p.add(OP_bool)
-        case defs.T_i8     : p.add(OP_i8)
-        case defs.T_double : p.add(OP_double)
-        case defs.T_i16    : p.add(OP_i16)
-        case defs.T_i32    : p.add(OP_i32)
-        case defs.T_i64    : p.add(OP_i64)
-        case defs.T_string : p.add(OP_binary)
-        case defs.T_binary : p.add(OP_binary)
+        case defs.T_bool   : fallthrough
+        case defs.T_i8     : p.i64(OP_size, 1); p.i64(OP_copy, 1)
+        case defs.T_i16    : p.i64(OP_size, 2); p.i64(OP_copy, 2)
+        case defs.T_i32    : p.i64(OP_size, 4); p.i64(OP_copy, 4)
+        case defs.T_i64    : fallthrough
+        case defs.T_double : p.i64(OP_size, 8); p.i64(OP_copy, 8)
+        case defs.T_string : fallthrough
+        case defs.T_binary : p.add(OP_vstr)
         case defs.T_struct : self.compileStruct  (p, sp, vt)
-        case defs.T_map    : self.compileMap     (p, sp, vt.V, vt.K)
+        case defs.T_map    : self.compileMap     (p, sp, vt)
         case defs.T_set    : self.compileSetList (p, sp, vt.V)
         case defs.T_list   : self.compileSetList (p, sp, vt.V)
         default            : panic("unreachable")
@@ -197,35 +188,44 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compilePtr(p *Program, sp int, et *defs.Type) {
     i := p.pc()
-    p.add(OP_follow)
+    p.add(OP_deref)
     self.compileOne(p, sp, et)
     p.pin(i)
 }
 
-func (self Compiler) compileMap(p *Program, sp int, et *defs.Type, kt *defs.Type) {
+func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.tag(sp)
-    p.add(OP_save)
-    p.kvs(OP_map_begin, kt.T, et.T)
+    p.i64(OP_size, 6)
+    p.i64(OP_byte, int64(vt.K.T))
+    p.i64(OP_byte, int64(vt.V.T))
+    p.rtt(OP_map_begin, vt.S)
     i := p.pc()
-    p.add(OP_map_check_key)
-    self.compileOne(p, sp + 1, kt)
-    p.add(OP_map_value_next)
-    self.compileOne(p, sp + 1, et)
-    p.jmp(OP_goto, i)
-    p.pin(i)
-    p.add(OP_drop)
+    p.add(OP_map_is_end)
+    j := p.pc()
+    p.add(OP_if_true)
+    p.add(OP_map_key)
+    self.compileOne(p, sp + 1, vt.K)
+    p.add(OP_map_value)
+    self.compileOne(p, sp + 1, vt.V)
+    p.i64(OP_goto, i)
+    p.pin(j)
+    p.add(OP_map_end)
 }
 
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.tag(sp)
-    p.add(OP_save)
-    p.seq(OP_list_begin, et.T)
+    p.i64(OP_size, 5)
+    p.i64(OP_byte, int64(et.T))
+    p.add(OP_list_begin)
     i := p.pc()
-    p.add(OP_list_advance)
+    p.add(OP_list_is_end)
+    j := p.pc()
+    p.add(OP_if_true)
     self.compileOne(p, sp + 1, et)
-    p.jmp(OP_goto, i)
-    p.pin(i)
-    p.add(OP_drop)
+    p.add(OP_list_next)
+    p.i64(OP_goto, i)
+    p.pin(j)
+    p.add(OP_list_end)
 }
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
@@ -239,26 +239,28 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
     /* empty structs */
     if len(fvs) == 0 {
-        p.add(OP_field_stop)
+        p.i64(OP_byte, 0)
         return
     }
 
     /* the first field */
     p.tag(sp)
-    p.add(OP_save)
-    p.fid(OP_field_begin, fvs[0].Type.T, fvs[0].ID)
+    p.i64(OP_size, 3)
+    p.i64(OP_byte, int64(fvs[0].Type.T))
+    p.i64(OP_word, int64(fvs[0].ID))
     self.compileOne(p, sp + 1, fvs[0].Type)
 
     /* remaining fields */
     for i, fv := range fvs[1:] {
-        p.idx(OP_offset, fv.F - fvs[i].F)
-        p.fid(OP_field_begin, fv.Type.T, fv.ID)
+        p.i64(OP_size, 3)
+        p.i64(OP_seek, int64(fv.F - fvs[i].F))
+        p.i64(OP_byte, int64(fv.Type.T))
+        p.i64(OP_word, int64(fv.ID))
         self.compileOne(p, sp + 1, fv.Type)
     }
 
     /* add the STOP field */
-    p.add(OP_field_stop)
-    p.add(OP_drop)
+    p.i64(OP_byte, 0)
 }
 
 func (self Compiler) Free() {
@@ -275,5 +277,5 @@ func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
 
     /* compile the actual type */
     self.compileOne(&ret, 0, vtp)
-    return
+    return Optimize(ret), nil
 }
