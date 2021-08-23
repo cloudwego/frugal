@@ -84,11 +84,6 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
             default         : return nil, fmt.Errorf("invalid requiredness for field %s.%s", vt, sf.Name)
         }
 
-        /* check for offser range */
-        if sf.Offset > MaxInt56 {
-            return nil, fmt.Errorf("field %s.%s offset out of range: %d", vt, sf.Name, sf.Offset)
-        }
-
         /* check for duplicates */
         if !ids[id] {
             ids[id] = true

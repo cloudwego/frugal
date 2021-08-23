@@ -181,7 +181,7 @@ func _PASS_SizeMerging(p Program) Program {
 
             /* replace the size instruction with NOP */
             if i++; op == OP_size {
-                p[i - 1] = Instr(_OP_nop)
+                p[i - 1] = mkins(_OP_nop, 0, nil)
             }
         }
 
@@ -231,7 +231,7 @@ func _PASS_LiteralMerging(p Program) Program {
             }
 
             /* replace the instruction with NOP */
-            p[i] = Instr(_OP_nop)
+            p[i] = mkins(_OP_nop, 0, nil)
             i++
 
             /* commit the buffer if needed */

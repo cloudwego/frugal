@@ -27,43 +27,29 @@ import (
 )
 
 type (
-    Instr    uint64
+    Instr    [2]uint64
     Program  []Instr
     Compiler map[reflect.Type]bool
 )
 
-func mkins(op OpCode, iv int64, vt reflect.Type) Instr {
-    return Instr(
-        (mkiv64(iv) << 8) |
-        (mktype(vt) << 8) |
-        (uint64(op) << 0),
-    )
-}
-
-func mkiv64(v int64) uint64 {
-    if v < defs.MinInt56 || v > defs.MaxInt56 {
-        panic("value exceeds 56-bit integer range")
-    } else {
-        return uint64(v)
-    }
-}
-
-func mktype(v reflect.Type) uint64 {
-    if p := uintptr(unsafe.Pointer(rt.UnpackType(v))); p > defs.MaxUint56 {
-        panic("pointer exceeds 56-bit address space")
-    } else {
-        return uint64(p)
-    }
-}
-
-func gettype(v Instr) (p *rt.GoType) {
-    *(*uintptr)(unsafe.Pointer(&p)) = uintptr(v)
+func mkins(op OpCode, iv int64, vt reflect.Type) (v Instr) {
+    v[0] = uint64(op)
+    v[1] = uint64(iv) | mktype(vt)
     return
 }
 
-func (self Instr) Op() OpCode     { return OpCode(self) }
-func (self Instr) Iv() int64      { return int64(self) / 256 }
-func (self Instr) Vt() *rt.GoType { return gettype(self >> 8) }
+func mktype(v reflect.Type) uint64 {
+    return uint64(uintptr(unsafe.Pointer(rt.UnpackType(v))))
+}
+
+func gettype(v Instr) (p *rt.GoType) {
+    *(*uintptr)(unsafe.Pointer(&p)) = uintptr(v[1])
+    return
+}
+
+func (self Instr) Iv() int64      { return int64(self[1]) }
+func (self Instr) Op() OpCode     { return OpCode(self[0]) }
+func (self Instr) Vt() *rt.GoType { return gettype(self) }
 
 func (self Instr) Disassemble() string {
     switch self.Op() {
@@ -84,7 +70,7 @@ func (self Instr) Disassemble() string {
 }
 
 func (self Program) pc() int64   { return int64(len(self)) }
-func (self Program) pin(i int64) { self[i] = (self[i] & 0xff) | Instr(uint64(self.pc()) << 8) }
+func (self Program) pin(i int64) { self[i][1] = uint64(self.pc()) }
 
 func (self Program) tag(n int) {
     if n >= defs.MaxStack {
@@ -92,17 +78,10 @@ func (self Program) tag(n int) {
     }
 }
 
+func (self *Program) ins(iv Instr)                   { *self = append(*self, iv) }
 func (self *Program) add(op OpCode)                  { self.ins(mkins(op, 0, nil)) }
 func (self *Program) i64(op OpCode, iv int64)        { self.ins(mkins(op, iv, nil)) }
 func (self *Program) rtt(op OpCode, vt reflect.Type) { self.ins(mkins(op, 0, vt))   }
-
-func (self *Program) ins(iv Instr) {
-    if len(*self) >= defs.MaxUint56 {
-        panic("program too long")
-    } else {
-        *self = append(*self, iv)
-    }
-}
 
 func (self Program) Free() {
     freeProgram(self)
