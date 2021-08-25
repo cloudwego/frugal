@@ -106,7 +106,7 @@ func epilogue(p *atm.ProgramBuilder) {
     p.Label (LB_error)                  // _error:
     p.STRP  (ET, 0)                     // r0 <= ET
     p.STRP  (EP, 1)                     // r1 <= EP
-    p.RET   ()                          // return
+    p.HALT  ()                          // HALT
 }
 
 var translators = [...]func(*atm.ProgramBuilder, Instr) {

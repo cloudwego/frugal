@@ -29,11 +29,14 @@ const (
     _LB_jump_pc = "_jump_pc_"
 )
 
-type Program []*Instr
+type Program struct {
+    Head *Instr
+}
 
 func (self Program) Free() {
-    for _, v := range self { freeInstr(v) }
-    freeProgram(self)
+    for p := self.Head; p != nil; p = p.Ln {
+        freeInstr(p)
+    }
 }
 
 type ProgramBuilder struct {
@@ -115,9 +118,10 @@ func (self *ProgramBuilder) Label(to string) {
     delete(self.pends, to)
 }
 
-func (self *ProgramBuilder) Build() (r []*Instr) {
+func (self *ProgramBuilder) Build() (r Program) {
     var n int
     var p *Instr
+    var q *Instr
 
     /* check for unresolved labels */
     for key := range self.pends {
@@ -141,29 +145,21 @@ func (self *ProgramBuilder) Build() (r []*Instr) {
     /* no instructions left, the program was composed entirely by NOPs */
     if self.head == nil {
         self.tail = nil
-        return nil
+        return
     }
 
     /* remove all the NOPs, there should be no jumps pointing to any NOPs */
     for p = self.head; p != nil; p, n = p.Ln, n + 1 {
         for p.Ln != nil && p.Ln.Op == OP_nop {
-            p.Ln = p.Ln.Ln
+            q = p.Ln
+            p.Ln = q.Ln
+            freeInstr(q)
         }
-    }
-
-    /* allocate space for result */
-    p = self.head
-    r = newProgram(n)
-
-    /* dump the instructions */
-    for p != nil {
-        r = append(r, p)
-        p = p.Ln
     }
 
     /* the ProgramBuilder's life-time ends here */
     freeProgramBuilder(self)
-    return
+    return Program{self.head}
 }
 
 func (self *ProgramBuilder) NOP() *Instr {
@@ -334,6 +330,10 @@ func (self *ProgramBuilder) JALR(ps PointerRegister, pd PointerRegister) *Instr 
     return self.add(newInstr(OP_jalr).ps(ps).pd(pd))
 }
 
+func (self *ProgramBuilder) HALT() *Instr {
+    return self.add(newInstr(OP_halt))
+}
+
 func (self *ProgramBuilder) CCALL(fn unsafe.Pointer) *Instr {
     return self.add(newInstr(OP_ccall).pr(fn))
 }
@@ -342,10 +342,6 @@ func (self *ProgramBuilder) GCALL(fn interface{}) *Instr {
     if vv := rt.UnpackEface(fn); vv.Type.Kind() != reflect.Func {
         panic("fn is not a function")
     } else {
-        return self.add(newInstr(OP_gcall).pr(*(*unsafe.Pointer)(vv.Value)))
+        return self.add(newInstr(OP_gcall).pr(vv.Value))
     }
-}
-
-func (self *ProgramBuilder) RET() *Instr {
-    return self.add(newInstr(OP_ret))
 }

@@ -24,7 +24,7 @@ import (
 
 var (
     instrPool          sync.Pool
-    programPool        sync.Pool
+    emulatorPool       sync.Pool
     programBuilderPool sync.Pool
 )
 
@@ -51,28 +51,20 @@ func resetInstr(op OpCode, p *Instr) *Instr {
     return p
 }
 
-func newProgram(n int) Program {
-    if v := programPool.Get(); v == nil {
-        return make(Program, 0, n)
+func newEmulator() *Emulator {
+    if v := emulatorPool.Get(); v == nil {
+        return new(Emulator)
     } else {
-        return resetProgram(v.(Program), n)
+        return resetEmulator(v.(*Emulator))
     }
 }
 
-func freeProgram(p Program) {
-    programPool.Put(p)
+func freeEmulator(p *Emulator) {
+    emulatorPool.Put(p)
 }
 
-func resetProgram(p Program, n int) Program {
-    if cap(p) >= n {
-        return p[:0]
-    } else {
-        return resizeProgram(p[:0], n)
-    }
-}
-
-func resizeProgram(p Program, n int) Program {
-    rt.GrowSlice(&p, n)
+func resetEmulator(p *Emulator) *Emulator {
+    *p = Emulator{}
     return p
 }
 

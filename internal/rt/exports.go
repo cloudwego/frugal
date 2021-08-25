@@ -23,9 +23,28 @@ import (
 //go:noescape
 //go:linkname mapclear runtime.mapclear
 //goland:noinspection GoUnusedParameter
-func mapclear(t *GoType, m unsafe.Pointer)
+func mapclear(t *GoType, h unsafe.Pointer)
 
-//go:noescape
-//go:linkname growslice runtime.growslice
+//go:linkname mallocgc runtime.mallocgc
 //goland:noinspection GoUnusedParameter
-func growslice(et *GoType, old GoSlice, cap int) GoSlice
+func mallocgc(size uintptr, typ *GoType, needzero bool) unsafe.Pointer
+
+//go:linkname reflectcall runtime.reflectcall
+//goland:noinspection GoUnusedParameter
+func reflectcall(argtype *GoType, fn unsafe.Pointer, arg unsafe.Pointer, argsize uint32, retoffset uint32)
+
+//go:nosplit
+func MapClear(m interface{}) {
+    v := UnpackEface(m)
+    mapclear(v.Type, v.Value)
+}
+
+//go:nosplit
+func MallocGC(nb uintptr, vt *GoType, zero bool) unsafe.Pointer {
+    return mallocgc(nb, vt, zero)
+}
+
+//go:nosplit
+func ReflectCall(vt *GoType, fn unsafe.Pointer, buf unsafe.Pointer, nbuf uintptr, retp int) {
+    reflectcall(vt, fn, buf, uint32(nbuf), uint32(retp))
+}

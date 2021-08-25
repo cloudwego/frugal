@@ -90,17 +90,6 @@ type GoSliceType struct {
     Elem *GoType
 }
 
-func MapClear(m interface{}) {
-    v := UnpackEface(m)
-    mapclear(v.Type, v.Value)
-}
-
-func GrowSlice(s interface{}, n int) {
-    v := UnpackEface(s)
-    e := (*GoSliceType)(unsafe.Pointer(v.Type)).Elem
-    *(*GoSlice)(v.Value) = growslice(e, *(*GoSlice)(v.Value), n)
-}
-
 func UnpackType(t reflect.Type) *GoType {
     return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
 }

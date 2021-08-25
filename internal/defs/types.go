@@ -59,9 +59,9 @@ var keywordTab = [...]string {
 
 func T_int() Tag {
     switch IntSize {
-        case 32: return T_i32
-        case 64: return T_i64
-        default: panic("invalid int size")
+        case 4  : return T_i32
+        case 8  : return T_i64
+        default : panic("invalid int size")
     }
 }
 

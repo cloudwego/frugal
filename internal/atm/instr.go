@@ -63,9 +63,9 @@ const (
     OP_bgeu                 // if (unsigned(Rx) >= unsigned(Ry)) Br.PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
     OP_jalr                 // PC -> Pd; Ps -> PC
+    OP_halt                 // halt the emulator
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
-    OP_ret                  // return from function
 )
 
 type Instr struct {
@@ -75,7 +75,7 @@ type Instr struct {
     Rz GenericRegister
     Ps PointerRegister
     Pd PointerRegister
-    Ar [2]uint8
+    _  [2]uint8
     Ai [8]uint8
     Rv [8]uint8
     An int
@@ -93,25 +93,23 @@ func (self *Instr) pd(v PointerRegister) *Instr { self.Pd = v; return self }
 func (self *Instr) pr(v unsafe.Pointer)  *Instr { self.Pr = v; return self }
 func (self *Instr) ai(v [8]uint8)        *Instr { self.Ai = v; return self }
 
-func (self *Instr) A0(v Register) *Instr { self.An, self.Ar[0] =  1, v.id(); return self }
-func (self *Instr) A1(v Register) *Instr { self.An, self.Ar[1] =  2, v.id(); return self }
-func (self *Instr) A2(v Register) *Instr { self.An, self.Ai[0] =  3, v.id(); return self }
-func (self *Instr) A3(v Register) *Instr { self.An, self.Ai[1] =  4, v.id(); return self }
-func (self *Instr) A4(v Register) *Instr { self.An, self.Ai[2] =  5, v.id(); return self }
-func (self *Instr) A5(v Register) *Instr { self.An, self.Ai[3] =  6, v.id(); return self }
-func (self *Instr) A6(v Register) *Instr { self.An, self.Ai[4] =  7, v.id(); return self }
-func (self *Instr) A7(v Register) *Instr { self.An, self.Ai[5] =  8, v.id(); return self }
-func (self *Instr) A8(v Register) *Instr { self.An, self.Ai[6] =  9, v.id(); return self }
-func (self *Instr) A9(v Register) *Instr { self.An, self.Ai[7] = 10, v.id(); return self }
+func (self *Instr) A0(v Register) *Instr { self.An, self.Ai[0] = 1, v.id(); return self }
+func (self *Instr) A1(v Register) *Instr { self.An, self.Ai[1] = 2, v.id(); return self }
+func (self *Instr) A2(v Register) *Instr { self.An, self.Ai[2] = 3, v.id(); return self }
+func (self *Instr) A3(v Register) *Instr { self.An, self.Ai[3] = 4, v.id(); return self }
+func (self *Instr) A4(v Register) *Instr { self.An, self.Ai[4] = 5, v.id(); return self }
+func (self *Instr) A5(v Register) *Instr { self.An, self.Ai[5] = 6, v.id(); return self }
+func (self *Instr) A6(v Register) *Instr { self.An, self.Ai[6] = 7, v.id(); return self }
+func (self *Instr) A7(v Register) *Instr { self.An, self.Ai[7] = 8, v.id(); return self }
 
-func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rv[0] =  1, v.id(); return self }
-func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rv[1] =  2, v.id(); return self }
-func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rv[0] =  3, v.id(); return self }
-func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rv[1] =  4, v.id(); return self }
-func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rv[2] =  5, v.id(); return self }
-func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[3] =  6, v.id(); return self }
-func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[4] =  7, v.id(); return self }
-func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[5] =  8, v.id(); return self }
+func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rv[0] = 1, v.id(); return self }
+func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rv[1] = 2, v.id(); return self }
+func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rv[2] = 3, v.id(); return self }
+func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rv[3] = 4, v.id(); return self }
+func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rv[4] = 5, v.id(); return self }
+func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[5] = 6, v.id(); return self }
+func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[6] = 7, v.id(); return self }
+func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[7] = 8, v.id(); return self }
 
 func (self *Instr) isLabelBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
