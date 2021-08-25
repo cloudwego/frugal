@@ -103,7 +103,7 @@ func newAdjustBuffer(n int) []int64 {
     }
 }
 
-// Compacting Pass: remove all the NOP instructions inserted in the previous pass.
+// Compacting Pass: remove all the PC-adjustment instructions inserted in the previous pass.
 func _PASS_Compacting(p Program) Program {
     i := 0
     j := 0
@@ -174,7 +174,7 @@ func _PASS_SizeMerging(p Program) Program {
                 case OP_word : break
                 case OP_long : break
                 case OP_quad : break
-                case OP_copy : break
+                case OP_sint : break
                 case OP_seek : break
                 case OP_size : nb += iv.Iv()
             }

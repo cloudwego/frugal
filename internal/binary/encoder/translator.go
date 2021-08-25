@@ -17,20 +17,19 @@
 package encoder
 
 import (
-    `fmt`
-    `sync/atomic`
-
     `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 /** Function Prototype
  *
- *      func(buf *[]byte, p unsafe.Pointer, rs *RuntimeState) (err error)
+ *      func(iov IoVec, p unsafe.Pointer, rs *RuntimeState) (err error)
  */
 
 /** Register Allocations
  *
+ *      P1      IoVec Itab Pointer
+ *      P2      IoVec Value Pointer
  *      P3      Current Working Pointer
  *      P4      Output Buffer Pointer
  *      P5      Runtime State Pointer
@@ -43,11 +42,13 @@ import (
  */
 
 const (
+    VT = atm.P1
+    VP = atm.P2
     WP = atm.P3
     RP = atm.P4
     RS = atm.P5
-    ET = atm.P6
-    EP = atm.P7
+    ET = atm.P6     // may also be used as a temporary pointer register
+    EP = atm.P7     // may also be used as a temporary pointer register
 )
 
 const (
@@ -57,21 +58,19 @@ const (
 )
 
 const (
-    TR = atm.R4
-    TP = atm.P2
+    TP = atm.P0
+    TR = atm.R0
 )
 
 const (
-    LB_error      = "_error"
-    LB_more_space = "_more_space"
+    LB_error = "_error"
 )
 
 func Translate(s Program) atm.Program {
     p := atm.CreateProgramBuilder()
-    prologue  (p)
-    program   (p, s)
-    epilogue  (p)
-    moreSpace (p)
+    prologue (p)
+    program  (p, s)
+    epilogue (p)
     return p.Build()
 }
 
@@ -83,69 +82,196 @@ func program(p *atm.ProgramBuilder, s Program) {
 }
 
 func prologue(p *atm.ProgramBuilder) {
-    p.MOV   (atm.R0, ST)                // ST <=  0
-    p.LDAP  (0, atm.P0)                 // P0 <=  a0
-    p.LDAP  (1, WP)                     // WP <=  a1
-    p.LDAP  (2, RS)                     // RS <=  a2
-    p.IB    (8, atm.R1)                 // R1 <=  8
-    p.LP    (atm.P0, RP)                // RP <= *P0
-    p.ADDP  (atm.P0, atm.R1, atm.P0)    // P0 <=  P0 + R1
-    p.LQ    (atm.P0, RL)                // RL <= *P0
-    p.ADDP  (atm.P0, atm.R1, atm.P0)    // P0 <=  P0 + R1
-    p.LQ    (atm.P0, RC)                // RC <= *P0
+    p.MOV   (atm.Rz, ST)                // ST <= 0
+    p.MOV   (atm.Rz, RC)                // RC <= 0
+    p.MOV   (atm.Rz, RL)                // RL <= 0
+    p.MOVP  (atm.Pn, RP)                // RP <= nil
+    p.LDAP  (0, VT)                     // VT <= a0
+    p.LDAP  (1, VP)                     // VP <= a1
+    p.LDAP  (2, WP)                     // WP <= a2
+    p.LDAP  (3, RS)                     // RS <= a3
 }
 
 func epilogue(p *atm.ProgramBuilder) {
-    p.MOVRP (atm.R0, ET)                // ET <= 0
-    p.MOVRP (atm.R0, EP)                // EP <= 0
+    p.BEQ   (RL, atm.Rz, "_nobuf")      // if RL == 0 then GOTO _nobuf
+    p.GCALL (utils.IoVecPut).           // GCALL IoVecPut:
+      A0    (VT).                       //     p.itab <= VT
+      A1    (VP).                       //     p.data <= VP
+      A2    (RP).                       //     v.ptr  <= RP
+      A3    (RL).                       //     v.len  <= RL
+      A4    (RC)                        //     v.cap  <= RC
+    p.Label ("_nobuf")                  // _nobuf:
+    p.MOVRP (atm.Rz, ET)                // ET <= 0
+    p.MOVRP (atm.Rz, EP)                // EP <= 0
     p.Label (LB_error)                  // _error:
     p.STRP  (ET, 0)                     // r0 <= ET
     p.STRP  (EP, 1)                     // r1 <= EP
     p.RET   ()                          // return
 }
 
-var (
-    byteType    = rt.UnpackEface(byte(0)).Type
-    moreSpaceId = uint64(0)
-)
-
-func nextId() string {
-    return fmt.Sprintf("_next_%x", atomic.AddUint64(&moreSpaceId, 1))
-}
-
-func moreSpace(p *atm.ProgramBuilder) {
-    p.Label (LB_more_space)             // _more_space:
-    p.IB    (2, TR)                     //  TR <= 2
-    p.IP    (byteType, TP)              //  TP <= byteType
-    p.MUL   (RC, TR, TR)                //  TR <= RC * TR
-    p.CALL  (growslice).                //  CALL growslice:
-      A0    (TP).                       //      et      <= TP
-      A1    (RP).                       //      old.ptr <= RP
-      A2    (RL).                       //      old.len <= RL
-      A3    (RC).                       //      old.cap <= RC
-      A4    (TR).                       //      cap     <= TR
-      R0    (RP).                       //      RET.ptr => RP
-      R1    (RL).                       //      RET.len => RL
-      R2    (RC)                        //      RET.cap => RC
-    p.LDAP  (0, TP)                     //  TP <= arg[0]
-    p.IB    (8, TR)                     //  R1 <= 8
-    p.SP    (RP, TP)                    // *TP <= RP
-    p.ADDP  (TP, TR, TP)                //  TP <= TP + R1
-    p.SQ    (RL, TP)                    // *TP <= RL
-    p.ADDP  (TP, TR, TP)                //  TP <= TP + R1
-    p.SQ    (RC, TP)                    // *TP <= RC
-    p.JALR  (atm.LR, atm.Pn)            //  PC <= LR
-}
-
-func checkSize(p *atm.ProgramBuilder, n int) {
-    s := nextId()
-    p.IQ    (int64(n), TR)              // TR <= n
-    p.ADD   (RL, TR, TR)                // TR <= RL + TR
-    p.BGEU  (RC, TR, s)                 // if RC >= TR then PC <= &s
-    p.JAL   (LB_more_space, atm.LR)     // JAL _more_space
-    p.Label (s)
-}
-
 var translators = [...]func(*atm.ProgramBuilder, Instr) {
+    OP_byte        : translate_OP_byte,
+    OP_word        : translate_OP_word,
+    OP_long        : translate_OP_long,
+    OP_quad        : translate_OP_quad,
+    OP_size        : translate_OP_size,
+    OP_sint        : translate_OP_sint,
+    OP_vstr        : translate_OP_vstr,
+    OP_seek        : translate_OP_seek,
+    OP_deref       : translate_OP_deref,
+    OP_defer       : translate_OP_defer,
+    OP_map_end     : translate_OP_map_end,
+    OP_map_key     : translate_OP_map_key,
+    OP_map_value   : translate_OP_map_value,
+    OP_map_begin   : translate_OP_map_begin,
+    OP_map_if_end  : translate_OP_map_if_end,
+    OP_list_end    : translate_OP_list_end,
+    OP_list_next   : translate_OP_list_next,
+    OP_list_begin  : translate_OP_list_begin,
+    OP_list_if_end : translate_OP_list_if_end,
+    OP_goto        : translate_OP_goto,
+    OP_if_nil      : translate_OP_if_nil,
+}
 
+func translate_OP_byte(p *atm.ProgramBuilder, v Instr) {
+    p.IB    (1, TR)                     //  TR <= 1
+    p.ADDP  (RP, RL, TP)                //  TP <= RP + RL
+    p.ADD   (RL, TR, RL)                //  RL <= RL + TR
+    p.IB    (int8(v.Iv()), TR)          //  TR <= v.Iv()
+    p.SB    (TR, TP)                    // *TP <= TR
+}
+
+func translate_OP_word(p *atm.ProgramBuilder, v Instr) {
+    p.IB    (2, TR)                     //  TR <= 2
+    p.ADDP  (RP, RL, TP)                //  TP <= RP + RL
+    p.ADD   (RL, TR, RL)                //  RL <= RL + TR
+    p.IW    (int16(v.Iv()), TR)         //  TR <= v.Iv()
+    p.SWAP2 (TR, TR)                    //  TR <= bswap16(TR)
+    p.SW    (TR, TP)                    // *TP <= TR
+}
+
+func translate_OP_long(p *atm.ProgramBuilder, v Instr) {
+    p.IB    (4, TR)                     //  TR <= 4
+    p.ADDP  (RP, RL, TP)                //  TP <= RP + RL
+    p.ADD   (RL, TR, RL)                //  RL <= RL + TR
+    p.IL    (int32(v.Iv()), TR)         //  TR <= v.Iv()
+    p.SWAP4 (TR, TR)                    //  TR <= bswap32(TR)
+    p.SL    (TR, TP)                    // *TP <= TR
+}
+
+func translate_OP_quad(p *atm.ProgramBuilder, v Instr) {
+    p.IB    (8, TR)                     //  TR <= 8
+    p.ADDP  (RP, RL, TP)                //  TP <= RP + RL
+    p.ADD   (RL, TR, RL)                //  RL <= RL + TR
+    p.IQ    (v.Iv(), TR)                //  TR <= v.Iv()
+    p.SWAP8 (TR, TR)                    //  TR <= bswap64(TR)
+    p.SQ    (TR, TP)                    // *TP <= TR
+}
+
+func translate_OP_size(p *atm.ProgramBuilder, v Instr) {
+    p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
+    p.GCALL (utils.IoVecAdd).           // GCALL IoVecAdd:
+      A0    (VT).                       //     p.itab  <= VT
+      A1    (VP).                       //     p.data  <= VP
+      A2    (TR).                       //     n       <= TR
+      A3    (RP).                       //     v.ptr   <= RP
+      A4    (RL).                       //     v.len   <= RL
+      A5    (RC).                       //     v.cap   <= RC
+      R0    (RP).                       //     ret.ptr => RP
+      R1    (RL).                       //     ret.len => RL
+      R2    (RC)                        //     ret.cap => RC
+}
+
+func translate_OP_sint(p *atm.ProgramBuilder, v Instr) {
+    p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
+    p.ADDP  (RP, RL, TP)                // TP <= RP + RL
+    p.ADD   (RL, TR, RL)                // RL <= RL + TR
+
+    /* check for copy size */
+    switch v.Iv() {
+        case 1  : p.LB(WP, TR);                  p.SB(TR, TP)   // *TP <= *WP
+        case 2  : p.LW(WP, TR); p.SWAP2(TR, TR); p.SW(TR, TP)   // *TP <= bswap16(*WP)
+        case 4  : p.LL(WP, TR); p.SWAP4(TR, TR); p.SL(TR, TP)   // *TP <= bswap32(*WP)
+        case 8  : p.LQ(WP, TR); p.SWAP8(TR, TR); p.SQ(TR, TP)   // *TP <= bswap64(*WP)
+        default : panic("can only convert 1, 2, 4 or 8 bytes at a time")
+    }
+}
+
+func translate_OP_vstr(p *atm.ProgramBuilder, _ Instr) {
+    p.IB    (8, TR)                     // TR <=  8
+    p.LP    (WP, TP)                    // TP <= *WP
+    p.ADDP  (WP, TR, EP)                // EP <=  WP + TR
+    p.LQ    (EP, TR)                    // TR <= *EP
+    p.GCALL (utils.IoVecCat).           // GCALL IoVecCat:
+      A0    (VT).                       //     p.itab <= VT
+      A1    (VP).                       //     p.data <= VP
+      A2    (RP).                       //     v.ptr  <= RP
+      A3    (RL).                       //     v.len  <= RL
+      A4    (RC).                       //     v.cap  <= RC
+      A5    (TP).                       //     w.ptr  <= TP
+      A6    (TR).                       //     w.len  <= TR
+      A7    (TR)                        //     w.cap  <= TR
+    p.MOV   (atm.Rz, RC)                // RC <=  0
+    p.MOV   (atm.Rz, RL)                // RL <=  0
+    p.MOVP  (atm.Pn, RP)                // RP <=  nil
+}
+
+func translate_OP_seek(p *atm.ProgramBuilder, v Instr) {
+    p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
+    p.ADDP  (WP, TR, WP)                // WP <= WP + TR
+}
+
+func translate_OP_deref(p *atm.ProgramBuilder, _ Instr) {
+    p.LP    (WP, WP)                    // WP <= *WP
+}
+
+func translate_OP_defer(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_map_end(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_map_key(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_map_value(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_map_begin(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_map_if_end(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_list_end(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_list_next(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_list_begin(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_list_if_end(p *atm.ProgramBuilder, v Instr) {
+
+}
+
+func translate_OP_goto(p *atm.ProgramBuilder, v Instr) {
+    p.JALI  (v.Iv(), atm.Pn)            // GOTO @v.Iv()
+}
+
+func translate_OP_if_nil(p *atm.ProgramBuilder, v Instr) {
+    p.LQ    (WP, TR)                    // TR <= *WP
+    p.BNE   (TR, atm.Rz, "_nz_{n}")     // if TR != 0 then GOTO _nz_{n}
+    p.JALI  (v.Iv(), atm.Pn)            // JALI v.Iv()
+    p.Label ("_nz_{n}")                 // _nz_{n}:
 }

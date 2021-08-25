@@ -238,6 +238,10 @@ func (self *ProgramBuilder) MOV(rx GenericRegister, ry GenericRegister) *Instr {
     return self.add(newInstr(OP_mov).rx(rx).ry(ry))
 }
 
+func (self *ProgramBuilder) MOVP(ps PointerRegister, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_movp).ps(ps).pd(pd))
+}
+
 func (self *ProgramBuilder) MOVPR(ps PointerRegister, rx GenericRegister) *Instr {
     return self.add(newInstr(OP_movpr).ps(ps).rx(rx))
 }
@@ -282,6 +286,18 @@ func (self *ProgramBuilder) MUL(rx GenericRegister, ry GenericRegister, rz Gener
     return self.add(newInstr(OP_mul).rx(rx).ry(ry).rz(rz))
 }
 
+func (self *ProgramBuilder) SWAP2(rx GenericRegister, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_swap2).rx(rx).ry(ry))
+}
+
+func (self *ProgramBuilder) SWAP4(rx GenericRegister, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_swap4).rx(rx).ry(ry))
+}
+
+func (self *ProgramBuilder) SWAP8(rx GenericRegister, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_swap8).rx(rx).ry(ry))
+}
+
 func (self *ProgramBuilder) BEQ(rx GenericRegister, ry GenericRegister, to string) *Instr {
     return self.jmp(newInstr(OP_beq).rx(rx).ry(ry), to)
 }
@@ -310,23 +326,23 @@ func (self *ProgramBuilder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
 }
 
-func (self *ProgramBuilder) JALI(to int, pd PointerRegister) *Instr {
-    return self.jmp(newInstr(OP_jal).pd(pd), _LB_jump_pc + strconv.Itoa(to))
+func (self *ProgramBuilder) JALI(to int64, pd PointerRegister) *Instr {
+    return self.jmp(newInstr(OP_jal).pd(pd), _LB_jump_pc + strconv.FormatInt(to, 10))
 }
 
 func (self *ProgramBuilder) JALR(ps PointerRegister, pd PointerRegister) *Instr {
     return self.add(newInstr(OP_jalr).ps(ps).pd(pd))
 }
 
-func (self *ProgramBuilder) JSR(fn unsafe.Pointer) *Instr {
-    return self.add(newInstr(OP_jsr).pr(fn))
+func (self *ProgramBuilder) CCALL(fn unsafe.Pointer) *Instr {
+    return self.add(newInstr(OP_ccall).pr(fn))
 }
 
-func (self *ProgramBuilder) CALL(fn interface{}) *Instr {
+func (self *ProgramBuilder) GCALL(fn interface{}) *Instr {
     if vv := rt.UnpackEface(fn); vv.Type.Kind() != reflect.Func {
         panic("fn is not a function")
     } else {
-        return self.add(newInstr(OP_call).pr(*(*unsafe.Pointer)(vv.Value)))
+        return self.add(newInstr(OP_gcall).pr(*(*unsafe.Pointer)(vv.Value)))
     }
 }
 

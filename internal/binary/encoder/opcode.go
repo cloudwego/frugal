@@ -28,7 +28,7 @@ const (
     OP_long
     OP_quad
     OP_size
-    OP_copy
+    OP_sint
     OP_vstr
     OP_seek
     OP_deref
@@ -37,14 +37,13 @@ const (
     OP_map_key
     OP_map_value
     OP_map_begin
-    OP_map_is_end
+    OP_map_if_end
     OP_list_end
     OP_list_next
     OP_list_begin
-    OP_list_is_end
+    OP_list_if_end
     OP_goto
     OP_if_nil
-    OP_if_true
 )
 
 var _OpNames = [256]string {
@@ -53,7 +52,7 @@ var _OpNames = [256]string {
     OP_long        : "long",
     OP_quad        : "long",
     OP_size        : "size",
-    OP_copy        : "copy",
+    OP_sint        : "sint",
     OP_vstr        : "vstr",
     OP_seek        : "seek",
     OP_deref       : "deref",
@@ -62,20 +61,20 @@ var _OpNames = [256]string {
     OP_map_key     : "map_key",
     OP_map_value   : "map_value",
     OP_map_begin   : "map_begin",
-    OP_map_is_end  : "map_is_end",
+    OP_map_if_end  : "map_if_end",
     OP_list_end    : "list_end",
     OP_list_next   : "list_next",
     OP_list_begin  : "list_begin",
-    OP_list_is_end : "list_is_end",
+    OP_list_if_end : "list_if_end",
     OP_goto        : "goto",
     OP_if_nil      : "if_nil",
-    OP_if_true     : "if_true",
 }
 
 var _OpBranches = [256]bool {
-    OP_goto    : true,
-    OP_if_nil  : true,
-    OP_if_true : true,
+    OP_goto        : true,
+    OP_if_nil      : true,
+    OP_map_if_end  : true,
+    OP_list_if_end : true,
 }
 
 func (self OpCode) String() string {

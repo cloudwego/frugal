@@ -14,47 +14,26 @@
  * limitations under the License.
  */
 
-package atm
+package frugal
 
-type Register interface {
-    id() uint8
+import (
+    `bytes`
+)
+
+type SimpleIoVec struct {
+    bytes.Buffer
 }
 
-type (
-    GenericRegister uint8
-    PointerRegister uint8
-)
+func (self *SimpleIoVec) Put(v []byte) {
+    _, _ = self.Write(v)
+}
 
-const (
-    ArgMask    = 0x7f
-    ArgGeneric = 0x00
-    ArgPointer = 0x80
-)
+func (self *SimpleIoVec) Cat(v []byte, w []byte) {
+    self.Put(v)
+    self.Put(w)
+}
 
-const (
-    R0 GenericRegister = iota
-    R1
-    R2
-    R3
-    R4
-    R5
-    R6
-    R7
-    Rz
-)
-
-const (
-    P0 PointerRegister = iota
-    P1
-    P2
-    P3
-    P4
-    P5
-    P6
-    P7
-    LR
-    Pn
-)
-
-func (self GenericRegister) id() uint8 { return uint8(self) | ArgGeneric }
-func (self PointerRegister) id() uint8 { return uint8(self) | ArgPointer }
+func (self *SimpleIoVec) Add(n int, v []byte) []byte {
+    self.Put(v)
+    return make([]byte, 0, n)
+}

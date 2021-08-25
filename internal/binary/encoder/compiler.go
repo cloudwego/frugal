@@ -57,14 +57,15 @@ func (self Instr) Disassemble() string {
         case OP_word        : return fmt.Sprintf("%-18s0x%04x", self.Op(), self.Iv())
         case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op(), self.Iv())
         case OP_size        : fallthrough
-        case OP_copy        : fallthrough
+        case OP_sint        : fallthrough
         case OP_seek        : fallthrough
         case OP_list_next   : return fmt.Sprintf("%-18s%d", self.Op(), self.Iv())
         case OP_defer       : fallthrough
         case OP_map_begin   : return fmt.Sprintf("%-18s%s", self.Op(), self.Vt())
         case OP_goto        : fallthrough
         case OP_if_nil      : fallthrough
-        case OP_if_true     : return fmt.Sprintf("%-18sL_%d", self.Op(), self.Iv())
+        case OP_map_if_end  : fallthrough
+        case OP_list_if_end : return fmt.Sprintf("%-18sL_%d", self.Op(), self.Iv())
         default             : return self.Op().String()
     }
 }
@@ -150,11 +151,11 @@ func (self Compiler) compileSet(p *Program, sp int, vt *defs.Type) {
 func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     switch vt.T {
         case defs.T_bool   : fallthrough
-        case defs.T_i8     : p.i64(OP_size, 1); p.i64(OP_copy, 1)
-        case defs.T_i16    : p.i64(OP_size, 2); p.i64(OP_copy, 2)
-        case defs.T_i32    : p.i64(OP_size, 4); p.i64(OP_copy, 4)
+        case defs.T_i8     : p.i64(OP_size, 1); p.i64(OP_sint, 1)
+        case defs.T_i16    : p.i64(OP_size, 2); p.i64(OP_sint, 2)
+        case defs.T_i32    : p.i64(OP_size, 4); p.i64(OP_sint, 4)
         case defs.T_i64    : fallthrough
-        case defs.T_double : p.i64(OP_size, 8); p.i64(OP_copy, 8)
+        case defs.T_double : p.i64(OP_size, 8); p.i64(OP_sint, 8)
         case defs.T_string : fallthrough
         case defs.T_binary : p.add(OP_vstr)
         case defs.T_struct : self.compileStruct  (p, sp, vt)
@@ -179,15 +180,13 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.i64(OP_byte, int64(vt.V.T))
     p.rtt(OP_map_begin, vt.S)
     i := p.pc()
-    p.add(OP_map_is_end)
-    j := p.pc()
-    p.add(OP_if_true)
+    p.add(OP_map_if_end)
     p.add(OP_map_key)
     self.compileOne(p, sp + 1, vt.K)
     p.add(OP_map_value)
     self.compileOne(p, sp + 1, vt.V)
     p.i64(OP_goto, i)
-    p.pin(j)
+    p.pin(i)
     p.add(OP_map_end)
 }
 
@@ -197,13 +196,11 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.i64(OP_byte, int64(et.T))
     p.add(OP_list_begin)
     i := p.pc()
-    p.add(OP_list_is_end)
-    j := p.pc()
-    p.add(OP_if_true)
+    p.add(OP_list_if_end)
     self.compileOne(p, sp + 1, et)
     p.add(OP_list_next)
     p.i64(OP_goto, i)
-    p.pin(j)
+    p.pin(i)
     p.add(OP_list_end)
 }
 

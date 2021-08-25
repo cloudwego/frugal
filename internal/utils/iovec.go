@@ -14,47 +14,23 @@
  * limitations under the License.
  */
 
-package atm
+package utils
 
-type Register interface {
-    id() uint8
+import (
+    `github.com/cloudwego/frugal`
+)
+
+//go:nosplit
+func IoVecPut(p frugal.IoVec, v []byte) {
+    p.Put(v)
 }
 
-type (
-    GenericRegister uint8
-    PointerRegister uint8
-)
+//go:nosplit
+func IoVecCat(p frugal.IoVec, v []byte, w []byte) {
+    p.Cat(v, w)
+}
 
-const (
-    ArgMask    = 0x7f
-    ArgGeneric = 0x00
-    ArgPointer = 0x80
-)
-
-const (
-    R0 GenericRegister = iota
-    R1
-    R2
-    R3
-    R4
-    R5
-    R6
-    R7
-    Rz
-)
-
-const (
-    P0 PointerRegister = iota
-    P1
-    P2
-    P3
-    P4
-    P5
-    P6
-    P7
-    LR
-    Pn
-)
-
-func (self GenericRegister) id() uint8 { return uint8(self) | ArgGeneric }
-func (self PointerRegister) id() uint8 { return uint8(self) | ArgPointer }
+//go:nosplit
+func IoVecAdd(p frugal.IoVec, n int, v []byte) []byte {
+    return p.Add(n, v)
+}

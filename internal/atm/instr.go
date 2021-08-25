@@ -40,6 +40,7 @@ const (
     OP_sq                   //     Rx  -> *(*i64)Pd
     OP_sp                   //     Ps  -> *(*ptr)Pd
     OP_mov                  // Rx -> Ry
+    OP_movp                 // Ps -> Pd
     OP_movpr                // Ps -> Rx
     OP_movrp                // Rx -> Pd
     OP_ldaq                 // arg[Im] -> Rx
@@ -51,6 +52,9 @@ const (
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_mul                  // Rx * Ry -> Rz
+    OP_swap2                // bswap16(Rx) -> Ry
+    OP_swap4                // bswap32(Rx) -> Ry
+    OP_swap8                // bswap64(Rx) -> Ry
     OP_beq                  // if (Rx == Ry) Br.PC -> PC
     OP_bne                  // if (Rx != Ry) Br.PC -> PC
     OP_blt                  // if (signed(Rx) <  signed(Ry)) Br.PC -> PC
@@ -59,8 +63,8 @@ const (
     OP_bgeu                 // if (unsigned(Rx) >= unsigned(Ry)) Br.PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
     OP_jalr                 // PC -> Pd; Ps -> PC
-    OP_jsr                  // call external C functions
-    OP_call                 // call external Go functions
+    OP_ccall                // call external C functions
+    OP_gcall                // call external Go functions
     OP_ret                  // return from function
 )
 

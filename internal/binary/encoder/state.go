@@ -16,11 +16,11 @@
 
 package encoder
 
-import (
-    `unsafe`
+const (
+    MaxState = 1024
 )
 
-//go:noescape
-//go:linkname growslice runtime.growslice
-//goland:noinspection GoUnusedParameter
-func growslice(et unsafe.Pointer, old []byte, cap int) []byte
+type RuntimeState struct {
+    Mi int64
+    Li int64
+}
