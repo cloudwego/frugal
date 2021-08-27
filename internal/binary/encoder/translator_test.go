@@ -17,27 +17,26 @@
 package encoder
 
 import (
-    `unsafe`
+    `reflect`
+    `testing`
 
-    `github.com/cloudwego/frugal/internal/defs`
+    `github.com/stretchr/testify/require`
 )
 
-const (
-    StateCap  = StateSize * defs.MaxStack
-    StateSize = int64(unsafe.Sizeof(StateItem{}))
-)
-
-const (
-    FieldMi = int64(unsafe.Offsetof(StateItem{}.Mi))
-    FieldWp = int64(unsafe.Offsetof(StateItem{}.Wp))
-)
-
-type StateItem struct {
-    Li uint64
-    Mi unsafe.Pointer
-    Wp unsafe.Pointer
+type TranslatorTestStruct struct {
+    A bool    `frugal:"0,default,bool"`
+    B int8    `frugal:"1,default,i8"`
+    C float64 `frugal:"2,default,double"`
+    D int16   `frugal:"3,default,i16"`
+    E int32   `frugal:"4,default,i32"`
+    F int64   `frugal:"5,default,i64"`
+    G string  `frugal:"6,default,string"`
+    H []byte  `frugal:"7,default,binary"`
 }
 
-type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+func TestTranslator_Translate(t *testing.T) {
+    p, err := CreateCompiler().Compile(reflect.TypeOf(TranslatorTestStruct{}))
+    require.NoError(t, err)
+    tr := Translate(p)
+    println(tr.Disassemble())
 }

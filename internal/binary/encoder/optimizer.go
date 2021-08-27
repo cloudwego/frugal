@@ -95,11 +95,11 @@ func append8(s *[]byte, v uint64) {
     sl.Len += 8
 }
 
-func newAdjustBuffer(n int) []int64 {
+func newAdjustBuffer(n int) []int {
     if v := adjustPool.Get(); v != nil {
-        return v.([]int64)[:0]
+        return v.([]int)[:0]
     } else {
-        return make([]int64, 0, n)
+        return make([]int, 0, n)
     }
 }
 
@@ -107,12 +107,12 @@ func newAdjustBuffer(n int) []int64 {
 func _PASS_Compacting(p Program) Program {
     i := 0
     j := 0
-    n := int64(0)
+    n := 0
     a := newAdjustBuffer(len(p))
 
     /* scan for PC adjustments */
     for _, v := range p {
-        if v.Op() == _OP_adjpc { n += v.Iv() }
+        if v.Op() == _OP_adjpc { n += v.To() }
         a = append(a, n)
     }
 
@@ -129,7 +129,7 @@ func _PASS_Compacting(p Program) Program {
 
         /* copy instructions and adjust branch targets */
         if p[j] = p[i]; _OpBranches[op] {
-            p[j] = mkins(op, iv.Iv() + a[iv.Iv()], nil)
+            p[j] = mkins(op, iv.To() + a[iv.To()], iv.Iv(), nil)
         }
 
         /* move forward */
@@ -181,13 +181,13 @@ func _PASS_SizeMerging(p Program) Program {
 
             /* adjust the program counter */
             if i++; op == OP_size {
-                p[i - 1] = mkins(_OP_adjpc, -1, nil)
+                p[i - 1] = mkins(_OP_adjpc, -1, 0, nil)
             }
         }
 
         /* replace the size instruction */
         if i != ip {
-            p[ip] = mkins(OP_size, nb, nil)
+            p[ip] = mkins(OP_size, 0, nb, nil)
         }
     }
 
@@ -231,12 +231,12 @@ func _PASS_LiteralMerging(p Program) Program {
             }
 
             /* adjust the program counter */
-            p[i] = mkins(_OP_adjpc, -1, nil)
+            p[i] = mkins(_OP_adjpc, -1, 0, nil)
             i++
 
             /* commit the buffer if needed */
             for len(sl) >= 8 {
-                p[ip] = mkins(OP_quad, int64(binary.BigEndian.Uint64(sl)), nil)
+                p[ip] = mkins(OP_quad, 0, int64(binary.BigEndian.Uint64(sl)), nil)
                 sl = sl[8:]
                 ip++
             }
@@ -247,9 +247,9 @@ func _PASS_LiteralMerging(p Program) Program {
         }
 
         /* add the remaining bytes */
-        if len(sl) >= 4 { p[ip] = mkins(OP_long, int64(binary.BigEndian.Uint32(sl)), nil) ; sl = sl[4:]; ip++ }
-        if len(sl) >= 2 { p[ip] = mkins(OP_word, int64(binary.BigEndian.Uint16(sl)), nil) ; sl = sl[2:]; ip++ }
-        if len(sl) >= 1 { p[ip] = mkins(OP_byte, int64(sl[0]), nil)                       ; sl = sl[1:]; ip++ }
+        if len(sl) >= 4 { p[ip] = mkins(OP_long, 0, int64(binary.BigEndian.Uint32(sl)), nil) ; sl = sl[4:]; ip++ }
+        if len(sl) >= 2 { p[ip] = mkins(OP_word, 0, int64(binary.BigEndian.Uint16(sl)), nil) ; sl = sl[2:]; ip++ }
+        if len(sl) >= 1 { p[ip] = mkins(OP_byte, 0, int64(sl[0]), nil)                       ; sl = sl[1:]; ip++ }
     }
 
     /* all done */

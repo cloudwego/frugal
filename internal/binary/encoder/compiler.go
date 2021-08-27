@@ -32,9 +32,9 @@ type (
     Compiler map[reflect.Type]bool
 )
 
-func mkins(op OpCode, iv int64, vt reflect.Type) (v Instr) {
-    v[0] = uint64(op)
+func mkins(op OpCode, to int, iv int64, vt reflect.Type) (v Instr) {
     v[1] = uint64(iv) | mktype(vt)
+    v[0] = uint64(op) | uint64(to << 8)
     return
 }
 
@@ -47,8 +47,9 @@ func gettype(v Instr) (p *rt.GoType) {
     return
 }
 
+func (self Instr) To() int        { return int(self[0]) >> 8 }
 func (self Instr) Iv() int64      { return int64(self[1]) }
-func (self Instr) Op() OpCode     { return OpCode(self[0]) }
+func (self Instr) Op() OpCode     { return OpCode(self[0] & 0xff) }
 func (self Instr) Vt() *rt.GoType { return gettype(self) }
 
 func (self Instr) Disassemble() string {
@@ -70,8 +71,8 @@ func (self Instr) Disassemble() string {
     }
 }
 
-func (self Program) pc() int64   { return int64(len(self)) }
-func (self Program) pin(i int64) { self[i][1] = uint64(self.pc()) }
+func (self Program) pc() int   { return len(self) }
+func (self Program) pin(i int) { self[i][0] |= uint64(self.pc() << 8) }
 
 func (self Program) tag(n int) {
     if n >= defs.MaxStack {
@@ -80,9 +81,10 @@ func (self Program) tag(n int) {
 }
 
 func (self *Program) ins(iv Instr)                   { *self = append(*self, iv) }
-func (self *Program) add(op OpCode)                  { self.ins(mkins(op, 0, nil)) }
-func (self *Program) i64(op OpCode, iv int64)        { self.ins(mkins(op, iv, nil)) }
-func (self *Program) rtt(op OpCode, vt reflect.Type) { self.ins(mkins(op, 0, vt))   }
+func (self *Program) add(op OpCode)                  { self.ins(mkins(op, 0, 0, nil)) }
+func (self *Program) jmp(op OpCode, to int)          { self.ins(mkins(op, to, 0, nil)) }
+func (self *Program) i64(op OpCode, iv int64)        { self.ins(mkins(op, 0, iv, nil)) }
+func (self *Program) rtt(op OpCode, vt reflect.Type) { self.ins(mkins(op, 0, 0, vt))   }
 
 func (self Program) Free() {
     freeProgram(self)
@@ -185,7 +187,8 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     self.compileOne(p, sp + 1, vt.K)
     p.add(OP_map_value)
     self.compileOne(p, sp + 1, vt.V)
-    p.i64(OP_goto, i)
+    p.add(OP_map_next)
+    p.jmp(OP_goto, i)
     p.pin(i)
     p.add(OP_map_end)
 }
@@ -196,10 +199,11 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.i64(OP_byte, int64(et.T))
     p.add(OP_list_begin)
     i := p.pc()
-    p.add(OP_list_if_end)
+    p.i64(OP_list_if_end, int64(et.S.Size()))
+    p.i64(OP_list_next, int64(et.S.Size()))
     self.compileOne(p, sp + 1, et)
-    p.add(OP_list_next)
-    p.i64(OP_goto, i)
+    p.add(OP_list_exit)
+    p.jmp(OP_goto, i)
     p.pin(i)
     p.add(OP_list_end)
 }

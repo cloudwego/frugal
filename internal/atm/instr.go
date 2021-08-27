@@ -17,6 +17,8 @@
 package atm
 
 import (
+    `fmt`
+    `strings`
     `unsafe`
 )
 
@@ -46,15 +48,15 @@ const (
     OP_ldaq                 // arg[Im] -> Rx
     OP_ldap                 // arg[Im] -> Pd
     OP_strq                 // Rx -> ret[Im]
-    OP_strp                 // Rs -> ret[Im]
+    OP_strp                 // Ps -> ret[Im]
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_mul                  // Rx * Ry -> Rz
-    OP_swap2                // bswap16(Rx) -> Ry
-    OP_swap4                // bswap32(Rx) -> Ry
-    OP_swap8                // bswap64(Rx) -> Ry
+    OP_swapw                // bswap16(Rx) -> Ry
+    OP_swapl                // bswap32(Rx) -> Ry
+    OP_swapq                // bswap64(Rx) -> Ry
     OP_beq                  // if (Rx == Ry) Br.PC -> PC
     OP_bne                  // if (Rx != Ry) Br.PC -> PC
     OP_blt                  // if (signed(Rx) <  signed(Ry)) Br.PC -> PC
@@ -111,6 +113,85 @@ func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[5] = 6, v.id(); retu
 func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[6] = 7, v.id(); return self }
 func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[7] = 8, v.id(); return self }
 
-func (self *Instr) isLabelBranch() bool {
+func (self *Instr) isBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
+}
+
+func (self *Instr) formatCalls() string {
+    args := make([]string, self.An)
+    rets := make([]string, self.Rn)
+
+    /* add arguments */
+    for i := 0; i < self.An; i++ {
+        if v := self.Ai[i]; (v & ArgPointer) == 0 {
+            args[i] = GenericRegister(v & ArgMask).String()
+        } else {
+            args[i] = PointerRegister(v & ArgMask).String()
+        }
+    }
+
+    /* add return values */
+    for i := 0; i < self.Rn; i++ {
+        if v := self.Rv[i]; (v & ArgPointer) == 0 {
+            rets[i] = GenericRegister(v & ArgMask).String()
+        } else {
+            rets[i] = PointerRegister(v & ArgMask).String()
+        }
+    }
+
+    /* compose the result */
+    return fmt.Sprintf(
+        "(%s) -> (%s)",
+        strings.Join(args, ":"),
+        strings.Join(rets, ":"),
+    )
+}
+
+func (self *Instr) disassemble(refs string) string {
+    switch self.Op {
+        case OP_nop   : return "nop"
+        case OP_ib    : return fmt.Sprintf("ib      $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_iw    : return fmt.Sprintf("iw      $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_il    : return fmt.Sprintf("il      $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_iq    : return fmt.Sprintf("iq      $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_ip    : return fmt.Sprintf("ip      $%p, %%%s", self.Pr, self.Pd)
+        case OP_lb    : return fmt.Sprintf("lb      %%%s, %%%s", self.Ps, self.Rx)
+        case OP_lw    : return fmt.Sprintf("lw      %%%s, %%%s", self.Ps, self.Rx)
+        case OP_ll    : return fmt.Sprintf("ll      %%%s, %%%s", self.Ps, self.Rx)
+        case OP_lq    : return fmt.Sprintf("lq      %%%s, %%%s", self.Ps, self.Rx)
+        case OP_lp    : return fmt.Sprintf("lp      %%%s, %%%s", self.Ps, self.Pd)
+        case OP_sb    : return fmt.Sprintf("sb      %%%s, %%%s", self.Rx, self.Pd)
+        case OP_sw    : return fmt.Sprintf("sw      %%%s, %%%s", self.Rx, self.Pd)
+        case OP_sl    : return fmt.Sprintf("sl      %%%s, %%%s", self.Rx, self.Pd)
+        case OP_sq    : return fmt.Sprintf("sq      %%%s, %%%s", self.Rx, self.Pd)
+        case OP_sp    : return fmt.Sprintf("sp      %%%s, %%%s", self.Ps, self.Pd)
+        case OP_mov   : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Ry)
+        case OP_movp  : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Pd)
+        case OP_movpr : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Rx)
+        case OP_movrp : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Pd)
+        case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Pd)
+        case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, atoi64(self.Ai))
+        case OP_strp  : return fmt.Sprintf("str     %%%s, $%d", self.Ps, atoi64(self.Ai))
+        case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
+        case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
+        case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_mul   : return fmt.Sprintf("mul     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
+        case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
+        case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
+        case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_bge   : return fmt.Sprintf("bge     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs)
+        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs, self.Pd)
+        case OP_jalr  : return fmt.Sprintf("jalr    %%%s, %%%s", self.Ps, self.Pd)
+        case OP_halt  : return "halt"
+        case OP_ccall : return fmt.Sprintf("ccall   *%p%s", self.Pr, self.formatCalls())
+        case OP_gcall : return fmt.Sprintf("gcall   *%p%s", self.Pr, self.formatCalls())
+        default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
+    }
 }

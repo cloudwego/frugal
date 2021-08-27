@@ -23,9 +23,9 @@ import (
 )
 
 var (
-    instrPool          sync.Pool
-    emulatorPool       sync.Pool
-    programBuilderPool sync.Pool
+    instrPool    sync.Pool
+    builderPool  sync.Pool
+    emulatorPool sync.Pool
 )
 
 func newInstr(op OpCode) *Instr {
@@ -51,6 +51,34 @@ func resetInstr(op OpCode, p *Instr) *Instr {
     return p
 }
 
+func newBuilder() *Builder {
+    if v := builderPool.Get(); v == nil {
+        return allocBuilder()
+    } else {
+        return resetBuilder(v.(*Builder))
+    }
+}
+
+func freeBuilder(p *Builder) {
+    builderPool.Put(p)
+}
+
+func allocBuilder() (p *Builder) {
+    p       = new(Builder)
+    p.refs  = make(map[string]*Instr, 64)
+    p.pends = make(map[string][]*Instr, 64)
+    return
+}
+
+func resetBuilder(p *Builder) *Builder {
+    p.i    = 0
+    p.head = nil
+    p.tail = nil
+    rt.MapClear(p.refs)
+    rt.MapClear(p.pends)
+    return p
+}
+
 func newEmulator() *Emulator {
     if v := emulatorPool.Get(); v == nil {
         return new(Emulator)
@@ -65,33 +93,5 @@ func freeEmulator(p *Emulator) {
 
 func resetEmulator(p *Emulator) *Emulator {
     *p = Emulator{}
-    return p
-}
-
-func newProgramBuilder() *ProgramBuilder {
-    if v := programBuilderPool.Get(); v == nil {
-        return allocProgramBuilder()
-    } else {
-        return resetProgramBuilder(v.(*ProgramBuilder))
-    }
-}
-
-func freeProgramBuilder(p *ProgramBuilder) {
-    programBuilderPool.Put(p)
-}
-
-func allocProgramBuilder() (p *ProgramBuilder) {
-    p       = new(ProgramBuilder)
-    p.refs  = make(map[string]*Instr, 64)
-    p.pends = make(map[string][]*Instr, 64)
-    return
-}
-
-func resetProgramBuilder(p *ProgramBuilder) *ProgramBuilder {
-    p.i    = 0
-    p.head = nil
-    p.tail = nil
-    rt.MapClear(p.refs)
-    rt.MapClear(p.pends)
     return p
 }

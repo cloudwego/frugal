@@ -35,10 +35,12 @@ const (
     OP_defer
     OP_map_end
     OP_map_key
+    OP_map_next
     OP_map_value
     OP_map_begin
     OP_map_if_end
     OP_list_end
+    OP_list_exit
     OP_list_next
     OP_list_begin
     OP_list_if_end
@@ -59,10 +61,12 @@ var _OpNames = [256]string {
     OP_defer       : "defer",
     OP_map_end     : "map_end",
     OP_map_key     : "map_key",
+    OP_map_next    : "map_next",
     OP_map_value   : "map_value",
     OP_map_begin   : "map_begin",
     OP_map_if_end  : "map_if_end",
     OP_list_end    : "list_end",
+    OP_list_exit   : "list_exit",
     OP_list_next   : "list_next",
     OP_list_begin  : "list_begin",
     OP_list_if_end : "list_if_end",

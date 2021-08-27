@@ -37,8 +37,8 @@ func TestEmu_GCALL_Pointer(t *testing.T) {
     spew.Dump(buf)
 }
 
-func runEmulator(init func(emu *Emulator), prog func(p *ProgramBuilder)) *Emulator {
-    pb := CreateProgramBuilder()
+func runEmulator(init func(emu *Emulator), prog func(p *Builder)) *Emulator {
+    pb := CreateBuilder()
     prog(pb)
     emu := LoadProgram(pb.Build())
     if init != nil {
@@ -52,18 +52,18 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
     a := "aaa"
     b := "bbb"
     c := "ccc"
-    emu := runEmulator(nil, func(p *ProgramBuilder) {
-        p.IB(8, R4)
+    emu := runEmulator(nil, func(p *Builder) {
+        p.IB(8, R3)
         p.IP(&a, P0)
         p.IP(&b, P1)
         p.IP(&c, P2)
-        p.ADDP(P0, R4, P3)
+        p.ADDP(P0, R3, P3)
         p.LQ(P3, R0)
         p.LP(P0, P0)
-        p.ADDP(P1, R4, P3)
+        p.ADDP(P1, R3, P3)
         p.LQ(P3, R1)
         p.LP(P1, P1)
-        p.ADDP(P2, R4, P3)
+        p.ADDP(P2, R3, P3)
         p.LQ(P3, R2)
         p.LP(P2, P2)
         p.GCALL(testemu_pfunc).A0(P0).A1(R0).A2(P1).A3(R1).A4(P2).A5(R2).R0(P0).R1(R0).R2(P1).R3(R1)
