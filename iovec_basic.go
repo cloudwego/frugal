@@ -20,19 +20,23 @@ import (
     `bytes`
 )
 
+// SimpleIoVec provides a very basic implementation of IoVec using bytes.Buffer.
 type SimpleIoVec struct {
     bytes.Buffer
 }
 
+// Put implements IoVec.Put.
 func (self *SimpleIoVec) Put(v []byte) {
     _, _ = self.Write(v)
 }
 
+// Cat implements IoVec.Cat.
 func (self *SimpleIoVec) Cat(v []byte, w []byte) {
     self.Put(v)
     self.Put(w)
 }
 
+// Add implements IoVec.Add.
 func (self *SimpleIoVec) Add(n int, v []byte) []byte {
     self.Put(v)
     return make([]byte, 0, n)
