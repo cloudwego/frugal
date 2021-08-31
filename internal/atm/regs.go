@@ -21,10 +21,11 @@ import (
 )
 
 type Register interface {
-    id() uint8
+    A() Argument
 }
 
 type (
+    Argument        uint8
     GenericRegister uint8
     PointerRegister uint8
 )
@@ -85,8 +86,8 @@ var _PR_Names = [...]string {
     Pn: "nil",
 }
 
-func (self GenericRegister) id() uint8 { return uint8(self) | ArgGeneric }
-func (self PointerRegister) id() uint8 { return uint8(self) | ArgPointer }
+func (self GenericRegister) A() Argument { return Argument(self) | ArgGeneric }
+func (self PointerRegister) A() Argument { return Argument(self) | ArgPointer }
 
 func (self GenericRegister) String() string {
     if v := _GR_Names[self]; v == "" {

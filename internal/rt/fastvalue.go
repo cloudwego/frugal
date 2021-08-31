@@ -37,7 +37,7 @@ type GoType struct {
     Align      uint8
     FieldAlign uint8
     KindFlags  uint8
-    Traits     unsafe.Pointer
+    Equal      func(unsafe.Pointer, unsafe.Pointer) bool
     GCData     *byte
     Str        int32
     PtrToSelf  int32
@@ -88,6 +88,14 @@ func (self GoSlice) Set(i int, v byte) {
 type GoSliceType struct {
     GoType
     Elem *GoType
+}
+
+func FuncAddr(f interface{}) unsafe.Pointer {
+    if vv := UnpackEface(f); vv.Type.Kind() != reflect.Func {
+        panic("f is not a function")
+    } else {
+        return *(*unsafe.Pointer)(vv.Value)
+    }
 }
 
 func UnpackType(t reflect.Type) *GoType {

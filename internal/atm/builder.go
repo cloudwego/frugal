@@ -17,6 +17,7 @@
 package atm
 
 import (
+    `fmt`
     `reflect`
     `strconv`
     `strings`
@@ -329,9 +330,9 @@ func (self *Builder) CCALL(fn unsafe.Pointer) *Instr {
 }
 
 func (self *Builder) GCALL(fn interface{}) *Instr {
-    if vv := rt.UnpackEface(fn); vv.Type.Kind() != reflect.Func {
-        panic("fn is not a function")
+    if fp := rt.FuncAddr(fn); gcallTab[fp] == nil {
+        panic(fmt.Sprintf("gcall to unknown function: %p", fn))
     } else {
-        return self.add(newInstr(OP_gcall).pr(vv.Value))
+        return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
     }
 }

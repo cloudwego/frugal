@@ -114,11 +114,11 @@ func prologue(p *atm.Builder) {
 func epilogue(p *atm.Builder) {
     p.BEQ   (RL, atm.Rz, "_nobuf")      // if RL == 0 then GOTO _nobuf
     p.GCALL (utils.IoVecPut).           // GCALL IoVecPut:
-      A0    (VT).                       //     p.itab <= VT
-      A1    (VP).                       //     p.data <= VP
-      A2    (RP).                       //     v.ptr  <= RP
-      A3    (RL).                       //     v.len  <= RL
-      A4    (RC)                        //     v.cap  <= RC
+      A0    (0, VT).                    //     p.itab <= VT
+      A1    (0, VP).                    //     p.data <= VP
+      A2    (1, RP).                    //     v.ptr  <= RP
+      A3    (1, RL).                    //     v.len  <= RL
+      A4    (1, RC)                     //     v.cap  <= RC
     p.Label ("_nobuf")                  // _nobuf:
     p.MOVP  (atm.Pn, ET)                // ET <= nil
     p.MOVP  (atm.Pn, EP)                // EP <= nil
@@ -192,15 +192,15 @@ func translate_OP_quad(p *atm.Builder, v Instr) {
 func translate_OP_size(p *atm.Builder, v Instr) {
     p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
     p.GCALL (utils.IoVecAdd).           // GCALL IoVecAdd:
-      A0    (VT).                       //     p.itab  <= VT
-      A1    (VP).                       //     p.data  <= VP
-      A2    (TR).                       //     n       <= TR
-      A3    (RP).                       //     v.ptr   <= RP
-      A4    (RL).                       //     v.len   <= RL
-      A5    (RC).                       //     v.cap   <= RC
-      R0    (RP).                       //     ret.ptr => RP
-      R1    (RL).                       //     ret.len => RL
-      R2    (RC)                        //     ret.cap => RC
+      A0    (0, VT).                    //     p.itab  <= VT
+      A1    (0, VP).                    //     p.data  <= VP
+      A2    (1, TR).                    //     n       <= TR
+      A3    (2, RP).                    //     v.ptr   <= RP
+      A4    (2, RL).                    //     v.len   <= RL
+      A5    (2, RC).                    //     v.cap   <= RC
+      R0    (0, RP).                    //     ret.ptr => RP
+      R1    (0, RL).                    //     ret.len => RL
+      R2    (0, RC)                     //     ret.cap => RC
 }
 
 func translate_OP_sint(p *atm.Builder, v Instr) {
@@ -224,14 +224,14 @@ func translate_OP_vstr(p *atm.Builder, _ Instr) {
     p.ADDP  (WP, TR, EP)                // EP <=  WP + TR
     p.LQ    (EP, TR)                    // TR <= *EP
     p.GCALL (utils.IoVecCat).           // GCALL IoVecCat:
-      A0    (VT).                       //     p.itab <= VT
-      A1    (VP).                       //     p.data <= VP
-      A2    (RP).                       //     v.ptr  <= RP
-      A3    (RL).                       //     v.len  <= RL
-      A4    (RC).                       //     v.cap  <= RC
-      A5    (TP).                       //     w.ptr  <= TP
-      A6    (TR).                       //     w.len  <= TR
-      A7    (TR)                        //     w.cap  <= TR
+      A0    (0, VT).                    //     p.itab <= VT
+      A1    (0, VP).                    //     p.data <= VP
+      A2    (1, RP).                    //     v.ptr  <= RP
+      A3    (1, RL).                    //     v.len  <= RL
+      A4    (1, RC).                    //     v.cap  <= RC
+      A5    (2, TP).                    //     w.ptr  <= TP
+      A6    (2, TR).                    //     w.len  <= TR
+      A7    (2, TR)                     //     w.cap  <= TR
     p.MOV   (atm.Rz, RC)                // RC <=  0
     p.MOV   (atm.Rz, RL)                // RL <=  0
     p.MOVP  (atm.Pn, RP)                // RP <=  nil

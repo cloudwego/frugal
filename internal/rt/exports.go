@@ -29,10 +29,6 @@ func mapclear(t *GoType, h unsafe.Pointer)
 //goland:noinspection GoUnusedParameter
 func mallocgc(size uintptr, typ *GoType, needzero bool) unsafe.Pointer
 
-//go:linkname reflectcall runtime.reflectcall
-//goland:noinspection GoUnusedParameter
-func reflectcall(argtype *GoType, fn unsafe.Pointer, arg unsafe.Pointer, argsize uint32, retoffset uint32)
-
 //go:nosplit
 func MapClear(m interface{}) {
     v := UnpackEface(m)
@@ -42,9 +38,4 @@ func MapClear(m interface{}) {
 //go:nosplit
 func MallocGC(nb uintptr, vt *GoType, zero bool) unsafe.Pointer {
     return mallocgc(nb, vt, zero)
-}
-
-//go:nosplit
-func ReflectCall(vt *GoType, fn unsafe.Pointer, buf unsafe.Pointer, nbuf uintptr, retp int) {
-    reflectcall(vt, fn, buf, uint32(nbuf), uint32(retp))
 }

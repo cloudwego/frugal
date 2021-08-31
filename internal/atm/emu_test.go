@@ -24,17 +24,46 @@ import (
     `github.com/davecgh/go-spew/spew`
 )
 
+func init() {
+    gcallTab[rt.FuncAddr(testemu_pfunc)] = func(e *Emulator, p *Instr) {
+        var v0 struct {P unsafe.Pointer; L uint64}
+        var v1 struct {P unsafe.Pointer; L uint64}
+        var v2 struct {P unsafe.Pointer; L uint64}
+        if (p.An != 6 || p.Rn != 4) ||
+           (p.Av[0] & ArgPointer) == 0 ||
+           (p.Av[1] & ArgPointer) != 0 ||
+           (p.Av[2] & ArgPointer) == 0 ||
+           (p.Av[3] & ArgPointer) != 0 ||
+           (p.Av[4] & ArgPointer) == 0 ||
+           (p.Av[5] & ArgPointer) != 0 ||
+           (p.Rv[0] & ArgPointer) == 0 ||
+           (p.Rv[1] & ArgPointer) != 0 ||
+           (p.Rv[2] & ArgPointer) == 0 ||
+           (p.Rv[3] & ArgPointer) != 0 {
+            panic("invalid testemu_pfunc call")
+        }
+        v0.P = e.Pr[p.Av[0] & ArgMask]
+        v0.L = e.Gr[p.Av[1] & ArgMask]
+        v1.P = e.Pr[p.Av[2] & ArgMask]
+        v1.L = e.Gr[p.Av[3] & ArgMask]
+        v2.P = e.Pr[p.Av[4] & ArgMask]
+        v2.L = e.Gr[p.Av[5] & ArgMask]
+        r0, r1 := testemu_pfunc(
+            *(*string)(unsafe.Pointer(&v0)),
+            *(*string)(unsafe.Pointer(&v1)),
+            *(*string)(unsafe.Pointer(&v2)),
+        )
+        e.Gr[p.Rv[1] & ArgMask] = uint64(len(r0))
+        e.Gr[p.Rv[3] & ArgMask] = uint64(len(r1))
+        e.Pr[p.Rv[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r0))
+        e.Pr[p.Rv[2] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r1))
+    }
+}
+
 func testemu_pfunc(a string, b string, c string) (d string, e string) {
     d = a + b
     e = b + c
     return
-}
-
-func TestEmu_GCALL_Pointer(t *testing.T) {
-    fn := testemu_pfunc
-    buf := [5]string{"1", "2", "3"}
-    rt.ReflectCall(nil, *(*unsafe.Pointer)(unsafe.Pointer(&fn)), unsafe.Pointer(&buf), 80, 48)
-    spew.Dump(buf)
 }
 
 func runEmulator(init func(emu *Emulator), prog func(p *Builder)) *Emulator {
@@ -66,7 +95,7 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
         p.ADDP(P2, R3, P3)
         p.LQ(P3, R2)
         p.LP(P2, P2)
-        p.GCALL(testemu_pfunc).A0(P0).A1(R0).A2(P1).A3(R1).A4(P2).A5(R2).R0(P0).R1(R0).R2(P1).R3(R1)
+        p.GCALL(testemu_pfunc).A0(0, P0).A1(0, R0).A2(1, P1).A3(1, R1).A4(2, P2).A5(2, R2).R0(0, P0).R1(0, R0).R2(1, P1).R3(1, R1)
         p.STRP(P0, 0)
         p.STRQ(R0, 1)
         p.STRP(P1, 2)

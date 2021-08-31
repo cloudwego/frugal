@@ -18,6 +18,7 @@ package atm
 
 import (
     `fmt`
+    `runtime`
     `strings`
     `unsafe`
 )
@@ -79,7 +80,9 @@ type Instr struct {
     Pd PointerRegister
     _  [2]uint8
     Ai [8]uint8
-    Rv [8]uint8
+    Ri [8]uint8
+    Av [8]Argument
+    Rv [8]Argument
     An int
     Rn int
     Pr unsafe.Pointer
@@ -95,26 +98,30 @@ func (self *Instr) pd(v PointerRegister) *Instr { self.Pd = v; return self }
 func (self *Instr) pr(v unsafe.Pointer)  *Instr { self.Pr = v; return self }
 func (self *Instr) ai(v [8]uint8)        *Instr { self.Ai = v; return self }
 
-func (self *Instr) A0(v Register) *Instr { self.An, self.Ai[0] = 1, v.id(); return self }
-func (self *Instr) A1(v Register) *Instr { self.An, self.Ai[1] = 2, v.id(); return self }
-func (self *Instr) A2(v Register) *Instr { self.An, self.Ai[2] = 3, v.id(); return self }
-func (self *Instr) A3(v Register) *Instr { self.An, self.Ai[3] = 4, v.id(); return self }
-func (self *Instr) A4(v Register) *Instr { self.An, self.Ai[4] = 5, v.id(); return self }
-func (self *Instr) A5(v Register) *Instr { self.An, self.Ai[5] = 6, v.id(); return self }
-func (self *Instr) A6(v Register) *Instr { self.An, self.Ai[6] = 7, v.id(); return self }
-func (self *Instr) A7(v Register) *Instr { self.An, self.Ai[7] = 8, v.id(); return self }
+func (self *Instr) A0(i uint8, v Register) *Instr { self.An, self.Ai[0], self.Av[0] = 1, i, v.A(); return self }
+func (self *Instr) A1(i uint8, v Register) *Instr { self.An, self.Ai[1], self.Av[1] = 2, i, v.A(); return self }
+func (self *Instr) A2(i uint8, v Register) *Instr { self.An, self.Ai[2], self.Av[2] = 3, i, v.A(); return self }
+func (self *Instr) A3(i uint8, v Register) *Instr { self.An, self.Ai[3], self.Av[3] = 4, i, v.A(); return self }
+func (self *Instr) A4(i uint8, v Register) *Instr { self.An, self.Ai[4], self.Av[4] = 5, i, v.A(); return self }
+func (self *Instr) A5(i uint8, v Register) *Instr { self.An, self.Ai[5], self.Av[5] = 6, i, v.A(); return self }
+func (self *Instr) A6(i uint8, v Register) *Instr { self.An, self.Ai[6], self.Av[6] = 7, i, v.A(); return self }
+func (self *Instr) A7(i uint8, v Register) *Instr { self.An, self.Ai[7], self.Av[7] = 8, i, v.A(); return self }
 
-func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rv[0] = 1, v.id(); return self }
-func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rv[1] = 2, v.id(); return self }
-func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rv[2] = 3, v.id(); return self }
-func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rv[3] = 4, v.id(); return self }
-func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rv[4] = 5, v.id(); return self }
-func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[5] = 6, v.id(); return self }
-func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[6] = 7, v.id(); return self }
-func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[7] = 8, v.id(); return self }
+func (self *Instr) R0(i uint8, v Register) *Instr { self.Rn, self.Ri[0], self.Rv[0] = 1, i, v.A(); return self }
+func (self *Instr) R1(i uint8, v Register) *Instr { self.Rn, self.Ri[1], self.Rv[1] = 2, i, v.A(); return self }
+func (self *Instr) R2(i uint8, v Register) *Instr { self.Rn, self.Ri[2], self.Rv[2] = 3, i, v.A(); return self }
+func (self *Instr) R3(i uint8, v Register) *Instr { self.Rn, self.Ri[3], self.Rv[3] = 4, i, v.A(); return self }
+func (self *Instr) R4(i uint8, v Register) *Instr { self.Rn, self.Ri[4], self.Rv[4] = 5, i, v.A(); return self }
+func (self *Instr) R5(i uint8, v Register) *Instr { self.Rn, self.Ri[5], self.Rv[5] = 6, i, v.A(); return self }
+func (self *Instr) R6(i uint8, v Register) *Instr { self.Rn, self.Ri[6], self.Rv[6] = 7, i, v.A(); return self }
+func (self *Instr) R7(i uint8, v Register) *Instr { self.Rn, self.Ri[7], self.Rv[7] = 8, i, v.A(); return self }
 
 func (self *Instr) isBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
+}
+
+func (self *Instr) formatFunc() string {
+    return fmt.Sprintf("%s[*%p]", runtime.FuncForPC(uintptr(self.Pr)).Name(), self.Pr)
 }
 
 func (self *Instr) formatCalls() string {
@@ -123,7 +130,7 @@ func (self *Instr) formatCalls() string {
 
     /* add arguments */
     for i := 0; i < self.An; i++ {
-        if v := self.Ai[i]; (v & ArgPointer) == 0 {
+        if v := self.Av[i]; (v & ArgPointer) == 0 {
             args[i] = GenericRegister(v & ArgMask).String()
         } else {
             args[i] = PointerRegister(v & ArgMask).String()
@@ -190,8 +197,8 @@ func (self *Instr) disassemble(refs string) string {
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs, self.Pd)
         case OP_jalr  : return fmt.Sprintf("jalr    %%%s, %%%s", self.Ps, self.Pd)
         case OP_halt  : return "halt"
-        case OP_ccall : return fmt.Sprintf("ccall   *%p%s", self.Pr, self.formatCalls())
-        case OP_gcall : return fmt.Sprintf("gcall   *%p%s", self.Pr, self.formatCalls())
+        case OP_ccall : return fmt.Sprintf("ccall   %s%s", self.formatFunc(), self.formatCalls())
+        case OP_gcall : return fmt.Sprintf("gcall   %s%s", self.formatFunc(), self.formatCalls())
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
     }
 }

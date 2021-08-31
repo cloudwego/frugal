@@ -19,10 +19,12 @@ package atm
 import (
     `fmt`
     `math/bits`
+    `runtime`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/defs`
+    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 type Value struct {
@@ -45,7 +47,12 @@ func LoadProgram(p Program) (e *Emulator) {
     return
 }
 
-//goland:noinspection GoVetUnsafePointer
+var gcallTab = map[unsafe.Pointer]func(e *Emulator, p *Instr) {
+    rt.FuncAddr(utils.IoVecPut): (*Emulator).gcall_IoVecPut,
+    rt.FuncAddr(utils.IoVecCat): (*Emulator).gcall_IoVecCat,
+    rt.FuncAddr(utils.IoVecAdd): (*Emulator).gcall_IoVecAdd,
+}
+
 var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_nop   : (*Emulator).emu_OP_nop,
     OP_ib    : (*Emulator).emu_OP_ib,
@@ -328,32 +335,115 @@ func (self *Emulator) emu_OP_ccall(_ *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_gcall(p *Instr) {
-    ff := findFrame(p)
-    fb := ff.newBuffer()
-    self.setargs(p, fb)
-    rt.ReflectCall(ff.t, p.Pr, fb.m, ff.t.Size, p.An * defs.PtrSize)
-    self.getrets(p, fb)
-    ff.freeBuffer(fb)
-}
-
-func (self *Emulator) setargs(p *Instr, ff Buffer) {
-    for i := 0; i < p.An; i++ {
-        if (p.Ai[i] & ArgPointer) == 0 {
-            *ff.u(i) = self.Gr[p.Ai[i] & ArgMask]
-        } else {
-            *ff.p(i) = self.Pr[p.Ai[i] & ArgMask]
-        }
+    if proxy := gcallTab[p.Pr]; proxy != nil {
+        proxy(self, p)
+    } else {
+        panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)), p.Pr))
     }
 }
 
-func (self *Emulator) getrets(p *Instr, ff Buffer) {
-    for i := 0; i < p.Rn; i++ {
-        if (p.Rv[i] & ArgPointer) == 0 {
-            self.Gr[p.Rv[i] & ArgMask] = *ff.u(p.An + i)
-        } else {
-            self.Pr[p.Rv[i] & ArgMask] = *ff.p(p.An + i)
-        }
+func (self *Emulator) gcall_IoVecPut(p *Instr) {
+    var v0 rt.GoIface
+    var v1 rt.GoSlice
+
+    /* check for arguments */
+    if (p.An != 5 || p.Rn != 0) ||
+       (p.Av[0] & ArgPointer) == 0 ||
+       (p.Av[1] & ArgPointer) == 0 ||
+       (p.Av[2] & ArgPointer) == 0 ||
+       (p.Av[3] & ArgPointer) != 0 ||
+       (p.Av[4] & ArgPointer) != 0 {
+        panic("invalid IoVecPut call")
     }
+
+    /* extract the arguments */
+    v0.Itab  = (*rt.GoItab)(self.Pr[p.Av[0] & ArgMask])
+    v0.Value =              self.Pr[p.Av[1] & ArgMask]
+    v1.Ptr   =              self.Pr[p.Av[2] & ArgMask]
+    v1.Len   =          int(self.Gr[p.Av[3] & ArgMask])
+    v1.Cap   =          int(self.Gr[p.Av[4] & ArgMask])
+
+    /* call the function */
+    utils.IoVecPut(
+        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
+        *(*[]byte)      (unsafe.Pointer(&v1)),
+    )
+}
+
+func (self *Emulator) gcall_IoVecCat(p *Instr) {
+    var v0 rt.GoIface
+    var v1 rt.GoSlice
+    var v2 rt.GoSlice
+
+    /* check for arguments */
+    if (p.An != 8 || p.Rn != 0) ||
+        (p.Av[0] & ArgPointer) == 0 ||
+        (p.Av[1] & ArgPointer) == 0 ||
+        (p.Av[2] & ArgPointer) == 0 ||
+        (p.Av[3] & ArgPointer) != 0 ||
+        (p.Av[4] & ArgPointer) != 0 ||
+        (p.Av[5] & ArgPointer) == 0 ||
+        (p.Av[6] & ArgPointer) != 0 ||
+        (p.Av[7] & ArgPointer) != 0 {
+        panic("invalid IoVecCat call")
+    }
+
+    /* extract the arguments */
+    v0.Itab  = (*rt.GoItab)(self.Pr[p.Av[0] & ArgMask])
+    v0.Value =              self.Pr[p.Av[1] & ArgMask]
+    v1.Ptr   =              self.Pr[p.Av[2] & ArgMask]
+    v1.Len   =          int(self.Gr[p.Av[3] & ArgMask])
+    v1.Cap   =          int(self.Gr[p.Av[4] & ArgMask])
+    v2.Ptr   =              self.Pr[p.Av[5] & ArgMask]
+    v2.Len   =          int(self.Gr[p.Av[6] & ArgMask])
+    v2.Cap   =          int(self.Gr[p.Av[7] & ArgMask])
+
+    /* call the function */
+    utils.IoVecCat(
+        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
+        *(*[]byte)      (unsafe.Pointer(&v1)),
+        *(*[]byte)      (unsafe.Pointer(&v2)),
+    )
+}
+
+func (self *Emulator) gcall_IoVecAdd(p *Instr) {
+    var v1 int
+    var v0 rt.GoIface
+    var v2 rt.GoSlice
+
+    /* check for arguments */
+    if (p.An != 6 || p.Rn != 3) ||
+        (p.Av[0] & ArgPointer) == 0 ||
+        (p.Av[1] & ArgPointer) == 0 ||
+        (p.Av[2] & ArgPointer) != 0 ||
+        (p.Av[3] & ArgPointer) == 0 ||
+        (p.Av[4] & ArgPointer) != 0 ||
+        (p.Av[5] & ArgPointer) != 0 ||
+        (p.Rv[0] & ArgPointer) == 0 ||
+        (p.Rv[1] & ArgPointer) != 0 ||
+        (p.Rv[2] & ArgPointer) != 0 {
+        panic("invalid IoVecAdd call")
+    }
+
+    /* extract the arguments */
+    v0.Itab  = (*rt.GoItab)(self.Pr[p.Av[0] & ArgMask])
+    v0.Value =              self.Pr[p.Av[1] & ArgMask]
+    v1       =          int(self.Gr[p.Av[2] & ArgMask])
+    v2.Ptr   =              self.Pr[p.Av[3] & ArgMask]
+    v2.Len   =          int(self.Gr[p.Av[4] & ArgMask])
+    v2.Cap   =          int(self.Gr[p.Av[5] & ArgMask])
+
+    /* call the function */
+    ret := utils.IoVecAdd(
+        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
+        v1,
+        *(*[]byte)(unsafe.Pointer(&v2)),
+    )
+
+    /* set the return value */
+    self.Gr[p.Rv[2] & ArgMask] = uint64(cap(ret))
+    self.Gr[p.Rv[1] & ArgMask] = uint64(len(ret))
+    self.Pr[p.Rv[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
 }
 
 func (self *Emulator) Ru(i int) uint64         { return self.Rv[i].U }
