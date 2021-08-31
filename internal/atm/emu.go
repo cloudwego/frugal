@@ -338,7 +338,7 @@ func (self *Emulator) emu_OP_gcall(p *Instr) {
     if proxy := gcallTab[p.Pr]; proxy != nil {
         proxy(self, p)
     } else {
-        panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)), p.Pr))
+        panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)).Name(), p.Pr))
     }
 }
 
