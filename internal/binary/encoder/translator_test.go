@@ -67,6 +67,7 @@ func TestTranslator_Translate(t *testing.T) {
     emu.Ap(3, unsafe.Pointer(rs))
     emu.Au(4, 0)
     emu.Run()
+    emu.Free()
     r0 := emu.Rp(0)
     r1 := emu.Rp(1)
     err = *(*error)(unsafe.Pointer(&[2]unsafe.Pointer{r0, r1}))
