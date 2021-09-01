@@ -152,14 +152,14 @@ func (self Compiler) compileSet(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     switch vt.T {
-        case defs.T_bool   : fallthrough
+        case defs.T_bool   : p.i64(OP_size, 1); p.i64(OP_sint, 1)
         case defs.T_i8     : p.i64(OP_size, 1); p.i64(OP_sint, 1)
         case defs.T_i16    : p.i64(OP_size, 2); p.i64(OP_sint, 2)
         case defs.T_i32    : p.i64(OP_size, 4); p.i64(OP_sint, 4)
-        case defs.T_i64    : fallthrough
+        case defs.T_i64    : p.i64(OP_size, 8); p.i64(OP_sint, 8)
         case defs.T_double : p.i64(OP_size, 8); p.i64(OP_sint, 8)
-        case defs.T_string : fallthrough
-        case defs.T_binary : p.add(OP_vstr)
+        case defs.T_string : p.i64(OP_size, 4); p.add(OP_vstr)
+        case defs.T_binary : p.i64(OP_size, 4); p.add(OP_vstr)
         case defs.T_struct : self.compileStruct  (p, sp, vt)
         case defs.T_map    : self.compileMap     (p, sp, vt)
         case defs.T_set    : self.compileSetList (p, sp, vt.V)
@@ -178,8 +178,8 @@ func (self Compiler) compilePtr(p *Program, sp int, et *defs.Type) {
 func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.tag(sp)
     p.i64(OP_size, 6)
-    p.i64(OP_byte, int64(vt.K.T))
-    p.i64(OP_byte, int64(vt.V.T))
+    p.i64(OP_byte, int64(vt.K.Tag()))
+    p.i64(OP_byte, int64(vt.V.Tag()))
     p.rtt(OP_map_begin, vt.S)
     i := p.pc()
     p.add(OP_map_if_end)
@@ -196,7 +196,7 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.tag(sp)
     p.i64(OP_size, 5)
-    p.i64(OP_byte, int64(et.T))
+    p.i64(OP_byte, int64(et.Tag()))
     p.add(OP_list_begin)
     i := p.pc()
     p.i64(OP_list_if_end, int64(et.S.Size()))
@@ -226,7 +226,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     /* the first field */
     p.tag(sp)
     p.i64(OP_size, 3)
-    p.i64(OP_byte, int64(fvs[0].Type.T))
+    p.i64(OP_byte, int64(fvs[0].Type.Tag()))
     p.i64(OP_word, int64(fvs[0].ID))
     self.compileOne(p, sp + 1, fvs[0].Type)
 
@@ -234,12 +234,13 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     for i, fv := range fvs[1:] {
         p.i64(OP_size, 3)
         p.i64(OP_seek, int64(fv.F - fvs[i].F))
-        p.i64(OP_byte, int64(fv.Type.T))
+        p.i64(OP_byte, int64(fv.Type.Tag()))
         p.i64(OP_word, int64(fv.ID))
         self.compileOne(p, sp + 1, fv.Type)
     }
 
     /* add the STOP field */
+    p.i64(OP_size, 1)
     p.i64(OP_byte, 0)
 }
 

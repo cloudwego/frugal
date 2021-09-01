@@ -19,7 +19,11 @@ package encoder
 import (
     `reflect`
     `testing`
+    `unsafe`
 
+    `github.com/cloudwego/frugal`
+    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
 
@@ -34,9 +38,38 @@ type TranslatorTestStruct struct {
     H []byte  `frugal:"7,default,binary"`
 }
 
+func itab_SimpleIoVec() unsafe.Pointer {
+    var v frugal.IoVec = (*frugal.SimpleIoVec)(nil)
+    return *(*unsafe.Pointer)(unsafe.Pointer(&v))
+}
+
 func TestTranslator_Translate(t *testing.T) {
-    p, err := CreateCompiler().Compile(reflect.TypeOf(TranslatorTestStruct{}))
+    v := &TranslatorTestStruct {
+        A: true,
+        B: 0x12,
+        C: 12.34,
+        D: 0x3456,
+        E: 0x12345678,
+        F: 0x66778899aabbccdd,
+        G: "hello, world",
+        H: []byte("testbytebuffer"),
+    }
+    p, err := CreateCompiler().Compile(reflect.TypeOf(v).Elem())
     require.NoError(t, err)
+    println(p.Disassemble())
     tr := Translate(p)
-    println(tr.Disassemble())
+    rs := new(RuntimeState)
+    iov := new(frugal.SimpleIoVec)
+    emu := atm.LoadProgram(tr)
+    emu.Ap(0, itab_SimpleIoVec())
+    emu.Ap(1, unsafe.Pointer(iov))
+    emu.Ap(2, unsafe.Pointer(v))
+    emu.Ap(3, unsafe.Pointer(rs))
+    emu.Au(4, 0)
+    emu.Run()
+    r0 := emu.Rp(0)
+    r1 := emu.Rp(1)
+    err = *(*error)(unsafe.Pointer(&[2]unsafe.Pointer{r0, r1}))
+    require.NoError(t, err)
+    spew.Dump(iov.Buffer.Bytes())
 }

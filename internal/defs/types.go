@@ -72,6 +72,14 @@ type Type struct {
     S reflect.Type
 }
 
+func (self *Type) Tag() Tag {
+    switch self.T {
+        case T_binary  : return T_string
+        case T_pointer : return self.V.Tag()
+        default        : return self.T
+    }
+}
+
 func (self *Type) Free() {
     freeType(self)
 }
@@ -145,7 +153,7 @@ func readToken(src string, i *int, eofok bool) string {
     return src[q:p]
 }
 
-func mkMisTyped(pos int, src string, tv string, tag Tag, vt reflect.Type) frugal.SyntaxError {
+func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) frugal.SyntaxError {
     if tag != T_struct {
         return utils.ESyntax(pos, src, fmt.Sprintf("type mismatch, %s expected, got %s", keywordTab[tag], tv))
     } else {
@@ -203,7 +211,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
     if def != "" {
         if tv := nextToken(def, i); !strings.Contains(keywordTab[tag], tv) {
             if !isident0(tv[0]) || !doMatchStruct(vt, def, i, &tv) {
-                panic(mkMisTyped(*i - len(tv), def, tv, tag, vt))
+                panic(mkMistyped(*i - len(tv), def, tv, tag, vt))
             }
         }
     }

@@ -219,11 +219,16 @@ func translate_OP_sint(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_vstr(p *atm.Builder, _ Instr) {
-    p.IB    (8, TR)                     // TR <=  8
-    p.LP    (WP, TP)                    // TP <= *WP
-    p.ADDP  (WP, TR, EP)                // EP <=  WP + TR
-    p.LQ    (EP, TR)                    // TR <= *EP
-    p.GCALL (utils.IoVecCat).           // GCALL IoVecCat:
+    p.IB    (4, TR)                     //  TR <= 4
+    p.ADDP  (RP, RL, TP)                //  TP <= RP + RL
+    p.ADD   (RL, TR, RL)                //  RL <= RL + TR
+    p.IB    (8, TR)                     //  TR <=  8
+    p.ADDP  (WP, TR, EP)                //  EP <=  WP + TR
+    p.LQ    (EP, TR)                    //  TR <= *EP
+    p.SWAPL (TR, UR)                    //  UR <=  bswap32(TR)
+    p.SQ    (UR, TP)                    // *TP <=  UR
+    p.LP    (WP, TP)                    //  TP <= *WP
+    p.GCALL (utils.IoVecCat).           //  GCALL IoVecCat:
       A0    (0, VT).                    //     p.itab <= VT
       A1    (0, VP).                    //     p.data <= VP
       A2    (1, RP).                    //     v.ptr  <= RP
@@ -232,9 +237,9 @@ func translate_OP_vstr(p *atm.Builder, _ Instr) {
       A5    (2, TP).                    //     w.ptr  <= TP
       A6    (2, TR).                    //     w.len  <= TR
       A7    (2, TR)                     //     w.cap  <= TR
-    p.MOV   (atm.Rz, RC)                // RC <=  0
-    p.MOV   (atm.Rz, RL)                // RL <=  0
-    p.MOVP  (atm.Pn, RP)                // RP <=  nil
+    p.MOV   (atm.Rz, RC)                //  RC <=  0
+    p.MOV   (atm.Rz, RL)                //  RL <=  0
+    p.MOVP  (atm.Pn, RP)                //  RP <=  nil
 }
 
 func translate_OP_seek(p *atm.Builder, v Instr) {
