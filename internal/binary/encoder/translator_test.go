@@ -56,8 +56,8 @@ func TestTranslator_Translate(t *testing.T) {
     }
     p, err := CreateCompiler().Compile(reflect.TypeOf(v).Elem())
     require.NoError(t, err)
-    println(p.Disassemble())
     tr := Translate(p)
+    println(tr.Disassemble())
     rs := new(RuntimeState)
     iov := new(frugal.SimpleIoVec)
     emu := atm.LoadProgram(tr)
