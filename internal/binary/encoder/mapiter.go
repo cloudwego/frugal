@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package rt
+package encoder
 
 import (
-    `unsafe`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
-//go:noescape
-//go:linkname mapclear runtime.mapclear
-//goland:noinspection GoUnusedParameter
-func mapclear(t *GoType, h unsafe.Pointer)
+//go:nosplit
+func MapEndIterator(p *rt.GoMapIterator) {
+    freeIterator(p)
+}
 
 //go:nosplit
-func MapClear(m interface{}) {
-    v := UnpackEface(m)
-    mapclear(v.Type, v.Value)
+func MapBeginIterator(vt *rt.GoMapType, mm *rt.GoMap) (p *rt.GoMapIterator) {
+    p = newIterator()
+    mapiterinit(vt, mm, p)
+    return
 }

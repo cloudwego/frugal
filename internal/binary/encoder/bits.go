@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package rt
+package encoder
 
 import (
-    `unsafe`
+    `math/bits`
 )
 
-//go:noescape
-//go:linkname mapclear runtime.mapclear
-//goland:noinspection GoUnusedParameter
-func mapclear(t *GoType, h unsafe.Pointer)
+func bswap16(v int64) int16 {
+    return int16(bits.ReverseBytes16(uint16(v)))
+}
 
-//go:nosplit
-func MapClear(m interface{}) {
-    v := UnpackEface(m)
-    mapclear(v.Type, v.Value)
+func bswap32(v int64) int32 {
+    return int32(bits.ReverseBytes32(uint32(v)))
+}
+
+func bswap64(v int64) int64 {
+    return int64(bits.ReverseBytes64(uint64(v)))
 }

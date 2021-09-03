@@ -82,17 +82,16 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
     b := "bbb"
     c := "ccc"
     emu := runEmulator(nil, func(p *Builder) {
-        p.IB(8, R3)
         p.IP(&a, P0)
         p.IP(&b, P1)
         p.IP(&c, P2)
-        p.ADDP(P0, R3, P3)
+        p.ADDPI(P0, 8, P3)
         p.LQ(P3, R0)
         p.LP(P0, P0)
-        p.ADDP(P1, R3, P3)
+        p.ADDPI(P1, 8, P3)
         p.LQ(P3, R1)
         p.LP(P1, P1)
-        p.ADDP(P2, R3, P3)
+        p.ADDPI(P2, 8, P3)
         p.LQ(P3, R2)
         p.LP(P2, P2)
         p.GCALL(testemu_pfunc).A0(0, P0).A1(0, R0).A2(1, P1).A3(1, R1).A4(2, P2).A5(2, R2).R0(0, P0).R1(0, R0).R2(1, P1).R3(1, R1)

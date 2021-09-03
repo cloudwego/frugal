@@ -36,10 +36,6 @@ func atoi64(v [8]uint8) uint64 {
     return *(*uint64)(unsafe.Pointer(&v))
 }
 
-func ptou64(p unsafe.Pointer) uint64 {
-    return uint64(uintptr(p))
-}
-
 func i8toa(v int8) (r [8]uint8) {
     r[0] = uint8(v)
     return
@@ -57,10 +53,5 @@ func i32toa(v int32) (r [8]uint8) {
 
 func i64toa(v int64) (r [8]uint8) {
     *(*int64)(unsafe.Pointer(&r)) = v
-    return
-}
-
-func u64top(v uint64) (p unsafe.Pointer) {
-    *(*uint64)(unsafe.Pointer(&p)) = v
     return
 }

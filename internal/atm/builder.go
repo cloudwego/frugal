@@ -76,6 +76,10 @@ func (self *Builder) push(ins *Instr) {
     }
 }
 
+func (self *Builder) At(pc int) string {
+    return _LB_jump_pc + strconv.Itoa(pc)
+}
+
 func (self *Builder) Mark(pc int) {
     self.i++
     self.Label(_LB_jump_pc + strconv.Itoa(pc))
@@ -229,14 +233,6 @@ func (self *Builder) MOVP(ps PointerRegister, pd PointerRegister) *Instr {
     return self.add(newInstr(OP_movp).ps(ps).pd(pd))
 }
 
-func (self *Builder) MOVPR(ps PointerRegister, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_movpr).ps(ps).rx(rx))
-}
-
-func (self *Builder) MOVRP(rx GenericRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_movrp).rx(rx).pd(pd))
-}
-
 func (self *Builder) LDAQ(id int, rx GenericRegister) *Instr {
     return self.add(newInstr(OP_ldaq).ai(i64toa(int64(id))).rx(rx))
 }
@@ -261,6 +257,14 @@ func (self *Builder) SUBP(ps PointerRegister, rx GenericRegister, pd PointerRegi
     return self.add(newInstr(OP_subp).ps(ps).rx(rx).pd(pd))
 }
 
+func (self *Builder) ADDPI(ps PointerRegister, im int64, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_addpi).ps(ps).ai(i64toa(im)).pd(pd))
+}
+
+func (self *Builder) SUBPI(ps PointerRegister, im int64, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_subpi).ps(ps).ai(i64toa(im)).pd(pd))
+}
+
 func (self *Builder) ADD(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
     return self.add(newInstr(OP_add).rx(rx).ry(ry).rz(rz))
 }
@@ -271,6 +275,18 @@ func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegis
 
 func (self *Builder) MUL(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
     return self.add(newInstr(OP_mul).rx(rx).ry(ry).rz(rz))
+}
+
+func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_addi).rx(rx).ai(i64toa(im)).ry(ry))
+}
+
+func (self *Builder) SUBI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_subi).rx(rx).ai(i64toa(im)).ry(ry))
+}
+
+func (self *Builder) MULI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_muli).rx(rx).ai(i64toa(im)).ry(ry))
 }
 
 func (self *Builder) SWAPW(rx GenericRegister, ry GenericRegister) *Instr {
@@ -311,10 +327,6 @@ func (self *Builder) BGEU(rx GenericRegister, ry GenericRegister, to string) *In
 
 func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
-}
-
-func (self *Builder) JALI(to int, pd PointerRegister) *Instr {
-    return self.jmp(newInstr(OP_jal).pd(pd), _LB_jump_pc + strconv.Itoa(to))
 }
 
 func (self *Builder) JALR(ps PointerRegister, pd PointerRegister) *Instr {

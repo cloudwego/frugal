@@ -23,17 +23,13 @@ import (
 )
 
 const (
-    StateCap  = StateSize * defs.MaxStack
-    StateSize = int64(unsafe.Sizeof(StateItem{}))
+    StateCap = defs.MaxStack * (defs.PtrSize * 3)
 )
 
-const (
-    FieldMi = int64(unsafe.Offsetof(StateItem{}.Mi))
-    FieldWp = int64(unsafe.Offsetof(StateItem{}.Wp))
-)
-
+// StateItem is the runtime state.
+// JIT knows the layout and size of this struct, so please sync the changes with it, if made.
 type StateItem struct {
-    Li uint64
+    Ln uintptr
     Mi unsafe.Pointer
     Wp unsafe.Pointer
 }

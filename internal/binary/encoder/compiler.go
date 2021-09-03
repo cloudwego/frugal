@@ -59,14 +59,13 @@ func (self Instr) Disassemble() string {
         case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op(), self.Iv())
         case OP_size        : fallthrough
         case OP_sint        : fallthrough
-        case OP_seek        : fallthrough
-        case OP_list_next   : return fmt.Sprintf("%-18s%d", self.Op(), self.Iv())
+        case OP_seek        : return fmt.Sprintf("%-18s%d", self.Op(), self.Iv())
         case OP_defer       : fallthrough
         case OP_map_begin   : return fmt.Sprintf("%-18s%s", self.Op(), self.Vt())
         case OP_goto        : fallthrough
         case OP_if_nil      : fallthrough
         case OP_map_if_end  : fallthrough
-        case OP_list_if_end : return fmt.Sprintf("%-18sL_%d", self.Op(), self.Iv())
+        case OP_list_if_end : return fmt.Sprintf("%-18sL_%d", self.Op(), self.To())
         default             : return self.Op().String()
     }
 }
@@ -98,7 +97,7 @@ func (self Program) Disassemble() string {
     /* prescan to get all the labels */
     for _, ins := range self {
         if _OpBranches[ins.Op()] {
-            tab[ins.Iv()] = true
+            tab[ins.To()] = true
         }
     }
 
@@ -170,8 +169,11 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compilePtr(p *Program, sp int, et *defs.Type) {
     i := p.pc()
+    p.add(OP_if_nil)
+    p.add(OP_make_state)
     p.add(OP_deref)
     self.compileOne(p, sp, et)
+    p.add(OP_drop_state)
     p.pin(i)
 }
 
@@ -180,6 +182,7 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.i64(OP_size, 6)
     p.i64(OP_byte, int64(vt.K.Tag()))
     p.i64(OP_byte, int64(vt.V.Tag()))
+    p.add(OP_make_state)
     p.rtt(OP_map_begin, vt.S)
     i := p.pc()
     p.add(OP_map_if_end)
@@ -191,21 +194,27 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.jmp(OP_goto, i)
     p.pin(i)
     p.add(OP_map_end)
+    p.add(OP_drop_state)
 }
 
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.tag(sp)
     p.i64(OP_size, 5)
     p.i64(OP_byte, int64(et.Tag()))
+    p.add(OP_make_state)
     p.add(OP_list_begin)
     i := p.pc()
-    p.i64(OP_list_if_end, int64(et.S.Size()))
-    p.i64(OP_list_next, int64(et.S.Size()))
+    p.add(OP_list_if_end)
+    j := p.pc()
     self.compileOne(p, sp + 1, et)
-    p.add(OP_list_exit)
-    p.jmp(OP_goto, i)
+    p.add(OP_list_decr)
+    k := p.pc()
+    p.add(OP_list_if_end)
+    p.i64(OP_seek, int64(et.S.Size()))
+    p.jmp(OP_goto, j)
     p.pin(i)
-    p.add(OP_list_end)
+    p.pin(k)
+    p.add(OP_drop_state)
 }
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {

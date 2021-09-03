@@ -44,17 +44,20 @@ const (
     OP_sp                   //     Ps  -> *(*ptr)Pd
     OP_mov                  // Rx -> Ry
     OP_movp                 // Ps -> Pd
-    OP_movpr                // Ps -> Rx
-    OP_movrp                // Rx -> Pd
     OP_ldaq                 // arg[Im] -> Rx
     OP_ldap                 // arg[Im] -> Pd
     OP_strq                 // Rx -> ret[Im]
     OP_strp                 // Ps -> ret[Im]
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
+    OP_addpi                // Ps + Im -> Pd
+    OP_subpi                // Ps - Im -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_mul                  // Rx * Ry -> Rz
+    OP_addi                 // Rx + Im -> Ry
+    OP_subi                 // Rx - Im -> Ry
+    OP_muli                 // Rx * Im -> Ry
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
     OP_swapq                // bswap64(Rx) -> Ry
@@ -174,17 +177,20 @@ func (self *Instr) disassemble(refs string) string {
         case OP_sp    : return fmt.Sprintf("sp      %%%s, %%%s", self.Ps, self.Pd)
         case OP_mov   : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Ry)
         case OP_movp  : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Pd)
-        case OP_movpr : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Rx)
-        case OP_movrp : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Pd)
         case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Rx)
         case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Pd)
         case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, atoi64(self.Ai))
         case OP_strp  : return fmt.Sprintf("str     %%%s, $%d", self.Ps, atoi64(self.Ai))
         case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
+        case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
+        case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_mul   : return fmt.Sprintf("mul     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)

@@ -72,17 +72,20 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_sp    : (*Emulator).emu_OP_sp,
     OP_mov   : (*Emulator).emu_OP_mov,
     OP_movp  : (*Emulator).emu_OP_movp,
-    OP_movpr : (*Emulator).emu_OP_movpr,
-    OP_movrp : (*Emulator).emu_OP_movrp,
     OP_ldaq  : (*Emulator).emu_OP_ldaq,
     OP_ldap  : (*Emulator).emu_OP_ldap,
     OP_strq  : (*Emulator).emu_OP_strq,
     OP_strp  : (*Emulator).emu_OP_strp,
     OP_addp  : (*Emulator).emu_OP_addp,
     OP_subp  : (*Emulator).emu_OP_subp,
+    OP_addpi : (*Emulator).emu_OP_addpi,
+    OP_subpi : (*Emulator).emu_OP_subpi,
     OP_add   : (*Emulator).emu_OP_add,
     OP_sub   : (*Emulator).emu_OP_sub,
     OP_mul   : (*Emulator).emu_OP_mul,
+    OP_addi  : (*Emulator).emu_OP_addi,
+    OP_subi  : (*Emulator).emu_OP_subi,
+    OP_muli  : (*Emulator).emu_OP_muli,
     OP_swapw : (*Emulator).emu_OP_swapw,
     OP_swapl : (*Emulator).emu_OP_swapl,
     OP_swapq : (*Emulator).emu_OP_swapq,
@@ -190,16 +193,6 @@ func (self *Emulator) emu_OP_movp(p *Instr) {
 }
 
 //go:nosplit
-func (self *Emulator) emu_OP_movpr(p *Instr) {
-    self.Gr[p.Rx] = ptou64(self.Pr[p.Ps])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_movrp(p *Instr) {
-    self.Pr[p.Pd] = u64top(self.Gr[p.Rx])
-}
-
-//go:nosplit
 func (self *Emulator) emu_OP_ldaq(p *Instr) {
     self.Gr[p.Rx] = self.Ar[atoi64(p.Ai)].U
 }
@@ -230,6 +223,16 @@ func (self *Emulator) emu_OP_subp(p *Instr) {
 }
 
 //go:nosplit
+func (self *Emulator) emu_OP_addpi(p *Instr) {
+    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(atoi64(p.Ai)))
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_subpi(p *Instr) {
+    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(atoi64(p.Ai)))
+}
+
+//go:nosplit
 func (self *Emulator) emu_OP_add(p *Instr) {
     self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
 }
@@ -242,6 +245,21 @@ func (self *Emulator) emu_OP_sub(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_mul(p *Instr) {
     self.Gr[p.Rz] = self.Gr[p.Rx] * self.Gr[p.Ry]
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_addi(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] + atoi64(p.Ai)
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_subi(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] - atoi64(p.Ai)
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_muli(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] * atoi64(p.Ai)
 }
 
 //go:nosplit
@@ -262,7 +280,7 @@ func (self *Emulator) emu_OP_swapq(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_beq(p *Instr) {
     if self.Gr[p.Rx] == self.Gr[p.Ry] {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -270,7 +288,7 @@ func (self *Emulator) emu_OP_beq(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_bne(p *Instr) {
     if self.Gr[p.Rx] != self.Gr[p.Ry] {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -278,7 +296,7 @@ func (self *Emulator) emu_OP_bne(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_blt(p *Instr) {
     if int64(self.Gr[p.Rx]) < int64(self.Gr[p.Ry]) {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -286,7 +304,7 @@ func (self *Emulator) emu_OP_blt(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_bge(p *Instr) {
     if int64(self.Gr[p.Rx]) >= int64(self.Gr[p.Ry]) {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -294,7 +312,7 @@ func (self *Emulator) emu_OP_bge(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_bltu(p *Instr) {
     if self.Gr[p.Rx] < self.Gr[p.Ry] {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -302,7 +320,7 @@ func (self *Emulator) emu_OP_bltu(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_bgeu(p *Instr) {
     if self.Gr[p.Rx] >= self.Gr[p.Ry] {
-        self.PC = p.Ln
+        self.PC = p.Br
         self.Ln = false
     }
 }
@@ -475,6 +493,7 @@ func (self *Emulator) Run() {
         if fn(self, ip); self.Ln {
             self.PC = self.PC.Ln
         }
+        runtime.GC()
     }
 
     /* check for exceptions */
