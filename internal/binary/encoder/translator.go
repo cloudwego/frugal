@@ -244,28 +244,52 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
 
 }
 
-func translate_OP_map_end(p *atm.Builder, v Instr) {
-
+func translate_OP_map_end(p *atm.Builder, _ Instr) {
+    p.SUBPI (RS, 16, TP)                // TP <=  RS - 16
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.GCALL (MapEndIterator).A0(0, TP)  // GCALL MapEndIterator(it: TP)
 }
 
-func translate_OP_map_key(p *atm.Builder, v Instr) {
-
+func translate_OP_map_key(p *atm.Builder, _ Instr) {
+    p.SUBPI (RS, 16, TP)                // TP <=  RS - 16
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, WP)                    // WP <= *TP
 }
 
-func translate_OP_map_next(p *atm.Builder, v Instr) {
-
+func translate_OP_map_next(p *atm.Builder, _ Instr) {
+    p.SUBPI (RS, 16, TP)                // TP <=  RS - 16
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.GCALL (mapiternext).A0(0, TP)     // GCALL mapiternext(it: TP)
 }
 
-func translate_OP_map_value(p *atm.Builder, v Instr) {
-
+func translate_OP_map_value(p *atm.Builder, _ Instr) {
+    p.SUBPI (RS, 16, TP)                // TP <=  RS - 16
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.ADDPI (TP, 8, TP)                 // TP <=  TP + 8
+    p.LP    (TP, WP)                    // WP <= *TP
 }
 
 func translate_OP_map_begin(p *atm.Builder, v Instr) {
-
+    p.LP    (WP, EP)                    //  EP <= *WP
+    p.ADDP  (RP, RL, TP)                //  TP <=  RP + RL
+    p.ADDI  (RL, 4, RL)                 //  RL <=  RL + 4
+    p.LQ    (EP, TR)                    //  TR <= *EP
+    p.SWAPL (TR, TR)                    //  TR <=  bswap32(TR)
+    p.SL    (TR, TP)                    // *TP <=  TR
+    p.IP    (v.Vt(), ET)                //  ET <=  v.Vt()
+    p.GCALL (MapBeginIterator).         //  GCALL MapBeginIterator:
+      A0    (0, ET).                    //      vt <= ET
+      A1    (1, EP).                    //      vp <= EP
+      R0    (0, TP)                     //      it => TP
+    p.SUBPI (RS, 16, EP)                //  EP <=  RS - 16
+    p.SP    (TP, EP)                    // *EP <=  TP
 }
 
 func translate_OP_map_if_end(p *atm.Builder, v Instr) {
-
+    p.SUBPI (RS, 16, TP)                // TP <=  RS - 16
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LQ    (TP, TR)                    // TR <= *TP
+    p.BEQ   (TR, atm.Rz, p.At(v.To()))  // if TR == 0 then GOTO @v.To()
 }
 
 func translate_OP_list_decr(p *atm.Builder, _ Instr) {

@@ -19,6 +19,7 @@ package encoder
 import (
     `reflect`
     `testing`
+    `time`
     `unsafe`
 
     `github.com/cloudwego/frugal`
@@ -28,15 +29,16 @@ import (
 )
 
 type TranslatorTestStruct struct {
-    A bool    `frugal:"0,default,bool"`
-    B int8    `frugal:"1,default,i8"`
-    C float64 `frugal:"2,default,double"`
-    D int16   `frugal:"3,default,i16"`
-    E int32   `frugal:"4,default,i32"`
-    F int64   `frugal:"5,default,i64"`
-    G string  `frugal:"6,default,string"`
-    H []byte  `frugal:"7,default,binary"`
-    I []int8  `frugal:"8,default,list<i8>"`
+    A bool              `frugal:"0,default,bool"`
+    B int8              `frugal:"1,default,i8"`
+    C float64           `frugal:"2,default,double"`
+    D int16             `frugal:"3,default,i16"`
+    E int32             `frugal:"4,default,i32"`
+    F int64             `frugal:"5,default,i64"`
+    G string            `frugal:"6,default,string"`
+    H []byte            `frugal:"7,default,binary"`
+    I []int32           `frugal:"8,default,list<i32>"`
+    J map[string]string `frugal:"9,default,map<string:string>"`
 }
 
 func itab_SimpleIoVec() unsafe.Pointer {
@@ -54,7 +56,8 @@ func TestTranslator_Translate(t *testing.T) {
         F: 0x66778899aabbccdd,
         G: "hello, world",
         H: []byte("testbytebuffer"),
-        I: []int8{1},
+        I: []int32{0x11223344, 0x55667788, 3, 4, 5},
+        J: map[string]string{"asdf": "qwer", "zxcv": "hjkl"},
     }
     p, err := CreateCompiler().Compile(reflect.TypeOf(v).Elem())
     require.NoError(t, err)
@@ -68,11 +71,14 @@ func TestTranslator_Translate(t *testing.T) {
     emu.Ap(2, unsafe.Pointer(v))
     emu.Ap(3, unsafe.Pointer(rs))
     emu.Au(4, 0)
+    t0 := time.Now()
     emu.Run()
+    dt := time.Since(t0)
     emu.Free()
     r0 := emu.Rp(0)
     r1 := emu.Rp(1)
     err = *(*error)(unsafe.Pointer(&[2]unsafe.Pointer{r0, r1}))
     require.NoError(t, err)
     spew.Dump(iov.Buffer.Bytes())
+    println("Emulator takes " + dt.String() + " to finish.")
 }

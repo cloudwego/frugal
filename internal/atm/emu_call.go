@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package encoder
+package atm
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-//go:nosplit
-func MapEndIterator(it *rt.GoMapIterator) {
-    freeIterator(it)
-}
+type (
+    CallProxy func(e *Emulator, p *Instr)
+)
 
-//go:nosplit
-func MapBeginIterator(vt *rt.GoMapType, mm *rt.GoMap) (it *rt.GoMapIterator) {
-    it = newIterator()
-    mapiterinit(vt, mm, it)
-    return
+var (
+    ccallTab = map[unsafe.Pointer]CallProxy{}
+    gcallTab = map[unsafe.Pointer]CallProxy{}
+)
+
+func RegisterGCall(fn interface{}, proxy CallProxy) {
+    gcallTab[rt.FuncAddr(fn)] = proxy
 }
