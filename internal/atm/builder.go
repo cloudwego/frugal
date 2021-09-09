@@ -82,7 +82,7 @@ func (self *Builder) At(pc int) string {
 
 func (self *Builder) Mark(pc int) {
     self.i++
-    self.Label(_LB_jump_pc + strconv.Itoa(pc))
+    self.Label(self.At(pc))
 }
 
 func (self *Builder) Label(to string) {
