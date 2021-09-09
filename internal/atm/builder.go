@@ -338,7 +338,11 @@ func (self *Builder) HALT() *Instr {
 }
 
 func (self *Builder) CCALL(fn unsafe.Pointer) *Instr {
-    return self.add(newInstr(OP_ccall).pr(fn))
+    if ccallTab[fn] == nil {
+        panic(fmt.Sprintf("ccall to unknown function: %p", fn))
+    } else {
+        return self.add(newInstr(OP_ccall).pr(fn))
+    }
 }
 
 func (self *Builder) GCALL(fn interface{}) *Instr {

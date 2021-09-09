@@ -22,6 +22,7 @@ import (
 )
 
 const (
+    F_direct    = 1 << 5
     F_kind_mask = (1 << 5) - 1
 )
 

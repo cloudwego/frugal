@@ -18,8 +18,11 @@ package encoder
 
 import (
     `fmt`
+    `unsafe`
 
+    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
@@ -67,8 +70,14 @@ const (
 )
 
 var (
-    _ERR_overflow = fmt.Errorf("frugal: encoder stack overflow")
+    _F_encode   func(vt *rt.GoType, iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error
+    _E_overflow error
 )
+
+func init() {
+    _F_encode   = encode
+    _E_overflow = fmt.Errorf("frugal: encoder stack overflow")
+}
 
 func Translate(s Program) atm.Program {
     p := atm.CreateBuilder()
@@ -81,7 +90,7 @@ func Translate(s Program) atm.Program {
 
 func errors(p *atm.Builder) {
     p.Label (LB_overflow)               // _overflow:
-    p.IP    (&_ERR_overflow, TP)        // TP <= &_ERR_overflow
+    p.IP    (&_E_overflow, TP)          // TP <= &_E_overflow
     p.LP    (TP, ET)                    // ET <= *TP
     p.ADDPI (TP, 8, TP)                 // TP <=  TP + 8
     p.LP    (TP, EP)                    // EP <= *TP
@@ -106,6 +115,7 @@ func prologue(p *atm.Builder) {
 }
 
 func epilogue(p *atm.Builder) {
+    p.Label ("_halt")                   // _halt:
     p.BEQ   (RL, atm.Rz, "_nobuf")      // if RL == 0 then GOTO _nobuf
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
@@ -124,7 +134,7 @@ func epilogue(p *atm.Builder) {
     p.HALT  ()                          // HALT
 }
 
-var translators = [...]func(*atm.Builder, Instr) {
+var translators = [256]func(*atm.Builder, Instr) {
     OP_byte        : translate_OP_byte,
     OP_word        : translate_OP_word,
     OP_long        : translate_OP_long,
@@ -148,6 +158,7 @@ var translators = [...]func(*atm.Builder, Instr) {
     OP_if_nil      : translate_OP_if_nil,
     OP_make_state  : translate_OP_make_state,
     OP_drop_state  : translate_OP_drop_state,
+    OP_halt        : translate_OP_halt,
 }
 
 func translate_OP_byte(p *atm.Builder, v Instr) {
@@ -241,7 +252,20 @@ func translate_OP_deref(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_defer(p *atm.Builder, v Instr) {
-
+    p.LDAP  (0, ET)                     // ET <= a0
+    p.LDAP  (1, EP)                     // EP <= a1
+    p.IP    (v.Vt(), TP)                // TP <= v.Vt()
+    p.SUBP  (RS, ST, RS)                // RS <= RS - ST
+    p.GCALL (_F_encode).                // GCALL encode:
+      A0    (0, TP).                    //     vt       <= TP
+      A1    (1, ET).                    //     iov.itab <= ET
+      A2    (1, EP).                    //     iov.data <= EP
+      A3    (2, WP).                    //     p        <= WP
+      A4    (3, RS).                    //     rs       <= RS
+      A5    (4, ST).                    //     st       <= ST
+      R0    (0, ET).                    //     err.type => ET
+      R1    (0, EP)                     //     err.data => EP
+    p.ADDP  (RS, ST, RS)                // RS <= RS + ST
 }
 
 func translate_OP_map_end(p *atm.Builder, _ Instr) {
@@ -344,4 +368,8 @@ func translate_OP_drop_state(p *atm.Builder, _ Instr) {
     p.SP    (atm.Pn, RS)                // *RS <=  nil
     p.SUBPI (RS, 8, RS)                 //  RS <=  RS - 8
     p.SQ    (atm.Rz, RS)                // *RS <=  0
+}
+
+func translate_OP_halt(p *atm.Builder, _ Instr) {
+    p.JAL   ("_halt", atm.Pn)           // GOTO _halt
 }

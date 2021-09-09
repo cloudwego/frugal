@@ -46,6 +46,7 @@ const (
     OP_if_nil
     OP_make_state
     OP_drop_state
+    OP_halt
 )
 
 var _OpNames = [256]string {
@@ -72,6 +73,7 @@ var _OpNames = [256]string {
     OP_if_nil      : "if_nil",
     OP_make_state  : "make_state",
     OP_drop_state  : "drop_state",
+    OP_halt        : "halt",
 }
 
 var _OpBranches = [256]bool {

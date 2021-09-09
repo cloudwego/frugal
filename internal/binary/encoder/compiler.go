@@ -135,15 +135,15 @@ func (self Compiler) rescue(ep *error) {
 
 func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
     if vt.T == defs.T_pointer {
-        self.compilePtr(p, sp, vt.V)
+        self.compilePtr(p, sp, vt)
     } else if _, ok := self[vt.S]; !ok {
-        self.compileSet(p, sp, vt)
+        self.compileTag(p, sp, vt)
     } else {
         p.rtt(OP_defer, vt.S)
     }
 }
 
-func (self Compiler) compileSet(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) compileTag(p *Program, sp int, vt *defs.Type) {
     self[vt.S] = true
     self.compileRec(p, sp, vt)
     delete(self, vt.S)
@@ -167,12 +167,12 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) compilePtr(p *Program, sp int, et *defs.Type) {
+func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
     i := p.pc()
     p.add(OP_if_nil)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.compileOne(p, sp, et)
+    self.compileOne(p, sp, vt.V)
     p.add(OP_drop_state)
     p.pin(i)
 }
@@ -182,19 +182,26 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.i64(OP_size, 6)
     p.i64(OP_byte, int64(vt.K.Tag()))
     p.i64(OP_byte, int64(vt.V.Tag()))
+    i := p.pc()
+    p.add(OP_if_nil)
     p.add(OP_make_state)
     p.rtt(OP_map_begin, vt.S)
-    i := p.pc()
+    j := p.pc()
     p.add(OP_map_if_end)
     p.add(OP_map_key)
     self.compileOne(p, sp + 1, vt.K)
     p.add(OP_map_value)
     self.compileOne(p, sp + 1, vt.V)
     p.add(OP_map_next)
-    p.jmp(OP_goto, i)
-    p.pin(i)
+    p.jmp(OP_goto, j)
+    p.pin(j)
     p.add(OP_map_end)
     p.add(OP_drop_state)
+    k := p.pc()
+    p.add(OP_goto)
+    p.pin(i)
+    p.i64(OP_long, 0)
+    p.pin(k)
 }
 
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
@@ -267,5 +274,8 @@ func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
 
     /* compile the actual type */
     self.compileOne(&ret, 0, vtp)
+    ret.add(OP_halt)
+
+    /* optimize the High-Level IL */
     return Optimize(ret), nil
 }
