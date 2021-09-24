@@ -27,3 +27,9 @@ func TestTypes_Parsing(t *testing.T) {
     tt := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
     fmt.Println(tt)
 }
+
+func TestTypes_MapKeyType(t *testing.T) {
+    var v map[*reflect.SliceHeader]int
+    tt := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
+    fmt.Println(tt)
+}

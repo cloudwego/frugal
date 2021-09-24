@@ -14,28 +14,44 @@
  * limitations under the License.
  */
 
-package atm
+package decoder
 
 import (
-    `unsafe`
+    `sync`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type (
-    CFunction = unsafe.Pointer
-    CallProxy = func(e *Emulator, p *Instr)
-)
-
 var (
-    ccallTab = map[unsafe.Pointer]CallProxy{}
-    gcallTab = map[unsafe.Pointer]CallProxy{}
+    programPool  sync.Pool
+    compilerPool sync.Pool
 )
 
-func RegisterCCall(fn CFunction, proxy CallProxy) {
-    ccallTab[fn] = proxy
+func newProgram() Program {
+    if v := programPool.Get(); v != nil {
+        return v.(Program)[:0]
+    } else {
+        return make(Program, 0, 16)
+    }
 }
 
-func RegisterGCall(fn interface{}, proxy CallProxy) {
-    gcallTab[rt.FuncAddr(fn)] = proxy
+func freeProgram(p Program) {
+    programPool.Put(p)
+}
+
+func newCompiler() Compiler {
+    if v := compilerPool.Get(); v == nil {
+        return make(Compiler)
+    } else {
+        return resetCompiler(v.(Compiler))
+    }
+}
+
+func freeCompiler(p Compiler) {
+    compilerPool.Put(p)
+}
+
+func resetCompiler(p Compiler) Compiler {
+    rt.MapClear(p)
+    return p
 }

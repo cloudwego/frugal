@@ -19,7 +19,7 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/defs`
+    `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 // StateItem is the runtime state.
-// JIT knows the layout and size of this struct, so please sync the changes with it, if made.
+// The translator knows the layout and size of this struct, so please in sync with it.
 type StateItem struct {
     Ln uintptr
     Mi unsafe.Pointer

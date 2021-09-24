@@ -17,8 +17,20 @@
 package encoder
 
 import (
+    _ `unsafe`
+
     `github.com/cloudwego/frugal/internal/rt`
 )
+
+//go:noescape
+//go:linkname mapiternext runtime.mapiternext
+//goland:noinspection GoUnusedParameter
+func mapiternext(it *rt.GoMapIterator)
+
+//go:noescape
+//go:linkname mapiterinit runtime.mapiterinit
+//goland:noinspection GoUnusedParameter
+func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
 //go:nosplit
 func MapEndIterator(it *rt.GoMapIterator) {

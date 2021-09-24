@@ -14,20 +14,31 @@
  * limitations under the License.
  */
 
-package encoder
+package decoder
 
 import (
-    _ `unsafe`
+    `unsafe`
 
-    `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-//go:noescape
-//go:linkname mapiternext runtime.mapiternext
-//goland:noinspection GoUnusedParameter
-func mapiternext(it *rt.GoMapIterator)
+const (
+    MaxField  = 65536
+    MaxBitmap = MaxField / 8
+)
 
-//go:noescape
-//go:linkname mapiterinit runtime.mapiterinit
-//goland:noinspection GoUnusedParameter
-func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
+var (
+    FnStateClearBitmap unsafe.Pointer
+)
+
+// StateItem is the runtime state.
+// The translator knows the layout and size of this struct, so please keep in sync with it.
+type StateItem struct {
+    Nb uint64
+    Wp unsafe.Pointer
+    Fm [MaxBitmap]uint8
+}
+
+type RuntimeState struct {
+    St [defs.MaxStack]StateItem
+}

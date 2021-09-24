@@ -14,28 +14,12 @@
  * limitations under the License.
  */
 
-package atm
+package utils
 
-import (
-    `unsafe`
-
-    `github.com/cloudwego/frugal/internal/rt`
-)
-
-type (
-    CFunction = unsafe.Pointer
-    CallProxy = func(e *Emulator, p *Instr)
-)
-
-var (
-    ccallTab = map[unsafe.Pointer]CallProxy{}
-    gcallTab = map[unsafe.Pointer]CallProxy{}
-)
-
-func RegisterCCall(fn CFunction, proxy CallProxy) {
-    ccallTab[fn] = proxy
-}
-
-func RegisterGCall(fn interface{}, proxy CallProxy) {
-    gcallTab[rt.FuncAddr(fn)] = proxy
+func MaxInt(a int, b int) int {
+    if a > b {
+        return a
+    } else {
+        return b
+    }
 }

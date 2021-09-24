@@ -14,28 +14,22 @@
  * limitations under the License.
  */
 
-package atm
+package decoder
 
 import (
-    `unsafe`
-
+    `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type (
-    CFunction = unsafe.Pointer
-    CallProxy = func(e *Emulator, p *Instr)
-)
-
-var (
-    ccallTab = map[unsafe.Pointer]CallProxy{}
-    gcallTab = map[unsafe.Pointer]CallProxy{}
-)
-
-func RegisterCCall(fn CFunction, proxy CallProxy) {
-    ccallTab[fn] = proxy
+func emu_ccall_StateClearBitmap(e *atm.Emulator, p *atm.Instr) {
+    if p.An != 1 || p.Rn != 0 || (p.Av[0] & atm.ArgPointer) == 0 {
+        panic("invalid StateClearBitmap call")
+    } else {
+        (*StateItem)(e.Pr[p.Av[0] & atm.ArgMask]).Fm = [MaxBitmap]uint8{}
+    }
 }
 
-func RegisterGCall(fn interface{}, proxy CallProxy) {
-    gcallTab[rt.FuncAddr(fn)] = proxy
+func init() {
+    FnStateClearBitmap = rt.FuncAddr(func(){})
+    atm.RegisterCCall(FnStateClearBitmap, emu_ccall_StateClearBitmap)
 }

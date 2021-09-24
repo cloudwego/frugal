@@ -86,19 +86,34 @@ func (self *Type) Free() {
 
 func (self *Type) String() string {
     switch self.T {
-        case T_bool   : return "bool"
-        case T_i8     : return "i8"
-        case T_double : return "double"
-        case T_i16    : return "i16"
-        case T_i32    : return "i32"
-        case T_i64    : return "i64"
-        case T_string : return "string"
-        case T_binary : return "binary"
-        case T_struct : return self.S.Name()
-        case T_map    : return fmt.Sprintf("map<%s:%s>", self.K.String(), self.V.String())
-        case T_set    : return fmt.Sprintf("set<%s>", self.V.String())
-        case T_list   : return fmt.Sprintf("list<%s>", self.V.String())
-        default       : return fmt.Sprintf("Type(Tag(%d))", self.T)
+        case T_bool    : return "bool"
+        case T_i8      : return "i8"
+        case T_double  : return "double"
+        case T_i16     : return "i16"
+        case T_i32     : return "i32"
+        case T_i64     : return "i64"
+        case T_string  : return "string"
+        case T_struct  : return self.S.Name()
+        case T_map     : return fmt.Sprintf("map<%s:%s>", self.K.String(), self.V.String())
+        case T_set     : return fmt.Sprintf("set<%s>", self.V.String())
+        case T_list    : return fmt.Sprintf("list<%s>", self.V.String())
+        case T_binary  : return "binary"
+        case T_pointer : return "*" + self.V.String()
+        default        : return fmt.Sprintf("Type(Tag(%d))", self.T)
+    }
+}
+
+func (self *Type) isKeyType() bool {
+    switch self.T {
+        case T_bool    : return true
+        case T_i8      : return true
+        case T_double  : return true
+        case T_i16     : return true
+        case T_i32     : return true
+        case T_i64     : return true
+        case T_string  : return true
+        case T_pointer : return self.V.T == T_struct
+        default        : return false
     }
 }
 
@@ -231,8 +246,14 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
     }
 
     /* parse the key type */
+    vi := *i
     kt := vt.Key()
     ret.K = doParseType(kt, def, i)
+
+    /* validate map key */
+    if !ret.K.isKeyType() {
+        panic(utils.ESyntax(vi, def, fmt.Sprintf("'%s' is not a valid map key", ret.K)))
+    }
 
     /* key-value delimiter */
     if def != "" {
