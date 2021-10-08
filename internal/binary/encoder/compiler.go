@@ -239,17 +239,31 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
         return
     }
 
-    /* the first field */
+    /* every field requires at least 3 bytes */
     p.tag(sp)
     p.i64(OP_size, 3)
+
+    /* seek to the first field, if needed */
+    if fvs[0].F != 0 {
+        p.i64(OP_seek, int64(fvs[0].F))
+    }
+
+    /* encode the first field */
     p.i64(OP_byte, int64(fvs[0].Type.Tag()))
     p.i64(OP_word, int64(fvs[0].ID))
     self.compileOne(p, sp + 1, fvs[0].Type)
 
     /* remaining fields */
     for i, fv := range fvs[1:] {
+        f := fvs[i].F
         p.i64(OP_size, 3)
-        p.i64(OP_seek, int64(fv.F - fvs[i].F))
+
+        /* omit zero offset */
+        if f != fv.F {
+            p.i64(OP_seek, int64(fv.F - f))
+        }
+
+        /* encode the current field */
         p.i64(OP_byte, int64(fv.Type.Tag()))
         p.i64(OP_word, int64(fv.ID))
         self.compileOne(p, sp + 1, fv.Type)
