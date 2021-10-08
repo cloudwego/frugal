@@ -26,6 +26,15 @@ const (
     StateCap = defs.MaxStack * (defs.PtrSize * 3)
 )
 
+const (
+    LnSize    = 8
+    MiSize    = 8
+    WpSize    = 8
+    LnMiSize  = LnSize + MiSize
+    MiWpSize  = MiSize + WpSize
+    StateSize = LnSize + MiSize + WpSize
+)
+
 // StateItem is the runtime state.
 // The translator knows the layout and size of this struct, so please in sync with it.
 type StateItem struct {
