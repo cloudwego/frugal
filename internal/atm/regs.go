@@ -57,7 +57,6 @@ const (
     P5
     P6
     P7
-    LR
     Pn
 )
 
@@ -82,7 +81,6 @@ var _PR_Names = [...]string {
     P5: "p5",
     P6: "p6",
     P7: "p7",
-    LR: "lr",
     Pn: "nil",
 }
 

@@ -54,14 +54,9 @@ func resolve(vt *rt.GoType) (Encoder, error) {
 }
 
 func compile(vt *rt.GoType) (interface{}, error) {
-    cc := CreateCompiler()
-    hp, err := cc.Compile(vt.Pack())
-
-    /* compile the type into High-Level IL, then
-     * translate to Low-Leve IL, and then link the program */
-    if cc.Free(); err != nil {
+    if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
         return nil, err
     } else {
-        return link(Translate(hp)), nil
+        return link(Translate(pp)), nil
     }
 }

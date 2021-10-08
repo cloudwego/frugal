@@ -278,18 +278,22 @@ func (self Compiler) Free() {
     freeCompiler(self)
 }
 
-func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
-    ret = newProgram()
+func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
+    ret := newProgram()
     vtp := defs.ParseType(vt, "")
 
     /* catch the exceptions, and free the type */
     defer self.rescue(&err)
     defer vtp.Free()
 
-    /* compile the actual type */
+    /* compile and optimize the actual type */
     self.compileOne(&ret, 0, vtp)
     ret.add(OP_halt)
-
-    /* optimize the High-Level IL */
     return Optimize(ret), nil
+}
+
+func (self Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
+    ret, err = self.Compile(vt)
+    self.Free()
+    return
 }

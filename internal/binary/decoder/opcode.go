@@ -28,7 +28,7 @@ const (
     OP_bin
     OP_size
     OP_type
-    OP_index
+    OP_seek
     OP_deref
     OP_map_next
     OP_map_begin
@@ -45,11 +45,13 @@ const (
     OP_list_begin
     OP_list_is_done
     OP_struct_skip
-    OP_struct_begin
+    OP_struct_ignore
+    OP_struct_bitmap
     OP_struct_switch
     OP_struct_require
     OP_struct_is_stop
     OP_struct_read_tag
+    OP_struct_mark_tag
     OP_struct_check_type
     OP_make_state
     OP_drop_state
@@ -65,7 +67,7 @@ var _OpNames = [256]string {
     OP_bin               : "bin",
     OP_size              : "size",
     OP_type              : "type",
-    OP_index             : "index",
+    OP_seek              : "seek",
     OP_deref             : "deref",
     OP_map_next          : "map_next",
     OP_map_begin         : "map_begin",
@@ -82,11 +84,13 @@ var _OpNames = [256]string {
     OP_list_begin        : "list_begin",
     OP_list_is_done      : "list_is_done",
     OP_struct_skip       : "struct_skip",
-    OP_struct_begin      : "struct_begin",
+    OP_struct_ignore     : "struct_ignore",
+    OP_struct_bitmap     : "struct_bitmap",
     OP_struct_switch     : "struct_switch",
     OP_struct_require    : "struct_require",
     OP_struct_is_stop    : "struct_is_stop",
     OP_struct_read_tag   : "struct_read_tag",
+    OP_struct_mark_tag   : "struct_mark_tag",
     OP_struct_check_type : "struct_check_type",
     OP_make_state        : "make_state",
     OP_drop_state        : "drop_state",
@@ -94,6 +98,15 @@ var _OpNames = [256]string {
     OP_defer             : "defer",
     OP_goto              : "goto",
     OP_halt              : "halt",
+}
+
+var _OpBranches = [256]bool {
+    OP_map_is_done       : true,
+    OP_list_is_done      : true,
+    OP_struct_switch     : true,
+    OP_struct_is_stop    : true,
+    OP_struct_check_type : true,
+    OP_goto              : true,
 }
 
 func (self OpCode) String() string {

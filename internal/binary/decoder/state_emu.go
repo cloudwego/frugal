@@ -17,15 +17,22 @@
 package decoder
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+//go:noescape
+//go:linkname memclrNoHeapPointers runtime.memclrNoHeapPointers
+//goland:noinspection GoUnusedParameter
+func memclrNoHeapPointers(p unsafe.Pointer, n uintptr)
+
 func emu_ccall_StateClearBitmap(e *atm.Emulator, p *atm.Instr) {
-    if p.An != 1 || p.Rn != 0 || (p.Av[0] & atm.ArgPointer) == 0 {
+    if p.An != 2 || p.Rn != 0 || (p.Av[0] & atm.ArgPointer) == 0 || (p.Av[1] & atm.ArgPointer) != 0 {
         panic("invalid StateClearBitmap call")
     } else {
-        (*StateItem)(e.Pr[p.Av[0] & atm.ArgMask]).Fm = [MaxBitmap]uint8{}
+        memclrNoHeapPointers(unsafe.Pointer(uintptr(e.Pr[p.Av[0] & atm.ArgMask]) + NbWpSize), uintptr(e.Gr[p.Av[1] & atm.ArgMask]))
     }
 }
 

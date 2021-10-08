@@ -83,7 +83,7 @@ func append4(s *[]byte, v uint32) {
 }
 
 func append8(s *[]byte, v uint64) {
-    sl := checksl(s, 4)
+    sl := checksl(s, 8)
     sl.Set(sl.Len + 0, byte(v >> 56))
     sl.Set(sl.Len + 1, byte(v >> 48))
     sl.Set(sl.Len + 2, byte(v >> 40))

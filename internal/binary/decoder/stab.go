@@ -19,34 +19,12 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
-const (
-    MaxField  = 65536
-    MaxBitmap = MaxField / 8
-)
-
-const (
-    NbSize    = 8
-    WpSize    = 8
-    FmSize    = MaxBitmap
-    NbWpSize  = NbSize + WpSize
-    StateSize = NbSize + WpSize + FmSize
-)
-
-var (
-    FnStateClearBitmap unsafe.Pointer
-)
-
-// StateItem is the runtime state.
-// The translator knows the layout and size of this struct, so please keep in sync with it.
-type StateItem struct {
-    Nb uint64
-    Wp unsafe.Pointer
-    Fm [MaxBitmap]uint8
-}
-
-type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+func mkstab(sw *int, iv int64) (p []int) {
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(iv)
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(iv)
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = unsafe.Pointer(sw)
+    return
 }

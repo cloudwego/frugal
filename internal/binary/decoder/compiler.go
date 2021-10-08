@@ -17,7 +17,11 @@
 package decoder
 
 import (
+    `fmt`
     `reflect`
+    `sort`
+    `strconv`
+    `strings`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
@@ -33,6 +37,65 @@ type Instr struct {
     Iv int64
     Sw *int
     Vt *rt.GoType
+}
+
+func (self Instr) stab() string {
+    t := mkstab(self.Sw, self.Iv)
+    s := make([]string, 0, self.Iv)
+
+    /* convert to strings */
+    for i, v := range t {
+        s = append(s, fmt.Sprintf("\t%4ccase %d: L_%d\n", ' ', i, v))
+    }
+
+    /* join them together */
+    return "{\n" + strings.Join(s, "") + "\t}"
+}
+
+func (self Instr) rtab() string {
+    t := mkstab(self.Sw, self.Iv)
+    s := make([]string, 0, self.Iv)
+
+    /* convert to strings */
+    for _, v := range t {
+        s = append(s, strconv.Itoa(v))
+    }
+
+    /* join with ',' */
+    return strings.Join(s, ", ")
+}
+
+func (self Instr) Disassemble() string {
+    switch self.Op {
+        case OP_int               : fallthrough
+        case OP_size              : fallthrough
+        case OP_seek              : fallthrough
+        case OP_struct_bitmap     : fallthrough
+        case OP_struct_mark_tag   : return fmt.Sprintf("%-18s%d", self.Op, self.Iv)
+        case OP_type              : return fmt.Sprintf("%-18s%d", self.Op, self.Tx)
+        case OP_deref             : fallthrough
+        case OP_map_begin         : fallthrough
+        case OP_map_set_i8        : fallthrough
+        case OP_map_set_i16       : fallthrough
+        case OP_map_set_i32       : fallthrough
+        case OP_map_set_i64       : fallthrough
+        case OP_map_set_str       : fallthrough
+        case OP_map_set_bool      : fallthrough
+        case OP_map_set_double    : fallthrough
+        case OP_map_set_pointer   : fallthrough
+        case OP_list_next         : fallthrough
+        case OP_list_begin        : fallthrough
+        case OP_construct         : fallthrough
+        case OP_defer             : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
+        case OP_map_is_done       : fallthrough
+        case OP_list_is_done      : fallthrough
+        case OP_struct_is_stop    : fallthrough
+        case OP_goto              : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
+        case OP_struct_check_type : return fmt.Sprintf("%-18s%d, L_%d", self.Op, self.Tx, self.To)
+        case OP_struct_switch     : return fmt.Sprintf("%-18s%s", self.Op, self.stab())
+        case OP_struct_require    : return fmt.Sprintf("%-18s%s", self.Op, self.rtab())
+        default                   : return self.Op.String()
+    }
 }
 
 func mkins(op OpCode, dt defs.Tag, id uint16, to int, iv int64, sw []int, vt reflect.Type) Instr {
@@ -57,7 +120,7 @@ func (self Program) pc() int {
 }
 
 func (self Program) pin(i int) {
-    self[i].Iv = int64(self.pc())
+    self[i].To = int32(self.pc())
 }
 
 func (self Program) def(n int) {
@@ -77,6 +140,42 @@ func (self *Program) jcc(op OpCode, vt defs.Tag, to int) { self.ins(mkins(op, vt
 
 func (self Program) Free() {
     freeProgram(self)
+}
+
+func (self Program) Disassemble() string {
+    nb  := len(self)
+    tab := make([]bool, nb + 1)
+    ret := make([]string, 0, nb + 1)
+
+    /* prescan to get all the labels */
+    for _, ins := range self {
+        if _OpBranches[ins.Op] {
+            if ins.Op != OP_struct_switch {
+                tab[ins.To] = true
+            } else {
+                for _, v := range mkstab(ins.Sw, ins.Iv) {
+                    tab[v] = true
+                }
+            }
+        }
+    }
+
+    /* disassemble each instruction */
+    for i, ins := range self {
+        if !tab[i] {
+            ret = append(ret, "\t" + ins.Disassemble())
+        } else {
+            ret = append(ret, fmt.Sprintf("L_%d:\n\t%s", i, ins.Disassemble()))
+        }
+    }
+
+    /* add the last label, if needed */
+    if tab[nb] {
+        ret = append(ret, fmt.Sprintf("L_%d:", nb))
+    }
+
+    /* add an "end" indicator, and join all the strings */
+    return strings.Join(append(ret, "\tend"), "\n")
 }
 
 func CreateCompiler() Compiler {
@@ -129,7 +228,7 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
     p.add(OP_make_state)
-    p.rtt(OP_deref, vt.S)
+    p.rtt(OP_deref, vt.V.S)
     self.compileOne(p, sp, vt.V)
     p.add(OP_drop_state)
 }
@@ -153,13 +252,13 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
     switch vt.K.Tag() {
-        case defs.T_bool    : p.rtt(OP_map_set_bool, vt.V.S)
-        case defs.T_i8      : p.rtt(OP_map_set_i8, vt.V.S)
-        case defs.T_double  : p.rtt(OP_map_set_double, vt.V.S)
-        case defs.T_i16     : p.rtt(OP_map_set_i16, vt.V.S)
-        case defs.T_i32     : p.rtt(OP_map_set_i32, vt.V.S)
-        case defs.T_i64     : p.rtt(OP_map_set_i64, vt.V.S)
-        case defs.T_string  : p.rtt(OP_map_set_str, vt.V.S)
+        case defs.T_bool    : p.rtt(OP_map_set_bool, vt.S)
+        case defs.T_i8      : p.rtt(OP_map_set_i8, vt.S)
+        case defs.T_double  : p.rtt(OP_map_set_double, vt.S)
+        case defs.T_i16     : p.rtt(OP_map_set_i16, vt.S)
+        case defs.T_i32     : p.rtt(OP_map_set_i32, vt.S)
+        case defs.T_i64     : p.rtt(OP_map_set_i64, vt.S)
+        case defs.T_string  : p.rtt(OP_map_set_str, vt.S)
         case defs.T_pointer : self.compileKeyPtr(p, sp, vt)
         default             : panic("unreachable")
     }
@@ -177,7 +276,7 @@ func (self Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
     /* construct a new object */
     p.rtt(OP_construct, st.S)
     self.compileOne(p, sp, st)
-    p.add(OP_map_set_pointer)
+    p.rtt(OP_map_set_pointer, vt.S)
 }
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
@@ -192,27 +291,34 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
         panic(err)
     }
 
+    /* empty struct */
+    if len(fvs) == 0 {
+        p.add(OP_struct_ignore)
+        return
+    }
+
     /* find the maximum field IDs */
     for _, fv := range fvs {
-        id := int(fv.ID)
-        fid = utils.MaxInt(fid, id)
-
-        /* required fields */
-        if fv.Spec == defs.Required {
+        if fid = utils.MaxInt(fid, int(fv.ID)); fv.Spec == defs.Required {
             req = append(req, int(fv.ID))
             rid = utils.MaxInt(rid, int(fv.ID))
         }
     }
 
-    /* start parsing the struct */
+    /* save the current state */
     p.def(sp)
-    p.i64(OP_struct_begin, int64(rid))
+    p.add(OP_make_state)
+
+    /* allocate bitmap for required fields, if needed */
+    if sort.Ints(req); len(req) != 0 {
+        p.i64(OP_struct_bitmap, int64(rid))
+    }
 
     /* switch jump buffer */
     i := p.pc()
     s := make([]int, fid + 1)
 
-    /* check for stop field */
+    /* dispatch the next field */
     p.i64(OP_size, 1)
     p.add(OP_struct_read_tag)
     j := p.pc()
@@ -223,19 +329,46 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     p.add(OP_struct_skip)
     p.jmp(OP_goto, i)
 
+    /* default to the skipping routine */
+    for v := range s {
+        s[v] = k
+    }
+
     /* assemble every field */
-    for _, fv := range fvs {
+    for id, fv := range fvs {
+        off := fv.F
         s[fv.ID] = p.pc()
         p.jcc(OP_struct_check_type, fv.Type.Tag(), k)
-        p.i64(OP_index, int64(fv.F))
+
+        /* mark the field as seen, if needed */
+        if fv.Spec == defs.Required {
+            p.i64(OP_struct_mark_tag, int64(id))
+        }
+
+        /* calculate distance to the previous field */
+        if id != 0 {
+            off -= fvs[id - 1].F
+        }
+
+        /* seek the field, if needed */
+        if off != 0 {
+            p.i64(OP_seek, int64(off))
+        }
+
+        /* parse the field */
         self.compileOne(p, sp + 1, fv.Type)
-        p.i64(OP_index, -int64(fv.F))
         p.jmp(OP_goto, i)
     }
 
+    /* no required fields */
+    if p.pin(j); len(req) == 0 {
+        p.add(OP_drop_state)
+        return
+    }
+
     /* check all the required fields */
-    p.pin(j)
     p.tab(OP_struct_require, req)
+    p.add(OP_drop_state)
 }
 
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
@@ -251,7 +384,7 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.rtt(OP_list_next, et.S)
     k := p.pc()
     p.add(OP_list_is_done)
-    p.i64(OP_index, int64(et.S.Size()))
+    p.i64(OP_seek, int64(et.S.Size()))
     p.jmp(OP_goto, j)
     p.pin(i)
     p.pin(k)
@@ -262,8 +395,8 @@ func (self Compiler) Free() {
     freeCompiler(self)
 }
 
-func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
-    ret = newProgram()
+func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
+    ret := newProgram()
     vtp := defs.ParseType(vt, "")
 
     /* catch the exceptions, and free the type */
@@ -274,4 +407,10 @@ func (self Compiler) Compile(vt reflect.Type) (ret Program, err error) {
     self.compileOne(&ret, 0, vtp)
     ret.add(OP_halt)
     return ret, nil
+}
+
+func (self Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
+    ret, err = self.Compile(vt)
+    self.Free()
+    return
 }
