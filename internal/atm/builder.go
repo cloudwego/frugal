@@ -17,11 +17,9 @@
 package atm
 
 import (
-    `fmt`
     `reflect`
     `strconv`
     `strings`
-    `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
@@ -337,18 +335,10 @@ func (self *Builder) HALT() *Instr {
     return self.add(newInstr(OP_halt))
 }
 
-func (self *Builder) CCALL(fn unsafe.Pointer) *Instr {
-    if ccallTab[fn] == nil {
-        panic(fmt.Sprintf("ccall to unknown function: %p", fn))
-    } else {
-        return self.add(newInstr(OP_ccall).pr(fn))
-    }
+func (self *Builder) CCALL(fn CFunction) *Instr {
+    return self.add(newInstr(OP_ccall).pr(fn))
 }
 
 func (self *Builder) GCALL(fn interface{}) *Instr {
-    if fp := rt.FuncAddr(fn); gcallTab[fp] == nil {
-        panic(fmt.Sprintf("gcall to unknown function: %p", fn))
-    } else {
-        return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
-    }
+    return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
 }

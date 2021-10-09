@@ -30,20 +30,20 @@ func emu_gcall_IoVecPut(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments */
     if (p.An != 5 || p.Rn != 0) ||
-        (p.Av[0] & atm.ArgPointer) == 0 ||
-        (p.Av[1] & atm.ArgPointer) == 0 ||
-        (p.Av[2] & atm.ArgPointer) == 0 ||
-        (p.Av[3] & atm.ArgPointer) != 0 ||
-        (p.Av[4] & atm.ArgPointer) != 0 {
+        (p.Ai[0] & atm.ArgPointer) == 0 ||
+        (p.Ai[1] & atm.ArgPointer) == 0 ||
+        (p.Ai[2] & atm.ArgPointer) == 0 ||
+        (p.Ai[3] & atm.ArgPointer) != 0 ||
+        (p.Ai[4] & atm.ArgPointer) != 0 {
         panic("invalid IoVecPut call")
     }
 
     /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Av[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Av[1] & atm.ArgMask]
-    v1.Ptr   =              e.Pr[p.Av[2] & atm.ArgMask]
-    v1.Len   =          int(e.Gr[p.Av[3] & atm.ArgMask])
-    v1.Cap   =          int(e.Gr[p.Av[4] & atm.ArgMask])
+    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
+    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
+    v1.Ptr   =              e.Pr[p.Ai[2] & atm.ArgMask]
+    v1.Len   =          int(e.Gr[p.Ai[3] & atm.ArgMask])
+    v1.Cap   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
 
     /* call the function */
     IoVecPut(
@@ -59,26 +59,26 @@ func emu_gcall_IoVecCat(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments */
     if (p.An != 8 || p.Rn != 0) ||
-        (p.Av[0] & atm.ArgPointer) == 0 ||
-        (p.Av[1] & atm.ArgPointer) == 0 ||
-        (p.Av[2] & atm.ArgPointer) == 0 ||
-        (p.Av[3] & atm.ArgPointer) != 0 ||
-        (p.Av[4] & atm.ArgPointer) != 0 ||
-        (p.Av[5] & atm.ArgPointer) == 0 ||
-        (p.Av[6] & atm.ArgPointer) != 0 ||
-        (p.Av[7] & atm.ArgPointer) != 0 {
+        (p.Ai[0] & atm.ArgPointer) == 0 ||
+        (p.Ai[1] & atm.ArgPointer) == 0 ||
+        (p.Ai[2] & atm.ArgPointer) == 0 ||
+        (p.Ai[3] & atm.ArgPointer) != 0 ||
+        (p.Ai[4] & atm.ArgPointer) != 0 ||
+        (p.Ai[5] & atm.ArgPointer) == 0 ||
+        (p.Ai[6] & atm.ArgPointer) != 0 ||
+        (p.Ai[7] & atm.ArgPointer) != 0 {
         panic("invalid IoVecCat call")
     }
 
     /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Av[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Av[1] & atm.ArgMask]
-    v1.Ptr   =              e.Pr[p.Av[2] & atm.ArgMask]
-    v1.Len   =          int(e.Gr[p.Av[3] & atm.ArgMask])
-    v1.Cap   =          int(e.Gr[p.Av[4] & atm.ArgMask])
-    v2.Ptr   =              e.Pr[p.Av[5] & atm.ArgMask]
-    v2.Len   =          int(e.Gr[p.Av[6] & atm.ArgMask])
-    v2.Cap   =          int(e.Gr[p.Av[7] & atm.ArgMask])
+    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
+    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
+    v1.Ptr   =              e.Pr[p.Ai[2] & atm.ArgMask]
+    v1.Len   =          int(e.Gr[p.Ai[3] & atm.ArgMask])
+    v1.Cap   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
+    v2.Ptr   =              e.Pr[p.Ai[5] & atm.ArgMask]
+    v2.Len   =          int(e.Gr[p.Ai[6] & atm.ArgMask])
+    v2.Cap   =          int(e.Gr[p.Ai[7] & atm.ArgMask])
 
     /* call the function */
     IoVecCat(
@@ -95,12 +95,12 @@ func emu_gcall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments */
     if (p.An != 6 || p.Rn != 3) ||
-        (p.Av[0] & atm.ArgPointer) == 0 ||
-        (p.Av[1] & atm.ArgPointer) == 0 ||
-        (p.Av[2] & atm.ArgPointer) != 0 ||
-        (p.Av[3] & atm.ArgPointer) == 0 ||
-        (p.Av[4] & atm.ArgPointer) != 0 ||
-        (p.Av[5] & atm.ArgPointer) != 0 ||
+        (p.Ai[0] & atm.ArgPointer) == 0 ||
+        (p.Ai[1] & atm.ArgPointer) == 0 ||
+        (p.Ai[2] & atm.ArgPointer) != 0 ||
+        (p.Ai[3] & atm.ArgPointer) == 0 ||
+        (p.Ai[4] & atm.ArgPointer) != 0 ||
+        (p.Ai[5] & atm.ArgPointer) != 0 ||
         (p.Rv[0] & atm.ArgPointer) == 0 ||
         (p.Rv[1] & atm.ArgPointer) != 0 ||
         (p.Rv[2] & atm.ArgPointer) != 0 {
@@ -108,12 +108,12 @@ func emu_gcall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
     }
 
     /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Av[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Av[1] & atm.ArgMask]
-    v1       =          int(e.Gr[p.Av[2] & atm.ArgMask])
-    v2.Ptr   =              e.Pr[p.Av[3] & atm.ArgMask]
-    v2.Len   =          int(e.Gr[p.Av[4] & atm.ArgMask])
-    v2.Cap   =          int(e.Gr[p.Av[5] & atm.ArgMask])
+    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
+    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
+    v1       =          int(e.Gr[p.Ai[2] & atm.ArgMask])
+    v2.Ptr   =              e.Pr[p.Ai[3] & atm.ArgMask]
+    v2.Len   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
+    v2.Cap   =          int(e.Gr[p.Ai[5] & atm.ArgMask])
 
     /* call the function */
     ret := IoVecAdd(

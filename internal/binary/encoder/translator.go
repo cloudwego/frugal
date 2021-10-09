@@ -65,6 +65,7 @@ const (
 )
 
 const (
+    LB_halt     = "_halt"
     LB_error    = "_error"
     LB_overflow = "_overflow"
 )
@@ -115,16 +116,16 @@ func prologue(p *atm.Builder) {
 }
 
 func epilogue(p *atm.Builder) {
-    p.Label ("_halt")                   // _halt:
+    p.Label (LB_halt)                   // _halt:
     p.BEQ   (RL, atm.Rz, "_nobuf")      // if RL == 0 then GOTO _nobuf
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
     p.GCALL (utils.IoVecPut).           // GCALL IoVecPut:
-      A0    (0, ET).                    //     p.itab <= ET
-      A1    (0, EP).                    //     p.data <= EP
-      A2    (1, RP).                    //     v.ptr  <= RP
-      A3    (1, RL).                    //     v.len  <= RL
-      A4    (1, RC)                     //     v.cap  <= RC
+      A0    (ET).                       //     p.itab <= ET
+      A1    (EP).                       //     p.data <= EP
+      A2    (RP).                       //     v.ptr  <= RP
+      A3    (RL).                       //     v.len  <= RL
+      A4    (RC)                        //     v.cap  <= RC
     p.Label ("_nobuf")                  // _nobuf:
     p.MOVP  (atm.Pn, ET)                // ET <= nil
     p.MOVP  (atm.Pn, EP)                // EP <= nil
@@ -194,15 +195,15 @@ func translate_OP_size(p *atm.Builder, v Instr) {
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
     p.GCALL (utils.IoVecAdd).           // GCALL IoVecAdd:
-      A0    (0, ET).                    //     p.itab  <= ET
-      A1    (0, EP).                    //     p.data  <= EP
-      A2    (1, TR).                    //     n       <= TR
-      A3    (2, RP).                    //     v.ptr   <= RP
-      A4    (2, RL).                    //     v.len   <= RL
-      A5    (2, RC).                    //     v.cap   <= RC
-      R0    (0, RP).                    //     ret.ptr => RP
-      R1    (0, RL).                    //     ret.len => RL
-      R2    (0, RC)                     //     ret.cap => RC
+      A0    (ET).                       //     p.itab  <= ET
+      A1    (EP).                       //     p.data  <= EP
+      A2    (TR).                       //     n       <= TR
+      A3    (RP).                       //     v.ptr   <= RP
+      A4    (RL).                       //     v.len   <= RL
+      A5    (RC).                       //     v.cap   <= RC
+      R0    (RP).                       //     ret.ptr => RP
+      R1    (RL).                       //     ret.len => RL
+      R2    (RC)                        //     ret.cap => RC
 }
 
 func translate_OP_sint(p *atm.Builder, v Instr) {
@@ -230,14 +231,14 @@ func translate_OP_vstr(p *atm.Builder, _ Instr) {
     p.LDAP  (0, ET)                     //  ET <=  a0
     p.LDAP  (1, EP)                     //  EP <=  a1
     p.GCALL (utils.IoVecCat).           //  GCALL IoVecCat:
-      A0    (0, ET).                    //     p.itab <= ET
-      A1    (0, EP).                    //     p.data <= EP
-      A2    (1, RP).                    //     v.ptr  <= RP
-      A3    (1, RL).                    //     v.len  <= RL
-      A4    (1, RC).                    //     v.cap  <= RC
-      A5    (2, TP).                    //     w.ptr  <= TP
-      A6    (2, TR).                    //     w.len  <= TR
-      A7    (2, TR)                     //     w.cap  <= TR
+      A0    (ET).                       //     p.itab <= ET
+      A1    (EP).                       //     p.data <= EP
+      A2    (RP).                       //     v.ptr  <= RP
+      A3    (RL).                       //     v.len  <= RL
+      A4    (RC).                       //     v.cap  <= RC
+      A5    (TP).                       //     w.ptr  <= TP
+      A6    (TR).                       //     w.len  <= TR
+      A7    (TR)                        //     w.cap  <= TR
     p.MOV   (atm.Rz, RC)                //  RC <=  0
     p.MOV   (atm.Rz, RL)                //  RL <=  0
     p.MOVP  (atm.Pn, RP)                //  RP <=  nil
@@ -257,21 +258,21 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
     p.IP    (v.Vt(), TP)                // TP <= v.Vt()
     p.SUBP  (RS, ST, RS)                // RS <= RS - ST
     p.GCALL (_F_encode).                // GCALL encode:
-      A0    (0, TP).                    //     vt       <= TP
-      A1    (1, ET).                    //     iov.itab <= ET
-      A2    (1, EP).                    //     iov.data <= EP
-      A3    (2, WP).                    //     p        <= WP
-      A4    (3, RS).                    //     rs       <= RS
-      A5    (4, ST).                    //     st       <= ST
-      R0    (0, ET).                    //     err.type => ET
-      R1    (0, EP)                     //     err.data => EP
+      A0    (TP).                       //     vt       <= TP
+      A1    (ET).                       //     iov.itab <= ET
+      A2    (EP).                       //     iov.data <= EP
+      A3    (WP).                       //     p        <= WP
+      A4    (RS).                       //     rs       <= RS
+      A5    (ST).                       //     st       <= ST
+      R0    (ET).                       //     err.type => ET
+      R1    (EP)                        //     err.data => EP
     p.ADDP  (RS, ST, RS)                // RS <= RS + ST
 }
 
 func translate_OP_map_end(p *atm.Builder, _ Instr) {
     p.SUBPI (RS, MiWpSize, TP)          // TP <=  RS - MiWpSize
     p.LP    (TP, TP)                    // TP <= *TP
-    p.GCALL (MapEndIterator).A0(0, TP)  // GCALL MapEndIterator(it: TP)
+    p.GCALL (MapEndIterator).A0(TP)     // GCALL MapEndIterator(it: TP)
 }
 
 func translate_OP_map_key(p *atm.Builder, _ Instr) {
@@ -283,7 +284,7 @@ func translate_OP_map_key(p *atm.Builder, _ Instr) {
 func translate_OP_map_next(p *atm.Builder, _ Instr) {
     p.SUBPI (RS, MiWpSize, TP)          // TP <=  RS - MiWpSize
     p.LP    (TP, TP)                    // TP <= *TP
-    p.GCALL (mapiternext).A0(0, TP)     // GCALL mapiternext(it: TP)
+    p.GCALL (mapiternext).A0(TP)        // GCALL mapiternext(it: TP)
 }
 
 func translate_OP_map_value(p *atm.Builder, _ Instr) {
@@ -302,9 +303,9 @@ func translate_OP_map_begin(p *atm.Builder, v Instr) {
     p.SL    (TR, TP)                    // *TP <=  TR
     p.IP    (v.Vt(), ET)                //  ET <=  v.Vt()
     p.GCALL (MapBeginIterator).         //  GCALL MapBeginIterator:
-      A0    (0, ET).                    //      vt <= ET
-      A1    (1, EP).                    //      vp <= EP
-      R0    (0, TP)                     //      it => TP
+      A0    (ET).                       //      vt <= ET
+      A1    (EP).                       //      vp <= EP
+      R0    (TP)                        //      it => TP
     p.SUBPI (RS, MiWpSize, EP)          //  EP <=  RS - MiWpSize
     p.SP    (TP, EP)                    // *EP <=  TP
 }
@@ -371,5 +372,5 @@ func translate_OP_drop_state(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_halt(p *atm.Builder, _ Instr) {
-    p.JAL   ("_halt", atm.Pn)           // GOTO _halt
+    p.JAL   (LB_halt, atm.Pn)           // GOTO _halt
 }

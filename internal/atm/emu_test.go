@@ -30,24 +30,24 @@ func init() {
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
         if (p.An != 6 || p.Rn != 4) ||
-           (p.Av[0] & ArgPointer) == 0 ||
-           (p.Av[1] & ArgPointer) != 0 ||
-           (p.Av[2] & ArgPointer) == 0 ||
-           (p.Av[3] & ArgPointer) != 0 ||
-           (p.Av[4] & ArgPointer) == 0 ||
-           (p.Av[5] & ArgPointer) != 0 ||
+           (p.Ai[0] & ArgPointer) == 0 ||
+           (p.Ai[1] & ArgPointer) != 0 ||
+           (p.Ai[2] & ArgPointer) == 0 ||
+           (p.Ai[3] & ArgPointer) != 0 ||
+           (p.Ai[4] & ArgPointer) == 0 ||
+           (p.Ai[5] & ArgPointer) != 0 ||
            (p.Rv[0] & ArgPointer) == 0 ||
            (p.Rv[1] & ArgPointer) != 0 ||
            (p.Rv[2] & ArgPointer) == 0 ||
            (p.Rv[3] & ArgPointer) != 0 {
             panic("invalid testemu_pfunc call")
         }
-        v0.P = e.Pr[p.Av[0] & ArgMask]
-        v0.L = e.Gr[p.Av[1] & ArgMask]
-        v1.P = e.Pr[p.Av[2] & ArgMask]
-        v1.L = e.Gr[p.Av[3] & ArgMask]
-        v2.P = e.Pr[p.Av[4] & ArgMask]
-        v2.L = e.Gr[p.Av[5] & ArgMask]
+        v0.P = e.Pr[p.Ai[0] & ArgMask]
+        v0.L = e.Gr[p.Ai[1] & ArgMask]
+        v1.P = e.Pr[p.Ai[2] & ArgMask]
+        v1.L = e.Gr[p.Ai[3] & ArgMask]
+        v2.P = e.Pr[p.Ai[4] & ArgMask]
+        v2.L = e.Gr[p.Ai[5] & ArgMask]
         r0, r1 := testemu_pfunc(
             *(*string)(unsafe.Pointer(&v0)),
             *(*string)(unsafe.Pointer(&v1)),

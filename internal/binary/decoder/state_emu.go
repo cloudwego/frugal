@@ -29,10 +29,10 @@ import (
 func memclrNoHeapPointers(p unsafe.Pointer, n uintptr)
 
 func emu_ccall_StateClearBitmap(e *atm.Emulator, p *atm.Instr) {
-    if p.An != 2 || p.Rn != 0 || (p.Av[0] & atm.ArgPointer) == 0 || (p.Av[1] & atm.ArgPointer) != 0 {
+    if p.An != 2 || p.Rn != 0 || (p.Ai[0] & atm.ArgPointer) == 0 || (p.Ai[1] & atm.ArgPointer) != 0 {
         panic("invalid StateClearBitmap call")
     } else {
-        memclrNoHeapPointers(unsafe.Pointer(uintptr(e.Pr[p.Av[0] & atm.ArgMask]) + NbWpSize), uintptr(e.Gr[p.Av[1] & atm.ArgMask]))
+        memclrNoHeapPointers(unsafe.Pointer(uintptr(e.Pr[p.Ai[0] & atm.ArgMask]) + NbWpSize), uintptr(e.Gr[p.Ai[1] & atm.ArgMask]))
     }
 }
 

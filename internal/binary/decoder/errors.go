@@ -14,35 +14,13 @@
  * limitations under the License.
  */
 
-package encoder
+package decoder
 
 import (
-    `unsafe`
-
-    `github.com/cloudwego/frugal/internal/binary/defs`
+    `fmt`
 )
 
-const (
-    StateCap = defs.MaxStack * (defs.PtrSize * 3)
-)
-
-const (
-    LnSize    = 8
-    MiSize    = 8
-    WpSize    = 8
-    LnMiSize  = LnSize + MiSize
-    MiWpSize  = MiSize + WpSize
-    StateSize = LnSize + MiSize + WpSize
-)
-
-// StateItem is the runtime state.
-// The translator knows the layout and size of this struct, so please keep in sync with it.
-type StateItem struct {
-    Ln uintptr
-    Mi unsafe.Pointer
-    Wp unsafe.Pointer
-}
-
-type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+//go:nosplit
+func error_eof(n int) error {
+    return fmt.Errorf("frugal: unexpected EOF: %d bytes short", n)
 }
