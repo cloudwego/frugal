@@ -55,11 +55,13 @@ const (
 const (
     TP = atm.P0
     TR = atm.R0
+    UR = atm.R1
 )
 
 const (
     LB_eof      = "_eof"
     LB_halt     = "_halt"
+    LB_type     = "_type"
     LB_error    = "_error"
     LB_overflow = "_overflow"
 )
@@ -86,6 +88,13 @@ func errors(p *atm.Builder) {
     p.SUB   (TR, IL, TR)                // TR <= TR - IL
     p.GCALL (error_eof).                // GCALL error_eof:
       A0    (TR).                       //     n        <= TR
+      R0    (ET).                       //     ret.itab => ET
+      R1    (EP)                        //     ret.data => EP
+    p.JAL   (LB_error, atm.Pn)          // GOTO _error
+    p.Label (LB_type)                   // _type:
+    p.GCALL (error_type).               // GCALL error_type:
+      A0    (UR).                       //     e        <= UR
+      A1    (TR).                       //     t        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
@@ -173,11 +182,22 @@ func translate_OP_int(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_str(p *atm.Builder, _ Instr) {
-
+    p.LQ    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 4, IL)                 //  IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 //  IP <=  IP + 4
+    p.BLTU  (IL, TR, LB_eof)            //  if IL < TR then GOTO _eof
+    p.SP    (atm.Pn, WP)                // *WP <=  nil
+    p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
+    p.SP    (IP, WP)                    // *WP <=  IP
+    p.Label ("_empty_{n}")              // _empty_{n}:
+    p.ADDPI (WP, 8, TP)                 //  TP <=  WP + 8
+    p.SQ    (TR, TP)                    // *TP <=  TR
 }
 
-func translate_OP_bin(p *atm.Builder, _ Instr) {
-
+func translate_OP_bin(p *atm.Builder, v Instr) {
+    translate_OP_str(p, v)
+    p.ADDPI (TP, 8, TP)                 //  TP <= TP + 8
+    p.SQ    (TR, TP)                    // *TP <= TR
 }
 
 func translate_OP_size(p *atm.Builder, v Instr) {
@@ -185,16 +205,32 @@ func translate_OP_size(p *atm.Builder, v Instr) {
     p.BLTU  (IL, TR, LB_eof)            // if IL < TR then GOTO _eof
 }
 
-func translate_OP_type(p *atm.Builder, _ Instr) {
-
+func translate_OP_type(p *atm.Builder, v Instr) {
+    p.LB    (IP, TR)                    // TR <= *IP
+    p.IB    (int8(v.Iv), UR)            // UR <=  v.Iv
+    p.BNE   (TR, UR, LB_type)           // if TR != UR then GOTO _type
+    p.SUBI  (IL, 1, IL)                 // IL <=  IL - 1
+    p.ADDPI (IP, 1, IP)                 // IP <=  IP + 1
 }
 
-func translate_OP_seek(p *atm.Builder, _ Instr) {
-
+func translate_OP_seek(p *atm.Builder, v Instr) {
+    p.ADDPI (WP, v.Iv, WP)              // WP <= WP + v.Iv
 }
 
-func translate_OP_deref(p *atm.Builder, _ Instr) {
-
+func translate_OP_deref(p *atm.Builder, v Instr) {
+    p.LQ    (WP, TR)                    //  TR <= *WP
+    p.BNE   (TR, atm.Rz, "_skip_{n}")   //  if TR != 0 then GOTO _skip_{n}
+    p.IB    (1, UR)                     //  UR <= 1
+    p.IP    (v.Vt, TP)                  //  TP <= v.Vt
+    p.IQ    (int64(v.Vt.Size), TR)      //  TR <= v.Vt.Size
+    p.GCALL (mallocgc).                 //  GCALL mallocgc:
+      A0    (TR).                       //      size     <= TR
+      A1    (TP).                       //      typ      <= TP
+      A2    (UR).                       //      needzero <= UR
+      R0    (TP)                        //      ret      => TP
+    p.SP    (TP, WP)                    // *WP <= TP
+    p.Label ("_skip_{n}")               // _skip_{n}:
+    p.LP    (WP, WP)                    //  WP <= *WP
 }
 
 func translate_OP_map_next(p *atm.Builder, _ Instr) {
@@ -297,18 +333,25 @@ func translate_OP_drop_state(p *atm.Builder, _ Instr) {
 
 }
 
-func translate_OP_construct(p *atm.Builder, _ Instr) {
-
+func translate_OP_construct(p *atm.Builder, v Instr) {
+    p.IB    (1, UR)                     //  UR <= 1
+    p.IP    (v.Vt, TP)                  //  TP <= v.Vt
+    p.IQ    (int64(v.Vt.Size), TR)      //  TR <= v.Vt.Size
+    p.GCALL (mallocgc).                 //  GCALL mallocgc:
+      A0    (TR).                       //      size     <= TR
+      A1    (TP).                       //      typ      <= TP
+      A2    (UR).                       //      needzero <= UR
+      R0    (WP)                        //      ret      => WP
 }
 
 func translate_OP_defer(p *atm.Builder, _ Instr) {
 
 }
 
-func translate_OP_goto(p *atm.Builder, _ Instr) {
-
+func translate_OP_goto(p *atm.Builder, v Instr) {
+    p.JAL   (p.At(int(v.To)), atm.Pn)   // GOTO @v.To
 }
 
 func translate_OP_halt(p *atm.Builder, _ Instr) {
-
+    p.JAL   (LB_halt, atm.Pn)           // GOTO _halt
 }

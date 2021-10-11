@@ -17,15 +17,12 @@
 package decoder
 
 import (
-    `fmt`
+    `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
-//go:nosplit
-func error_eof(n int) error {
-    return fmt.Errorf("frugal: unexpected EOF: %d bytes short", n)
-}
-
-//go:nosplit
-func error_type(e uint8, t uint8) error {
-    return fmt.Errorf("frugal: type mismatch: %d expected, got %d", e, t)
-}
+//go:noescape
+//go:linkname mallocgc runtime.mallocgc
+//goland:noinspection GoUnusedParameter
+func mallocgc(size uintptr, typ *rt.GoType, needzero bool) unsafe.Pointer

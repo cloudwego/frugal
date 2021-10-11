@@ -343,7 +343,7 @@ func translate_OP_list_if_end(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_goto(p *atm.Builder, v Instr) {
-    p.JAL   (p.At(v.To()), atm.Pn)      // GOTO @v.Iv()
+    p.JAL   (p.At(v.To()), atm.Pn)      // GOTO @v.To()
 }
 
 func translate_OP_if_nil(p *atm.Builder, v Instr) {
