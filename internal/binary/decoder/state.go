@@ -23,23 +23,28 @@ import (
 )
 
 const (
-    MaxField  = 65536
-    MaxBitmap = MaxField / 8
+    MaxField   = 65536
+    MaxBitmap  = MaxField / 8
+    MaxFastMap = 128
 )
 
 const (
     NbSize    = 8
     WpSize    = 8
     FmSize    = MaxBitmap
-    NbWpSize  = NbSize + WpSize
+    WpFmSize  = WpSize + FmSize
     StateSize = NbSize + WpSize + FmSize
+)
+
+const (
+    StateCap = defs.MaxStack * StateSize
 )
 
 var (
     FnStateClearBitmap unsafe.Pointer
 )
 
-// StateItem is the runtime state.
+// StateItem is the runtime state item.
 // The translator knows the layout and size of this struct, so please keep in sync with it.
 type StateItem struct {
     Nb uint64
@@ -48,5 +53,7 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+    St [defs.MaxStack]StateItem // Must not be the last field, otherwise RS might point beyond this struct.
+    Pr unsafe.Pointer           // Pointer spill space, used for non-fast string or pointer map access.
+    Iv uint64                   // Integer spill space, used for non-fast string map access.
 }

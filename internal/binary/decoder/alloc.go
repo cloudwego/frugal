@@ -23,6 +23,11 @@ import (
 )
 
 //go:noescape
+//go:linkname makemap runtime.makemap
+//goland:noinspection GoUnusedParameter
+func makemap(t *rt.GoMapType, hint int, h *rt.GoMap) *rt.GoMap
+
+//go:noescape
 //go:linkname mallocgc runtime.mallocgc
 //goland:noinspection GoUnusedParameter
 func mallocgc(size uintptr, typ *rt.GoType, needzero bool) unsafe.Pointer

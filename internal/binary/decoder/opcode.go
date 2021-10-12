@@ -30,20 +30,17 @@ const (
     OP_type
     OP_seek
     OP_deref
-    OP_map_next
-    OP_map_begin
+    OP_ctr_load
+    OP_ctr_decr
+    OP_ctr_is_zero
+    OP_map_alloc
     OP_map_set_i8
     OP_map_set_i16
     OP_map_set_i32
     OP_map_set_i64
     OP_map_set_str
-    OP_map_set_bool
-    OP_map_set_double
     OP_map_set_pointer
-    OP_map_is_done
-    OP_list_next
-    OP_list_begin
-    OP_list_is_done
+    OP_list_alloc
     OP_struct_skip
     OP_struct_ignore
     OP_struct_bitmap
@@ -69,20 +66,17 @@ var _OpNames = [256]string {
     OP_type              : "type",
     OP_seek              : "seek",
     OP_deref             : "deref",
-    OP_map_next          : "map_next",
-    OP_map_begin         : "map_begin",
+    OP_ctr_load          : "ctr_load",
+    OP_ctr_decr          : "ctr_decr",
+    OP_ctr_is_zero       : "ctr_is_zero",
+    OP_map_alloc         : "map_alloc",
     OP_map_set_i8        : "map_set_i8",
     OP_map_set_i16       : "map_set_i16",
     OP_map_set_i32       : "map_set_i32",
     OP_map_set_i64       : "map_set_i64",
     OP_map_set_str       : "map_set_str",
-    OP_map_set_bool      : "map_set_bool",
-    OP_map_set_double    : "map_set_double",
     OP_map_set_pointer   : "map_set_pointer",
-    OP_map_is_done       : "map_is_done",
-    OP_list_next         : "list_next",
-    OP_list_begin        : "list_begin",
-    OP_list_is_done      : "list_is_done",
+    OP_list_alloc        : "list_alloc",
     OP_struct_skip       : "struct_skip",
     OP_struct_ignore     : "struct_ignore",
     OP_struct_bitmap     : "struct_bitmap",
@@ -101,8 +95,7 @@ var _OpNames = [256]string {
 }
 
 var _OpBranches = [256]bool {
-    OP_map_is_done       : true,
-    OP_list_is_done      : true,
+    OP_ctr_is_zero       : true,
     OP_struct_switch     : true,
     OP_struct_is_stop    : true,
     OP_struct_check_type : true,

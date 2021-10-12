@@ -23,16 +23,16 @@ import (
 )
 
 const (
-    StateCap = defs.MaxStack * (defs.PtrSize * 3)
-)
-
-const (
     LnSize    = 8
     MiSize    = 8
     WpSize    = 8
     LnMiSize  = LnSize + MiSize
     MiWpSize  = MiSize + WpSize
     StateSize = LnSize + MiSize + WpSize
+)
+
+const (
+    StateCap = defs.MaxStack * StateSize
 )
 
 // StateItem is the runtime state.
@@ -44,5 +44,6 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+    St [defs.MaxStack]StateItem // Must not be the last field.
+    _  uint64                   // Here to prevent RS from pointing beyond this struct.
 }

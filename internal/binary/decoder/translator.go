@@ -20,6 +20,8 @@ import (
     `fmt`
 
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 /** Function Prototype
@@ -140,20 +142,17 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_type              : translate_OP_type,
     OP_seek              : translate_OP_seek,
     OP_deref             : translate_OP_deref,
-    OP_map_next          : translate_OP_map_next,
-    OP_map_begin         : translate_OP_map_begin,
+    OP_ctr_load          : translate_OP_ctr_load,
+    OP_ctr_decr          : translate_OP_ctr_decr,
+    OP_ctr_is_zero       : translate_OP_ctr_is_zero,
+    OP_map_alloc         : translate_OP_map_alloc,
     OP_map_set_i8        : translate_OP_map_set_i8,
     OP_map_set_i16       : translate_OP_map_set_i16,
     OP_map_set_i32       : translate_OP_map_set_i32,
     OP_map_set_i64       : translate_OP_map_set_i64,
     OP_map_set_str       : translate_OP_map_set_str,
-    OP_map_set_bool      : translate_OP_map_set_bool,
-    OP_map_set_double    : translate_OP_map_set_double,
     OP_map_set_pointer   : translate_OP_map_set_pointer,
-    OP_map_is_done       : translate_OP_map_is_done,
-    OP_list_next         : translate_OP_list_next,
-    OP_list_begin        : translate_OP_list_begin,
-    OP_list_is_done      : translate_OP_list_is_done,
+    OP_list_alloc        : translate_OP_list_alloc,
     OP_struct_skip       : translate_OP_struct_skip,
     OP_struct_ignore     : translate_OP_struct_ignore,
     OP_struct_bitmap     : translate_OP_struct_bitmap,
@@ -173,10 +172,10 @@ var translators = [256]func(*atm.Builder, Instr) {
 
 func translate_OP_int(p *atm.Builder, v Instr) {
     switch v.Iv {
-        case 1  : p.LB(IP, TR);                  p.SB(TR, WP); p.ADDPI(IP, 1, IP); p.SUBI(IL, 1, IL)   // *WP <= *TP++
-        case 2  : p.LW(IP, TR); p.SWAPW(TR, TR); p.SW(TR, WP); p.ADDPI(IP, 2, IP); p.SUBI(IL, 2, IL)   // *WP <= bswap16(*TP++)
-        case 4  : p.LL(IP, TR); p.SWAPL(TR, TR); p.SL(TR, WP); p.ADDPI(IP, 4, IP); p.SUBI(IL, 4, IL)   // *WP <= bswap32(*TP++)
-        case 8  : p.LQ(IP, TR); p.SWAPQ(TR, TR); p.SQ(TR, WP); p.ADDPI(IP, 8, IP); p.SUBI(IL, 8, IL)   // *WP <= bswap64(*TP++)
+        case 1  : p.LB(IP, TR);                  p.SB(TR, WP); p.SUBI(IL, 1, IL); p.ADDPI(IP, 1, IP)    // *WP <= *IP++
+        case 2  : p.LW(IP, TR); p.SWAPW(TR, TR); p.SW(TR, WP); p.SUBI(IL, 2, IL); p.ADDPI(IP, 2, IP)    // *WP <= bswap16(*IP++)
+        case 4  : p.LL(IP, TR); p.SWAPL(TR, TR); p.SL(TR, WP); p.SUBI(IL, 4, IL); p.ADDPI(IP, 4, IP)    // *WP <= bswap32(*IP++)
+        case 8  : p.LQ(IP, TR); p.SWAPQ(TR, TR); p.SQ(TR, WP); p.SUBI(IL, 8, IL); p.ADDPI(IP, 8, IP)    // *WP <= bswap64(*IP++)
         default : panic("can only convert 1, 2, 4 or 8 bytes at a time")
     }
 }
@@ -189,6 +188,8 @@ func translate_OP_str(p *atm.Builder, _ Instr) {
     p.SP    (atm.Pn, WP)                // *WP <=  nil
     p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
     p.SP    (IP, WP)                    // *WP <=  IP
+    p.SUB   (IL, TR, IL)                //  IL <=  IL - TR
+    p.ADDP  (IP, TR, IP)                //  IP <=  IP + TR
     p.Label ("_empty_{n}")              // _empty_{n}:
     p.ADDPI (WP, 8, TP)                 //  TP <=  WP + 8
     p.SQ    (TR, TP)                    // *TP <=  TR
@@ -233,60 +234,265 @@ func translate_OP_deref(p *atm.Builder, v Instr) {
     p.LP    (WP, WP)                    //  WP <= *WP
 }
 
-func translate_OP_map_next(p *atm.Builder, _ Instr) {
-
+func translate_OP_ctr_load(p *atm.Builder, _ Instr) {
+    p.LL    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 4, IL)                 //  IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 //  IP <=  IP + 4
+    p.SQ    (TR, RS)                    // *RS <=  TR
 }
 
-func translate_OP_map_begin(p *atm.Builder, _ Instr) {
-
+func translate_OP_ctr_decr(p *atm.Builder, _ Instr) {
+    p.LQ    (RS, TR)                    //  TR <= *RS
+    p.SUBI  (TR, 1, TR)                 //  TR <=  TR - 1
+    p.SQ    (TR, RS)                    // *RS <=  TR
 }
 
-func translate_OP_map_set_i8(p *atm.Builder, _ Instr) {
-
+func translate_OP_ctr_is_zero(p *atm.Builder, v Instr) {
+    p.LQ    (RS, TR)                    // TR <= *RS
+    p.BEQ   (TR, atm.Rz, p.At(v.To))    // if TR == 0 then GOTO @v.To
 }
 
-func translate_OP_map_set_i16(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_alloc(p *atm.Builder, v Instr) {
+    p.LQ    (RS, TR)                    //  TR <= *RS
+    p.LP    (WP, TP)                    //  TP <= *WP
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (makemap).                  //  GCALL makemap:
+      A0    (ET).                       //      t    <= ET
+      A1    (TR).                       //      hint <= TR
+      A2    (TP).                       //      h    <= TP
+      R0    (TP)                        //      ret  => TP
+    p.SP    (TP, WP)                    // *WP <=  TP
 }
 
-func translate_OP_map_set_i32(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i8(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          // TP <=  RS - WpFmSize
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+    p.GCALL (mapassign).                // GCALL mapassign:
+      A0    (ET).                       //     t   <= ET
+      A1    (TP).                       //     h   <= TP
+      A2    (IP).                       //     key <= IP
+      R0    (WP)                        //     ret => WP
+    p.SUBI  (IL, 1, IL)                 // IL <=  IL - 1
+    p.ADDPI (IP, 1, IP)                 // IP <=  IP + 1
 }
 
-func translate_OP_map_set_i64(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i16(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          //  TP <=  RS - WpFmSize
+    p.LP    (TP, EP)                    //  TP <= *EP
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.ADDPI (TP, WpSize, TP)            //  TP <=  TP + WpSize
+    p.LW    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 2, IL)                 //  IL <=  IL - 2
+    p.ADDPI (IP, 2, IP)                 //  IP <=  IP + 2
+    p.SWAPW (TR, TR)                    //  TR <=  bswap16(TR)
+    p.SQ    (TR, TP)                    // *TP <=  TR
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (mapassign).                // GCALL mapassign:
+      A0    (ET).                       //     t   <= ET
+      A1    (EP).                       //     h   <= EP
+      A2    (TP).                       //     key <= TP
+      R0    (WP)                        //     ret => WP
 }
 
-func translate_OP_map_set_str(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i32(p *atm.Builder, v Instr) {
+    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
+        translate_OP_map_set_i32_safe(p, v)
+    } else {
+        translate_OP_map_set_i32_fast(p, v)
+    }
 }
 
-func translate_OP_map_set_bool(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i32_fast(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          // TP <=  RS - WpFmSize
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LL    (IP, TR)                    // TR <= *IP
+    p.SWAPL (TR, TR)                    // TR <=  bswap32(TR)
+    p.SUBI  (IL, 4, IL)                 // IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 // IP <=  IP + 4
+    p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+    p.GCALL (mapassign_fast32).         // GCALL mapassign_fast32:
+      A0    (ET).                       //     t   <= ET
+      A1    (TP).                       //     h   <= TP
+      A2    (TR).                       //     key <= TR
+      R0    (WP)                        //     ret => WP
 }
 
-func translate_OP_map_set_double(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i32_safe(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          //  TP <=  RS - WpFmSize
+    p.LP    (TP, EP)                    //  TP <= *EP
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.ADDPI (TP, WpSize, TP)            //  TP <=  TP + WpSize
+    p.LL    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 4, IL)                 //  IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 //  IP <=  IP + 4
+    p.SWAPL (TR, TR)                    //  TR <=  bswap32(TR)
+    p.SQ    (TR, TP)                    // *TP <=  TR
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (mapassign).                // GCALL mapassign:
+      A0    (ET).                       //     t   <= ET
+      A1    (EP).                       //     h   <= EP
+      A2    (TP).                       //     key <= TP
+      R0    (WP)                        //     ret => WP
 }
 
-func translate_OP_map_set_pointer(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i64(p *atm.Builder, v Instr) {
+    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
+        translate_OP_map_set_i64_safe(p, v)
+    } else {
+        translate_OP_map_set_i64_fast(p, v)
+    }
 }
 
-func translate_OP_map_is_done(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i64_fast(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          // TP <=  RS - WpFmSize
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LQ    (IP, TR)                    // TR <= *IP
+    p.SWAPQ (TR, TR)                    // TR <=  bswap64(TR)
+    p.SUBI  (IL, 8, IL)                 // IL <=  IL - 8
+    p.ADDPI (IP, 8, IP)                 // IP <=  IP + 8
+    p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+    p.GCALL (mapassign_fast64).         // GCALL mapassign_fast64:
+      A0    (ET).                       //     t   <= ET
+      A1    (TP).                       //     h   <= TP
+      A2    (TR).                       //     key <= TR
+      R0    (WP)                        //     ret => WP
 }
 
-func translate_OP_list_next(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_i64_safe(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          //  TP <=  RS - WpFmSize
+    p.LP    (TP, EP)                    //  TP <= *EP
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.ADDPI (TP, WpSize, TP)            //  TP <=  TP + WpSize
+    p.LQ    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 8, IL)                 //  IL <=  IL - 8
+    p.ADDPI (IP, 8, IP)                 //  IP <=  IP + 8
+    p.SWAPQ (TR, TR)                    //  TR <=  bswap64(TR)
+    p.SQ    (TR, TP)                    // *TP <=  TR
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (mapassign).                // GCALL mapassign:
+      A0    (ET).                       //     t   <= ET
+      A1    (EP).                       //     h   <= EP
+      A2    (TP).                       //     key <= TP
+      R0    (WP)                        //     ret => WP
 }
 
-func translate_OP_list_begin(p *atm.Builder, _ Instr) {
-
+func translate_OP_map_set_str(p *atm.Builder, v Instr) {
+    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
+        translate_OP_map_set_str_safe(p, v)
+    } else {
+        translate_OP_map_set_str_fast(p, v)
+    }
 }
 
-func translate_OP_list_is_done(p *atm.Builder, _ Instr) {
+func translate_OP_map_set_str_fast(p *atm.Builder, v Instr) {
+    p.LQ    (IP, TR)                    // TR <= *IP
+    p.SUBI  (IL, 4, IL)                 // IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 // IP <=  IP + 4
+    p.BLTU  (IL, TR, LB_eof)            // if IL < TR then GOTO _eof
+    p.MOVP  (atm.Pn, EP)                // EP <=  nil
+    p.BEQ   (TR, atm.Rz, "_empty_{n}")  // if TR == 0 then GOTO _empty_{n}
+    p.MOVP  (IP, EP)                    // EP <=  IP
+    p.SUB   (IL, TR, IL)                // IL <=  IL - TR
+    p.ADDP  (IP, TR, IP)                // IP <=  IP + TR
+    p.Label ("_empty_{n}")              // _empty_{n}:
+    p.SUBPI (RS, WpFmSize, TP)          // TP <=  RS - WpFmSize
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+    p.GCALL (mapassign_faststr).        // GCALL mapassign_faststr:
+      A0    (ET).                       //     t     <= ET
+      A1    (TP).                       //     h     <= TP
+      A2    (EP).                       //     s.ptr <= EP
+      A3    (TR).                       //     s.len <= TR
+      R0    (WP)                        //     ret   => WP
+}
 
+func translate_OP_map_set_str_safe(p *atm.Builder, v Instr) {
+    p.LQ    (IP, TR)                    //  TR <= *IP
+    p.SUBI  (IL, 4, IL)                 //  IL <=  IL - 4
+    p.ADDPI (IP, 4, IP)                 //  IP <=  IP + 4
+    p.BLTU  (IL, TR, LB_eof)            //  if IL < TR then GOTO _eof
+    p.SUBP  (RS, ST, TP)                //  TP <=  RS - ST
+    p.ADDPI (TP, StateCap, TP)          //  TP <=  TP + StateCap
+    p.ADDPI (TP, defs.PtrSize, EP)      //  EP <=  TP + defs.PtrSize
+    p.SP    (atm.Pn, TP)                // *TP <=  nil
+    p.SQ    (TR, EP)                    // *EP <=  TR
+    p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
+    p.SP    (IP, TP)                    // *TP <=  IP
+    p.SUB   (IL, TR, IL)                //  IL <=  IL - TR
+    p.ADDP  (IP, TR, IP)                //  IP <=  IP + TR
+    p.Label ("_empty_{n}")              // _empty_{n}:
+    p.SUBPI (RS, WpFmSize, EP)          //  EP <=  RS - WpFmSize
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (mapassign).                //  GCALL mapassign:
+      A0    (ET).                       //      t   <= ET
+      A1    (EP).                       //      h   <= EP
+      A2    (TP).                       //      key <= TP
+      R0    (WP)                        //      ret => WP
+    p.SP    (atm.Pn, TP)                // *TP <=  nil
+}
+
+func translate_OP_map_set_pointer(p *atm.Builder, v Instr) {
+    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
+        translate_OP_map_set_pointer_safe(p, v)
+    } else {
+        translate_OP_map_set_pointer_fast(p, v)
+    }
+}
+
+func translate_OP_map_set_pointer_fast(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          // TP <=  RS - WpFmSize
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.LP    (TP, TP)                    // TP <= *TP
+    p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+    p.GCALL (mapassign_fast64ptr).      // GCALL mapassign_fast64ptr:
+      A0    (ET).                       //     t   <= ET
+      A1    (TP).                       //     h   <= TP
+      A2    (WP).                       //     key <= WP
+      R0    (WP)                        //     ret => WP
+}
+
+func translate_OP_map_set_pointer_safe(p *atm.Builder, v Instr) {
+    p.SUBPI (RS, WpFmSize, TP)          //  TP <=  RS - WpFmSize
+    p.LP    (TP, EP)                    //  TP <= *EP
+    p.LP    (EP, EP)                    //  EP <= *EP
+    p.SUBP  (RS, ST, TP)                //  TP <=  RS - ST
+    p.ADDPI (TP, StateCap, TP)          //  TP <=  TP + StateCap
+    p.SP    (WP, TP)                    // *TP <=  WP
+    p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
+    p.GCALL (mapassign).                // GCALL mapassign:
+      A0    (ET).                       //     t   <= ET
+      A1    (EP).                       //     h   <= EP
+      A2    (TP).                       //     key <= TP
+      R0    (WP)                        //     ret => WP
+    p.SP    (atm.Pn, TP)                // *TP <=  nil
+}
+
+func translate_OP_list_alloc(p *atm.Builder, v Instr) {
+    p.LQ    (RS, TR)                    //  TR <= *RS
+    p.ADDPI (WP, 8, TP)                 //  TP <=  WP + 8
+    p.SQ    (TR, TP)                    // *TP <=  TR
+    p.ADDPI (TP, 8, TP)                 //  TP <=  TP + 8
+    p.LQ    (TP, UR)                    //  UR <= *TP
+    p.BGEU  (UR, TR, "_noalloc_{n}")    //  if UR >= TR then GOTO _noalloc_{n}
+    p.SQ    (TR, TP)                    // *TP <=  TR
+    p.IB    (1, UR)                     //  UR <=  1
+    p.IP    (v.Vt, TP)                  //  TP <=  v.Vt
+    p.MULI  (TR, int64(v.Vt.Size), TR)  //  TR <=  TR * v.Vt.Size
+    p.GCALL (mallocgc).                 //  GCALL mallocgc:
+        A0  (TR).                       //      size     <= TR
+        A1  (TP).                       //      typ      <= TP
+        A2  (UR).                       //      needzero <= UR
+        R0  (TP)                        //      ret      => TP
+    p.SP    (TP, WP)                    // *WP <= TP
+    p.Label ("_noalloc_{n}")            // _noalloc_{n}:
+    p.LP    (WP, WP)                    //  WP <= *WP
 }
 
 func translate_OP_struct_skip(p *atm.Builder, _ Instr) {
@@ -326,11 +532,21 @@ func translate_OP_struct_check_type(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_make_state(p *atm.Builder, _ Instr) {
-
+    p.IQ    (StateCap, TR)              //  TR <= StateCap
+    p.BGEU  (ST, TR, LB_overflow)       //  if ST >= TR then GOTO _overflow
+    p.ADDPI (RS, NbSize, RS)            //  RS <= RS + NbSize
+    p.SP    (WP, RS)                    // *RS <= WP
+    p.ADDPI (RS, WpFmSize, RS)          //  RS <= RS + WpFmSize
+    p.ADDI  (ST, StateSize, ST)         //  ST <= ST + StateSize
 }
 
 func translate_OP_drop_state(p *atm.Builder, _ Instr) {
-
+    p.SUBI  (ST, StateSize, ST)         //  ST <=  ST - StateSize
+    p.SUBPI (RS, WpFmSize, RS)          //  RS <=  RS - WpFmSize
+    p.LP    (RS, WP)                    //  WP <= *RS
+    p.SP    (atm.Pn, RS)                // *RS <=  nil
+    p.SUBPI (RS, NbSize, RS)            //  RS <=  RS - NbSize
+    p.SQ    (atm.Rz, RS)                // *RS <=  0
 }
 
 func translate_OP_construct(p *atm.Builder, v Instr) {
@@ -349,7 +565,7 @@ func translate_OP_defer(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_goto(p *atm.Builder, v Instr) {
-    p.JAL   (p.At(int(v.To)), atm.Pn)   // GOTO @v.To
+    p.JAL   (p.At(v.To), atm.Pn)        // GOTO @v.To
 }
 
 func translate_OP_halt(p *atm.Builder, _ Instr) {

@@ -33,7 +33,7 @@ type Instr struct {
     Op OpCode
     Tx defs.Tag
     Id uint16
-    To int32
+    To int
     Iv int64
     Sw *int
     Vt *rt.GoType
@@ -74,21 +74,17 @@ func (self Instr) Disassemble() string {
         case OP_struct_mark_tag   : return fmt.Sprintf("%-18s%d", self.Op, self.Iv)
         case OP_type              : return fmt.Sprintf("%-18s%d", self.Op, self.Tx)
         case OP_deref             : fallthrough
-        case OP_map_begin         : fallthrough
+        case OP_map_alloc         : fallthrough
         case OP_map_set_i8        : fallthrough
         case OP_map_set_i16       : fallthrough
         case OP_map_set_i32       : fallthrough
         case OP_map_set_i64       : fallthrough
         case OP_map_set_str       : fallthrough
-        case OP_map_set_bool      : fallthrough
-        case OP_map_set_double    : fallthrough
         case OP_map_set_pointer   : fallthrough
-        case OP_list_next         : fallthrough
-        case OP_list_begin        : fallthrough
+        case OP_list_alloc        : fallthrough
         case OP_construct         : fallthrough
         case OP_defer             : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
-        case OP_map_is_done       : fallthrough
-        case OP_list_is_done      : fallthrough
+        case OP_ctr_is_zero       : fallthrough
         case OP_struct_is_stop    : fallthrough
         case OP_goto              : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
         case OP_struct_check_type : return fmt.Sprintf("%-18s%d, L_%d", self.Op, self.Tx, self.To)
@@ -103,7 +99,7 @@ func mkins(op OpCode, dt defs.Tag, id uint16, to int, iv int64, sw []int, vt ref
         Op: op,
         Tx: dt,
         Id: id,
-        To: int32(to),
+        To: to,
         Vt: rt.UnpackType(vt),
         Iv: int64(len(sw)) | iv,
         Sw: (*int)((*rt.GoSlice)(unsafe.Pointer(&sw)).Ptr),
@@ -120,7 +116,7 @@ func (self Program) pc() int {
 }
 
 func (self Program) pin(i int) {
-    self[i].To = int32(self.pc())
+    self[i].To = self.pc()
 }
 
 func (self Program) def(n int) {
@@ -239,12 +235,13 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.tag(OP_type, vt.K.Tag())
     p.tag(OP_type, vt.V.Tag())
     p.add(OP_make_state)
-    p.rtt(OP_map_begin, vt.S)
+    p.add(OP_ctr_load)
+    p.rtt(OP_map_alloc, vt.S)
     i := p.pc()
-    p.add(OP_map_is_done)
+    p.add(OP_ctr_is_zero)
     self.compileKey(p, sp + 1, vt)
     self.compileOne(p, sp + 1, vt.V)
-    p.add(OP_map_next)
+    p.add(OP_ctr_decr)
     p.jmp(OP_goto, i)
     p.pin(i)
     p.add(OP_drop_state)
@@ -252,13 +249,13 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
     switch vt.K.Tag() {
-        case defs.T_bool    : p.rtt(OP_map_set_bool, vt.S)
-        case defs.T_i8      : p.rtt(OP_map_set_i8, vt.S)
-        case defs.T_double  : p.rtt(OP_map_set_double, vt.S)
-        case defs.T_i16     : p.rtt(OP_map_set_i16, vt.S)
-        case defs.T_i32     : p.rtt(OP_map_set_i32, vt.S)
-        case defs.T_i64     : p.rtt(OP_map_set_i64, vt.S)
-        case defs.T_string  : p.rtt(OP_map_set_str, vt.S)
+        case defs.T_bool    : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
+        case defs.T_i8      : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
+        case defs.T_double  : p.i64(OP_size, 8); p.rtt(OP_map_set_i64, vt.S)
+        case defs.T_i16     : p.i64(OP_size, 2); p.rtt(OP_map_set_i16, vt.S)
+        case defs.T_i32     : p.i64(OP_size, 4); p.rtt(OP_map_set_i32, vt.S)
+        case defs.T_i64     : p.i64(OP_size, 8); p.rtt(OP_map_set_i64, vt.S)
+        case defs.T_string  : p.i64(OP_size, 4); p.rtt(OP_map_set_str, vt.S)
         case defs.T_pointer : self.compileKeyPtr(p, sp, vt)
         default             : panic("unreachable")
     }
@@ -376,14 +373,15 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.i64(OP_size, 5)
     p.tag(OP_type, et.Tag())
     p.add(OP_make_state)
-    p.rtt(OP_list_begin, et.S)
+    p.add(OP_ctr_load)
+    p.rtt(OP_list_alloc, et.S)
     i := p.pc()
-    p.add(OP_list_is_done)
+    p.add(OP_ctr_is_zero)
     j := p.pc()
     self.compileOne(p, sp + 1, et)
-    p.rtt(OP_list_next, et.S)
+    p.add(OP_ctr_decr)
     k := p.pc()
-    p.add(OP_list_is_done)
+    p.add(OP_ctr_is_zero)
     p.i64(OP_seek, int64(et.S.Size()))
     p.jmp(OP_goto, j)
     p.pin(i)

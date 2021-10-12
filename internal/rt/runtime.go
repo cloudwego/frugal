@@ -94,6 +94,11 @@ type GoSlice struct {
     Cap int
 }
 
+type GoString struct {
+    Ptr unsafe.Pointer
+    Len int
+}
+
 type GoMap struct {
     Count      int
     Flags      uint8
@@ -131,6 +136,14 @@ func (self GoSlice) Set(i int, v byte) {
 type GoSliceType struct {
     GoType
     Elem *GoType
+}
+
+func MapType(t *GoType) *GoMapType {
+    if t.Kind() != reflect.Map {
+        panic("t is not a map")
+    } else {
+        return (*GoMapType)(unsafe.Pointer(t))
+    }
 }
 
 func FuncAddr(f interface{}) unsafe.Pointer {
