@@ -32,7 +32,7 @@ const (
 )
 
 const (
-    StateCap = defs.MaxStack * StateSize
+    StateMax = (defs.MaxStack - 1) * StateSize
 )
 
 // StateItem is the runtime state.
@@ -44,6 +44,5 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem // Must not be the last field.
-    _  uint64                   // Here to prevent RS from pointing beyond this struct.
+    St [defs.MaxStack]StateItem
 }

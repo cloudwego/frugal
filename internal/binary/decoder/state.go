@@ -37,6 +37,7 @@ const (
 )
 
 const (
+    StateMax = StateCap - StateSize
     StateCap = defs.MaxStack * StateSize
 )
 
@@ -53,7 +54,7 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem // Must not be the last field, otherwise RS might point beyond this struct.
+    St [defs.MaxStack]StateItem // Must be the first field.
     Pr unsafe.Pointer           // Pointer spill space, used for non-fast string or pointer map access.
     Iv uint64                   // Integer spill space, used for non-fast string map access.
 }

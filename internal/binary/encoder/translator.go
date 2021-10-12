@@ -352,7 +352,7 @@ func translate_OP_if_nil(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_make_state(p *atm.Builder, _ Instr) {
-    p.IQ    (StateCap, TR)              //  TR <= StateCap
+    p.IQ    (StateMax, TR)              //  TR <= StateMax
     p.BGEU  (ST, TR, LB_overflow)       //  if ST >= TR then GOTO _overflow
     p.ADDPI (RS, LnMiSize, RS)          //  RS <= RS + LnMiSize
     p.SP    (WP, RS)                    // *RS <= WP
