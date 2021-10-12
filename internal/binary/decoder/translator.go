@@ -486,10 +486,10 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
     p.IP    (v.Vt, TP)                  //  TP <=  v.Vt
     p.MULI  (TR, int64(v.Vt.Size), TR)  //  TR <=  TR * v.Vt.Size
     p.GCALL (mallocgc).                 //  GCALL mallocgc:
-        A0  (TR).                       //      size     <= TR
-        A1  (TP).                       //      typ      <= TP
-        A2  (UR).                       //      needzero <= UR
-        R0  (TP)                        //      ret      => TP
+      A0    (TR).                       //      size     <= TR
+      A1    (TP).                       //      typ      <= TP
+      A2    (UR).                       //      needzero <= UR
+      R0    (TP)                        //      ret      => TP
     p.SP    (TP, WP)                    // *WP <= TP
     p.Label ("_noalloc_{n}")            // _noalloc_{n}:
     p.LP    (WP, WP)                    //  WP <= *WP
