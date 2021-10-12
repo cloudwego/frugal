@@ -466,11 +466,11 @@ func translate_OP_map_set_pointer_safe(p *atm.Builder, v Instr) {
     p.ADDPI (TP, StateCap, TP)          //  TP <=  TP + StateCap
     p.SP    (WP, TP)                    // *TP <=  WP
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                // GCALL mapassign:
-      A0    (ET).                       //     t   <= ET
-      A1    (EP).                       //     h   <= EP
-      A2    (TP).                       //     key <= TP
-      R0    (WP)                        //     ret => WP
+    p.GCALL (mapassign).                //  GCALL mapassign:
+      A0    (ET).                       //      t   <= ET
+      A1    (EP).                       //      h   <= EP
+      A2    (TP).                       //      key <= TP
+      R0    (WP)                        //      ret => WP
     p.SP    (atm.Pn, TP)                // *TP <=  nil
 }
 
