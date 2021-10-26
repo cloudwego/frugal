@@ -72,15 +72,54 @@ func emu_gcall_error_type(e *atm.Emulator, p *atm.Instr) {
     r1 = p.Rv[1] & atm.ArgMask
 
     /* call the function */
-    ex := error_type(uint8(e.Gr[a0]), uint8(e.Gr[a1]))
-    vv := (*rt.GoIface)(unsafe.Pointer(&ex))
+    ret := error_type(
+        uint8(e.Gr[a0]),
+        uint8(e.Gr[a1]),
+    )
 
     /* update the result register */
-    e.Pr[r1] = vv.Value
-    e.Pr[r0] = unsafe.Pointer(vv.Itab)
+    e.Pr[r0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[0]
+    e.Pr[r1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[1]
+}
+
+func emu_gcall_error_missing(e *atm.Emulator, p *atm.Instr) {
+    var a0 uint8
+    var a1 uint8
+    var a2 uint8
+    var r0 uint8
+    var r1 uint8
+
+    /* check for arguments and return values */
+    if (p.An != 3 || p.Rn != 2) ||
+       (p.Ai[0] & atm.ArgPointer) == 0 ||
+       (p.Ai[1] & atm.ArgPointer) != 0 ||
+       (p.Ai[2] & atm.ArgPointer) != 0 ||
+       (p.Rv[0] & atm.ArgPointer) == 0 ||
+       (p.Rv[1] & atm.ArgPointer) == 0 {
+        panic("invalid error_type call")
+    }
+
+    /* extract the arguments and return value index */
+    a0 = p.Ai[0] & atm.ArgMask
+    a1 = p.Ai[1] & atm.ArgMask
+    a2 = p.Ai[2] & atm.ArgMask
+    r0 = p.Rv[0] & atm.ArgMask
+    r1 = p.Rv[1] & atm.ArgMask
+
+    /* call the function */
+    ret := error_missing(
+        (*rt.GoType)(e.Pr[a0]),
+        int(e.Gr[a1]),
+        e.Gr[a2],
+    )
+
+    /* update the result register */
+    e.Pr[r0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[0]
+    e.Pr[r1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[1]
 }
 
 func init() {
     atm.RegisterGCall(error_eof, emu_gcall_error_eof)
     atm.RegisterGCall(error_type, emu_gcall_error_type)
+    atm.RegisterGCall(error_missing, emu_gcall_error_missing)
 }

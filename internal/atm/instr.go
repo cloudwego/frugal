@@ -21,6 +21,8 @@ import (
     `runtime`
     `strings`
     `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type OpCode byte
@@ -58,15 +60,19 @@ const (
     OP_addi                 // Rx + Im -> Ry
     OP_subi                 // Rx - Im -> Ry
     OP_muli                 // Rx * Im -> Ry
+    OP_andi                 // Rx & Im -> Ry
+    OP_xori                 // Rx ^ Im -> Ry
+    OP_sbiti                // Rx | (1 << Im) -> Ry
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
     OP_swapq                // bswap64(Rx) -> Ry
     OP_beq                  // if (Rx == Ry) Br.PC -> PC
     OP_bne                  // if (Rx != Ry) Br.PC -> PC
-    OP_blt                  // if (signed(Rx) <  signed(Ry)) Br.PC -> PC
-    OP_bge                  // if (signed(Rx) >= signed(Ry)) Br.PC -> PC
-    OP_bltu                 // if (unsigned(Rx) <  unsigned(Ry)) Br.PC -> PC
-    OP_bgeu                 // if (unsigned(Rx) >= unsigned(Ry)) Br.PC -> PC
+    OP_blt                  // if (Rx <  Ry) Br.PC -> PC
+    OP_bge                  // if (Rx >= Ry) Br.PC -> PC
+    OP_bltu                 // if (u(Rx) <  u(Ry)) Br.PC -> PC
+    OP_bgeu                 // if (u(Rx) >= u(Ry)) Br.PC -> PC
+    OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
     OP_jalr                 // PC -> Pd; Ps -> PC
     OP_halt                 // halt the emulator
@@ -117,6 +123,13 @@ func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[5] = 6, v.A(); retur
 func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[6] = 7, v.A(); return self }
 func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[7] = 8, v.A(); return self }
 
+func (self *Instr) Sw() (p []*Instr) {
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = self.Pr
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = self.An
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = self.An
+    return
+}
+
 func (self *Instr) isBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
 }
@@ -155,7 +168,30 @@ func (self *Instr) formatCalls() string {
     )
 }
 
-func (self *Instr) disassemble(refs string) string {
+func (self *Instr) formatTable(refs map[*Instr]string) string {
+    tab := self.Sw()
+    ret := make([]string, 0, self.An)
+
+    /* empty table */
+    if self.An == 0 {
+        return "{}"
+    }
+
+    /* format every label */
+    for i, lb := range tab {
+        if lb != nil {
+            ret = append(ret, fmt.Sprintf("\t%4ccase %d: %s\n", ' ', i, refs[lb]))
+        }
+    }
+
+    /* join them together */
+    return fmt.Sprintf(
+        "{\n%s\t}",
+        strings.Join(ret, ""),
+    )
+}
+
+func (self *Instr) disassemble(refs map[*Instr]string) string {
     switch self.Op {
         case OP_nop   : return "nop"
         case OP_ib    : return fmt.Sprintf("ib      $%d, %%%s", atoi64(self.Ai), self.Rx)
@@ -189,16 +225,20 @@ func (self *Instr) disassemble(refs string) string {
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_sbiti : return fmt.Sprintf("sbit    %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
-        case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_bge   : return fmt.Sprintf("bge     %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs)
-        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs, self.Pd)
+        case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_bge   : return fmt.Sprintf("bge     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
+        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
         case OP_jalr  : return fmt.Sprintf("jalr    %%%s, %%%s", self.Ps, self.Pd)
         case OP_halt  : return "halt"
         case OP_ccall : return fmt.Sprintf("ccall   %s%s", self.formatFunc(), self.formatCalls())

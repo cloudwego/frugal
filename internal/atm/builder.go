@@ -20,6 +20,7 @@ import (
     `reflect`
     `strconv`
     `strings`
+    `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
@@ -33,7 +34,7 @@ type Builder struct {
     head  *Instr
     tail  *Instr
     refs  map[string]*Instr
-    pends map[string][]*Instr
+    pends map[string][]**Instr
 }
 
 func CreateBuilder() *Builder {
@@ -46,21 +47,38 @@ func (self *Builder) add(ins *Instr) *Instr {
 }
 
 func (self *Builder) jmp(p *Instr, to string) *Instr {
-    var ok bool
-    var lb *Instr
-
-    /* placeholder substitution */
-    if strings.Contains(to, "{n}") {
-        to = strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
-    }
+    ok := false
+    lb := strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
 
     /* check for backward jumps */
-    if lb, ok = self.refs[to]; !ok {
-        self.pends[to] = append(self.pends[to], p)
+    if p.Br, ok = self.refs[lb]; !ok {
+        self.pends[lb] = append(self.pends[lb], &p.Br)
     }
 
     /* add to instruction buffer */
-    p.Br = lb
+    return self.add(p)
+}
+
+func (self *Builder) tab(p *Instr, sw []string) *Instr {
+    nb := len(sw)
+    sb := make([]*Instr, nb)
+
+    /* patch each branch */
+    for i, to := range sw {
+        ok := false
+        lb := strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
+
+        /* check for backward jumps */
+        if lb != "" {
+            if sb[i], ok = self.refs[lb]; !ok {
+                self.pends[lb] = append(self.pends[lb], &sb[i])
+            }
+        }
+    }
+
+    /* save the switch table */
+    p.An = nb
+    p.Pr = (*rt.GoSlice)(unsafe.Pointer(&sb)).Ptr
     return self.add(p)
 }
 
@@ -74,6 +92,12 @@ func (self *Builder) push(ins *Instr) {
     }
 }
 
+func (self *Builder) rejmp(br **Instr) {
+    for *br != nil && (*br).Ln != nil && (*br).Op == OP_nop {
+        *br = (*br).Ln
+    }
+}
+
 func (self *Builder) At(pc int) string {
     return _LB_jump_pc + strconv.Itoa(pc)
 }
@@ -84,31 +108,26 @@ func (self *Builder) Mark(pc int) {
 }
 
 func (self *Builder) Label(to string) {
-    var p *Instr
-    var v []*Instr
-
-    /* placeholder substitution */
-    if strings.Contains(to, "{n}") {
-        to = strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
-    }
+    ok := false
+    lb := strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
 
     /* check for duplications */
-    if _, ok := self.refs[to]; ok {
-        panic("label " + to + " has already been linked")
+    if _, ok = self.refs[lb]; ok {
+        panic("label " + lb + " has already been linked")
     }
 
     /* get the pending links */
-    p = self.NOP()
-    v = self.pends[to]
+    p := self.NOP()
+    v := self.pends[lb]
 
     /* patch all the pending jumps */
     for _, q := range v {
-        q.Br = p
+        *q = p
     }
 
     /* mark the label as resolved */
-    self.refs[to] = p
-    delete(self.pends, to)
+    self.refs[lb] = p
+    delete(self.pends, lb)
 }
 
 func (self *Builder) Build() (r Program) {
@@ -124,8 +143,12 @@ func (self *Builder) Build() (r Program) {
     /* adjust jumps to point at actual instructions */
     for p = self.head; p != nil; p = p.Ln {
         if p.isBranch() {
-            for p.Br.Ln != nil && p.Br.Op == OP_nop {
-                p.Br = p.Br.Ln
+            if p.Op != OP_bsw {
+                self.rejmp(&p.Br)
+            } else {
+                for i := 0; i < p.An * 8; i += 8 {
+                    self.rejmp((**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(i))))
+                }
             }
         }
     }
@@ -287,6 +310,18 @@ func (self *Builder) MULI(rx GenericRegister, im int64, ry GenericRegister) *Ins
     return self.add(newInstr(OP_muli).rx(rx).ai(i64toa(im)).ry(ry))
 }
 
+func (self *Builder) ANDI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_andi).rx(rx).ai(i64toa(im)).ry(ry))
+}
+
+func (self *Builder) XORI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_xori).rx(rx).ai(i64toa(im)).ry(ry))
+}
+
+func (self *Builder) SBITI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
+    return self.add(newInstr(OP_sbiti).rx(rx).ai(i64toa(im)).ry(ry))
+}
+
 func (self *Builder) SWAPW(rx GenericRegister, ry GenericRegister) *Instr {
     return self.add(newInstr(OP_swapw).rx(rx).ry(ry))
 }
@@ -321,6 +356,10 @@ func (self *Builder) BLTU(rx GenericRegister, ry GenericRegister, to string) *In
 
 func (self *Builder) BGEU(rx GenericRegister, ry GenericRegister, to string) *Instr {
     return self.jmp(newInstr(OP_bgeu).rx(rx).ry(ry), to)
+}
+
+func (self *Builder) BSW(rx GenericRegister, sw []string) *Instr {
+    return self.tab(newInstr(OP_bsw).rx(rx), sw)
 }
 
 func (self *Builder) JAL(to string, pd PointerRegister) *Instr {

@@ -17,23 +17,42 @@
 package decoder
 
 import (
-    `fmt`
-    `math/bits`
-
-    `github.com/cloudwego/frugal/internal/rt`
+    `sync`
 )
 
-//go:nosplit
-func error_eof(n int) error {
-    return fmt.Errorf("frugal: unexpected EOF: %d bytes short", n)
+const (
+    MaxField  = 65536
+    MaxBitmap = MaxField / 64
+)
+
+var (
+    bitmapPool sync.Pool
+)
+
+type (
+	FieldBitmap [MaxBitmap]int64
+)
+
+func newFieldBitmap() *FieldBitmap {
+    if v := bitmapPool.Get(); v != nil {
+        return v.(*FieldBitmap)
+    } else {
+        return new(FieldBitmap)
+    }
 }
 
-//go:nosplit
-func error_type(e uint8, t uint8) error {
-    return fmt.Errorf("frugal: type mismatch: %d expected, got %d", e, t)
+func (self *FieldBitmap) Free() {
+    bitmapPool.Put(self)
 }
 
-//go:nosplit
-func error_missing(t *rt.GoType, i int, m uint64) error {
-    return fmt.Errorf("frugal: missing required field %d for type %s", i * 64 + bits.TrailingZeros64(m), t)
+func (self *FieldBitmap) Clear() {
+    *self = FieldBitmap{}
+}
+
+func (self *FieldBitmap) Append(i int) {
+    if i < MaxField {
+        self[i / 64] |= 1 << (i % 64)
+    } else {
+        panic("field index too large")
+    }
 }

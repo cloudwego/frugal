@@ -66,7 +66,7 @@ func freeBuilder(p *Builder) {
 func allocBuilder() (p *Builder) {
     p       = new(Builder)
     p.refs  = make(map[string]*Instr, 64)
-    p.pends = make(map[string][]*Instr, 64)
+    p.pends = make(map[string][]**Instr, 64)
     return
 }
 

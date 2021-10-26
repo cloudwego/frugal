@@ -76,6 +76,9 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_addi  : (*Emulator).emu_OP_addi,
     OP_subi  : (*Emulator).emu_OP_subi,
     OP_muli  : (*Emulator).emu_OP_muli,
+    OP_andi  : (*Emulator).emu_OP_andi,
+    OP_xori  : (*Emulator).emu_OP_xori,
+    OP_sbiti : (*Emulator).emu_OP_sbiti,
     OP_swapw : (*Emulator).emu_OP_swapw,
     OP_swapl : (*Emulator).emu_OP_swapl,
     OP_swapq : (*Emulator).emu_OP_swapq,
@@ -85,6 +88,7 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_bge   : (*Emulator).emu_OP_bge,
     OP_bltu  : (*Emulator).emu_OP_bltu,
     OP_bgeu  : (*Emulator).emu_OP_bgeu,
+    OP_bsw   : (*Emulator).emu_OP_bsw,
     OP_jal   : (*Emulator).emu_OP_jal,
     OP_jalr  : (*Emulator).emu_OP_jalr,
     OP_halt  : (*Emulator).emu_OP_halt,
@@ -253,6 +257,21 @@ func (self *Emulator) emu_OP_muli(p *Instr) {
 }
 
 //go:nosplit
+func (self *Emulator) emu_OP_andi(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] & atoi64(p.Ai)
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_xori(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] ^ atoi64(p.Ai)
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_sbiti(p *Instr) {
+    self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << atoi64(p.Ai))
+}
+
+//go:nosplit
 func (self *Emulator) emu_OP_swapw(p *Instr) {
     self.Gr[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.Gr[p.Rx])))
 }
@@ -312,6 +331,16 @@ func (self *Emulator) emu_OP_bgeu(p *Instr) {
     if self.Gr[p.Rx] >= self.Gr[p.Ry] {
         self.PC = p.Br
         self.Ln = false
+    }
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_bsw(p *Instr) {
+    if v := self.Gr[p.Rx]; v < uint64(p.An) {
+        if br := *(**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); br != nil {
+            self.PC = br
+            self.Ln = false
+        }
     }
 }
 

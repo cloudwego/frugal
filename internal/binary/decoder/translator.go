@@ -50,6 +50,7 @@ const (
 )
 
 const (
+    TG = atm.R5
     IL = atm.R6
     ST = atm.R7
 )
@@ -65,6 +66,7 @@ const (
     LB_halt     = "_halt"
     LB_type     = "_type"
     LB_error    = "_error"
+    LB_missing  = "_missing"
     LB_overflow = "_overflow"
 )
 
@@ -97,6 +99,14 @@ func errors(p *atm.Builder) {
     p.GCALL (error_type).               // GCALL error_type:
       A0    (UR).                       //     e        <= UR
       A1    (TR).                       //     t        <= TR
+      R0    (ET).                       //     ret.itab => ET
+      R1    (EP)                        //     ret.data => EP
+    p.JAL   (LB_error, atm.Pn)          // GOTO _error
+    p.Label (LB_missing)                // _missing:
+    p.GCALL (error_missing).            // GCALL error_missing:
+      A0    (ET).                       //     t        <= ET
+      A1    (UR).                       //     i        <= UR
+      A2    (TR).                       //     m        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
@@ -297,10 +307,10 @@ func translate_OP_map_set_i16(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_map_set_i32(p *atm.Builder, v Instr) {
-    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
-        translate_OP_map_set_i32_safe(p, v)
-    } else {
+    if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_i32_fast(p, v)
+    } else {
+        translate_OP_map_set_i32_safe(p, v)
     }
 }
 
@@ -337,10 +347,10 @@ func translate_OP_map_set_i32_safe(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_map_set_i64(p *atm.Builder, v Instr) {
-    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
-        translate_OP_map_set_i64_safe(p, v)
-    } else {
+    if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_i64_fast(p, v)
+    } else {
+        translate_OP_map_set_i64_safe(p, v)
     }
 }
 
@@ -377,10 +387,10 @@ func translate_OP_map_set_i64_safe(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_map_set_str(p *atm.Builder, v Instr) {
-    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
-        translate_OP_map_set_str_safe(p, v)
-    } else {
+    if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_str_fast(p, v)
+    } else {
+        translate_OP_map_set_str_safe(p, v)
     }
 }
 
@@ -433,10 +443,10 @@ func translate_OP_map_set_str_safe(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_map_set_pointer(p *atm.Builder, v Instr) {
-    if rt.MapType(v.Vt).Elem.Size > MaxFastMap {
-        translate_OP_map_set_pointer_safe(p, v)
-    } else {
+    if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_pointer_fast(p, v)
+    } else {
+        translate_OP_map_set_pointer_safe(p, v)
     }
 }
 
@@ -495,32 +505,92 @@ func translate_OP_struct_ignore(p *atm.Builder, _ Instr) {
 
 }
 
-func translate_OP_struct_bitmap(p *atm.Builder, _ Instr) {
+func translate_OP_struct_bitmap(p *atm.Builder, v Instr) {
+    buf := newFieldBitmap()
+    tab := mkstab(v.Sw, v.Iv)
 
+    /* add all the bits */
+    for _, i := range tab {
+        buf.Append(i)
+    }
+
+    /* clear bits of required fields if any */
+    for i := int64(0); i < MaxBitmap; i++ {
+        if buf[i] != 0 {
+            p.ADDPI (RS, NbWpSize + i * 8, TP)  //  TP <= RS + NbWpSize + i * 8
+            p.SQ    (atm.Rz, TP)                // *TP <= 0
+        }
+    }
+
+    /* release the buffer */
+    buf.Clear()
+    buf.Free()
 }
 
-func translate_OP_struct_switch(p *atm.Builder, _ Instr) {
+func translate_OP_struct_switch(p *atm.Builder, v Instr) {
+    stab := mkstab(v.Sw, v.Iv)
+    ptab := make([]string, v.Iv)
 
+    /* convert the switch table */
+    for i, to := range stab {
+        if to >= 0 {
+            ptab[i] = p.At(to)
+        }
+    }
+
+    /* load and dispatch the field */
+    p.LW    (IP, TR)                    // TR <= *IP
+    p.BSW   (TR, ptab)                  // switch TR on ptab
 }
 
-func translate_OP_struct_require(p *atm.Builder, _ Instr) {
+func translate_OP_struct_require(p *atm.Builder, v Instr) {
+    buf := newFieldBitmap()
+    tab := mkstab(v.Sw, v.Iv)
 
+    /* add all the bits */
+    for _, i := range tab {
+        buf.Append(i)
+    }
+
+    /* test mask for each word if any */
+    for i := int64(0); i < MaxField / 64; i++ {
+        if buf[i] != 0 {
+            p.ADDPI (RS, NbWpSize + i * 8, TP)  // TP <=  RS + NbWpSize + i * 8
+            p.LQ    (TP, TR)                    // TR <= *TP
+            p.ANDI  (TR, buf[i], TR)            // TR <=  TR & buf[i]
+            p.XORI  (TR, buf[i], TR)            // TR <=  TR ^ buf[i]
+            p.IQ    (i, UR)                     // UR <=  i
+            p.IP    (v.Vt, ET)                  // ET <=  v.Vt
+            p.BNE   (TR, atm.Rz, LB_missing)    // if TR != 0 then GOTO _missing
+        }
+    }
+
+    /* release the buffer */
+    buf.Clear()
+    buf.Free()
 }
 
-func translate_OP_struct_is_stop(p *atm.Builder, _ Instr) {
-
+func translate_OP_struct_is_stop(p *atm.Builder, v Instr) {
+    p.BEQ   (TG, atm.Rz, p.At(v.To))    // if TG == 0 then GOTO @v.To
 }
 
 func translate_OP_struct_read_tag(p *atm.Builder, _ Instr) {
-
+    p.LB    (IP, TG)                    // TG <= *IP
+    p.SUBI  (IL, 1, IL)                 // IL <=  IL - 1
+    p.ADDPI (IP, 1, IP)                 // IP <=  IP + 1
 }
 
-func translate_OP_struct_mark_tag(p *atm.Builder, _ Instr) {
-
+func translate_OP_struct_mark_tag(p *atm.Builder, v Instr) {
+    p.ADDPI (RS, NbWpSize, TP)          //  TP <=  RS + NbWpSize
+    p.ADDPI (TP, v.Iv / 64 * 8, TP)     //  TP <=  TP + v.Iv / 64 * 8
+    p.LQ    (TP, TR)                    //  TR <= *TP
+    p.SBITI (TR, v.Iv % 64, TR)         //  TR <=  TR | (1 << (v.Iv % 64))
+    p.SQ    (TR, TP)                    // *TP <=  TR
 }
 
-func translate_OP_struct_check_type(p *atm.Builder, _ Instr) {
-
+func translate_OP_struct_check_type(p *atm.Builder, v Instr) {
+    p.IB    (int8(v.Tx), TR)            // TR <= v.Tx
+    p.BNE   (TG, TR, p.At(v.To))        // if TG != TR then GOTO @v.To
 }
 
 func translate_OP_make_state(p *atm.Builder, _ Instr) {

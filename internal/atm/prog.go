@@ -38,16 +38,26 @@ func (self Program) Disassemble() string {
     /* scan all the branch target */
     for p := self.Head; p != nil; p = p.Ln {
         if p.isBranch() {
-            ref[p.Br] = fmt.Sprintf("L_%d", len(ref))
+            if p.Op != OP_bsw {
+                if _, ok := ref[p.Br]; !ok {
+                    ref[p.Br] = fmt.Sprintf("L_%d", len(ref))
+                }
+            } else {
+                for _, lb := range p.Sw() {
+                    if _, ok := ref[lb]; !ok {
+                        ref[lb] = fmt.Sprintf("L_%d", len(ref))
+                    }
+                }
+            }
         }
     }
 
     /* dump all the instructions */
     for p := self.Head; p != nil; p = p.Ln {
         if vv, ok := ref[p]; !ok {
-            ret = append(ret, "\t" + p.disassemble(ref[p.Br]))
+            ret = append(ret, "\t" + p.disassemble(ref))
         } else {
-            ret = append(ret, vv + ":", "\t" + p.disassemble(ref[p.Br]))
+            ret = append(ret, vv + ":", "\t" + p.disassemble(ref))
         }
     }
 

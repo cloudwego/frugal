@@ -25,16 +25,16 @@ import (
 
 type TranslatorTestStruct struct {
     A bool                             `frugal:"0,default,bool"`
-    B int8                             `frugal:"1,default,i8"`
+    B int8                             `frugal:"1,required,i8"`
     C float64                          `frugal:"2,default,double"`
     D int16                            `frugal:"3,default,i16"`
     E int32                            `frugal:"4,default,i32"`
     F int64                            `frugal:"5,default,i64"`
     G string                           `frugal:"6,default,string"`
     H []byte                           `frugal:"7,default,binary"`
-    I []int32                          `frugal:"8,default,list<i32>"`
+    I []int32                          `frugal:"8,required,list<i32>"`
     J map[string]string                `frugal:"9,default,map<string:string>"`
-    K map[string]*TranslatorTestStruct `frugal:"10,default,map<string:TranslatorTestStruct>"`
+    K map[string]*TranslatorTestStruct `frugal:"65,required,map<string:TranslatorTestStruct>"`
 }
 
 func TestTranslator_Translate(t *testing.T) {

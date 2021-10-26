@@ -22,6 +22,10 @@ import (
 )
 
 const (
+    MaxFastMap = 128
+)
+
+const (
     F_direct    = 1 << 5
     F_kind_mask = (1 << 5) - 1
 )
@@ -68,6 +72,10 @@ type GoMapType struct {
     ElemSize   uint8
     BucketSize uint16
     Flags      uint32
+}
+
+func (self *GoMapType) IsFastMap() bool {
+    return self.Elem.Size <= MaxFastMap
 }
 
 type GoItab struct {

@@ -45,11 +45,16 @@ func (self Instr) stab() string {
 
     /* convert to strings */
     for i, v := range t {
-        s = append(s, fmt.Sprintf("\t%4ccase %d: L_%d\n", ' ', i, v))
+        if v >= 0 {
+            s = append(s, fmt.Sprintf("\t%4ccase %d: L_%d\n", ' ', i, v))
+        }
     }
 
     /* join them together */
-    return "{\n" + strings.Join(s, "") + "\t}"
+    return fmt.Sprintf(
+        "{\n%s\t}",
+        strings.Join(s, ""),
+    )
 }
 
 func (self Instr) rtab() string {
@@ -70,7 +75,6 @@ func (self Instr) Disassemble() string {
         case OP_int               : fallthrough
         case OP_size              : fallthrough
         case OP_seek              : fallthrough
-        case OP_struct_bitmap     : fallthrough
         case OP_struct_mark_tag   : return fmt.Sprintf("%-18s%d", self.Op, self.Iv)
         case OP_type              : return fmt.Sprintf("%-18s%d", self.Op, self.Tx)
         case OP_deref             : fallthrough
@@ -87,9 +91,10 @@ func (self Instr) Disassemble() string {
         case OP_ctr_is_zero       : fallthrough
         case OP_struct_is_stop    : fallthrough
         case OP_goto              : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
-        case OP_struct_check_type : return fmt.Sprintf("%-18s%d, L_%d", self.Op, self.Tx, self.To)
-        case OP_struct_switch     : return fmt.Sprintf("%-18s%s", self.Op, self.stab())
+        case OP_struct_bitmap     : fallthrough
         case OP_struct_require    : return fmt.Sprintf("%-18s%s", self.Op, self.rtab())
+        case OP_struct_switch     : return fmt.Sprintf("%-18s%s", self.Op, self.stab())
+        case OP_struct_check_type : return fmt.Sprintf("%-18s%d, L_%d", self.Op, self.Tx, self.To)
         default                   : return self.Op.String()
     }
 }
@@ -125,14 +130,15 @@ func (self Program) def(n int) {
     }
 }
 
-func (self *Program) ins(iv Instr)                       { *self = append(*self, iv) }
-func (self *Program) add(op OpCode)                      { self.ins(mkins(op, 0, 0, 0, 0, nil, nil)) }
-func (self *Program) jmp(op OpCode, to int)              { self.ins(mkins(op, 0, 0, to, 0, nil, nil)) }
-func (self *Program) i64(op OpCode, iv int64)            { self.ins(mkins(op, 0, 0, 0, iv, nil, nil)) }
-func (self *Program) tab(op OpCode, tv []int)            { self.ins(mkins(op, 0, 0, 0, 0, tv, nil)) }
-func (self *Program) tag(op OpCode, vt defs.Tag)         { self.ins(mkins(op, vt, 0, 0, 0, nil, nil)) }
-func (self *Program) rtt(op OpCode, vt reflect.Type)     { self.ins(mkins(op, 0, 0, 0, 0, nil, vt)) }
-func (self *Program) jcc(op OpCode, vt defs.Tag, to int) { self.ins(mkins(op, vt, 0, to, 0, nil, nil)) }
+func (self *Program) ins(iv Instr)                             { *self = append(*self, iv) }
+func (self *Program) add(op OpCode)                            { self.ins(mkins(op, 0, 0, 0, 0, nil, nil)) }
+func (self *Program) jmp(op OpCode, to int)                    { self.ins(mkins(op, 0, 0, to, 0, nil, nil)) }
+func (self *Program) i64(op OpCode, iv int64)                  { self.ins(mkins(op, 0, 0, 0, iv, nil, nil)) }
+func (self *Program) tab(op OpCode, tv []int)                  { self.ins(mkins(op, 0, 0, 0, 0, tv, nil)) }
+func (self *Program) tag(op OpCode, vt defs.Tag)               { self.ins(mkins(op, vt, 0, 0, 0, nil, nil)) }
+func (self *Program) rtt(op OpCode, vt reflect.Type)           { self.ins(mkins(op, 0, 0, 0, 0, nil, vt)) }
+func (self *Program) jcc(op OpCode, vt defs.Tag, to int)       { self.ins(mkins(op, vt, 0, to, 0, nil, nil)) }
+func (self *Program) req(op OpCode, vt reflect.Type, fv []int) { self.ins(mkins(op, 0, 0, 0, 0, fv, vt)) }
 
 func (self Program) Free() {
     freeProgram(self)
@@ -150,7 +156,9 @@ func (self Program) Disassemble() string {
                 tab[ins.To] = true
             } else {
                 for _, v := range mkstab(ins.Sw, ins.Iv) {
-                    tab[v] = true
+                    if v >= 0 {
+                        tab[v] = true
+                    }
                 }
             }
         }
@@ -278,7 +286,6 @@ func (self Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     var fid int
-    var rid int
     var err error
     var req []int
     var fvs []defs.Field
@@ -298,7 +305,6 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     for _, fv := range fvs {
         if fid = utils.MaxInt(fid, int(fv.ID)); fv.Spec == defs.Required {
             req = append(req, int(fv.ID))
-            rid = utils.MaxInt(rid, int(fv.ID))
         }
     }
 
@@ -308,12 +314,17 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
     /* allocate bitmap for required fields, if needed */
     if sort.Ints(req); len(req) != 0 {
-        p.i64(OP_struct_bitmap, int64(rid))
+        p.tab(OP_struct_bitmap, req)
     }
 
     /* switch jump buffer */
     i := p.pc()
     s := make([]int, fid + 1)
+
+    /* set the default branch */
+    for v := range s {
+        s[v] = -1
+    }
 
     /* dispatch the next field */
     p.i64(OP_size, 1)
@@ -325,11 +336,6 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     k := p.pc()
     p.add(OP_struct_skip)
     p.jmp(OP_goto, i)
-
-    /* default to the skipping routine */
-    for v := range s {
-        s[v] = k
-    }
 
     /* assemble every field */
     for id, fv := range fvs {
@@ -364,7 +370,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     }
 
     /* check all the required fields */
-    p.tab(OP_struct_require, req)
+    p.req(OP_struct_require, vt.S, req)
     p.add(OP_drop_state)
 }
 
