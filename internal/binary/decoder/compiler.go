@@ -328,7 +328,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
     /* dispatch the next field */
     p.i64(OP_size, 1)
-    p.add(OP_struct_read_tag)
+    p.add(OP_struct_read_type)
     j := p.pc()
     p.add(OP_struct_is_stop)
     p.i64(OP_size, 2)

@@ -60,8 +60,8 @@ func emu_gcall_MapBeginIterator(e *atm.Emulator, p *atm.Instr) {
 
     /* call the function */
     e.Pr[v2] = unsafe.Pointer(MapBeginIterator(
-        (*rt.GoMapType)(e.Pr[v0]),
-        (*rt.GoMap)    (e.Pr[v1]),
+        (*rt.GoMapType) (e.Pr[v0]),
+        (*rt.GoMap)     (e.Pr[v1]),
     ))
 }
 

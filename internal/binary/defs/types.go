@@ -44,7 +44,21 @@ const (
     T_pointer Tag = 0x81
 )
 
-var keywordTab = [...]string {
+var wireTags = [256]bool {
+    T_bool   : true,
+    T_i8     : true,
+    T_double : true,
+    T_i16    : true,
+    T_i32    : true,
+    T_i64    : true,
+    T_string : true,
+    T_struct : true,
+    T_map    : true,
+    T_set    : true,
+    T_list   : true,
+}
+
+var keywordTab = [256]string {
     T_bool   : "bool",
     T_i8     : "i8 or byte",
     T_double : "double",
@@ -63,6 +77,10 @@ func T_int() Tag {
         case 8  : return T_i64
         default : panic("invalid int size")
     }
+}
+
+func (self Tag) IsWireTag() bool {
+    return wireTags[self]
 }
 
 type Type struct {

@@ -162,9 +162,9 @@ func (self *Instr) formatCalls() string {
 
     /* compose the result */
     return fmt.Sprintf(
-        "(%s) -> (%s)",
-        strings.Join(args, ":"),
-        strings.Join(rets, ":"),
+        "{%s}, {%s}",
+        strings.Join(args, ", "),
+        strings.Join(rets, ", "),
     )
 }
 
@@ -241,8 +241,8 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
         case OP_jalr  : return fmt.Sprintf("jalr    %%%s, %%%s", self.Ps, self.Pd)
         case OP_halt  : return "halt"
-        case OP_ccall : return fmt.Sprintf("ccall   %s%s", self.formatFunc(), self.formatCalls())
-        case OP_gcall : return fmt.Sprintf("gcall   %s%s", self.formatFunc(), self.formatCalls())
+        case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
+        case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
     }
 }

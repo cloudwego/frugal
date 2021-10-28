@@ -47,8 +47,8 @@ const (
     OP_struct_switch
     OP_struct_require
     OP_struct_is_stop
-    OP_struct_read_tag
     OP_struct_mark_tag
+    OP_struct_read_type
     OP_struct_check_type
     OP_make_state
     OP_drop_state
@@ -83,8 +83,8 @@ var _OpNames = [256]string {
     OP_struct_switch     : "struct_switch",
     OP_struct_require    : "struct_require",
     OP_struct_is_stop    : "struct_is_stop",
-    OP_struct_read_tag   : "struct_read_tag",
     OP_struct_mark_tag   : "struct_mark_tag",
+    OP_struct_read_type  : "struct_read_type",
     OP_struct_check_type : "struct_check_type",
     OP_make_state        : "make_state",
     OP_drop_state        : "drop_state",

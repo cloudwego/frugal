@@ -65,6 +65,7 @@ const (
     LB_eof      = "_eof"
     LB_halt     = "_halt"
     LB_type     = "_type"
+    LB_skip     = "_skip"
     LB_error    = "_error"
     LB_missing  = "_missing"
     LB_overflow = "_overflow"
@@ -99,6 +100,12 @@ func errors(p *atm.Builder) {
     p.GCALL (error_type).               // GCALL error_type:
       A0    (UR).                       //     e        <= UR
       A1    (TR).                       //     t        <= TR
+      R0    (ET).                       //     ret.itab => ET
+      R1    (EP)                        //     ret.data => EP
+    p.JAL   (LB_error, atm.Pn)          // GOTO _error
+    p.Label (LB_skip)                   // _skip:
+    p.GCALL (error_skip).               // GCALL error_skip:
+      A0    (TR).                       //     n        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
@@ -169,8 +176,8 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_struct_switch     : translate_OP_struct_switch,
     OP_struct_require    : translate_OP_struct_require,
     OP_struct_is_stop    : translate_OP_struct_is_stop,
-    OP_struct_read_tag   : translate_OP_struct_read_tag,
     OP_struct_mark_tag   : translate_OP_struct_mark_tag,
+    OP_struct_read_type  : translate_OP_struct_read_type,
     OP_struct_check_type : translate_OP_struct_check_type,
     OP_make_state        : translate_OP_make_state,
     OP_drop_state        : translate_OP_drop_state,
@@ -498,11 +505,26 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_struct_skip(p *atm.Builder, _ Instr) {
-
+    p.CCALL (FnSkip).                   // CCALL skip:
+      A0    (IP).                       //     s   <= IP
+      A1    (IL).                       //     n   <= IL
+      A2    (TG).                       //     t   <= TG
+      R0    (TR)                        //     ret => TR
+    p.BLT   (TR, atm.Rz, LB_skip)       // if TR < 0 then GOTO _skip
+    p.SUB   (IL, TR, IL)                // IL <= IL - TR
+    p.ADDP  (IP, TR, IP)                // IP <= IP + TR
 }
 
 func translate_OP_struct_ignore(p *atm.Builder, _ Instr) {
-
+    p.IB    (int8(defs.T_struct), TR)   // TR <= defs.T_struct
+    p.CCALL (FnSkip).                   // CCALL skip:
+      A0    (IP).                       //     s   <= IP
+      A1    (IL).                       //     n   <= IL
+      A2    (TR).                       //     t   <= TR
+      R0    (TR)                        //     ret => TR
+    p.BLT   (TR, atm.Rz, LB_skip)       // if TR < 0 then GOTO _skip
+    p.SUB   (IL, TR, IL)                // IL <= IL - TR
+    p.ADDP  (IP, TR, IP)                // IP <= IP + TR
 }
 
 func translate_OP_struct_bitmap(p *atm.Builder, v Instr) {
@@ -574,18 +596,18 @@ func translate_OP_struct_is_stop(p *atm.Builder, v Instr) {
     p.BEQ   (TG, atm.Rz, p.At(v.To))    // if TG == 0 then GOTO @v.To
 }
 
-func translate_OP_struct_read_tag(p *atm.Builder, _ Instr) {
-    p.LB    (IP, TG)                    // TG <= *IP
-    p.SUBI  (IL, 1, IL)                 // IL <=  IL - 1
-    p.ADDPI (IP, 1, IP)                 // IP <=  IP + 1
-}
-
 func translate_OP_struct_mark_tag(p *atm.Builder, v Instr) {
     p.ADDPI (RS, NbWpSize, TP)          //  TP <=  RS + NbWpSize
     p.ADDPI (TP, v.Iv / 64 * 8, TP)     //  TP <=  TP + v.Iv / 64 * 8
     p.LQ    (TP, TR)                    //  TR <= *TP
     p.SBITI (TR, v.Iv % 64, TR)         //  TR <=  TR | (1 << (v.Iv % 64))
     p.SQ    (TR, TP)                    // *TP <=  TR
+}
+
+func translate_OP_struct_read_type(p *atm.Builder, _ Instr) {
+    p.LB    (IP, TG)                    // TG <= *IP
+    p.SUBI  (IL, 1, IL)                 // IL <=  IL - 1
+    p.ADDPI (IP, 1, IP)                 // IP <=  IP + 1
 }
 
 func translate_OP_struct_check_type(p *atm.Builder, v Instr) {
