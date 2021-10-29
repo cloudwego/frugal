@@ -286,16 +286,8 @@ func (self *Builder) SUBPI(ps PointerRegister, im int64, pd PointerRegister) *In
     return self.add(newInstr(OP_subpi).ps(ps).ai(i64toa(im)).pd(pd))
 }
 
-func (self *Builder) ADD(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
-    return self.add(newInstr(OP_add).rx(rx).ry(ry).rz(rz))
-}
-
 func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
     return self.add(newInstr(OP_sub).rx(rx).ry(ry).rz(rz))
-}
-
-func (self *Builder) MUL(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
-    return self.add(newInstr(OP_mul).rx(rx).ry(ry).rz(rz))
 }
 
 func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
@@ -346,10 +338,6 @@ func (self *Builder) BLT(rx GenericRegister, ry GenericRegister, to string) *Ins
     return self.jmp(newInstr(OP_blt).rx(rx).ry(ry), to)
 }
 
-func (self *Builder) BGE(rx GenericRegister, ry GenericRegister, to string) *Instr {
-    return self.jmp(newInstr(OP_bge).rx(rx).ry(ry), to)
-}
-
 func (self *Builder) BLTU(rx GenericRegister, ry GenericRegister, to string) *Instr {
     return self.jmp(newInstr(OP_bltu).rx(rx).ry(ry), to)
 }
@@ -364,10 +352,6 @@ func (self *Builder) BSW(rx GenericRegister, sw []string) *Instr {
 
 func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
-}
-
-func (self *Builder) JALR(ps PointerRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_jalr).ps(ps).pd(pd))
 }
 
 func (self *Builder) HALT() *Instr {

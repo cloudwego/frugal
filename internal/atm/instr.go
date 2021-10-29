@@ -54,9 +54,7 @@ const (
     OP_subp                 // Ps - Rx -> Pd
     OP_addpi                // Ps + Im -> Pd
     OP_subpi                // Ps - Im -> Pd
-    OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
-    OP_mul                  // Rx * Ry -> Rz
     OP_addi                 // Rx + Im -> Ry
     OP_subi                 // Rx - Im -> Ry
     OP_muli                 // Rx * Im -> Ry
@@ -69,12 +67,10 @@ const (
     OP_beq                  // if (Rx == Ry) Br.PC -> PC
     OP_bne                  // if (Rx != Ry) Br.PC -> PC
     OP_blt                  // if (Rx <  Ry) Br.PC -> PC
-    OP_bge                  // if (Rx >= Ry) Br.PC -> PC
     OP_bltu                 // if (u(Rx) <  u(Ry)) Br.PC -> PC
     OP_bgeu                 // if (u(Rx) >= u(Ry)) Br.PC -> PC
     OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
-    OP_jalr                 // PC -> Pd; Ps -> PC
     OP_halt                 // halt the emulator
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
@@ -219,9 +215,7 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
         case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
-        case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_mul   : return fmt.Sprintf("mul     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
@@ -234,12 +228,10 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
-        case OP_bge   : return fmt.Sprintf("bge     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
-        case OP_jalr  : return fmt.Sprintf("jalr    %%%s, %%%s", self.Ps, self.Pd)
         case OP_halt  : return "halt"
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())

@@ -70,9 +70,7 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_subp  : (*Emulator).emu_OP_subp,
     OP_addpi : (*Emulator).emu_OP_addpi,
     OP_subpi : (*Emulator).emu_OP_subpi,
-    OP_add   : (*Emulator).emu_OP_add,
     OP_sub   : (*Emulator).emu_OP_sub,
-    OP_mul   : (*Emulator).emu_OP_mul,
     OP_addi  : (*Emulator).emu_OP_addi,
     OP_subi  : (*Emulator).emu_OP_subi,
     OP_muli  : (*Emulator).emu_OP_muli,
@@ -85,12 +83,10 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_beq   : (*Emulator).emu_OP_beq,
     OP_bne   : (*Emulator).emu_OP_bne,
     OP_blt   : (*Emulator).emu_OP_blt,
-    OP_bge   : (*Emulator).emu_OP_bge,
     OP_bltu  : (*Emulator).emu_OP_bltu,
     OP_bgeu  : (*Emulator).emu_OP_bgeu,
     OP_bsw   : (*Emulator).emu_OP_bsw,
     OP_jal   : (*Emulator).emu_OP_jal,
-    OP_jalr  : (*Emulator).emu_OP_jalr,
     OP_halt  : (*Emulator).emu_OP_halt,
     OP_ccall : (*Emulator).emu_OP_ccall,
     OP_gcall : (*Emulator).emu_OP_gcall,
@@ -227,18 +223,8 @@ func (self *Emulator) emu_OP_subpi(p *Instr) {
 }
 
 //go:nosplit
-func (self *Emulator) emu_OP_add(p *Instr) {
-    self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
-}
-
-//go:nosplit
 func (self *Emulator) emu_OP_sub(p *Instr) {
     self.Gr[p.Rz] = self.Gr[p.Rx] - self.Gr[p.Ry]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_mul(p *Instr) {
-    self.Gr[p.Rz] = self.Gr[p.Rx] * self.Gr[p.Ry]
 }
 
 //go:nosplit
@@ -311,14 +297,6 @@ func (self *Emulator) emu_OP_blt(p *Instr) {
 }
 
 //go:nosplit
-func (self *Emulator) emu_OP_bge(p *Instr) {
-    if int64(self.Gr[p.Rx]) >= int64(self.Gr[p.Ry]) {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
 func (self *Emulator) emu_OP_bltu(p *Instr) {
     if self.Gr[p.Rx] < self.Gr[p.Ry] {
         self.PC = p.Br
@@ -348,13 +326,6 @@ func (self *Emulator) emu_OP_bsw(p *Instr) {
 func (self *Emulator) emu_OP_jal(p *Instr) {
     self.Pr[p.Pd] = unsafe.Pointer(self.PC.Ln)
     self.PC       = p.Br
-    self.Ln       = false
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_jalr(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(self.PC.Ln)
-    self.PC       = (*Instr)(self.Pr[p.Ps])
     self.Ln       = false
 }
 
