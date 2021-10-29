@@ -25,10 +25,11 @@ import (
 )
 
 func init() {
+    Link = link_emu
     atm.RegisterGCall(encode, emu_gcall_encode)
 }
 
-func link(prog atm.Program) Encoder {
+func link_emu(prog atm.Program) Encoder {
     return func(iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
         emu := atm.LoadProgram(prog)
         ret := *(*rt.GoIface)(unsafe.Pointer(&err))

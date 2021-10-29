@@ -26,7 +26,7 @@ import (
 
 /** Function Prototype
  *
- *      func(buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (err error)
+ *      func(buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error)
  */
 
 /** Register Allocations
@@ -146,8 +146,11 @@ func epilogue(p *atm.Builder) {
     p.MOVP  (atm.Pn, ET)                // ET <= nil
     p.MOVP  (atm.Pn, EP)                // EP <= nil
     p.Label (LB_error)                  // _error:
-    p.STRP  (ET, 0)                     // r0 <= ET
-    p.STRP  (EP, 1)                     // r1 <= EP
+    p.LDAQ  (1, TR)                     // TR <= a1
+    p.SUB   (TR, IL, TR)                // TR <= TR - IL
+    p.STRQ  (TR, 0)                     // r0 <= TR
+    p.STRP  (ET, 1)                     // r1 <= ET
+    p.STRP  (EP, 2)                     // r2 <= EP
     p.HALT  ()                          // HALT
 }
 

@@ -14,40 +14,39 @@
  * limitations under the License.
  */
 
-package encoder
+package decoder
 
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
-type Encoder func (
-    iov frugal.IoVec,
+type Decoder func (
+    buf []byte,
     p   unsafe.Pointer,
     rs  *RuntimeState,
     st  int,
-) error
+) (int, error)
 
 var (
     programCache = utils.CreateProgramCache()
 )
 
-func encode(vt *rt.GoType, iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error {
-    if enc, err := resolve(vt); err != nil {
-        return err
+func decode(vt *rt.GoType, buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
+    if dec, err := resolve(vt); err != nil {
+        return 0, err
     } else {
-        return enc(iov, p, rs, st)
+        return dec(buf, p, rs, st)
     }
 }
 
-func resolve(vt *rt.GoType) (Encoder, error) {
+func resolve(vt *rt.GoType) (Decoder, error) {
     if val := programCache.Get(vt); val != nil {
-        return val.(Encoder), nil
+        return val.(Decoder), nil
     } else if ret, err := programCache.Compute(vt, compile); err == nil {
-        return ret.(Encoder), nil
+        return ret.(Decoder), nil
     } else {
         return nil, err
     }
@@ -55,8 +54,8 @@ func resolve(vt *rt.GoType) (Encoder, error) {
 
 func compile(vt *rt.GoType) (interface{}, error) {
     if Link == nil {
-        panic("no linker available for encoder")
-    } else if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
+        panic("no linker available for decoder")
+    } else if pp, err := CreateCompiler().Compile(vt.Pack()); err != nil {
         return nil, err
     } else {
         return Link(Translate(pp)), nil
