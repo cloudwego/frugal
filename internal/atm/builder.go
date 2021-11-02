@@ -354,14 +354,18 @@ func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
 }
 
-func (self *Builder) HALT() *Instr {
-    return self.add(newInstr(OP_halt))
-}
-
 func (self *Builder) CCALL(fn CFunction) *Instr {
     return self.add(newInstr(OP_ccall).pr(fn))
 }
 
 func (self *Builder) GCALL(fn interface{}) *Instr {
     return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
+}
+
+func (self *Builder) HALT() *Instr {
+    return self.add(newInstr(OP_halt))
+}
+
+func (self *Builder) BREAK() *Instr {
+    return self.add(newInstr(OP_break))
 }

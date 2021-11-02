@@ -31,8 +31,8 @@ type Value struct {
 type Emulator struct {
     PC *Instr
     Gr [9]uint64
-    Pr [10]unsafe.Pointer
-    Ar [10]Value
+    Pr [9]unsafe.Pointer
+    Ar [8]Value
     Rv [8]Value
     Ln bool
 }
@@ -87,9 +87,10 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_bgeu  : (*Emulator).emu_OP_bgeu,
     OP_bsw   : (*Emulator).emu_OP_bsw,
     OP_jal   : (*Emulator).emu_OP_jal,
-    OP_halt  : (*Emulator).emu_OP_halt,
     OP_ccall : (*Emulator).emu_OP_ccall,
     OP_gcall : (*Emulator).emu_OP_gcall,
+    OP_halt  : (*Emulator).emu_OP_halt,
+    OP_break : (*Emulator).emu_OP_break,
 }
 
 //go:nosplit
@@ -330,12 +331,6 @@ func (self *Emulator) emu_OP_jal(p *Instr) {
 }
 
 //go:nosplit
-func (self *Emulator) emu_OP_halt(_ *Instr) {
-    self.PC = nil
-    self.Ln = false
-}
-
-//go:nosplit
 func (self *Emulator) emu_OP_ccall(p *Instr) {
     if proxy := ccallTab[p.Pr]; proxy != nil {
         proxy(self, p)
@@ -351,6 +346,19 @@ func (self *Emulator) emu_OP_gcall(p *Instr) {
     } else {
         panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)).Name(), p.Pr))
     }
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_halt(_ *Instr) {
+    self.PC = nil
+    self.Ln = false
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_break(_ *Instr) {
+    println("****** DEBUGGER BREAK ******")
+    println("Current State:", self.String())
+    runtime.Breakpoint()
 }
 
 func (self *Emulator) Ru(i int) uint64         { return self.Rv[i].U }
@@ -392,4 +400,50 @@ func (self *Emulator) Run() {
 
 func (self *Emulator) Free() {
     freeEmulator(self)
+}
+
+/** State Dumping **/
+
+const _F_emulator = `Emulator {
+    pc  (%p)%s
+    r0  %#x
+    r1  %#x
+    r2  %#x
+    r3  %#x
+    r4  %#x
+    r5  %#x
+    r6  %#x
+    r7  %#x
+    p0  %p
+    p1  %p
+    p2  %p
+    p3  %p
+    p4  %p
+    p5  %p
+    p6  %p
+    p7  %p
+}`
+
+func (self *Emulator) String() string {
+    return fmt.Sprintf(
+        _F_emulator,
+        self.PC,
+        self.PC.disassemble(nil),
+        self.Gr[0],
+        self.Gr[1],
+        self.Gr[2],
+        self.Gr[3],
+        self.Gr[4],
+        self.Gr[5],
+        self.Gr[6],
+        self.Gr[7],
+        self.Pr[0],
+        self.Pr[1],
+        self.Pr[2],
+        self.Pr[3],
+        self.Pr[4],
+        self.Pr[5],
+        self.Pr[6],
+        self.Pr[7],
+    )
 }

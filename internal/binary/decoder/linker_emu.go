@@ -31,8 +31,8 @@ func init() {
 func link_emu(prog atm.Program) Decoder {
     return func(buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
         emu := atm.LoadProgram(prog)
-        ret := *(*rt.GoIface)(unsafe.Pointer(&err))
-        src := *(*rt.GoSlice)(unsafe.Pointer(&buf))
+        ret := (*rt.GoIface)(unsafe.Pointer(&err))
+        src := (*rt.GoSlice)(unsafe.Pointer(&buf))
         emu.Ap(0, src.Ptr)
         emu.Au(1, uint64(src.Len))
         emu.Au(2, uint64(src.Cap))

@@ -32,8 +32,8 @@ func init() {
 func link_emu(prog atm.Program) Encoder {
     return func(iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
         emu := atm.LoadProgram(prog)
-        ret := *(*rt.GoIface)(unsafe.Pointer(&err))
-        iop := *(*rt.GoIface)(unsafe.Pointer(&iov))
+        ret := (*rt.GoIface)(unsafe.Pointer(&err))
+        iop := (*rt.GoIface)(unsafe.Pointer(&iov))
         emu.Ap(0, unsafe.Pointer(iop.Itab))
         emu.Ap(1, iop.Value)
         emu.Ap(2, p)

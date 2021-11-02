@@ -71,9 +71,10 @@ const (
     OP_bgeu                 // if (u(Rx) >= u(Ry)) Br.PC -> PC
     OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
-    OP_halt                 // halt the emulator
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
+    OP_halt                 // halt the emulator
+    OP_break                // trigger a debugger breakpoint
 )
 
 type Instr struct {
@@ -232,9 +233,10 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
-        case OP_halt  : return "halt"
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())
+        case OP_halt  : return "halt"
+        case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
     }
 }

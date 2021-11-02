@@ -34,7 +34,7 @@ type TranslatorTestStruct struct {
     H []byte                           `frugal:"7,default,binary"`
     I []int32                          `frugal:"8,default,list<i32>"`
     J map[string]string                `frugal:"9,default,map<string:string>"`
-    K map[string]*TranslatorTestStruct `frugal:"10,default,map<string:TranslatorTestStruct>"`
+    K map[string]*TranslatorTestStruct `frugal:"65,default,map<string:TranslatorTestStruct>"`
 }
 
 func TestTranslator_Translate(t *testing.T) {

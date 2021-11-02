@@ -94,7 +94,7 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
         p.ADDPI(P2, 8, P3)
         p.LQ(P3, R2)
         p.LP(P2, P2)
-        p.GCALL(testemu_pfunc).A0(0, P0).A1(0, R0).A2(1, P1).A3(1, R1).A4(2, P2).A5(2, R2).R0(0, P0).R1(0, R0).R2(1, P1).R3(1, R1)
+        p.GCALL(testemu_pfunc).A0(P0).A1(R0).A2(P1).A3(R1).A4(P2).A5(R2).R0(P0).R1(R0).R2(P1).R3(R1)
         p.STRP(P0, 0)
         p.STRQ(R0, 1)
         p.STRP(P1, 2)

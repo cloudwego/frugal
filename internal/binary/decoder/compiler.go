@@ -345,7 +345,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
         /* mark the field as seen, if needed */
         if fv.Spec == defs.Required {
-            p.i64(OP_struct_mark_tag, int64(id))
+            p.i64(OP_struct_mark_tag, int64(fv.ID))
         }
 
         /* calculate distance to the previous field */
