@@ -143,18 +143,18 @@ func (self *Instr) formatCalls() string {
     /* add arguments */
     for i := uint8(0); i < self.An; i++ {
         if v := self.Ar[i]; (v & ArgPointer) == 0 {
-            args[i] = GenericRegister(v & ArgMask).String()
+            args[i] = "%" + GenericRegister(v & ArgMask).String()
         } else {
-            args[i] = PointerRegister(v & ArgMask).String()
+            args[i] = "%" + PointerRegister(v & ArgMask).String()
         }
     }
 
     /* add return values */
     for i := uint8(0); i < self.Rn; i++ {
         if v := self.Rr[i]; (v & ArgPointer) == 0 {
-            rets[i] = GenericRegister(v & ArgMask).String()
+            rets[i] = "%" + GenericRegister(v & ArgMask).String()
         } else {
-            rets[i] = PointerRegister(v & ArgMask).String()
+            rets[i] = "%" + PointerRegister(v & ArgMask).String()
         }
     }
 
@@ -187,6 +187,11 @@ func (self *Instr) formatTable(refs map[*Instr]string) string {
         "{\n%s\t}",
         strings.Join(ret, ""),
     )
+}
+
+func (self *Instr) formatMethod() string {
+    vt := (*rt.GoType)(self.Pr).Pack()
+    return fmt.Sprintf("%s.%s", vt, vt.Method(int(self.Iv)).Name)
 }
 
 func (self *Instr) disassemble(refs map[*Instr]string) string {
@@ -236,7 +241,7 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())
-        case OP_icall : return fmt.Sprintf("icall   %s/%d, {%%%s, %%%s}, %s", self.formatFunc(), self.Iv, self.Ps, self.Pd, self.formatCalls())
+        case OP_icall : return fmt.Sprintf("icall   %s, {%%%s, %%%s}, %s", self.formatMethod(), self.Ps, self.Pd, self.formatCalls())
         case OP_halt  : return "halt"
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
