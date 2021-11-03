@@ -24,10 +24,10 @@ import (
 )
 
 func getiter(e *atm.Emulator, p *atm.Instr, fn string) (it *rt.GoMapIterator) {
-    if p.An != 1 || p.Rn != 0 || (p.Ai[0] & atm.ArgPointer) == 0 {
+    if p.An != 1 || p.Rn != 0 || (p.Ar[0] & atm.ArgPointer) == 0 {
         panic("invalid " + fn + " call")
     } else {
-        return (*rt.GoMapIterator)(e.Pr[p.Ai[0] & atm.ArgMask])
+        return (*rt.GoMapIterator)(e.Pr[p.Ar[0] & atm.ArgMask])
     }
 }
 
@@ -47,16 +47,16 @@ func emu_gcall_MapBeginIterator(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 2 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid MapBeginIterator call")
     }
 
     /* extract the arguments and return value index */
-    v0 = p.Ai[0] & atm.ArgMask
-    v1 = p.Ai[1] & atm.ArgMask
-    v2 = p.Rv[0] & atm.ArgMask
+    v0 = p.Ar[0] & atm.ArgMask
+    v1 = p.Ar[1] & atm.ArgMask
+    v2 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Pr[v2] = unsafe.Pointer(MapBeginIterator(

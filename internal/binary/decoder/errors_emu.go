@@ -30,16 +30,16 @@ func emu_gcall_error_eof(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 1 || p.Rn != 2) ||
-       (p.Ai[0] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 {
         panic("invalid error_eof call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
-    r1 = p.Rv[1] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
+    r1 = p.Rr[1] & atm.ArgMask
 
     /* call the function */
     ex := error_eof(int(e.Gr[a0]))
@@ -57,16 +57,16 @@ func emu_gcall_error_skip(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 1 || p.Rn != 2) ||
-       (p.Ai[0] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 {
         panic("invalid error_skip call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
-    r1 = p.Rv[1] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
+    r1 = p.Rr[1] & atm.ArgMask
 
     /* call the function */
     ex := error_skip(int(e.Gr[a0]))
@@ -85,18 +85,18 @@ func emu_gcall_error_type(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 2 || p.Rn != 2) ||
-       (p.Ai[0] & atm.ArgPointer) != 0 ||
-       (p.Ai[1] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) != 0 ||
+       (p.Ar[1] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 {
         panic("invalid error_type call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
-    r1 = p.Rv[1] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
+    r1 = p.Rr[1] & atm.ArgMask
 
     /* call the function */
     ret := error_type(
@@ -118,20 +118,20 @@ func emu_gcall_error_missing(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 2) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) != 0 ||
-       (p.Ai[2] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) != 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 {
         panic("invalid error_type call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
-    r1 = p.Rv[1] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
+    r1 = p.Rr[1] & atm.ArgMask
 
     /* call the function */
     ret := error_missing(

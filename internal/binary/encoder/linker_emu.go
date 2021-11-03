@@ -56,30 +56,30 @@ func emu_gcall_encode(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 6 || p.Rn != 2) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) == 0 ||
-       (p.Ai[3] & atm.ArgPointer) == 0 ||
-       (p.Ai[4] & atm.ArgPointer) == 0 ||
-       (p.Ai[5] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) == 0 ||
+       (p.Ar[3] & atm.ArgPointer) == 0 ||
+       (p.Ar[4] & atm.ArgPointer) == 0 ||
+       (p.Ar[5] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 {
         panic("invalid encode call")
     }
 
     /* extract the arguments and return value index */
-    v0       =    (*rt.GoType)(e.Pr[p.Ai[0] & atm.ArgMask])
-    v1.Itab  =    (*rt.GoItab)(e.Pr[p.Ai[1] & atm.ArgMask])
-    v1.Value =                 e.Pr[p.Ai[2] & atm.ArgMask]
-    v2       =                 e.Pr[p.Ai[3] & atm.ArgMask]
-    v3       = (*RuntimeState)(e.Pr[p.Ai[4] & atm.ArgMask])
-    v4       =             int(e.Gr[p.Ai[5] & atm.ArgMask])
+    v0       =    (*rt.GoType)(e.Pr[p.Ar[0] & atm.ArgMask])
+    v1.Itab  =    (*rt.GoItab)(e.Pr[p.Ar[1] & atm.ArgMask])
+    v1.Value =                 e.Pr[p.Ar[2] & atm.ArgMask]
+    v2       =                 e.Pr[p.Ar[3] & atm.ArgMask]
+    v3       = (*RuntimeState)(e.Pr[p.Ar[4] & atm.ArgMask])
+    v4       =             int(e.Gr[p.Ar[5] & atm.ArgMask])
 
     /* call the function */
     iov := *(*frugal.IoVec)(unsafe.Pointer(&v1))
     ret := encode(v0, iov, v2, v3, v4)
 
     /* pack the result */
-    e.Pr[p.Rv[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
-    e.Pr[p.Rv[1] & atm.ArgMask] = (*rt.GoIface)(unsafe.Pointer(&ret)).Value
+    e.Pr[p.Rr[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
+    e.Pr[p.Rr[1] & atm.ArgMask] = (*rt.GoIface)(unsafe.Pointer(&ret)).Value
 }

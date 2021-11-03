@@ -120,12 +120,10 @@ func epilogue(p *atm.Builder) {
     p.BEQ   (RL, atm.Rz, "_nobuf")      // if RL == 0 then GOTO _nobuf
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
-    p.GCALL (utils.IoVecPut).           // GCALL IoVecPut:
-      A0    (ET).                       //     p.itab <= ET
-      A1    (EP).                       //     p.data <= EP
-      A2    (RP).                       //     v.ptr  <= RP
-      A3    (RL).                       //     v.len  <= RL
-      A4    (RC)                        //     v.cap  <= RC
+    p.ICALL (ET, EP, utils.IoVecPut).   // ICALL IoVec.Put:
+      A0    (RP).                       //     v.ptr  <= RP
+      A1    (RL).                       //     v.len  <= RL
+      A2    (RC)                        //     v.cap  <= RC
     p.Label ("_nobuf")                  // _nobuf:
     p.MOVP  (atm.Pn, ET)                // ET <= nil
     p.MOVP  (atm.Pn, EP)                // EP <= nil
@@ -194,13 +192,11 @@ func translate_OP_size(p *atm.Builder, v Instr) {
     p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
-    p.GCALL (utils.IoVecAdd).           // GCALL IoVecAdd:
-      A0    (ET).                       //     p.itab  <= ET
-      A1    (EP).                       //     p.data  <= EP
-      A2    (TR).                       //     n       <= TR
-      A3    (RP).                       //     v.ptr   <= RP
-      A4    (RL).                       //     v.len   <= RL
-      A5    (RC).                       //     v.cap   <= RC
+    p.ICALL (ET, EP, utils.IoVecAdd).   // ECALL IoVec.Add:
+      A0    (TR).                       //     n       <= TR
+      A1    (RP).                       //     v.ptr   <= RP
+      A2    (RL).                       //     v.len   <= RL
+      A3    (RC).                       //     v.cap   <= RC
       R0    (RP).                       //     ret.ptr => RP
       R1    (RL).                       //     ret.len => RL
       R2    (RC)                        //     ret.cap => RC
@@ -230,15 +226,13 @@ func translate_OP_vstr(p *atm.Builder, _ Instr) {
     p.LP    (WP, TP)                    //  TP <= *WP
     p.LDAP  (0, ET)                     //  ET <=  a0
     p.LDAP  (1, EP)                     //  EP <=  a1
-    p.GCALL (utils.IoVecCat).           //  GCALL IoVecCat:
-      A0    (ET).                       //     p.itab <= ET
-      A1    (EP).                       //     p.data <= EP
-      A2    (RP).                       //     v.ptr  <= RP
-      A3    (RL).                       //     v.len  <= RL
-      A4    (RC).                       //     v.cap  <= RC
-      A5    (TP).                       //     w.ptr  <= TP
-      A6    (TR).                       //     w.len  <= TR
-      A7    (TR)                        //     w.cap  <= TR
+    p.ICALL (ET, EP, utils.IoVecCat).   //  ICALL IoVec.Cat:
+      A0    (RP).                       //     v.ptr <= RP
+      A1    (RL).                       //     v.len <= RL
+      A2    (RC).                       //     v.cap <= RC
+      A3    (TP).                       //     w.ptr <= TP
+      A4    (TR).                       //     w.len <= TR
+      A5    (TR)                        //     w.cap <= TR
     p.MOV   (atm.Rz, RC)                //  RC <=  0
     p.MOV   (atm.Rz, RL)                //  RL <=  0
     p.MOVP  (atm.Pn, RP)                //  RP <=  nil

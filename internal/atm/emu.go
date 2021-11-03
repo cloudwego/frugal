@@ -21,6 +21,8 @@ import (
     `math/bits`
     `runtime`
     `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Value struct {
@@ -89,6 +91,7 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_jal   : (*Emulator).emu_OP_jal,
     OP_ccall : (*Emulator).emu_OP_ccall,
     OP_gcall : (*Emulator).emu_OP_gcall,
+    OP_icall : (*Emulator).emu_OP_icall,
     OP_halt  : (*Emulator).emu_OP_halt,
     OP_break : (*Emulator).emu_OP_break,
 }
@@ -100,22 +103,22 @@ func (self *Emulator) emu_OP_nop(_ *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_ib(p *Instr) {
-    self.Gr[p.Rx] = atoi8(p.Ai)
+    self.Gr[p.Rx] = uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_iw(p *Instr) {
-    self.Gr[p.Rx] = atoi16(p.Ai)
+    self.Gr[p.Rx] = uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_il(p *Instr) {
-    self.Gr[p.Rx] = atoi32(p.Ai)
+    self.Gr[p.Rx] = uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_iq(p *Instr) {
-    self.Gr[p.Rx] = atoi64(p.Ai)
+    self.Gr[p.Rx] = uint64(p.Iv)
 }
 
 //go:nosplit
@@ -185,22 +188,22 @@ func (self *Emulator) emu_OP_movp(p *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_ldaq(p *Instr) {
-    self.Gr[p.Rx] = self.Ar[atoi64(p.Ai)].U
+    self.Gr[p.Rx] = self.Ar[p.Iv].U
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_ldap(p *Instr) {
-    self.Pr[p.Pd] = self.Ar[atoi64(p.Ai)].P
+    self.Pr[p.Pd] = self.Ar[p.Iv].P
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_strq(p *Instr) {
-    self.Rv[atoi64(p.Ai)].U = self.Gr[p.Rx]
+    self.Rv[p.Iv].U = self.Gr[p.Rx]
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_strp(p *Instr) {
-    self.Rv[atoi64(p.Ai)].P = self.Pr[p.Ps]
+    self.Rv[p.Iv].P = self.Pr[p.Ps]
 }
 
 //go:nosplit
@@ -215,12 +218,12 @@ func (self *Emulator) emu_OP_subp(p *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_addpi(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(atoi64(p.Ai)))
+    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_subpi(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(atoi64(p.Ai)))
+    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(p.Iv))
 }
 
 //go:nosplit
@@ -230,32 +233,32 @@ func (self *Emulator) emu_OP_sub(p *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_addi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] + atoi64(p.Ai)
+    self.Gr[p.Ry] = self.Gr[p.Rx] + uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_subi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] - atoi64(p.Ai)
+    self.Gr[p.Ry] = self.Gr[p.Rx] - uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_muli(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] * atoi64(p.Ai)
+    self.Gr[p.Ry] = self.Gr[p.Rx] * uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_andi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] & atoi64(p.Ai)
+    self.Gr[p.Ry] = self.Gr[p.Rx] & uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_xori(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] ^ atoi64(p.Ai)
+    self.Gr[p.Ry] = self.Gr[p.Rx] ^ uint64(p.Iv)
 }
 
 //go:nosplit
 func (self *Emulator) emu_OP_sbiti(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << atoi64(p.Ai))
+    self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << p.Iv)
 }
 
 //go:nosplit
@@ -315,7 +318,7 @@ func (self *Emulator) emu_OP_bgeu(p *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_bsw(p *Instr) {
-    if v := self.Gr[p.Rx]; v < uint64(p.An) {
+    if v := self.Gr[p.Rx]; v < uint64(p.Iv) {
         if br := *(**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); br != nil {
             self.PC = br
             self.Ln = false
@@ -345,6 +348,15 @@ func (self *Emulator) emu_OP_gcall(p *Instr) {
         proxy(self, p)
     } else {
         panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)).Name(), p.Pr))
+    }
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_icall(p *Instr) {
+    if proxy := icallTab[AsMethod(int(p.Iv), (*rt.GoType)(p.Pr))]; proxy != nil {
+        proxy(self, p)
+    } else {
+        panic(fmt.Sprintf("icall: interface method not registered: %s(*%p)", (*rt.GoType)(p.Pr).String(), p.Pr))
     }
 }
 

@@ -17,30 +17,31 @@
 package atm
 
 import (
-    `unsafe`
+    `reflect`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type (
-    CFunction = unsafe.Pointer
-    CallProxy = func(e *Emulator, p *Instr)
-)
-
-var (
-    icallTab = map[Method]CallProxy{}
-    ccallTab = map[unsafe.Pointer]CallProxy{}
-    gcallTab = map[unsafe.Pointer]CallProxy{}
-)
-
-func RegisterICall(mt Method, proxy CallProxy) {
-    icallTab[mt] = proxy
+type Method struct {
+    Id int
+    Vt *rt.GoType
 }
 
-func RegisterCCall(fn CFunction, proxy CallProxy) {
-    ccallTab[fn] = proxy
+func AsMethod(id int, vt *rt.GoType) Method {
+    return Method {
+        Id: id,
+        Vt: vt,
+    }
 }
 
-func RegisterGCall(fn interface{}, proxy CallProxy) {
-    gcallTab[rt.FuncAddr(fn)] = proxy
+func GetMethod(tp interface{}, name string) Method {
+    if vt := reflect.TypeOf(tp); vt.Kind() != reflect.Ptr {
+        panic("value must be an interface pointer")
+    } else if et := vt.Elem(); et.Kind() != reflect.Interface {
+        panic("value must be an interface pointer")
+    } else if mm, ok := et.MethodByName(name); !ok {
+        panic("interface " + vt.Elem().String() + " does not have method " + name)
+    } else {
+        return AsMethod(mm.Index, rt.UnpackType(et))
+    }
 }

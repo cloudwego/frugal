@@ -57,34 +57,34 @@ func emu_gcall_decode(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 7 || p.Rn != 3) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) != 0 ||
-       (p.Ai[3] & atm.ArgPointer) != 0 ||
-       (p.Ai[4] & atm.ArgPointer) == 0 ||
-       (p.Ai[5] & atm.ArgPointer) == 0 ||
-       (p.Ai[6] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) != 0 ||
-       (p.Rv[1] & atm.ArgPointer) == 0 ||
-       (p.Rv[2] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Ar[3] & atm.ArgPointer) != 0 ||
+       (p.Ar[4] & atm.ArgPointer) == 0 ||
+       (p.Ar[5] & atm.ArgPointer) == 0 ||
+       (p.Ar[6] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) != 0 ||
+       (p.Rr[1] & atm.ArgPointer) == 0 ||
+       (p.Rr[2] & atm.ArgPointer) == 0 {
         panic("invalid decode call")
     }
 
     /* extract the arguments */
-    v0       =    (*rt.GoType)(e.Pr[p.Ai[0] & atm.ArgMask])
-    v1.Ptr  =                  e.Pr[p.Ai[1] & atm.ArgMask]
-    v1.Len =               int(e.Gr[p.Ai[2] & atm.ArgMask])
-    v1.Cap =               int(e.Gr[p.Ai[3] & atm.ArgMask])
-    v2       =                 e.Pr[p.Ai[4] & atm.ArgMask]
-    v3       = (*RuntimeState)(e.Pr[p.Ai[5] & atm.ArgMask])
-    v4       =             int(e.Gr[p.Ai[6] & atm.ArgMask])
+    v0       =    (*rt.GoType)(e.Pr[p.Ar[0] & atm.ArgMask])
+    v1.Ptr  =                  e.Pr[p.Ar[1] & atm.ArgMask]
+    v1.Len =               int(e.Gr[p.Ar[2] & atm.ArgMask])
+    v1.Cap =               int(e.Gr[p.Ar[3] & atm.ArgMask])
+    v2       =                 e.Pr[p.Ar[4] & atm.ArgMask]
+    v3       = (*RuntimeState)(e.Pr[p.Ar[5] & atm.ArgMask])
+    v4       =             int(e.Gr[p.Ar[6] & atm.ArgMask])
 
     /* call the function */
     buf := *(*[]byte)(unsafe.Pointer(&v1))
     ret, err := decode(v0, buf, v2, v3, v4)
 
     /* pack the result */
-    e.Gr[p.Rv[0] & atm.ArgMask] = uint64(ret)
-    e.Pr[p.Rv[1] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[0]
-    e.Pr[p.Rv[2] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[1]
+    e.Gr[p.Rr[0] & atm.ArgMask] = uint64(ret)
+    e.Pr[p.Rr[1] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[0]
+    e.Pr[p.Rr[2] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[1]
 }

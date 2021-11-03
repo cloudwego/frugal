@@ -17,41 +17,33 @@
 package atm
 
 import (
-    `unsafe`
+    `testing`
 )
 
-func atoi8(v [8]uint8) uint64 {
-    return uint64(int8(v[0]))
+type FooIface interface {
+    FooMethod()
 }
 
-func atoi16(v [8]uint8) uint64 {
-    return uint64(*(*int16)(unsafe.Pointer(&v)))
+type FooValue struct {
+    X int
 }
 
-func atoi32(v [8]uint8) uint64 {
-    return uint64(*(*int32)(unsafe.Pointer(&v)))
+func (self FooValue) FooMethod() {
+    println(self.X)
 }
 
-func atoi64(v [8]uint8) uint64 {
-    return *(*uint64)(unsafe.Pointer(&v))
+type FooPointer struct {
+    X int
 }
 
-func i8toa(v int8) (r [8]uint8) {
-    r[0] = uint8(v)
-    return
+func (self *FooPointer) FooMethod() {
+    println(self.X)
 }
 
-func i16toa(v int16) (r [8]uint8) {
-    *(*int16)(unsafe.Pointer(&r)) = v
-    return
-}
-
-func i32toa(v int32) (r [8]uint8) {
-    *(*int32)(unsafe.Pointer(&r)) = v
-    return
-}
-
-func i64toa(v int64) (r [8]uint8) {
-    *(*int64)(unsafe.Pointer(&r)) = v
-    return
+func TestIface_Invoke(t *testing.T) {
+    var v FooIface
+    v = FooValue{X: 100}
+    v.FooMethod()
+    v = &FooPointer{X: 200}
+    v.FooMethod()
 }

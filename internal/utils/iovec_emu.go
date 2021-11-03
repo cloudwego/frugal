@@ -24,112 +24,92 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_IoVecPut(e *atm.Emulator, p *atm.Instr) {
+func emu_icall_IoVecPut(e *atm.Emulator, p *atm.Instr) {
     var v0 rt.GoIface
     var v1 rt.GoSlice
 
     /* check for arguments */
-    if (p.An != 5 || p.Rn != 0) ||
-        (p.Ai[0] & atm.ArgPointer) == 0 ||
-        (p.Ai[1] & atm.ArgPointer) == 0 ||
-        (p.Ai[2] & atm.ArgPointer) == 0 ||
-        (p.Ai[3] & atm.ArgPointer) != 0 ||
-        (p.Ai[4] & atm.ArgPointer) != 0 {
+    if (p.An != 3 || p.Rn != 0) ||
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) != 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 {
         panic("invalid IoVecPut call")
     }
 
-    /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
-    v1.Ptr   =              e.Pr[p.Ai[2] & atm.ArgMask]
-    v1.Len   =          int(e.Gr[p.Ai[3] & atm.ArgMask])
-    v1.Cap   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
+    /* extract the argument */
+    v1.Ptr =     e.Pr[p.Ar[0] & atm.ArgMask]
+    v1.Len = int(e.Gr[p.Ar[1] & atm.ArgMask])
+    v1.Cap = int(e.Gr[p.Ar[2] & atm.ArgMask])
 
     /* call the function */
-    IoVecPut(
-        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
-        *(*[]byte)      (unsafe.Pointer(&v1)),
-    )
+    v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
+    (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Put(*(*[]byte)(unsafe.Pointer(&v1)))
 }
 
-func emu_gcall_IoVecCat(e *atm.Emulator, p *atm.Instr) {
+func emu_icall_IoVecCat(e *atm.Emulator, p *atm.Instr) {
     var v0 rt.GoIface
     var v1 rt.GoSlice
     var v2 rt.GoSlice
 
     /* check for arguments */
-    if (p.An != 8 || p.Rn != 0) ||
-        (p.Ai[0] & atm.ArgPointer) == 0 ||
-        (p.Ai[1] & atm.ArgPointer) == 0 ||
-        (p.Ai[2] & atm.ArgPointer) == 0 ||
-        (p.Ai[3] & atm.ArgPointer) != 0 ||
-        (p.Ai[4] & atm.ArgPointer) != 0 ||
-        (p.Ai[5] & atm.ArgPointer) == 0 ||
-        (p.Ai[6] & atm.ArgPointer) != 0 ||
-        (p.Ai[7] & atm.ArgPointer) != 0 {
+    if (p.An != 6 || p.Rn != 0) ||
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) != 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Ar[3] & atm.ArgPointer) == 0 ||
+       (p.Ar[4] & atm.ArgPointer) != 0 ||
+       (p.Ar[5] & atm.ArgPointer) != 0 {
         panic("invalid IoVecCat call")
     }
 
     /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
-    v1.Ptr   =              e.Pr[p.Ai[2] & atm.ArgMask]
-    v1.Len   =          int(e.Gr[p.Ai[3] & atm.ArgMask])
-    v1.Cap   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
-    v2.Ptr   =              e.Pr[p.Ai[5] & atm.ArgMask]
-    v2.Len   =          int(e.Gr[p.Ai[6] & atm.ArgMask])
-    v2.Cap   =          int(e.Gr[p.Ai[7] & atm.ArgMask])
+    v1.Ptr =     e.Pr[p.Ar[0] & atm.ArgMask]
+    v1.Len = int(e.Gr[p.Ar[1] & atm.ArgMask])
+    v1.Cap = int(e.Gr[p.Ar[2] & atm.ArgMask])
+    v2.Ptr =     e.Pr[p.Ar[3] & atm.ArgMask]
+    v2.Len = int(e.Gr[p.Ar[4] & atm.ArgMask])
+    v2.Cap = int(e.Gr[p.Ar[5] & atm.ArgMask])
 
     /* call the function */
-    IoVecCat(
-        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
-        *(*[]byte)      (unsafe.Pointer(&v1)),
-        *(*[]byte)      (unsafe.Pointer(&v2)),
-    )
+    v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
+    (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Cat(*(*[]byte)(unsafe.Pointer(&v1)), *(*[]byte)(unsafe.Pointer(&v2)))
 }
 
-func emu_gcall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
+func emu_icall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
     var v1 int
     var v0 rt.GoIface
     var v2 rt.GoSlice
 
     /* check for arguments */
-    if (p.An != 6 || p.Rn != 3) ||
-        (p.Ai[0] & atm.ArgPointer) == 0 ||
-        (p.Ai[1] & atm.ArgPointer) == 0 ||
-        (p.Ai[2] & atm.ArgPointer) != 0 ||
-        (p.Ai[3] & atm.ArgPointer) == 0 ||
-        (p.Ai[4] & atm.ArgPointer) != 0 ||
-        (p.Ai[5] & atm.ArgPointer) != 0 ||
-        (p.Rv[0] & atm.ArgPointer) == 0 ||
-        (p.Rv[1] & atm.ArgPointer) != 0 ||
-        (p.Rv[2] & atm.ArgPointer) != 0 {
+    if (p.An != 4 || p.Rn != 3) ||
+       (p.Ar[0] & atm.ArgPointer) != 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Ar[3] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 ||
+       (p.Rr[1] & atm.ArgPointer) != 0 ||
+       (p.Rr[2] & atm.ArgPointer) != 0 {
         panic("invalid IoVecAdd call")
     }
 
     /* extract the arguments */
-    v0.Itab  = (*rt.GoItab)(e.Pr[p.Ai[0] & atm.ArgMask])
-    v0.Value =              e.Pr[p.Ai[1] & atm.ArgMask]
-    v1       =          int(e.Gr[p.Ai[2] & atm.ArgMask])
-    v2.Ptr   =              e.Pr[p.Ai[3] & atm.ArgMask]
-    v2.Len   =          int(e.Gr[p.Ai[4] & atm.ArgMask])
-    v2.Cap   =          int(e.Gr[p.Ai[5] & atm.ArgMask])
+    v1     = int(e.Gr[p.Ar[0] & atm.ArgMask])
+    v2.Ptr =     e.Pr[p.Ar[1] & atm.ArgMask]
+    v2.Len = int(e.Gr[p.Ar[2] & atm.ArgMask])
+    v2.Cap = int(e.Gr[p.Ar[3] & atm.ArgMask])
 
     /* call the function */
-    ret := IoVecAdd(
-        *(*frugal.IoVec)(unsafe.Pointer(&v0)),
-        v1,
-        *(*[]byte)(unsafe.Pointer(&v2)),
-    )
+    v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
+    ret := (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Add(v1, *(*[]byte)(unsafe.Pointer(&v2)))
 
     /* set the return value */
-    e.Gr[p.Rv[2] & atm.ArgMask] = uint64(cap(ret))
-    e.Gr[p.Rv[1] & atm.ArgMask] = uint64(len(ret))
-    e.Pr[p.Rv[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
+    e.Gr[p.Rr[2] & atm.ArgMask] = uint64(cap(ret))
+    e.Gr[p.Rr[1] & atm.ArgMask] = uint64(len(ret))
+    e.Pr[p.Rr[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
 }
 
 func init() {
-    atm.RegisterGCall(IoVecPut, emu_gcall_IoVecPut)
-    atm.RegisterGCall(IoVecCat, emu_gcall_IoVecCat)
-    atm.RegisterGCall(IoVecAdd, emu_gcall_IoVecAdd)
+    atm.RegisterICall(IoVecPut, emu_icall_IoVecPut)
+    atm.RegisterICall(IoVecCat, emu_icall_IoVecCat)
+    atm.RegisterICall(IoVecAdd, emu_icall_IoVecAdd)
 }

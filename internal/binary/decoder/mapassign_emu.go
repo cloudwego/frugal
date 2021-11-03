@@ -31,18 +31,18 @@ func emu_gcall_mapassign(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) == 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) == 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid mapassign call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Pr[r0] = mapassign(
@@ -60,18 +60,18 @@ func emu_gcall_mapassign_fast32(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid mapassign_fast32 call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Pr[r0] = mapassign_fast32(
@@ -89,18 +89,18 @@ func emu_gcall_mapassign_fast64(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid mapassign_fast64 call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Pr[r0] = mapassign_fast64(
@@ -119,20 +119,20 @@ func emu_gcall_mapassign_faststr(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 4 || p.Rn != 1) ||
-        (p.Ai[0] & atm.ArgPointer) == 0 ||
-        (p.Ai[1] & atm.ArgPointer) == 0 ||
-        (p.Ai[2] & atm.ArgPointer) == 0 ||
-        (p.Ai[3] & atm.ArgPointer) != 0 ||
-        (p.Rv[0] & atm.ArgPointer) == 0 {
+        (p.Ar[0] & atm.ArgPointer) == 0 ||
+        (p.Ar[1] & atm.ArgPointer) == 0 ||
+        (p.Ar[2] & atm.ArgPointer) == 0 ||
+        (p.Ar[3] & atm.ArgPointer) != 0 ||
+        (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid mapassign_faststr call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    a3 = p.Ai[3] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    a3 = p.Ar[3] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* construct the key */
     key := rt.GoString {
@@ -156,18 +156,18 @@ func emu_gcall_mapassign_fast64ptr(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) == 0 ||
-       (p.Ai[2] & atm.ArgPointer) == 0 ||
-       (p.Rv[0] & atm.ArgPointer) == 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) == 0 ||
+       (p.Ar[2] & atm.ArgPointer) == 0 ||
+       (p.Rr[0] & atm.ArgPointer) == 0 {
         panic("invalid mapassign_fast64ptr call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Pr[r0] = mapassign_fast64ptr(

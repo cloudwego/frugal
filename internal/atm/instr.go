@@ -73,6 +73,7 @@ const (
     OP_jal                  // PC -> Pd; Br.PC -> PC
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
+    OP_icall                // call external Go iface methods
     OP_halt                 // halt the emulator
     OP_break                // trigger a debugger breakpoint
 )
@@ -84,46 +85,46 @@ type Instr struct {
     Rz GenericRegister
     Ps PointerRegister
     Pd PointerRegister
-    _  [2]uint8
-    Ai [8]uint8
-    Rv [8]uint8
-    An int
-    Rn int
+    An uint8
+    Rn uint8
+    Ar [8]uint8
+    Rr [8]uint8
+    Iv int64
     Pr unsafe.Pointer
     Br *Instr
     Ln *Instr
 }
 
+func (self *Instr) iv(v int64)           *Instr { self.Iv = v; return self }
+func (self *Instr) pr(v unsafe.Pointer)  *Instr { self.Pr = v; return self }
 func (self *Instr) rx(v GenericRegister) *Instr { self.Rx = v; return self }
 func (self *Instr) ry(v GenericRegister) *Instr { self.Ry = v; return self }
 func (self *Instr) rz(v GenericRegister) *Instr { self.Rz = v; return self }
 func (self *Instr) ps(v PointerRegister) *Instr { self.Ps = v; return self }
 func (self *Instr) pd(v PointerRegister) *Instr { self.Pd = v; return self }
-func (self *Instr) pr(v unsafe.Pointer)  *Instr { self.Pr = v; return self }
-func (self *Instr) ai(v [8]uint8)        *Instr { self.Ai = v; return self }
 
-func (self *Instr) A0(v Register) *Instr { self.An, self.Ai[0] = 1, v.A(); return self }
-func (self *Instr) A1(v Register) *Instr { self.An, self.Ai[1] = 2, v.A(); return self }
-func (self *Instr) A2(v Register) *Instr { self.An, self.Ai[2] = 3, v.A(); return self }
-func (self *Instr) A3(v Register) *Instr { self.An, self.Ai[3] = 4, v.A(); return self }
-func (self *Instr) A4(v Register) *Instr { self.An, self.Ai[4] = 5, v.A(); return self }
-func (self *Instr) A5(v Register) *Instr { self.An, self.Ai[5] = 6, v.A(); return self }
-func (self *Instr) A6(v Register) *Instr { self.An, self.Ai[6] = 7, v.A(); return self }
-func (self *Instr) A7(v Register) *Instr { self.An, self.Ai[7] = 8, v.A(); return self }
+func (self *Instr) A0(v Register) *Instr { self.An, self.Ar[0] = 1, v.A(); return self }
+func (self *Instr) A1(v Register) *Instr { self.An, self.Ar[1] = 2, v.A(); return self }
+func (self *Instr) A2(v Register) *Instr { self.An, self.Ar[2] = 3, v.A(); return self }
+func (self *Instr) A3(v Register) *Instr { self.An, self.Ar[3] = 4, v.A(); return self }
+func (self *Instr) A4(v Register) *Instr { self.An, self.Ar[4] = 5, v.A(); return self }
+func (self *Instr) A5(v Register) *Instr { self.An, self.Ar[5] = 6, v.A(); return self }
+func (self *Instr) A6(v Register) *Instr { self.An, self.Ar[6] = 7, v.A(); return self }
+func (self *Instr) A7(v Register) *Instr { self.An, self.Ar[7] = 8, v.A(); return self }
 
-func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rv[0] = 1, v.A(); return self }
-func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rv[1] = 2, v.A(); return self }
-func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rv[2] = 3, v.A(); return self }
-func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rv[3] = 4, v.A(); return self }
-func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rv[4] = 5, v.A(); return self }
-func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rv[5] = 6, v.A(); return self }
-func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rv[6] = 7, v.A(); return self }
-func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rv[7] = 8, v.A(); return self }
+func (self *Instr) R0(v Register) *Instr { self.Rn, self.Rr[0] = 1, v.A(); return self }
+func (self *Instr) R1(v Register) *Instr { self.Rn, self.Rr[1] = 2, v.A(); return self }
+func (self *Instr) R2(v Register) *Instr { self.Rn, self.Rr[2] = 3, v.A(); return self }
+func (self *Instr) R3(v Register) *Instr { self.Rn, self.Rr[3] = 4, v.A(); return self }
+func (self *Instr) R4(v Register) *Instr { self.Rn, self.Rr[4] = 5, v.A(); return self }
+func (self *Instr) R5(v Register) *Instr { self.Rn, self.Rr[5] = 6, v.A(); return self }
+func (self *Instr) R6(v Register) *Instr { self.Rn, self.Rr[6] = 7, v.A(); return self }
+func (self *Instr) R7(v Register) *Instr { self.Rn, self.Rr[7] = 8, v.A(); return self }
 
 func (self *Instr) Sw() (p []*Instr) {
     (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = self.Pr
-    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = self.An
-    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = self.An
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(self.Iv)
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(self.Iv)
     return
 }
 
@@ -140,8 +141,8 @@ func (self *Instr) formatCalls() string {
     rets := make([]string, self.Rn)
 
     /* add arguments */
-    for i := 0; i < self.An; i++ {
-        if v := self.Ai[i]; (v & ArgPointer) == 0 {
+    for i := uint8(0); i < self.An; i++ {
+        if v := self.Ar[i]; (v & ArgPointer) == 0 {
             args[i] = GenericRegister(v & ArgMask).String()
         } else {
             args[i] = PointerRegister(v & ArgMask).String()
@@ -149,8 +150,8 @@ func (self *Instr) formatCalls() string {
     }
 
     /* add return values */
-    for i := 0; i < self.Rn; i++ {
-        if v := self.Rv[i]; (v & ArgPointer) == 0 {
+    for i := uint8(0); i < self.Rn; i++ {
+        if v := self.Rr[i]; (v & ArgPointer) == 0 {
             rets[i] = GenericRegister(v & ArgMask).String()
         } else {
             rets[i] = PointerRegister(v & ArgMask).String()
@@ -167,10 +168,10 @@ func (self *Instr) formatCalls() string {
 
 func (self *Instr) formatTable(refs map[*Instr]string) string {
     tab := self.Sw()
-    ret := make([]string, 0, self.An)
+    ret := make([]string, 0, self.Iv)
 
     /* empty table */
-    if self.An == 0 {
+    if self.Iv == 0 {
         return "{}"
     }
 
@@ -191,10 +192,10 @@ func (self *Instr) formatTable(refs map[*Instr]string) string {
 func (self *Instr) disassemble(refs map[*Instr]string) string {
     switch self.Op {
         case OP_nop   : return "nop"
-        case OP_ib    : return fmt.Sprintf("ib      $%d, %%%s", atoi64(self.Ai), self.Rx)
-        case OP_iw    : return fmt.Sprintf("iw      $%d, %%%s", atoi64(self.Ai), self.Rx)
-        case OP_il    : return fmt.Sprintf("il      $%d, %%%s", atoi64(self.Ai), self.Rx)
-        case OP_iq    : return fmt.Sprintf("iq      $%d, %%%s", atoi64(self.Ai), self.Rx)
+        case OP_ib    : return fmt.Sprintf("ib      $%d, %%%s", self.Iv, self.Rx)
+        case OP_iw    : return fmt.Sprintf("iw      $%d, %%%s", self.Iv, self.Rx)
+        case OP_il    : return fmt.Sprintf("il      $%d, %%%s", self.Iv, self.Rx)
+        case OP_iq    : return fmt.Sprintf("iq      $%d, %%%s", self.Iv, self.Rx)
         case OP_ip    : return fmt.Sprintf("ip      $%p, %%%s", self.Pr, self.Pd)
         case OP_lb    : return fmt.Sprintf("lb      %%%s, %%%s", self.Ps, self.Rx)
         case OP_lw    : return fmt.Sprintf("lw      %%%s, %%%s", self.Ps, self.Rx)
@@ -208,21 +209,21 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_sp    : return fmt.Sprintf("sp      %%%s, %%%s", self.Ps, self.Pd)
         case OP_mov   : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Ry)
         case OP_movp  : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Pd)
-        case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Rx)
-        case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", atoi64(self.Ai), self.Pd)
-        case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, atoi64(self.Ai))
-        case OP_strp  : return fmt.Sprintf("str     %%%s, $%d", self.Ps, atoi64(self.Ai))
+        case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Rx)
+        case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Pd)
+        case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, self.Iv)
+        case OP_strp  : return fmt.Sprintf("str     %%%s, $%d", self.Ps, self.Iv)
         case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
-        case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
-        case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, atoi64(self.Ai), self.Pd)
+        case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
+        case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
-        case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
-        case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
-        case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
-        case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
-        case OP_sbiti : return fmt.Sprintf("sbit    %%%s, %d, %%%s", self.Rx, atoi64(self.Ai), self.Ry)
+        case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_sbiti : return fmt.Sprintf("sbit    %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
@@ -235,6 +236,7 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())
+        case OP_icall : return fmt.Sprintf("icall   %s/%d, {%%%s, %%%s}, %s", self.formatFunc(), self.Iv, self.Ps, self.Pd, self.formatCalls())
         case OP_halt  : return "halt"
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))

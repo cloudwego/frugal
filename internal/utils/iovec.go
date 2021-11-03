@@ -18,19 +18,11 @@ package utils
 
 import (
     `github.com/cloudwego/frugal`
+    `github.com/cloudwego/frugal/internal/atm`
 )
 
-//go:nosplit
-func IoVecPut(p frugal.IoVec, v []byte) {
-    p.Put(v)
-}
-
-//go:nosplit
-func IoVecCat(p frugal.IoVec, v []byte, w []byte) {
-    p.Cat(v, w)
-}
-
-//go:nosplit
-func IoVecAdd(p frugal.IoVec, n int, v []byte) []byte {
-    return p.Add(n, v)
-}
+var (
+    IoVecPut = atm.GetMethod((*frugal.IoVec)(nil), "Put")
+    IoVecCat = atm.GetMethod((*frugal.IoVec)(nil), "Cat")
+    IoVecAdd = atm.GetMethod((*frugal.IoVec)(nil), "Add")
+)

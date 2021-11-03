@@ -77,7 +77,7 @@ func (self *Builder) tab(p *Instr, sw []string) *Instr {
     }
 
     /* save the switch table */
-    p.An = nb
+    p.Iv = int64(nb)
     p.Pr = (*rt.GoSlice)(unsafe.Pointer(&sb)).Ptr
     return self.add(p)
 }
@@ -146,7 +146,7 @@ func (self *Builder) Build() (r Program) {
             if p.Op != OP_bsw {
                 self.rejmp(&p.Br)
             } else {
-                for i := 0; i < p.An * 8; i += 8 {
+                for i := int64(0); i < p.Iv * 8; i += 8 {
                     self.rejmp((**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(i))))
                 }
             }
@@ -183,19 +183,19 @@ func (self *Builder) NOP() *Instr {
 }
 
 func (self *Builder) IB(v int8, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_ib).ai(i8toa(v)).rx(rx))
+    return self.add(newInstr(OP_ib).iv(int64(v)).rx(rx))
 }
 
 func (self *Builder) IW(v int16, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_iw).ai(i16toa(v)).rx(rx))
+    return self.add(newInstr(OP_iw).iv(int64(v)).rx(rx))
 }
 
 func (self *Builder) IL(v int32, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_il).ai(i32toa(v)).rx(rx))
+    return self.add(newInstr(OP_il).iv(int64(v)).rx(rx))
 }
 
 func (self *Builder) IQ(v int64, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_iq).ai(i64toa(v)).rx(rx))
+    return self.add(newInstr(OP_iq).iv(v).rx(rx))
 }
 
 func (self *Builder) IP(v interface{}, pd PointerRegister) *Instr {
@@ -255,19 +255,19 @@ func (self *Builder) MOVP(ps PointerRegister, pd PointerRegister) *Instr {
 }
 
 func (self *Builder) LDAQ(id int, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_ldaq).ai(i64toa(int64(id))).rx(rx))
+    return self.add(newInstr(OP_ldaq).iv(int64(id)).rx(rx))
 }
 
 func (self *Builder) LDAP(id int, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_ldap).ai(i64toa(int64(id))).pd(pd))
+    return self.add(newInstr(OP_ldap).iv(int64(id)).pd(pd))
 }
 
 func (self *Builder) STRQ(rx GenericRegister, id int) *Instr {
-    return self.add(newInstr(OP_strq).rx(rx).ai(i64toa(int64(id))))
+    return self.add(newInstr(OP_strq).rx(rx).iv(int64(id)))
 }
 
 func (self *Builder) STRP(ps PointerRegister, id int) *Instr {
-    return self.add(newInstr(OP_strp).ps(ps).ai(i64toa(int64(id))))
+    return self.add(newInstr(OP_strp).ps(ps).iv(int64(id)))
 }
 
 func (self *Builder) ADDP(ps PointerRegister, rx GenericRegister, pd PointerRegister) *Instr {
@@ -279,11 +279,11 @@ func (self *Builder) SUBP(ps PointerRegister, rx GenericRegister, pd PointerRegi
 }
 
 func (self *Builder) ADDPI(ps PointerRegister, im int64, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_addpi).ps(ps).ai(i64toa(im)).pd(pd))
+    return self.add(newInstr(OP_addpi).ps(ps).iv(im).pd(pd))
 }
 
 func (self *Builder) SUBPI(ps PointerRegister, im int64, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_subpi).ps(ps).ai(i64toa(im)).pd(pd))
+    return self.add(newInstr(OP_subpi).ps(ps).iv(im).pd(pd))
 }
 
 func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
@@ -291,27 +291,27 @@ func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegis
 }
 
 func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_addi).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_addi).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) SUBI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_subi).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_subi).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) MULI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_muli).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_muli).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) ANDI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_andi).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_andi).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) XORI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_xori).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_xori).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) SBITI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_sbiti).rx(rx).ai(i64toa(im)).ry(ry))
+    return self.add(newInstr(OP_sbiti).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) SWAPW(rx GenericRegister, ry GenericRegister) *Instr {
@@ -360,6 +360,10 @@ func (self *Builder) CCALL(fn CFunction) *Instr {
 
 func (self *Builder) GCALL(fn interface{}) *Instr {
     return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
+}
+
+func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt Method) *Instr {
+    return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)).pr(unsafe.Pointer(mt.Vt)))
 }
 
 func (self *Builder) HALT() *Instr {

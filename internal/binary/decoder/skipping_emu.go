@@ -295,18 +295,18 @@ func emu_ccall_skip(e *atm.Emulator, p *atm.Instr) {
 
     /* check for arguments and return values */
     if (p.An != 3 || p.Rn != 1) ||
-       (p.Ai[0] & atm.ArgPointer) == 0 ||
-       (p.Ai[1] & atm.ArgPointer) != 0 ||
-       (p.Ai[2] & atm.ArgPointer) != 0 ||
-       (p.Rv[0] & atm.ArgPointer) != 0 {
+       (p.Ar[0] & atm.ArgPointer) == 0 ||
+       (p.Ar[1] & atm.ArgPointer) != 0 ||
+       (p.Ar[2] & atm.ArgPointer) != 0 ||
+       (p.Rr[0] & atm.ArgPointer) != 0 {
         panic("invalid skip call")
     }
 
     /* extract the arguments and return value index */
-    a0 = p.Ai[0] & atm.ArgMask
-    a1 = p.Ai[1] & atm.ArgMask
-    a2 = p.Ai[2] & atm.ArgMask
-    r0 = p.Rv[0] & atm.ArgMask
+    a0 = p.Ar[0] & atm.ArgMask
+    a1 = p.Ar[1] & atm.ArgMask
+    a2 = p.Ar[2] & atm.ArgMask
+    r0 = p.Rr[0] & atm.ArgMask
 
     /* call the function */
     e.Gr[r0] = uint64(do_skip(

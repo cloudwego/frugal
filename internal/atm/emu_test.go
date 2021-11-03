@@ -30,33 +30,33 @@ func init() {
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
         if (p.An != 6 || p.Rn != 4) ||
-           (p.Ai[0] & ArgPointer) == 0 ||
-           (p.Ai[1] & ArgPointer) != 0 ||
-           (p.Ai[2] & ArgPointer) == 0 ||
-           (p.Ai[3] & ArgPointer) != 0 ||
-           (p.Ai[4] & ArgPointer) == 0 ||
-           (p.Ai[5] & ArgPointer) != 0 ||
-           (p.Rv[0] & ArgPointer) == 0 ||
-           (p.Rv[1] & ArgPointer) != 0 ||
-           (p.Rv[2] & ArgPointer) == 0 ||
-           (p.Rv[3] & ArgPointer) != 0 {
+           (p.Ar[0] & ArgPointer) == 0 ||
+           (p.Ar[1] & ArgPointer) != 0 ||
+           (p.Ar[2] & ArgPointer) == 0 ||
+           (p.Ar[3] & ArgPointer) != 0 ||
+           (p.Ar[4] & ArgPointer) == 0 ||
+           (p.Ar[5] & ArgPointer) != 0 ||
+           (p.Rr[0] & ArgPointer) == 0 ||
+           (p.Rr[1] & ArgPointer) != 0 ||
+           (p.Rr[2] & ArgPointer) == 0 ||
+           (p.Rr[3] & ArgPointer) != 0 {
             panic("invalid testemu_pfunc call")
         }
-        v0.P = e.Pr[p.Ai[0] & ArgMask]
-        v0.L = e.Gr[p.Ai[1] & ArgMask]
-        v1.P = e.Pr[p.Ai[2] & ArgMask]
-        v1.L = e.Gr[p.Ai[3] & ArgMask]
-        v2.P = e.Pr[p.Ai[4] & ArgMask]
-        v2.L = e.Gr[p.Ai[5] & ArgMask]
+        v0.P = e.Pr[p.Ar[0] & ArgMask]
+        v0.L = e.Gr[p.Ar[1] & ArgMask]
+        v1.P = e.Pr[p.Ar[2] & ArgMask]
+        v1.L = e.Gr[p.Ar[3] & ArgMask]
+        v2.P = e.Pr[p.Ar[4] & ArgMask]
+        v2.L = e.Gr[p.Ar[5] & ArgMask]
         r0, r1 := testemu_pfunc(
             *(*string)(unsafe.Pointer(&v0)),
             *(*string)(unsafe.Pointer(&v1)),
             *(*string)(unsafe.Pointer(&v2)),
         )
-        e.Gr[p.Rv[1] & ArgMask] = uint64(len(r0))
-        e.Gr[p.Rv[3] & ArgMask] = uint64(len(r1))
-        e.Pr[p.Rv[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r0))
-        e.Pr[p.Rv[2] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r1))
+        e.Gr[p.Rr[1] & ArgMask] = uint64(len(r0))
+        e.Gr[p.Rr[3] & ArgMask] = uint64(len(r1))
+        e.Pr[p.Rr[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r0))
+        e.Pr[p.Rr[2] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r1))
     }
 }
 
