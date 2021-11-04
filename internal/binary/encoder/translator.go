@@ -189,6 +189,8 @@ func translate_OP_quad(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_size(p *atm.Builder, v Instr) {
+    p.ADDI  (RL, v.Iv(), TR)            // TR <= RL + v.Iv()
+    p.BGEU  (RC, TR, "_noalloc_{n}")    // if RC >= TR then GOTO _noalloc_{n}
     p.IQ    (v.Iv(), TR)                // TR <= v.Iv()
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
@@ -200,6 +202,7 @@ func translate_OP_size(p *atm.Builder, v Instr) {
       R0    (RP).                       //     ret.ptr => RP
       R1    (RL).                       //     ret.len => RL
       R2    (RC)                        //     ret.cap => RC
+    p.Label ("_noalloc_{n}")            // _noalloc_{n}:
 }
 
 func translate_OP_sint(p *atm.Builder, v Instr) {
@@ -247,6 +250,17 @@ func translate_OP_deref(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_defer(p *atm.Builder, v Instr) {
+    p.BEQ   (RL, atm.Rz, "_empty_{n}")  // if RL == 0 then GOTO _empty_{n}
+    p.LDAP  (0, ET)                     // ET <= a0
+    p.LDAP  (1, EP)                     // EP <= a1
+    p.ICALL (ET, EP, utils.IoVecPut).   // ICALL IoVec.Put:
+      A0    (RP).                       //     v.ptr  <= RP
+      A1    (RL).                       //     v.len  <= RL
+      A2    (RC)                        //     v.cap  <= RC
+    p.MOV   (atm.Rz, RC)                // RC <= 0
+    p.MOV   (atm.Rz, RL)                // RL <= 0
+    p.MOVP  (atm.Pn, RP)                // RP <= nil
+    p.Label ("_empty_{n}")              // _empty_{n}:
     p.LDAP  (0, ET)                     // ET <= a0
     p.LDAP  (1, EP)                     // EP <= a1
     p.IP    (v.Vt(), TP)                // TP <= v.Vt()
