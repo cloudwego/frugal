@@ -54,6 +54,7 @@ const (
     OP_subp                 // Ps - Rx -> Pd
     OP_addpi                // Ps + Im -> Pd
     OP_subpi                // Ps - Im -> Pd
+    OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_addi                 // Rx + Im -> Ry
     OP_subi                 // Rx - Im -> Ry
@@ -222,6 +223,7 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
+        case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)

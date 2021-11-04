@@ -286,6 +286,10 @@ func (self *Builder) SUBPI(ps PointerRegister, im int64, pd PointerRegister) *In
     return self.add(newInstr(OP_subpi).ps(ps).iv(im).pd(pd))
 }
 
+func (self *Builder) ADD(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
+    return self.add(newInstr(OP_add).rx(rx).ry(ry).rz(rz))
+}
+
 func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
     return self.add(newInstr(OP_sub).rx(rx).ry(ry).rz(rz))
 }

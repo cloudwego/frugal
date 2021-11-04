@@ -25,6 +25,7 @@ import (
 
 type Decoder func (
     buf []byte,
+    i   int,
     p   unsafe.Pointer,
     rs  *RuntimeState,
     st  int,
@@ -34,11 +35,11 @@ var (
     programCache = utils.CreateProgramCache()
 )
 
-func decode(vt *rt.GoType, buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
+func decode(vt *rt.GoType, buf []byte, i int, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
     if dec, err := resolve(vt); err != nil {
         return 0, err
     } else {
-        return dec(buf, p, rs, st)
+        return dec(buf, i, p, rs, st)
     }
 }
 

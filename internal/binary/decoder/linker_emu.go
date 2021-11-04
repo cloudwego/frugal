@@ -29,16 +29,17 @@ func init() {
 }
 
 func link_emu(prog atm.Program) Decoder {
-    return func(buf []byte, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
+    return func(buf []byte, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
         emu := atm.LoadProgram(prog)
         ret := (*rt.GoIface)(unsafe.Pointer(&err))
         src := (*rt.GoSlice)(unsafe.Pointer(&buf))
         emu.Ap(0, src.Ptr)
         emu.Au(1, uint64(src.Len))
         emu.Au(2, uint64(src.Cap))
-        emu.Ap(3, p)
-        emu.Ap(4, unsafe.Pointer(rs))
-        emu.Au(5, uint64(st))
+        emu.Au(3, uint64(i))
+        emu.Ap(4, p)
+        emu.Ap(5, unsafe.Pointer(rs))
+        emu.Au(6, uint64(st))
         emu.Run()
         pos = int(emu.Ru(0))
         ret.Itab = (*rt.GoItab)(emu.Rp(1))
@@ -49,21 +50,23 @@ func link_emu(prog atm.Program) Decoder {
 }
 
 func emu_gcall_decode(e *atm.Emulator, p *atm.Instr) {
-    var v4 int
+    var v5 int
+    var v2 int
     var v1 rt.GoSlice
     var v0 *rt.GoType
-    var v3 *RuntimeState
-    var v2 unsafe.Pointer
+    var v4 *RuntimeState
+    var v3 unsafe.Pointer
 
     /* check for arguments and return values */
-    if (p.An != 7 || p.Rn != 3) ||
+    if (p.An != 8 || p.Rn != 3) ||
        (p.Ar[0] & atm.ArgPointer) == 0 ||
        (p.Ar[1] & atm.ArgPointer) == 0 ||
        (p.Ar[2] & atm.ArgPointer) != 0 ||
        (p.Ar[3] & atm.ArgPointer) != 0 ||
-       (p.Ar[4] & atm.ArgPointer) == 0 ||
+       (p.Ar[4] & atm.ArgPointer) != 0 ||
        (p.Ar[5] & atm.ArgPointer) == 0 ||
-       (p.Ar[6] & atm.ArgPointer) != 0 ||
+       (p.Ar[6] & atm.ArgPointer) == 0 ||
+       (p.Ar[7] & atm.ArgPointer) != 0 ||
        (p.Rr[0] & atm.ArgPointer) != 0 ||
        (p.Rr[1] & atm.ArgPointer) == 0 ||
        (p.Rr[2] & atm.ArgPointer) == 0 {
@@ -75,13 +78,14 @@ func emu_gcall_decode(e *atm.Emulator, p *atm.Instr) {
     v1.Ptr  =                  e.Pr[p.Ar[1] & atm.ArgMask]
     v1.Len =               int(e.Gr[p.Ar[2] & atm.ArgMask])
     v1.Cap =               int(e.Gr[p.Ar[3] & atm.ArgMask])
-    v2       =                 e.Pr[p.Ar[4] & atm.ArgMask]
-    v3       = (*RuntimeState)(e.Pr[p.Ar[5] & atm.ArgMask])
-    v4       =             int(e.Gr[p.Ar[6] & atm.ArgMask])
+    v2       =             int(e.Gr[p.Ar[4] & atm.ArgMask])
+    v3       =                 e.Pr[p.Ar[5] & atm.ArgMask]
+    v4       = (*RuntimeState)(e.Pr[p.Ar[6] & atm.ArgMask])
+    v5       =             int(e.Gr[p.Ar[7] & atm.ArgMask])
 
     /* call the function */
     buf := *(*[]byte)(unsafe.Pointer(&v1))
-    ret, err := decode(v0, buf, v2, v3, v4)
+    ret, err := decode(v0, buf, v2, v3, v4, v5)
 
     /* pack the result */
     e.Gr[p.Rr[0] & atm.ArgMask] = uint64(ret)

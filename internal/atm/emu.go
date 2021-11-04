@@ -72,6 +72,7 @@ var dispatchTab = [...]func(e *Emulator, p *Instr) {
     OP_subp  : (*Emulator).emu_OP_subp,
     OP_addpi : (*Emulator).emu_OP_addpi,
     OP_subpi : (*Emulator).emu_OP_subpi,
+    OP_add   : (*Emulator).emu_OP_add,
     OP_sub   : (*Emulator).emu_OP_sub,
     OP_addi  : (*Emulator).emu_OP_addi,
     OP_subi  : (*Emulator).emu_OP_subi,
@@ -224,6 +225,11 @@ func (self *Emulator) emu_OP_addpi(p *Instr) {
 //go:nosplit
 func (self *Emulator) emu_OP_subpi(p *Instr) {
     self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(p.Iv))
+}
+
+//go:nosplit
+func (self *Emulator) emu_OP_add(p *Instr) {
+    self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
 }
 
 //go:nosplit
