@@ -658,14 +658,14 @@ func translate_OP_drop_state(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_construct(p *atm.Builder, v Instr) {
-    p.IB    (1, UR)                     //  UR <= 1
-    p.IP    (v.Vt, TP)                  //  TP <= v.Vt
-    p.IQ    (int64(v.Vt.Size), TR)      //  TR <= v.Vt.Size
-    p.GCALL (mallocgc).                 //  GCALL mallocgc:
-      A0    (TR).                       //      size     <= TR
-      A1    (TP).                       //      typ      <= TP
-      A2    (UR).                       //      needzero <= UR
-      R0    (WP)                        //      ret      => WP
+    p.IB    (1, UR)                     // UR <= 1
+    p.IP    (v.Vt, TP)                  // TP <= v.Vt
+    p.IQ    (int64(v.Vt.Size), TR)      // TR <= v.Vt.Size
+    p.GCALL (mallocgc).                 // GCALL mallocgc:
+      A0    (TR).                       //     size     <= TR
+      A1    (TP).                       //     typ      <= TP
+      A2    (UR).                       //     needzero <= UR
+      R0    (WP)                        //     ret      => WP
 }
 
 func translate_OP_defer(p *atm.Builder, v Instr) {
