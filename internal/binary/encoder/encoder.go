@@ -17,6 +17,7 @@
 package encoder
 
 import (
+    `runtime`
     `unsafe`
 
     `github.com/cloudwego/frugal`
@@ -61,4 +62,21 @@ func compile(vt *rt.GoType) (interface{}, error) {
     } else {
         return Link(Translate(pp)), nil
     }
+}
+
+func EncodeObject(iov frugal.IoVec, val interface{}) (err error) {
+    efv := rt.UnpackEface(val)
+    rst := newRuntimeState()
+
+    /* check for indirect types */
+    if efv.Type.IsIndirect() {
+        err = encode(efv.Type, iov, efv.Value, rst, 0)
+    } else {
+        err = encode(efv.Type, iov, unsafe.Pointer(&efv.Value), rst, 0)
+    }
+
+    /* return the state into pool */
+    freeRuntimeState(rst)
+    runtime.KeepAlive(efv)
+    return
 }

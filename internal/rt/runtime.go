@@ -62,6 +62,10 @@ func (self *GoType) String() string {
     return self.Pack().String()
 }
 
+func (self *GoType) IsIndirect() bool {
+    return (self.KindFlags & F_direct) == 0
+}
+
 type GoMapType struct {
     GoType
     Key        *GoType

@@ -23,9 +23,10 @@ import (
 )
 
 var (
-    programPool  sync.Pool
-    compilerPool sync.Pool
-    iteratorPool sync.Pool
+    programPool      sync.Pool
+    compilerPool     sync.Pool
+    iteratorPool     sync.Pool
+    runtimeStatePool sync.Pool
 )
 
 func newProgram() Program {
@@ -72,4 +73,16 @@ func freeIterator(p *rt.GoMapIterator) {
 func resetIterator(p *rt.GoMapIterator) *rt.GoMapIterator {
     *p = rt.GoMapIterator{}
     return p
+}
+
+func newRuntimeState() *RuntimeState {
+    if v := runtimeStatePool.Get(); v != nil {
+        return v.(*RuntimeState)
+    } else {
+        return new(RuntimeState)
+    }
+}
+
+func freeRuntimeState(p *RuntimeState) {
+    runtimeStatePool.Put(p)
 }

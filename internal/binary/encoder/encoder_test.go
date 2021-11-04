@@ -20,35 +20,54 @@ import (
     `bytes`
     `encoding/base64`
     `testing`
-    `unsafe`
 
     `github.com/cloudwego/frugal`
-    `github.com/cloudwego/frugal/internal/rt`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
 
+type BarStruct struct {
+    F *FooStruct `frugal:"1,default,FooStruct"`
+}
+
+type FooStruct struct {
+    X int32      `frugal:"1,default,i32"`
+    Y *BarStruct `frugal:"2,default,BarStruct"`
+}
+
 func TestEncoder_Encode(t *testing.T) {
-    v := TranslatorTestStruct {
-        A: true,
-        B: 0x12,
-        C: 12.34,
-        D: 0x3456,
-        E: 0x12345678,
-        F: 0x66778899aabbccdd,
-        G: "hello, world",
-        H: []byte("testbytebuffer"),
-        I: []int32{0x11223344, 0x55667788, 3, 4, 5},
-        J: map[string]string{"asdf": "qwer", "zxcv": "hjkl"},
-        K: map[string]*TranslatorTestStruct{
-            "foo": {
-                B: -1,
+    // v := TranslatorTestStruct {
+    //     A: true,
+    //     B: 0x12,
+    //     C: 12.34,
+    //     D: 0x3456,
+    //     E: 0x12345678,
+    //     F: 0x66778899aabbccdd,
+    //     G: "hello, world",
+    //     H: []byte("testbytebuffer"),
+    //     I: []int32{0x11223344, 0x55667788, 3, 4, 5},
+    //     J: map[string]string{"asdf": "qwer", "zxcv": "hjkl"},
+    //     K: map[string]*TranslatorTestStruct{
+    //         "foo": {
+    //             B: -1,
+    //         },
+    //     },
+    // }
+    v := FooStruct{
+        X: 0x1234,
+        Y: &BarStruct{
+            F: &FooStruct{
+                X: 0x5678,
+                Y: &BarStruct{
+                    F: &FooStruct{
+                        X: 0xabcd,
+                    },
+                },
             },
         },
     }
-    rs := new(RuntimeState)
     iov := new(frugal.SimpleIoVec)
-    err := encode(rt.UnpackEface(v).Type, iov, unsafe.Pointer(&v), rs, 0)
+    err := EncodeObject(iov, *v.Y)
     require.NoError(t, err)
     spew.Dump(iov.Bytes())
     mm := bytes.NewBufferString("\x80\x01\x00\x01\x00\x00\x00\x01a\x00\x00\x00\x00")
