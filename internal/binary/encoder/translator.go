@@ -225,7 +225,7 @@ func translate_OP_vstr(p *atm.Builder, _ Instr) {
     p.ADDPI (WP, 8, EP)                 //  EP <=  WP + 8
     p.LQ    (EP, TR)                    //  TR <= *EP
     p.SWAPL (TR, UR)                    //  UR <=  bswap32(TR)
-    p.SQ    (UR, TP)                    // *TP <=  UR
+    p.SL    (UR, TP)                    // *TP <=  UR
     p.LP    (WP, TP)                    //  TP <= *WP
     p.LDAP  (0, ET)                     //  ET <=  a0
     p.LDAP  (1, EP)                     //  EP <=  a1
@@ -278,9 +278,10 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_map_end(p *atm.Builder, _ Instr) {
-    p.SUBPI (RS, MiWpSize, TP)          // TP <=  RS - MiWpSize
-    p.LP    (TP, TP)                    // TP <= *TP
-    p.GCALL (MapEndIterator).A0(TP)     // GCALL MapEndIterator(it: TP)
+    p.SUBPI (RS, MiWpSize, TP)          //  TP <=  RS - MiWpSize
+    p.LP    (TP, EP)                    //  EP <= *TP
+    p.SP    (atm.Pn, TP)                // *TP <=  nil
+    p.GCALL (MapEndIterator).A0(EP)     //  GCALL MapEndIterator(it: EP)
 }
 
 func translate_OP_map_key(p *atm.Builder, _ Instr) {
