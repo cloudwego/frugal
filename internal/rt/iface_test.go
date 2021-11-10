@@ -14,30 +14,36 @@
  * limitations under the License.
  */
 
-package frugal
+package rt
 
 import (
-    `bytes`
+    `testing`
 )
 
-// SimpleIoVec provides a very basic implementation of IoVec using bytes.Buffer.
-type SimpleIoVec struct {
-    bytes.Buffer
+type FooIface interface {
+    FooMethod()
 }
 
-// Put implements IoVec.Put.
-func (self *SimpleIoVec) Put(v []byte) {
-    _, _ = self.Write(v)
+type FooValue struct {
+    X int
 }
 
-// Cat implements IoVec.Cat.
-func (self *SimpleIoVec) Cat(v []byte, w []byte) {
-    self.Put(v)
-    self.Put(w)
+func (self FooValue) FooMethod() {
+    println(self.X)
 }
 
-// Add implements IoVec.Add.
-func (self *SimpleIoVec) Add(n int, v []byte) []byte {
-    self.Put(v)
-    return make([]byte, 0, n)
+type FooPointer struct {
+    X int
+}
+
+func (self *FooPointer) FooMethod() {
+    println(self.X)
+}
+
+func TestIface_Invoke(t *testing.T) {
+    var v FooIface
+    v = FooValue{X: 100}
+    v.FooMethod()
+    v = &FooPointer{X: 200}
+    v.FooMethod()
 }

@@ -19,25 +19,46 @@ package utils
 import (
     `fmt`
     `reflect`
-
-    `github.com/cloudwego/frugal`
 )
 
-func EType(vt reflect.Type) frugal.TypeError {
-    return frugal.TypeError {
+type TypeError struct {
+    Note string
+    Type reflect.Type
+}
+
+func (self TypeError) Error() string {
+    if self.Note != "" {
+        return fmt.Sprintf("TypeError(%s): %s", self.Type.String(), self.Note)
+    } else {
+        return fmt.Sprintf("TypeError(%s): not supported by Thrift", self.Type.String())
+    }
+}
+
+type SyntaxError struct {
+    Pos    int
+    Src    string
+    Reason string
+}
+
+func (self SyntaxError) Error() string {
+    return fmt.Sprintf("Syntax error at position %d: %s", self.Pos, self.Reason)
+}
+
+func EType(vt reflect.Type) TypeError {
+    return TypeError {
         Type: vt,
     }
 }
 
-func ESyntax(pos int, src string, reason string) frugal.SyntaxError {
-    return frugal.SyntaxError {
+func ESyntax(pos int, src string, reason string) SyntaxError {
+    return SyntaxError {
         Pos    : pos,
         Src    : src,
         Reason : reason,
     }
 }
 
-func ESetList(pos int, src string, vt reflect.Type) frugal.SyntaxError {
+func ESetList(pos int, src string, vt reflect.Type) SyntaxError {
     return ESyntax(pos, src, fmt.Sprintf(
         `ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`,
         vt.Name(),
@@ -45,8 +66,8 @@ func ESetList(pos int, src string, vt reflect.Type) frugal.SyntaxError {
     ))
 }
 
-func ENotSupp(vt reflect.Type, alt string) frugal.TypeError {
-    return frugal.TypeError {
+func ENotSupp(vt reflect.Type, alt string) TypeError {
+    return TypeError {
         Type: vt,
         Note: fmt.Sprintf("Thrift does not support %s, use %s instead", vt.String(), alt),
     }

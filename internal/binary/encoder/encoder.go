@@ -20,13 +20,13 @@ import (
     `runtime`
     `unsafe`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
+    `github.com/cloudwego/frugal/iovec`
 )
 
 type Encoder func (
-    iov frugal.IoVec,
+    iov iovec.IoVec,
     p   unsafe.Pointer,
     rs  *RuntimeState,
     st  int,
@@ -36,7 +36,7 @@ var (
     programCache = utils.CreateProgramCache()
 )
 
-func encode(vt *rt.GoType, iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error {
+func encode(vt *rt.GoType, iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error {
     if enc, err := resolve(vt); err != nil {
         return err
     } else {
@@ -64,7 +64,7 @@ func compile(vt *rt.GoType) (interface{}, error) {
     }
 }
 
-func EncodeObject(iov frugal.IoVec, val interface{}) (err error) {
+func EncodeObject(iov iovec.IoVec, val interface{}) (err error) {
     efv := rt.UnpackEface(val)
     rst := newRuntimeState()
 

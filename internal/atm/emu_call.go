@@ -28,12 +28,12 @@ type (
 )
 
 var (
-    icallTab = map[Method]CallProxy{}
+    icallTab = map[rt.Method]CallProxy{}
     ccallTab = map[unsafe.Pointer]CallProxy{}
     gcallTab = map[unsafe.Pointer]CallProxy{}
 )
 
-func RegisterICall(mt Method, proxy CallProxy) {
+func RegisterICall(mt rt.Method, proxy CallProxy) {
     icallTab[mt] = proxy
 }
 

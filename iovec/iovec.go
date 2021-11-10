@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package frugal
+package iovec
 
-// IoVec contains a list of buffers. It enables zero-copy serialization and
-// deserialization.
+// IoVec contains a list of buffers. It enables zero-copy serialization.
 type IoVec interface {
     // Put writes v into the underlying IO vector. v must be allocated
     // from the Add method below.

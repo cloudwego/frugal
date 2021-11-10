@@ -21,7 +21,7 @@ import (
     `encoding/base64`
     `testing`
 
-    `github.com/cloudwego/frugal`
+    `github.com/cloudwego/frugal/iovec`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
@@ -66,7 +66,7 @@ func TestEncoder_Encode(t *testing.T) {
             },
         },
     }
-    iov := new(frugal.SimpleIoVec)
+    iov := new(iovec.SimpleIoVec)
     err := EncodeObject(iov, *v.Y)
     require.NoError(t, err)
     spew.Dump(iov.Bytes())

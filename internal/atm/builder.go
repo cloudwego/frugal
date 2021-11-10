@@ -366,7 +366,7 @@ func (self *Builder) GCALL(fn interface{}) *Instr {
     return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
 }
 
-func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt Method) *Instr {
+func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt rt.Method) *Instr {
     return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)).pr(unsafe.Pointer(mt.Vt)))
 }
 

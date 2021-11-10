@@ -235,6 +235,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
     /* empty structs */
     if len(fvs) == 0 {
+        p.i64(OP_size, 1)
         p.i64(OP_byte, 0)
         return
     }

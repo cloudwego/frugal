@@ -22,7 +22,6 @@ import (
     `strings`
     `unicode`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
@@ -186,7 +185,7 @@ func readToken(src string, i *int, eofok bool) string {
     return src[q:p]
 }
 
-func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) frugal.SyntaxError {
+func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) utils.SyntaxError {
     if tag != T_struct {
         return utils.ESyntax(pos, src, fmt.Sprintf("type mismatch, %s expected, got %s", keywordTab[tag], tv))
     } else {

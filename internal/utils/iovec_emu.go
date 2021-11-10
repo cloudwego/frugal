@@ -19,9 +19,9 @@ package utils
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/iovec`
 )
 
 func emu_icall_IoVecPut(e *atm.Emulator, p *atm.Instr) {
@@ -43,7 +43,7 @@ func emu_icall_IoVecPut(e *atm.Emulator, p *atm.Instr) {
 
     /* call the function */
     v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
-    (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Put(*(*[]byte)(unsafe.Pointer(&v1)))
+    (*(*iovec.IoVec)(unsafe.Pointer(&v0))).Put(*(*[]byte)(unsafe.Pointer(&v1)))
 }
 
 func emu_icall_IoVecCat(e *atm.Emulator, p *atm.Instr) {
@@ -72,7 +72,7 @@ func emu_icall_IoVecCat(e *atm.Emulator, p *atm.Instr) {
 
     /* call the function */
     v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
-    (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Cat(*(*[]byte)(unsafe.Pointer(&v1)), *(*[]byte)(unsafe.Pointer(&v2)))
+    (*(*iovec.IoVec)(unsafe.Pointer(&v0))).Cat(*(*[]byte)(unsafe.Pointer(&v1)), *(*[]byte)(unsafe.Pointer(&v2)))
 }
 
 func emu_icall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
@@ -100,7 +100,7 @@ func emu_icall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
 
     /* call the function */
     v0.Itab, v0.Value = (*rt.GoItab)(e.Pr[p.Ps]), e.Pr[p.Pd]
-    ret := (*(*frugal.IoVec)(unsafe.Pointer(&v0))).Add(v1, *(*[]byte)(unsafe.Pointer(&v2)))
+    ret := (*(*iovec.IoVec)(unsafe.Pointer(&v0))).Add(v1, *(*[]byte)(unsafe.Pointer(&v2)))
 
     /* set the return value */
     e.Gr[p.Rr[2] & atm.ArgMask] = uint64(cap(ret))

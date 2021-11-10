@@ -359,7 +359,7 @@ func (self *Emulator) emu_OP_gcall(p *Instr) {
 
 //go:nosplit
 func (self *Emulator) emu_OP_icall(p *Instr) {
-    if proxy := icallTab[AsMethod(int(p.Iv), (*rt.GoType)(p.Pr))]; proxy != nil {
+    if proxy := icallTab[rt.AsMethod(int(p.Iv), (*rt.GoType)(p.Pr))]; proxy != nil {
         proxy(self, p)
     } else {
         panic(fmt.Sprintf("icall: interface method not registered: %s(*%p)", (*rt.GoType)(p.Pr).String(), p.Pr))

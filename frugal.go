@@ -15,3 +15,13 @@
  */
 
 package frugal
+
+import (
+    `github.com/cloudwego/frugal/internal/binary/encoder`
+    `github.com/cloudwego/frugal/iovec`
+)
+
+// EncodeObject serializes val into iov with Thrift Binary Protocol.
+func EncodeObject(iov iovec.IoVec, val interface{}) error {
+    return encoder.EncodeObject(iov, val)
+}

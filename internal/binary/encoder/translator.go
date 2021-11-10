@@ -20,10 +20,10 @@ import (
     `fmt`
     `unsafe`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
+    `github.com/cloudwego/frugal/iovec`
 )
 
 /** Function Prototype
@@ -71,7 +71,7 @@ const (
 )
 
 var (
-    _F_encode   func(vt *rt.GoType, iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error
+    _F_encode   func(vt *rt.GoType, iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error
     _E_overflow error
 )
 

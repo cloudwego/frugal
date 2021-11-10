@@ -19,9 +19,9 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/iovec`
 )
 
 func init() {
@@ -30,7 +30,7 @@ func init() {
 }
 
 func link_emu(prog atm.Program) Encoder {
-    return func(iov frugal.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
+    return func(iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
         emu := atm.LoadProgram(prog)
         ret := (*rt.GoIface)(unsafe.Pointer(&err))
         iop := (*rt.GoIface)(unsafe.Pointer(&iov))
@@ -76,7 +76,7 @@ func emu_gcall_encode(e *atm.Emulator, p *atm.Instr) {
     v4       =             int(e.Gr[p.Ar[5] & atm.ArgMask])
 
     /* call the function */
-    iov := *(*frugal.IoVec)(unsafe.Pointer(&v1))
+    iov := *(*iovec.IoVec)(unsafe.Pointer(&v1))
     ret := encode(v0, iov, v2, v3, v4)
 
     /* pack the result */

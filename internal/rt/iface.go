@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
-package atm
+package rt
 
 import (
     `reflect`
-
-    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Method struct {
     Id int
-    Vt *rt.GoType
+    Vt *GoType
 }
 
-func AsMethod(id int, vt *rt.GoType) Method {
+func AsMethod(id int, vt *GoType) Method {
     return Method {
         Id: id,
         Vt: vt,
@@ -42,6 +40,6 @@ func GetMethod(tp interface{}, name string) Method {
     } else if mm, ok := et.MethodByName(name); !ok {
         panic("interface " + vt.Elem().String() + " does not have method " + name)
     } else {
-        return AsMethod(mm.Index, rt.UnpackType(et))
+        return AsMethod(mm.Index, UnpackType(et))
     }
 }
