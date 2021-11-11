@@ -29,10 +29,6 @@ type OpCode byte
 
 const (
     OP_nop OpCode = iota    // no operation
-    OP_ib                   //  i8(Im) -> Rx
-    OP_iw                   // i16(Im) -> Rx
-    OP_il                   // i32(Im) -> Rx
-    OP_iq                   // i64(Im) -> Rx
     OP_ip                   // ptr(Pr) -> Pd
     OP_lb                   // i64(*(* i8)Ps) -> Rx
     OP_lw                   // i64(*(*i16)Ps) -> Rx
@@ -44,8 +40,6 @@ const (
     OP_sl                   // i32(Rx) -> *(*i32)Pd
     OP_sq                   //     Rx  -> *(*i64)Pd
     OP_sp                   //     Ps  -> *(*ptr)Pd
-    OP_mov                  // Rx -> Ry
-    OP_movp                 // Ps -> Pd
     OP_ldaq                 // arg[Im] -> Rx
     OP_ldap                 // arg[Im] -> Pd
     OP_strq                 // Rx -> ret[Im]
@@ -53,11 +47,9 @@ const (
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
     OP_addpi                // Ps + Im -> Pd
-    OP_subpi                // Ps - Im -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
     OP_addi                 // Rx + Im -> Ry
-    OP_subi                 // Rx - Im -> Ry
     OP_muli                 // Rx * Im -> Ry
     OP_andi                 // Rx & Im -> Ry
     OP_xori                 // Rx ^ Im -> Ry
@@ -198,10 +190,6 @@ func (self *Instr) formatTable(refs map[*Instr]string) string {
 func (self *Instr) disassemble(refs map[*Instr]string) string {
     switch self.Op {
         case OP_nop   : return "nop"
-        case OP_ib    : return fmt.Sprintf("ib      $%d, %%%s", self.Iv, self.Rx)
-        case OP_iw    : return fmt.Sprintf("iw      $%d, %%%s", self.Iv, self.Rx)
-        case OP_il    : return fmt.Sprintf("il      $%d, %%%s", self.Iv, self.Rx)
-        case OP_iq    : return fmt.Sprintf("iq      $%d, %%%s", self.Iv, self.Rx)
         case OP_ip    : return fmt.Sprintf("ip      $%p, %%%s", self.Pr, self.Pd)
         case OP_lb    : return fmt.Sprintf("lb      %%%s, %%%s", self.Ps, self.Rx)
         case OP_lw    : return fmt.Sprintf("lw      %%%s, %%%s", self.Ps, self.Rx)
@@ -213,8 +201,6 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_sl    : return fmt.Sprintf("sl      %%%s, %%%s", self.Rx, self.Pd)
         case OP_sq    : return fmt.Sprintf("sq      %%%s, %%%s", self.Rx, self.Pd)
         case OP_sp    : return fmt.Sprintf("sp      %%%s, %%%s", self.Ps, self.Pd)
-        case OP_mov   : return fmt.Sprintf("mov     %%%s, %%%s", self.Rx, self.Ry)
-        case OP_movp  : return fmt.Sprintf("mov     %%%s, %%%s", self.Ps, self.Pd)
         case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Rx)
         case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Pd)
         case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, self.Iv)
@@ -222,11 +208,9 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
-        case OP_subpi : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_subi  : return fmt.Sprintf("sub     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)

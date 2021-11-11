@@ -68,10 +68,6 @@ func (self *Emulator) Run() {
         switch p.Op {
             default       : return
             case OP_nop   : break
-            case OP_ib    : self.Gr[p.Rx] = uint64(p.Iv)
-            case OP_iw    : self.Gr[p.Rx] = uint64(p.Iv)
-            case OP_il    : self.Gr[p.Rx] = uint64(p.Iv)
-            case OP_iq    : self.Gr[p.Rx] = uint64(p.Iv)
             case OP_ip    : self.Pr[p.Pd] = p.Pr
             case OP_lb    : self.Gr[p.Rx] = uint64(*(*int8)(self.Pr[p.Ps]))
             case OP_lw    : self.Gr[p.Rx] = uint64(*(*int16)(self.Pr[p.Ps]))
@@ -83,8 +79,6 @@ func (self *Emulator) Run() {
             case OP_sl    : *(*int32)(self.Pr[p.Pd]) = int32(self.Gr[p.Rx])
             case OP_sq    : *(*int64)(self.Pr[p.Pd]) = int64(self.Gr[p.Rx])
             case OP_sp    : *(*unsafe.Pointer)(self.Pr[p.Pd]) = self.Pr[p.Ps]
-            case OP_mov   : self.Gr[p.Ry] = self.Gr[p.Rx]
-            case OP_movp  : self.Pr[p.Pd] = self.Pr[p.Ps]
             case OP_ldaq  : self.Gr[p.Rx] = self.Ar[p.Iv].U
             case OP_ldap  : self.Pr[p.Pd] = self.Ar[p.Iv].P
             case OP_strq  : self.Rv[p.Iv].U = self.Gr[p.Rx]
@@ -92,11 +86,9 @@ func (self *Emulator) Run() {
             case OP_addp  : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(self.Gr[p.Rx]))
             case OP_subp  : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(self.Gr[p.Rx]))
             case OP_addpi : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))
-            case OP_subpi : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(p.Iv))
             case OP_add   : self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
             case OP_sub   : self.Gr[p.Rz] = self.Gr[p.Rx] - self.Gr[p.Ry]
             case OP_addi  : self.Gr[p.Ry] = self.Gr[p.Rx] + uint64(p.Iv)
-            case OP_subi  : self.Gr[p.Ry] = self.Gr[p.Rx] - uint64(p.Iv)
             case OP_muli  : self.Gr[p.Ry] = self.Gr[p.Rx] * uint64(p.Iv)
             case OP_andi  : self.Gr[p.Ry] = self.Gr[p.Rx] & uint64(p.Iv)
             case OP_xori  : self.Gr[p.Ry] = self.Gr[p.Rx] ^ uint64(p.Iv)

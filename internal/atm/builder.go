@@ -184,19 +184,19 @@ func (self *Builder) NOP() *Instr {
 }
 
 func (self *Builder) IB(v int8, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_ib).iv(int64(v)).rx(rx))
+    return self.ADDI(Rz, int64(v), rx)
 }
 
 func (self *Builder) IW(v int16, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_iw).iv(int64(v)).rx(rx))
+    return self.ADDI(Rz, int64(v), rx)
 }
 
 func (self *Builder) IL(v int32, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_il).iv(int64(v)).rx(rx))
+    return self.ADDI(Rz, int64(v), rx)
 }
 
 func (self *Builder) IQ(v int64, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_iq).iv(v).rx(rx))
+    return self.ADDI(Rz, v, rx)
 }
 
 func (self *Builder) IP(v interface{}, pd PointerRegister) *Instr {
@@ -248,11 +248,11 @@ func (self *Builder) SP(ps PointerRegister, pd PointerRegister) *Instr {
 }
 
 func (self *Builder) MOV(rx GenericRegister, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_mov).rx(rx).ry(ry))
+    return self.ADDI(rx, 0, ry)
 }
 
 func (self *Builder) MOVP(ps PointerRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_movp).ps(ps).pd(pd))
+    return self.ADDPI(ps, 0, pd)
 }
 
 func (self *Builder) LDAQ(id int, rx GenericRegister) *Instr {
@@ -284,7 +284,7 @@ func (self *Builder) ADDPI(ps PointerRegister, im int64, pd PointerRegister) *In
 }
 
 func (self *Builder) SUBPI(ps PointerRegister, im int64, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_subpi).ps(ps).iv(im).pd(pd))
+    return self.ADDPI(ps, -im, pd)
 }
 
 func (self *Builder) ADD(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Instr {
@@ -300,7 +300,7 @@ func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Ins
 }
 
 func (self *Builder) SUBI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
-    return self.add(newInstr(OP_subi).rx(rx).iv(im).ry(ry))
+    return self.ADDI(rx, -im, ry)
 }
 
 func (self *Builder) MULI(rx GenericRegister, im int64, ry GenericRegister) *Instr {
