@@ -17,12 +17,13 @@
 package utils
 
 import (
+    `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iovec`
 )
 
 var (
-    IoVecPut = rt.GetMethod((*iovec.IoVec)(nil), "Put")
-    IoVecCat = rt.GetMethod((*iovec.IoVec)(nil), "Cat")
-    IoVecAdd = rt.GetMethod((*iovec.IoVec)(nil), "Add")
+    IoVecPut = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Put"), emu_icall_IoVecPut)
+    IoVecCat = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Cat"), emu_icall_IoVecCat)
+    IoVecAdd = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Add"), emu_icall_IoVecAdd)
 )

@@ -25,7 +25,6 @@ import (
 
 func init() {
     Link = link_emu
-    atm.RegisterGCall(decode, emu_gcall_decode)
 }
 
 func link_emu(prog atm.Program) Decoder {

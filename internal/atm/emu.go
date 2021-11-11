@@ -21,8 +21,6 @@ import (
     `math/bits`
     `runtime`
     `unsafe`
-
-    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Value struct {
@@ -36,7 +34,6 @@ type Emulator struct {
     Pr [9]unsafe.Pointer
     Ar [8]Value
     Rv [8]Value
-    Ln bool
 }
 
 func LoadProgram(p Program) (e *Emulator) {
@@ -45,335 +42,7 @@ func LoadProgram(p Program) (e *Emulator) {
     return
 }
 
-var dispatchTab = [...]func(e *Emulator, p *Instr) {
-    OP_nop   : (*Emulator).emu_OP_nop,
-    OP_ib    : (*Emulator).emu_OP_ib,
-    OP_iw    : (*Emulator).emu_OP_iw,
-    OP_il    : (*Emulator).emu_OP_il,
-    OP_iq    : (*Emulator).emu_OP_iq,
-    OP_ip    : (*Emulator).emu_OP_ip,
-    OP_lb    : (*Emulator).emu_OP_lb,
-    OP_lw    : (*Emulator).emu_OP_lw,
-    OP_ll    : (*Emulator).emu_OP_ll,
-    OP_lq    : (*Emulator).emu_OP_lq,
-    OP_lp    : (*Emulator).emu_OP_lp,
-    OP_sb    : (*Emulator).emu_OP_sb,
-    OP_sw    : (*Emulator).emu_OP_sw,
-    OP_sl    : (*Emulator).emu_OP_sl,
-    OP_sq    : (*Emulator).emu_OP_sq,
-    OP_sp    : (*Emulator).emu_OP_sp,
-    OP_mov   : (*Emulator).emu_OP_mov,
-    OP_movp  : (*Emulator).emu_OP_movp,
-    OP_ldaq  : (*Emulator).emu_OP_ldaq,
-    OP_ldap  : (*Emulator).emu_OP_ldap,
-    OP_strq  : (*Emulator).emu_OP_strq,
-    OP_strp  : (*Emulator).emu_OP_strp,
-    OP_addp  : (*Emulator).emu_OP_addp,
-    OP_subp  : (*Emulator).emu_OP_subp,
-    OP_addpi : (*Emulator).emu_OP_addpi,
-    OP_subpi : (*Emulator).emu_OP_subpi,
-    OP_add   : (*Emulator).emu_OP_add,
-    OP_sub   : (*Emulator).emu_OP_sub,
-    OP_addi  : (*Emulator).emu_OP_addi,
-    OP_subi  : (*Emulator).emu_OP_subi,
-    OP_muli  : (*Emulator).emu_OP_muli,
-    OP_andi  : (*Emulator).emu_OP_andi,
-    OP_xori  : (*Emulator).emu_OP_xori,
-    OP_sbiti : (*Emulator).emu_OP_sbiti,
-    OP_swapw : (*Emulator).emu_OP_swapw,
-    OP_swapl : (*Emulator).emu_OP_swapl,
-    OP_swapq : (*Emulator).emu_OP_swapq,
-    OP_beq   : (*Emulator).emu_OP_beq,
-    OP_bne   : (*Emulator).emu_OP_bne,
-    OP_blt   : (*Emulator).emu_OP_blt,
-    OP_bltu  : (*Emulator).emu_OP_bltu,
-    OP_bgeu  : (*Emulator).emu_OP_bgeu,
-    OP_bsw   : (*Emulator).emu_OP_bsw,
-    OP_jal   : (*Emulator).emu_OP_jal,
-    OP_ccall : (*Emulator).emu_OP_ccall,
-    OP_gcall : (*Emulator).emu_OP_gcall,
-    OP_icall : (*Emulator).emu_OP_icall,
-    OP_halt  : (*Emulator).emu_OP_halt,
-    OP_break : (*Emulator).emu_OP_break,
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_nop(_ *Instr) {
-    /* no operation */
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ib(p *Instr) {
-    self.Gr[p.Rx] = uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_iw(p *Instr) {
-    self.Gr[p.Rx] = uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_il(p *Instr) {
-    self.Gr[p.Rx] = uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_iq(p *Instr) {
-    self.Gr[p.Rx] = uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ip(p *Instr) {
-    self.Pr[p.Pd] = p.Pr
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_lb(p *Instr) {
-    self.Gr[p.Rx] = uint64(*(*int8)(self.Pr[p.Ps]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_lw(p *Instr) {
-    self.Gr[p.Rx] = uint64(*(*int16)(self.Pr[p.Ps]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ll(p *Instr) {
-    self.Gr[p.Rx] = uint64(*(*int32)(self.Pr[p.Ps]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_lq(p *Instr) {
-    self.Gr[p.Rx] = uint64(*(*int64)(self.Pr[p.Ps]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_lp(p *Instr) {
-    self.Pr[p.Pd] = *(*unsafe.Pointer)(self.Pr[p.Ps])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sb(p *Instr) {
-    *(*int8)(self.Pr[p.Pd]) = int8(self.Gr[p.Rx])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sw(p *Instr) {
-    *(*int16)(self.Pr[p.Pd]) = int16(self.Gr[p.Rx])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sl(p *Instr) {
-    *(*int32)(self.Pr[p.Pd]) = int32(self.Gr[p.Rx])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sq(p *Instr) {
-    *(*int64)(self.Pr[p.Pd]) = int64(self.Gr[p.Rx])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sp(p *Instr) {
-    *(*unsafe.Pointer)(self.Pr[p.Pd]) = self.Pr[p.Ps]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_mov(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_movp(p *Instr) {
-    self.Pr[p.Pd] = self.Pr[p.Ps]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ldaq(p *Instr) {
-    self.Gr[p.Rx] = self.Ar[p.Iv].U
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ldap(p *Instr) {
-    self.Pr[p.Pd] = self.Ar[p.Iv].P
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_strq(p *Instr) {
-    self.Rv[p.Iv].U = self.Gr[p.Rx]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_strp(p *Instr) {
-    self.Rv[p.Iv].P = self.Pr[p.Ps]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_addp(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(self.Gr[p.Rx]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_subp(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(self.Gr[p.Rx]))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_addpi(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_subpi(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(p.Iv))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_add(p *Instr) {
-    self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sub(p *Instr) {
-    self.Gr[p.Rz] = self.Gr[p.Rx] - self.Gr[p.Ry]
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_addi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] + uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_subi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] - uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_muli(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] * uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_andi(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] & uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_xori(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] ^ uint64(p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_sbiti(p *Instr) {
-    self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << p.Iv)
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_swapw(p *Instr) {
-    self.Gr[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.Gr[p.Rx])))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_swapl(p *Instr) {
-    self.Gr[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.Gr[p.Rx])))
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_swapq(p *Instr) {
-    self.Gr[p.Ry] = bits.ReverseBytes64(self.Gr[p.Rx])
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_beq(p *Instr) {
-    if self.Gr[p.Rx] == self.Gr[p.Ry] {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_bne(p *Instr) {
-    if self.Gr[p.Rx] != self.Gr[p.Ry] {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_blt(p *Instr) {
-    if int64(self.Gr[p.Rx]) < int64(self.Gr[p.Ry]) {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_bltu(p *Instr) {
-    if self.Gr[p.Rx] < self.Gr[p.Ry] {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_bgeu(p *Instr) {
-    if self.Gr[p.Rx] >= self.Gr[p.Ry] {
-        self.PC = p.Br
-        self.Ln = false
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_bsw(p *Instr) {
-    if v := self.Gr[p.Rx]; v < uint64(p.Iv) {
-        if br := *(**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); br != nil {
-            self.PC = br
-            self.Ln = false
-        }
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_jal(p *Instr) {
-    self.Pr[p.Pd] = unsafe.Pointer(self.PC.Ln)
-    self.PC       = p.Br
-    self.Ln       = false
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_ccall(p *Instr) {
-    if proxy := ccallTab[p.Pr]; proxy != nil {
-        proxy(self, p)
-    } else {
-        panic(fmt.Sprintf("ccall: function not registered: *%p", p.Pr))
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_gcall(p *Instr) {
-    if proxy := gcallTab[p.Pr]; proxy != nil {
-        proxy(self, p)
-    } else {
-        panic(fmt.Sprintf("gcall: function not registered: %s(*%p)", runtime.FuncForPC(uintptr(p.Pr)).Name(), p.Pr))
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_icall(p *Instr) {
-    if proxy := icallTab[rt.AsMethod(int(p.Iv), (*rt.GoType)(p.Pr))]; proxy != nil {
-        proxy(self, p)
-    } else {
-        panic(fmt.Sprintf("icall: interface method not registered: %s(*%p)", (*rt.GoType)(p.Pr).String(), p.Pr))
-    }
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_halt(_ *Instr) {
-    self.PC = nil
-    self.Ln = false
-}
-
-//go:nosplit
-func (self *Emulator) emu_OP_break(_ *Instr) {
+func (self *Emulator) trap() {
     println("****** DEBUGGER BREAK ******")
     println("Current State:", self.String())
     runtime.Breakpoint()
@@ -386,27 +55,99 @@ func (self *Emulator) Au(i int, v uint64)         *Emulator { self.Ar[i].U = v; 
 func (self *Emulator) Ap(i int, v unsafe.Pointer) *Emulator { self.Ar[i].P = v; return self }
 
 func (self *Emulator) Run() {
-    var ip *Instr
-    var fn func(e *Emulator, p *Instr)
+    var p *Instr
+    var q *Instr
+    var v uint64
 
     /* run until end */
     for self.PC != nil {
-        ip = self.PC
-        fn = dispatchTab[ip.Op]
+        p, self.PC = self.PC, self.PC.Ln
+        self.Gr[Rz], self.Pr[Pn] = 0, nil
 
-        /* move cold path outside of the loop */
-        if fn == nil {
-            break
-        }
+        /* main switch on OpCode */
+        switch p.Op {
+            default       : return
+            case OP_nop   : break
+            case OP_ib    : self.Gr[p.Rx] = uint64(p.Iv)
+            case OP_iw    : self.Gr[p.Rx] = uint64(p.Iv)
+            case OP_il    : self.Gr[p.Rx] = uint64(p.Iv)
+            case OP_iq    : self.Gr[p.Rx] = uint64(p.Iv)
+            case OP_ip    : self.Pr[p.Pd] = p.Pr
+            case OP_lb    : self.Gr[p.Rx] = uint64(*(*int8)(self.Pr[p.Ps]))
+            case OP_lw    : self.Gr[p.Rx] = uint64(*(*int16)(self.Pr[p.Ps]))
+            case OP_ll    : self.Gr[p.Rx] = uint64(*(*int32)(self.Pr[p.Ps]))
+            case OP_lq    : self.Gr[p.Rx] = uint64(*(*int64)(self.Pr[p.Ps]))
+            case OP_lp    : self.Pr[p.Pd] = *(*unsafe.Pointer)(self.Pr[p.Ps])
+            case OP_sb    : *(*int8)(self.Pr[p.Pd]) = int8(self.Gr[p.Rx])
+            case OP_sw    : *(*int16)(self.Pr[p.Pd]) = int16(self.Gr[p.Rx])
+            case OP_sl    : *(*int32)(self.Pr[p.Pd]) = int32(self.Gr[p.Rx])
+            case OP_sq    : *(*int64)(self.Pr[p.Pd]) = int64(self.Gr[p.Rx])
+            case OP_sp    : *(*unsafe.Pointer)(self.Pr[p.Pd]) = self.Pr[p.Ps]
+            case OP_mov   : self.Gr[p.Ry] = self.Gr[p.Rx]
+            case OP_movp  : self.Pr[p.Pd] = self.Pr[p.Ps]
+            case OP_ldaq  : self.Gr[p.Rx] = self.Ar[p.Iv].U
+            case OP_ldap  : self.Pr[p.Pd] = self.Ar[p.Iv].P
+            case OP_strq  : self.Rv[p.Iv].U = self.Gr[p.Rx]
+            case OP_strp  : self.Rv[p.Iv].P = self.Pr[p.Ps]
+            case OP_addp  : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(self.Gr[p.Rx]))
+            case OP_subp  : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(self.Gr[p.Rx]))
+            case OP_addpi : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))
+            case OP_subpi : self.Pr[p.Pd] = unsafe.Pointer(uintptr(self.Pr[p.Ps]) - uintptr(p.Iv))
+            case OP_add   : self.Gr[p.Rz] = self.Gr[p.Rx] + self.Gr[p.Ry]
+            case OP_sub   : self.Gr[p.Rz] = self.Gr[p.Rx] - self.Gr[p.Ry]
+            case OP_addi  : self.Gr[p.Ry] = self.Gr[p.Rx] + uint64(p.Iv)
+            case OP_subi  : self.Gr[p.Ry] = self.Gr[p.Rx] - uint64(p.Iv)
+            case OP_muli  : self.Gr[p.Ry] = self.Gr[p.Rx] * uint64(p.Iv)
+            case OP_andi  : self.Gr[p.Ry] = self.Gr[p.Rx] & uint64(p.Iv)
+            case OP_xori  : self.Gr[p.Ry] = self.Gr[p.Rx] ^ uint64(p.Iv)
+            case OP_sbiti : self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << p.Iv)
+            case OP_swapw : self.Gr[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.Gr[p.Rx])))
+            case OP_swapl : self.Gr[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.Gr[p.Rx])))
+            case OP_swapq : self.Gr[p.Ry] = bits.ReverseBytes64(self.Gr[p.Rx])
+            case OP_beq   : if       self.Gr[p.Rx]  ==       self.Gr[p.Ry]  { self.PC = p.Br }
+            case OP_bne   : if       self.Gr[p.Rx]  !=       self.Gr[p.Ry]  { self.PC = p.Br }
+            case OP_blt   : if int64(self.Gr[p.Rx]) <  int64(self.Gr[p.Ry]) { self.PC = p.Br }
+            case OP_bltu  : if       self.Gr[p.Rx]  <        self.Gr[p.Ry]  { self.PC = p.Br }
+            case OP_bgeu  : if       self.Gr[p.Rx]  >=       self.Gr[p.Ry]  { self.PC = p.Br }
+            case OP_jal   : self.Pr[p.Pd], self.PC = unsafe.Pointer(self.PC), p.Br
+            case OP_halt  : self.PC = nil
+            case OP_break : self.trap()
 
-        /* clear certain registers every cycle */
-        self.Ln = true
-        self.Gr[Rz] = 0
-        self.Pr[Pn] = nil
+            /* table switch */
+            case OP_bsw: {
+                if v = self.Gr[p.Rx]; v < uint64(p.Iv) {
+                    if q = *(**Instr)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); q != nil {
+                        self.PC = q
+                    }
+                }
+            }
 
-        /* execute and advance the PC if needed */
-        if fn(self, ip); self.Ln {
-            self.PC = self.PC.Ln
+            /* call to C functions */
+            case OP_ccall: {
+                if p.Iv < 0 || p.Iv >= int64(len(ccallTab)) {
+                    panic("invalid CCALL index")
+                } else {
+                    ccallTab[p.Iv].Proxy(self, p)
+                }
+            }
+
+            /* call to Go functions */
+            case OP_gcall: {
+                if p.Iv < 0 || p.Iv >= int64(len(gcallTab)) {
+                    panic("invalid GCALL index")
+                } else {
+                    gcallTab[p.Iv].Proxy(self, p)
+                }
+            }
+
+            /* call to Go interface methods */
+            case OP_icall: {
+                if p.Iv < 0 || p.Iv >= int64(len(icallTab)) {
+                    panic("invalid ICALL index")
+                } else {
+                    icallTab[p.Iv].Proxy(self, p)
+                }
+            }
         }
     }
 

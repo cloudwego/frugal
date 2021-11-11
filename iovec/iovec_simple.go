@@ -36,5 +36,6 @@ func (self *SimpleIoVec) Cat(v []byte, w []byte) {
 
 func (self *SimpleIoVec) Add(n int, v []byte) []byte {
     self.Put(v)
-    return make([]byte, 0, n)
+    self.Grow(n)
+    return self.Bytes()[self.Len():]
 }

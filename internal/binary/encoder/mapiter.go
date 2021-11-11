@@ -19,6 +19,7 @@ package encoder
 import (
     _ `unsafe`
 
+    `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -43,3 +44,9 @@ func MapBeginIterator(vt *rt.GoMapType, mm *rt.GoMap) (it *rt.GoMapIterator) {
     mapiterinit(vt, mm, it)
     return
 }
+
+var (
+    F_mapiternext      = atm.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+    F_MapEndIterator   = atm.RegisterGCall(MapEndIterator, emu_gcall_MapEndIterator)
+    F_MapBeginIterator = atm.RegisterGCall(MapBeginIterator, emu_gcall_MapBeginIterator)
+)

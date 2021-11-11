@@ -19,6 +19,7 @@ package decoder
 import (
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -31,3 +32,8 @@ func makemap(t *rt.GoMapType, hint int, h *rt.GoMap) *rt.GoMap
 //go:linkname mallocgc runtime.mallocgc
 //goland:noinspection GoUnusedParameter
 func mallocgc(size uintptr, typ *rt.GoType, needzero bool) unsafe.Pointer
+
+var (
+    F_makemap  = atm.RegisterGCall(makemap, emu_gcall_makemap)
+    F_mallocgc = atm.RegisterGCall(mallocgc, emu_gcall_mallocgc)
+)

@@ -21,5 +21,10 @@ import (
 )
 
 var (
-    Link func(prog atm.Program) Decoder
+    Link     func(prog atm.Program) Decoder
+    F_decode atm.CallHandle
 )
+
+func init() {
+    F_decode = atm.RegisterGCall(decode, emu_gcall_decode)
+}

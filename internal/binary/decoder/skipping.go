@@ -17,7 +17,7 @@
 package decoder
 
 import (
-    `unsafe`
+    `github.com/cloudwego/frugal/internal/atm`
 )
 
 const (
@@ -26,5 +26,5 @@ const (
 )
 
 var (
-    FnSkip unsafe.Pointer
+    C_skip = atm.RegisterCCall(nil, emu_ccall_skip)
 )

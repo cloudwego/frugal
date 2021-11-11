@@ -80,8 +80,3 @@ func emu_gcall_mallocgc(e *atm.Emulator, p *atm.Instr) {
         e.Gr[a2] != 0,
     )
 }
-
-func init() {
-    atm.RegisterGCall(makemap, emu_gcall_makemap)
-    atm.RegisterGCall(mallocgc, emu_gcall_mallocgc)
-}

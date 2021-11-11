@@ -64,9 +64,3 @@ func emu_gcall_MapBeginIterator(e *atm.Emulator, p *atm.Instr) {
         (*rt.GoMap)     (e.Pr[v1]),
     ))
 }
-
-func init() {
-    atm.RegisterGCall(mapiternext      , emu_gcall_mapiternext)
-    atm.RegisterGCall(MapEndIterator   , emu_gcall_MapEndIterator)
-    atm.RegisterGCall(MapBeginIterator , emu_gcall_MapBeginIterator)
-}

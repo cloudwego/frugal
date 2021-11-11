@@ -18,10 +18,12 @@
 package tests
 
 import (
+    `io/ioutil`
     `math/rand`
     `testing`
     `time`
 
+    `github.com/apache/thrift/lib/go/thrift`
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/iovec`
     `github.com/cloudwego/frugal/testdata/baseline`
@@ -39,7 +41,7 @@ func dumpval(v interface{}) {
     c.Dump(v)
 }
 
-func TestMarshal(t *testing.T) {
+func TestMarshalEmulator(t *testing.T) {
     var m iovec.SimpleIoVec
     var v baseline.Nesting2
     rand.Seed(time.Now().UnixNano())
@@ -48,4 +50,39 @@ func TestMarshal(t *testing.T) {
     require.NoError(t, err)
     spew.Dump(m.Bytes())
     dumpval(v)
+}
+
+func BenchmarkMarshalVanilla(b *testing.B) {
+    var v baseline.Nesting2
+    buf, err := ioutil.ReadFile("testdata/object.bin")
+    require.NoError(b, err)
+    mm := thrift.NewTMemoryBuffer()
+    _, err = mm.Write(buf)
+    require.NoError(b, err)
+    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(b, err)
+    b.SetBytes(int64(len(buf)))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        mm.Reset()
+        _ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    }
+}
+
+func BenchmarkMarshalEmulator(b *testing.B) {
+    var m iovec.SimpleIoVec
+    var v baseline.Nesting2
+    buf, err := ioutil.ReadFile("testdata/object.bin")
+    require.NoError(b, err)
+    mm := thrift.NewTMemoryBuffer()
+    _, err = mm.Write(buf)
+    require.NoError(b, err)
+    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(b, err)
+    b.SetBytes(int64(len(buf)))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        m.Reset()
+        _ = frugal.EncodeObject(&m, v)
+    }
 }

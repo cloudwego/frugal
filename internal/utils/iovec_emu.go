@@ -107,9 +107,3 @@ func emu_icall_IoVecAdd(e *atm.Emulator, p *atm.Instr) {
     e.Gr[p.Rr[1] & atm.ArgMask] = uint64(len(ret))
     e.Pr[p.Rr[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
 }
-
-func init() {
-    atm.RegisterICall(IoVecPut, emu_icall_IoVecPut)
-    atm.RegisterICall(IoVecCat, emu_icall_IoVecCat)
-    atm.RegisterICall(IoVecAdd, emu_icall_IoVecAdd)
-}

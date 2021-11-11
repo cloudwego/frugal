@@ -174,8 +174,9 @@ func (self *Builder) Build() (r Program) {
     }
 
     /* the Builder's life-time ends here */
+    r.Head = self.head
     freeBuilder(self)
-    return Program{self.head}
+    return
 }
 
 func (self *Builder) NOP() *Instr {
@@ -358,16 +359,16 @@ func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
 }
 
-func (self *Builder) CCALL(fn CFunction) *Instr {
-    return self.add(newInstr(OP_ccall).pr(fn))
+func (self *Builder) CCALL(fn CallHandle) *Instr {
+    return self.add(newInstr(OP_ccall).iv(int64(fn.Id)))
 }
 
-func (self *Builder) GCALL(fn interface{}) *Instr {
-    return self.add(newInstr(OP_gcall).pr(rt.FuncAddr(fn)))
+func (self *Builder) GCALL(fn CallHandle) *Instr {
+    return self.add(newInstr(OP_gcall).iv(int64(fn.Id)))
 }
 
-func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt rt.Method) *Instr {
-    return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)).pr(unsafe.Pointer(mt.Vt)))
+func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt CallHandle) *Instr {
+    return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)))
 }
 
 func (self *Builder) HALT() *Instr {

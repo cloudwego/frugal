@@ -315,8 +315,3 @@ func emu_ccall_skip(e *atm.Emulator, p *atm.Instr) {
         defs.Tag(e.Gr[a2]),
     ))
 }
-
-func init() {
-    FnSkip = unsafe.Pointer(&FnSkip)
-    atm.RegisterCCall(FnSkip, emu_ccall_skip)
-}

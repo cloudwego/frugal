@@ -144,10 +144,3 @@ func emu_gcall_error_missing(e *atm.Emulator, p *atm.Instr) {
     e.Pr[r0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[0]
     e.Pr[r1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[1]
 }
-
-func init() {
-    atm.RegisterGCall(error_eof, emu_gcall_error_eof)
-    atm.RegisterGCall(error_skip, emu_gcall_error_skip)
-    atm.RegisterGCall(error_type, emu_gcall_error_type)
-    atm.RegisterGCall(error_missing, emu_gcall_error_missing)
-}

@@ -18,12 +18,9 @@ package encoder
 
 import (
     `fmt`
-    `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
-    `github.com/cloudwego/frugal/iovec`
 )
 
 /** Function Prototype
@@ -71,12 +68,10 @@ const (
 )
 
 var (
-    _F_encode   func(vt *rt.GoType, iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error
     _E_overflow error
 )
 
 func init() {
-    _F_encode   = encode
     _E_overflow = fmt.Errorf("frugal: encoder stack overflow")
 }
 
@@ -265,7 +260,7 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
     p.LDAP  (1, EP)                     // EP <= a1
     p.IP    (v.Vt(), TP)                // TP <= v.Vt()
     p.SUBP  (RS, ST, RS)                // RS <= RS - ST
-    p.GCALL (_F_encode).                // GCALL encode:
+    p.GCALL (F_encode).                 // GCALL encode:
       A0    (TP).                       //     vt       <= TP
       A1    (ET).                       //     iov.itab <= ET
       A2    (EP).                       //     iov.data <= EP
@@ -281,7 +276,7 @@ func translate_OP_map_end(p *atm.Builder, _ Instr) {
     p.SUBPI (RS, MiWpSize, TP)          //  TP <=  RS - MiWpSize
     p.LP    (TP, EP)                    //  EP <= *TP
     p.SP    (atm.Pn, TP)                // *TP <=  nil
-    p.GCALL (MapEndIterator).A0(EP)     //  GCALL MapEndIterator(it: EP)
+    p.GCALL (F_MapEndIterator).A0(EP)   //  GCALL MapEndIterator(it: EP)
 }
 
 func translate_OP_map_key(p *atm.Builder, _ Instr) {
@@ -293,7 +288,7 @@ func translate_OP_map_key(p *atm.Builder, _ Instr) {
 func translate_OP_map_next(p *atm.Builder, _ Instr) {
     p.SUBPI (RS, MiWpSize, TP)          // TP <=  RS - MiWpSize
     p.LP    (TP, TP)                    // TP <= *TP
-    p.GCALL (mapiternext).A0(TP)        // GCALL mapiternext(it: TP)
+    p.GCALL (F_mapiternext).A0(TP)      // GCALL mapiternext(it: TP)
 }
 
 func translate_OP_map_value(p *atm.Builder, _ Instr) {
@@ -311,7 +306,7 @@ func translate_OP_map_begin(p *atm.Builder, v Instr) {
     p.SWAPL (TR, TR)                    //  TR <=  bswap32(TR)
     p.SL    (TR, TP)                    // *TP <=  TR
     p.IP    (v.Vt(), ET)                //  ET <=  v.Vt()
-    p.GCALL (MapBeginIterator).         //  GCALL MapBeginIterator:
+    p.GCALL (F_MapBeginIterator).       //  GCALL MapBeginIterator:
       A0    (ET).                       //      vt <= ET
       A1    (EP).                       //      vp <= EP
       R0    (TP)                        //      it => TP

@@ -20,6 +20,7 @@ import (
     `fmt`
     `math/bits`
 
+    `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -46,3 +47,10 @@ func error_type(e uint8, t uint8) error {
 func error_missing(t *rt.GoType, i int, m uint64) error {
     return fmt.Errorf("frugal: missing required field %d for type %s", i * 64 + bits.TrailingZeros64(m), t)
 }
+
+var (
+    F_error_eof     = atm.RegisterGCall(error_eof, emu_gcall_error_eof)
+    F_error_skip    = atm.RegisterGCall(error_skip, emu_gcall_error_skip)
+    F_error_type    = atm.RegisterGCall(error_type, emu_gcall_error_type)
+    F_error_missing = atm.RegisterGCall(error_missing, emu_gcall_error_missing)
+)

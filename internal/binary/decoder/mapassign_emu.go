@@ -176,11 +176,3 @@ func emu_gcall_mapassign_fast64ptr(e *atm.Emulator, p *atm.Instr) {
         e.Pr[a2],
     )
 }
-
-func init() {
-    atm.RegisterGCall(mapassign, emu_gcall_mapassign)
-    atm.RegisterGCall(mapassign_fast32, emu_gcall_mapassign_fast32)
-    atm.RegisterGCall(mapassign_fast64, emu_gcall_mapassign_fast64)
-    atm.RegisterGCall(mapassign_faststr, emu_gcall_mapassign_faststr)
-    atm.RegisterGCall(mapassign_fast64ptr, emu_gcall_mapassign_fast64ptr)
-}

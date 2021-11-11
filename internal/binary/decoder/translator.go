@@ -18,7 +18,6 @@ package decoder
 
 import (
     `fmt`
-    `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/binary/defs`
@@ -75,12 +74,10 @@ const (
 )
 
 var (
-    _F_decode   func(vt *rt.GoType, buf []byte, i int, p unsafe.Pointer, rs *RuntimeState, st int) (int, error)
     _E_overflow error
 )
 
 func init() {
-    _F_decode   = decode
     _E_overflow = fmt.Errorf("frugal: decoder stack overflow")
 }
 
@@ -96,26 +93,26 @@ func Translate(s Program) atm.Program {
 func errors(p *atm.Builder) {
     p.Label (LB_eof)                    // _eof:
     p.SUB   (TR, IL, TR)                // TR <= TR - IL
-    p.GCALL (error_eof).                // GCALL error_eof:
+    p.GCALL (F_error_eof).              // GCALL error_eof:
       A0    (TR).                       //     n        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
     p.Label (LB_type)                   // _type:
-    p.GCALL (error_type).               // GCALL error_type:
+    p.GCALL (F_error_type).             // GCALL error_type:
       A0    (UR).                       //     e        <= UR
       A1    (TR).                       //     t        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
     p.Label (LB_skip)                   // _skip:
-    p.GCALL (error_skip).               // GCALL error_skip:
+    p.GCALL (F_error_skip).             // GCALL error_skip:
       A0    (TR).                       //     n        <= TR
       R0    (ET).                       //     ret.itab => ET
       R1    (EP)                        //     ret.data => EP
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
     p.Label (LB_missing)                // _missing:
-    p.GCALL (error_missing).            // GCALL error_missing:
+    p.GCALL (F_error_missing).          // GCALL error_missing:
       A0    (ET).                       //     t        <= ET
       A1    (UR).                       //     i        <= UR
       A2    (TR).                       //     m        <= TR
@@ -249,7 +246,7 @@ func translate_OP_deref(p *atm.Builder, v Instr) {
     p.IB    (1, UR)                     //  UR <= 1
     p.IP    (v.Vt, TP)                  //  TP <= v.Vt
     p.IQ    (int64(v.Vt.Size), TR)      //  TR <= v.Vt.Size
-    p.GCALL (mallocgc).                 //  GCALL mallocgc:
+    p.GCALL (F_mallocgc).               //  GCALL mallocgc:
       A0    (TR).                       //      size     <= TR
       A1    (TP).                       //      typ      <= TP
       A2    (UR).                       //      needzero <= UR
@@ -283,7 +280,7 @@ func translate_OP_map_alloc(p *atm.Builder, v Instr) {
     p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
     p.LP    (WP, TP)                    //  TP <= *WP
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (makemap).                  //  GCALL makemap:
+    p.GCALL (F_makemap).                //  GCALL makemap:
       A0    (ET).                       //      t    <= ET
       A1    (TR).                       //      hint <= TR
       A2    (TP).                       //      h    <= TP
@@ -304,7 +301,7 @@ func translate_OP_map_set_i8(p *atm.Builder, v Instr) {
     p.ADDPI (RS, NbSize, TP)            // TP <=  RS + NbSize
     p.LP    (TP, TP)                    // TP <= *TP
     p.IP    (v.Vt, ET)                  // ET <=  v.Vt
-    p.GCALL (mapassign).                // GCALL mapassign:
+    p.GCALL (F_mapassign).              // GCALL mapassign:
       A0    (ET).                       //     t   <= ET
       A1    (TP).                       //     h   <= TP
       A2    (LP).                       //     key <= LP
@@ -322,7 +319,7 @@ func translate_OP_map_set_i16(p *atm.Builder, v Instr) {
     p.SWAPW (TR, TR)                    //  TR <=  bswap16(TR)
     p.SQ    (TR, TP)                    // *TP <=  TR
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                // GCALL mapassign:
+    p.GCALL (F_mapassign).              // GCALL mapassign:
       A0    (ET).                       //     t   <= ET
       A1    (EP).                       //     h   <= EP
       A2    (TP).                       //     key <= TP
@@ -345,7 +342,7 @@ func translate_OP_map_set_i32_fast(p *atm.Builder, v Instr) {
     p.LL    (LP, TR)                    // TR <= *LP
     p.SWAPL (TR, TR)                    // TR <=  bswap32(TR)
     p.IP    (v.Vt, ET)                  // ET <=  v.Vt
-    p.GCALL (mapassign_fast32).         // GCALL mapassign_fast32:
+    p.GCALL (F_mapassign_fast32).       // GCALL mapassign_fast32:
       A0    (ET).                       //     t   <= ET
       A1    (TP).                       //     h   <= TP
       A2    (TR).                       //     key <= TR
@@ -362,7 +359,7 @@ func translate_OP_map_set_i32_safe(p *atm.Builder, v Instr) {
     p.SWAPL (TR, TR)                    //  TR <=  bswap32(TR)
     p.SQ    (TR, TP)                    // *TP <=  TR
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                // GCALL mapassign:
+    p.GCALL (F_mapassign).              // GCALL mapassign:
       A0    (ET).                       //     t   <= ET
       A1    (EP).                       //     h   <= EP
       A2    (TP).                       //     key <= TP
@@ -385,7 +382,7 @@ func translate_OP_map_set_i64_fast(p *atm.Builder, v Instr) {
     p.LQ    (LP, TR)                    // TR <= *LP
     p.SWAPQ (TR, TR)                    // TR <=  bswap64(TR)
     p.IP    (v.Vt, ET)                  // ET <=  v.Vt
-    p.GCALL (mapassign_fast64).         // GCALL mapassign_fast64:
+    p.GCALL (F_mapassign_fast64).       // GCALL mapassign_fast64:
       A0    (ET).                       //     t   <= ET
       A1    (TP).                       //     h   <= TP
       A2    (TR).                       //     key <= TR
@@ -402,7 +399,7 @@ func translate_OP_map_set_i64_safe(p *atm.Builder, v Instr) {
     p.SWAPQ (TR, TR)                    //  TR <=  bswap64(TR)
     p.SQ    (TR, TP)                    // *TP <=  TR
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                // GCALL mapassign:
+    p.GCALL (F_mapassign).              // GCALL mapassign:
       A0    (ET).                       //     t   <= ET
       A1    (EP).                       //     h   <= EP
       A2    (TP).                       //     key <= TP
@@ -431,7 +428,7 @@ func translate_OP_map_set_str_fast(p *atm.Builder, v Instr) {
     p.ADDPI (RS, NbSize, TP)            // TP <=  RS + NbSize
     p.LP    (TP, TP)                    // TP <= *TP
     p.IP    (v.Vt, ET)                  // ET <=  v.Vt
-    p.GCALL (mapassign_faststr).        // GCALL mapassign_faststr:
+    p.GCALL (F_mapassign_faststr).      // GCALL mapassign_faststr:
       A0    (ET).                       //     t     <= ET
       A1    (TP).                       //     h     <= TP
       A2    (LP).                       //     s.ptr <= LP
@@ -458,7 +455,7 @@ func translate_OP_map_set_str_safe(p *atm.Builder, v Instr) {
     p.ADDPI (RS, NbSize, EP)            //  EP <=  RS + NbSize
     p.LP    (EP, EP)                    //  EP <= *EP
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                //  GCALL mapassign:
+    p.GCALL (F_mapassign).              //  GCALL mapassign:
       A0    (ET).                       //      t   <= ET
       A1    (EP).                       //      h   <= EP
       A2    (TP).                       //      key <= TP
@@ -478,7 +475,7 @@ func translate_OP_map_set_pointer_fast(p *atm.Builder, v Instr) {
     p.ADDPI (RS, NbSize, TP)            // TP <=  RS + NbSize
     p.LP    (TP, TP)                    // TP <= *TP
     p.IP    (v.Vt, ET)                  // ET <=  v.Vt
-    p.GCALL (mapassign_fast64ptr).      // GCALL mapassign_fast64ptr:
+    p.GCALL (F_mapassign_fast64ptr).    // GCALL mapassign_fast64ptr:
       A0    (ET).                       //     t   <= ET
       A1    (TP).                       //     h   <= TP
       A2    (WP).                       //     key <= WP
@@ -492,7 +489,7 @@ func translate_OP_map_set_pointer_safe(p *atm.Builder, v Instr) {
     p.ADDPI (TP, StateCap, TP)          //  TP <=  TP + StateCap
     p.SP    (WP, TP)                    // *TP <=  WP
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
-    p.GCALL (mapassign).                //  GCALL mapassign:
+    p.GCALL (F_mapassign).              //  GCALL mapassign:
       A0    (ET).                       //      t   <= ET
       A1    (EP).                       //      h   <= EP
       A2    (TP).                       //      key <= TP
@@ -513,7 +510,7 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
     p.IB    (1, UR)                     //  UR <=  1
     p.IP    (v.Vt, TP)                  //  TP <=  v.Vt
     p.MULI  (TR, int64(v.Vt.Size), TR)  //  TR <=  TR * v.Vt.Size
-    p.GCALL (mallocgc).                 //  GCALL mallocgc:
+    p.GCALL (F_mallocgc).               //  GCALL mallocgc:
       A0    (TR).                       //      size     <= TR
       A1    (TP).                       //      typ      <= TP
       A2    (UR).                       //      needzero <= UR
@@ -527,7 +524,7 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
 func translate_OP_struct_skip(p *atm.Builder, _ Instr) {
     p.SUB   (IL, IC, TR)                // TR <= IL - IC
     p.ADDP  (IP, IC, LP)                // LP <= IP + IC
-    p.CCALL (FnSkip).                   // CCALL skip:
+    p.CCALL (C_skip).                   // CCALL skip:
       A0    (LP).                       //     s   <= LP
       A1    (TR).                       //     n   <= TR
       A2    (TG).                       //     t   <= TG
@@ -540,7 +537,7 @@ func translate_OP_struct_ignore(p *atm.Builder, _ Instr) {
     p.SUB   (IL, IC, TR)                // TR <= IL - IC
     p.ADDP  (IP, IC, LP)                // LP <= IP + IC
     p.IB    (int8(defs.T_struct), UR)   // UR <= defs.T_struct
-    p.CCALL (FnSkip).                   // CCALL skip:
+    p.CCALL (C_skip).                   // CCALL skip:
       A0    (LP).                       //     s   <= LP
       A1    (TR).                       //     n   <= TR
       A2    (UR).                       //     t   <= UR
@@ -661,7 +658,7 @@ func translate_OP_construct(p *atm.Builder, v Instr) {
     p.IB    (1, UR)                     // UR <= 1
     p.IP    (v.Vt, TP)                  // TP <= v.Vt
     p.IQ    (int64(v.Vt.Size), TR)      // TR <= v.Vt.Size
-    p.GCALL (mallocgc).                 // GCALL mallocgc:
+    p.GCALL (F_mallocgc).               // GCALL mallocgc:
       A0    (TR).                       //     size     <= TR
       A1    (TP).                       //     typ      <= TP
       A2    (UR).                       //     needzero <= UR
@@ -671,7 +668,7 @@ func translate_OP_construct(p *atm.Builder, v Instr) {
 func translate_OP_defer(p *atm.Builder, v Instr) {
     p.IP    (v.Vt, TP)                  // TP <= v.Vt
     p.SUBP  (RS, ST, RS)                // RS <= RS - ST
-    p.GCALL (_F_decode).                // GCALL decode:
+    p.GCALL (F_decode).                 // GCALL decode:
       A0    (TP).                       //     vt       <= TP
       A1    (IP).                       //     buf.ptr  <= IP
       A2    (IL).                       //     buf.len  <= IL
