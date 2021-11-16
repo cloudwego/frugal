@@ -597,7 +597,7 @@ func translate_OP_struct_require(p *atm.Builder, v Instr) {
     }
 
     /* test mask for each word if any */
-    for i := int64(0); i < MaxField / 64; i++ {
+    for i := int64(0); i < MaxBitmap; i++ {
         if buf[i] != 0 {
             p.ADDPI (RS, NbWpSize + i * 8, TP)  // TP <=  RS + NbWpSize + i * 8
             p.LQ    (TP, TR)                    // TR <= *TP
