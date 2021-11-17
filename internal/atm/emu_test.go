@@ -20,12 +20,11 @@ import (
     `testing`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/rt`
     `github.com/davecgh/go-spew/spew`
 )
 
-func init() {
-    gcallTab[rt.FuncAddr(testemu_pfunc)] = func(e *Emulator, p *Instr) {
+var (
+    testfn = RegisterGCall(testemu_pfunc, func(e *Emulator, p *Instr) {
         var v0 struct {P unsafe.Pointer; L uint64}
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
@@ -57,8 +56,8 @@ func init() {
         e.Gr[p.Rr[3] & ArgMask] = uint64(len(r1))
         e.Pr[p.Rr[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r0))
         e.Pr[p.Rr[2] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r1))
-    }
-}
+    })
+)
 
 func testemu_pfunc(a string, b string, c string) (d string, e string) {
     d = a + b
@@ -94,7 +93,7 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
         p.ADDPI(P2, 8, P3)
         p.LQ(P3, R2)
         p.LP(P2, P2)
-        p.GCALL(testemu_pfunc).A0(P0).A1(R0).A2(P1).A3(R1).A4(P2).A5(R2).R0(P0).R1(R0).R2(P1).R3(R1)
+        p.GCALL(testfn).A0(P0).A1(R0).A2(P1).A3(R1).A4(P2).A5(R2).R0(P0).R1(R0).R2(P1).R3(R1)
         p.STRP(P0, 0)
         p.STRQ(R0, 1)
         p.STRP(P1, 2)

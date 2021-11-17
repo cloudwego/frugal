@@ -1,0 +1,712 @@
+/*
+ * Copyright 2021 ByteDance Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package atm
+
+import (
+    `fmt`
+    `sync/atomic`
+
+    `github.com/chenzhuoyu/iasm/expr`
+    `github.com/chenzhuoyu/iasm/x86_64`
+)
+
+const (
+    FP_args = 0
+)
+
+const (
+    FP_save = 128               // 128 bytes for saving the registers before calling subroutines
+    FP_offs = FP_args + FP_save // frame pointer offset
+    FP_size = FP_offs + 8       // 8 bytes for the parent frame pointer
+)
+
+type _SwitchTab struct {
+    ref *x86_64.Label
+    tab []*x86_64.Label
+}
+
+var (
+    stabCount uint64
+)
+
+func newSwitchTab(n int) (v *_SwitchTab) {
+    return &_SwitchTab {
+        tab: make([]*x86_64.Label, n),
+        ref: x86_64.CreateLabel(fmt.Sprintf("_switch_tab_%d", atomic.AddUint64(&stabCount, 1))),
+    }
+}
+
+func (self *_SwitchTab) link(p *x86_64.Program) {
+    p.Link(self.ref)
+    self.refs(p, self.ref)
+}
+
+func (self *_SwitchTab) refs(p *x86_64.Program, to *x86_64.Label) {
+    for _, v := range self.tab {
+        p.Long(expr.Ref(v).Sub(expr.Ref(to)))
+    }
+}
+
+type CodeGen struct {
+    regi int
+    arch *x86_64.Arch
+    stab []*_SwitchTab
+    regs [16]x86_64.Register64
+    jmps map[string]*x86_64.Label
+}
+
+func CreateCodeGen() *CodeGen {
+    return &CodeGen {
+        regi: 0,
+        regs: defaultRegs,
+        arch: x86_64.CreateArch(),
+        jmps: make(map[string]*x86_64.Label),
+    }
+}
+
+func (self *CodeGen) Generate(s Program) *x86_64.Program {
+    h := false
+    p := self.arch.CreateProgram()
+
+    /* check for invalid instructions */
+    for v := s.Head; v != nil; v = v.Ln {
+        if v.Ops() == 0 {
+            panic("pgen: invalid instruction: " + v.disassemble(nil))
+        }
+    }
+
+    /* static register allocation */
+    for v := s.Head; v != nil; v = v.Ln {
+        self.rcheck(v, v.Ops())
+        self.walloc(v, v.Ops())
+    }
+
+    /* program prologue */
+    p.SUBQ(FP_size, RSP)
+    p.MOVQ(RBP, Ptr(RSP, FP_offs))
+    p.LEAQ(Ptr(RSP, FP_offs), RBP)
+
+    /* translate the entire program */
+    for v := s.Head; v != nil; v = v.Ln {
+        if self.translate(p, v); v.Op == OP_halt {
+            h = true
+        }
+    }
+
+    /* program must halt */
+    if !h {
+        panic("pgen: program does not halt")
+    }
+
+    /* generate all the lookup tables */
+    self.tables(p)
+    return p
+}
+
+func (self *CodeGen) tables(p *x86_64.Program) {
+    for _, s := range self.stab {
+        s.link(p)
+    }
+}
+
+func (self *CodeGen) translate(p *x86_64.Program, v *Instr) {
+    if p.Link(self.to(v)); v.Op != OP_nop {
+        if fn := translators[v.Op]; fn != nil {
+            fn(self, p, v)
+        } else {
+            panic("pgen: invalid instruction: " + v.disassemble(nil))
+        }
+    }
+}
+
+/** Register Allocation **/
+
+type _Check struct {
+    bv Operands
+    fn func(*Instr)Register
+}
+
+var _readChecks = [...]_Check {
+    { bv: Orx, fn: func(p *Instr) Register { return p.Rx } },
+    { bv: Ory, fn: func(p *Instr) Register { return p.Ry } },
+    { bv: Ops, fn: func(p *Instr) Register { return p.Ps } },
+}
+
+var _writeAllocs = [...]_Check {
+    { bv: Owx, fn: func(p *Instr) Register { return p.Rx } },
+    { bv: Owy, fn: func(p *Instr) Register { return p.Ry } },
+    { bv: Owz, fn: func(p *Instr) Register { return p.Rz } },
+    { bv: Opd, fn: func(p *Instr) Register { return p.Pd } },
+}
+
+func (self *CodeGen) rload(v *Instr, r Register) {
+    if i := r.P(); i >= 0 && self.regs[i] == NA {
+        panic(fmt.Sprintf("pgen: access to unallocated register %s: %s", r.String(), v.disassemble(nil)))
+    }
+}
+
+func (self *CodeGen) rstore(v *Instr, r Register) {
+    var i int
+    var d x86_64.Register64
+
+    /* no need to allocate for zero registers */
+    if i = r.P(); i < 0 {
+        return
+    }
+
+    /* check for register allocation */
+    if d = self.regs[i]; d != NA {
+        return
+    }
+
+    /* check for allocation */
+    if self.regi >= len(allocationOrder) {
+        panic("pgen: program is too complex to translate on x86_64 (requiring too many registers): " + v.disassemble(nil))
+    }
+
+    /* allocate new registers */
+    d = allocationOrder[self.regi]
+    self.regi, self.regs[i] = self.regi + 1, d
+}
+
+func (self *CodeGen) ldcall(v *Instr) {
+    for i := 0; i < int(v.An); i++ {
+        if r := v.Ar[i]; r & ArgPointer != 0 {
+            self.rload(v, PointerRegister(r))
+        } else {
+            self.rload(v, GenericRegister(r))
+        }
+    }
+}
+
+func (self *CodeGen) stcall(v *Instr) {
+    for i := 0; i < int(v.Rn); i++ {
+        if r := v.Rr[i]; r & ArgPointer != 0 {
+            self.rstore(v, PointerRegister(r))
+        } else {
+            self.rstore(v, GenericRegister(r))
+        }
+    }
+}
+
+func (self *CodeGen) rcheck(v *Instr, p Operands) {
+    for _, cc := range _readChecks {
+        if p & Ocall != 0 { self.ldcall(v) }
+        if p & cc.bv != 0 { self.rload(v, cc.fn(v)) }
+    }
+}
+
+func (self *CodeGen) walloc(v *Instr, p Operands) {
+    for _, cc := range _writeAllocs {
+        if p & Ocall != 0 { self.stcall(v) }
+        if p & cc.bv != 0 { self.rstore(v, cc.fn(v)) }
+    }
+}
+
+/** Generator Helpers **/
+
+func (self *CodeGen) t(i int) x86_64.Register64 {
+    if i += self.regi; i >= len(allocationOrder) {
+        panic("pgen: no more spare registers")
+    } else {
+        return allocationOrder[i]
+    }
+}
+
+func (self *CodeGen) m(i int) *x86_64.MemoryOperand {
+    // TODO: fix the slot offset
+    return Ptr(RSP, FP_args + int32(i) * 8)
+}
+
+func (self *CodeGen) r(reg Register) x86_64.Register64 {
+    if r := self.regs[reg.P()]; r == NA {
+        panic("pgen: access to unallocated register: " + reg.String())
+    } else {
+        return r
+    }
+}
+
+func (self *CodeGen) to(v *Instr) *x86_64.Label {
+    return self.ref(fmt.Sprintf("_PC_%p", v))
+}
+
+func (self *CodeGen) tab(i int64) *_SwitchTab {
+    p := newSwitchTab(int(i))
+    self.stab = append(self.stab, p)
+    return p
+}
+
+func (self *CodeGen) ref(s string) *x86_64.Label {
+    var k bool
+    var p *x86_64.Label
+
+    /* check for existance */
+    if p, k = self.jmps[s]; k {
+        return p
+    }
+
+    /* create a new label if not */
+    p = x86_64.CreateLabel(s)
+    self.jmps[s] = p
+    return p
+}
+
+func (self *CodeGen) i32(p *x86_64.Program, v *Instr) interface{} {
+    var i int64
+    var t x86_64.Register64
+
+    /* check for 32-bit compatible values */
+    if i = v.Iv; isInt32(i) {
+        return i
+    }
+
+    /* otherwise wrap with the temporary register */
+    t = self.t(0)
+    p.MOVQ(v.Iv, t)
+    return t
+}
+
+func (self *CodeGen) dup(p *x86_64.Program, r Register, d Register) {
+    if r != d {
+        p.MOVQ(self.r(r), self.r(d))
+    }
+}
+
+/** OpCode Generators **/
+
+var translators = [256]func(*CodeGen, *x86_64.Program, *Instr) {
+    OP_ip    : (*CodeGen).translate_OP_ip,
+    OP_lb    : (*CodeGen).translate_OP_lb,
+    OP_lw    : (*CodeGen).translate_OP_lw,
+    OP_ll    : (*CodeGen).translate_OP_ll,
+    OP_lq    : (*CodeGen).translate_OP_lq,
+    OP_lp    : (*CodeGen).translate_OP_lp,
+    OP_sb    : (*CodeGen).translate_OP_sb,
+    OP_sw    : (*CodeGen).translate_OP_sw,
+    OP_sl    : (*CodeGen).translate_OP_sl,
+    OP_sq    : (*CodeGen).translate_OP_sq,
+    OP_sp    : (*CodeGen).translate_OP_sp,
+    OP_ldaq  : (*CodeGen).translate_OP_ldaq,
+    OP_ldap  : (*CodeGen).translate_OP_ldap,
+    OP_strq  : (*CodeGen).translate_OP_strq,
+    OP_strp  : (*CodeGen).translate_OP_strp,
+    OP_addp  : (*CodeGen).translate_OP_addp,
+    OP_subp  : (*CodeGen).translate_OP_subp,
+    OP_addpi : (*CodeGen).translate_OP_addpi,
+    OP_add   : (*CodeGen).translate_OP_add,
+    OP_sub   : (*CodeGen).translate_OP_sub,
+    OP_addi  : (*CodeGen).translate_OP_addi,
+    OP_muli  : (*CodeGen).translate_OP_muli,
+    OP_andi  : (*CodeGen).translate_OP_andi,
+    OP_xori  : (*CodeGen).translate_OP_xori,
+    OP_sbiti : (*CodeGen).translate_OP_sbiti,
+    OP_swapw : (*CodeGen).translate_OP_swapw,
+    OP_swapl : (*CodeGen).translate_OP_swapl,
+    OP_swapq : (*CodeGen).translate_OP_swapq,
+    OP_beq   : (*CodeGen).translate_OP_beq,
+    OP_bne   : (*CodeGen).translate_OP_bne,
+    OP_blt   : (*CodeGen).translate_OP_blt,
+    OP_bltu  : (*CodeGen).translate_OP_bltu,
+    OP_bgeu  : (*CodeGen).translate_OP_bgeu,
+    OP_bsw   : (*CodeGen).translate_OP_bsw,
+    OP_jal   : (*CodeGen).translate_OP_jal,
+    OP_ccall : (*CodeGen).translate_OP_ccall,
+    OP_gcall : (*CodeGen).translate_OP_gcall,
+    OP_icall : (*CodeGen).translate_OP_icall,
+    OP_halt  : (*CodeGen).translate_OP_halt,
+    OP_break : (*CodeGen).translate_OP_break,
+}
+
+func (self *CodeGen) translate_OP_ip(p *x86_64.Program, v *Instr) {
+    if v.Pd != Pn {
+        p.MOVQ(int64(uintptr(v.Pr)), self.r(v.Pd))
+    }
+}
+
+func (self *CodeGen) translate_OP_lb(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        panic("lb: load from nil pointer")
+    } else if v.Rx != Rz {
+        p.MOVZBQ(Ptr(self.r(v.Ps), 0), self.r(v.Rx))
+    }
+}
+
+func (self *CodeGen) translate_OP_lw(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        panic("lw: load from nil pointer")
+    } else if v.Rx != Rz {
+        p.MOVZWQ(Ptr(self.r(v.Ps), 0), self.r(v.Rx))
+    }
+}
+
+func (self *CodeGen) translate_OP_ll(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        panic("ll: load from nil pointer")
+    } else if v.Rx != Rz {
+        p.MOVL(Ptr(self.r(v.Ps), 0), x86_64.Register32(self.r(v.Rx)))
+    }
+}
+
+func (self *CodeGen) translate_OP_lq(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        panic("lq: load from nil pointer")
+    } else if v.Rx != Rz {
+        p.MOVQ(Ptr(self.r(v.Ps), 0), self.r(v.Rx))
+    }
+}
+
+func (self *CodeGen) translate_OP_lp(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        panic("lp: load from nil pointer")
+    } else if v.Pd != Pn {
+        p.MOVQ(Ptr(self.r(v.Ps), 0), self.r(v.Pd))
+    }
+}
+
+func (self *CodeGen) translate_OP_sb(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        panic("sb: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVB(0, Ptr(self.r(v.Pd), 0))
+    } else {
+        p.MOVB(x86_64.Register8(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
+    }
+}
+
+func (self *CodeGen) translate_OP_sw(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        panic("sw: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVW(0, Ptr(self.r(v.Pd), 0))
+    } else {
+        p.MOVW(x86_64.Register16(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
+    }
+}
+
+func (self *CodeGen) translate_OP_sl(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        panic("sl: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVL(0, Ptr(self.r(v.Pd), 0))
+    } else {
+        p.MOVL(x86_64.Register32(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
+    }
+}
+
+func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        panic("sq: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVQ(0, Ptr(self.r(v.Pd), 0))
+    } else {
+        p.MOVQ(self.r(v.Rx), Ptr(self.r(v.Pd), 0))
+    }
+}
+
+func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *Instr) {
+    // TODO: consider insert write barrier before move
+    if v.Pd == Pn {
+        panic("sp: store to nil pointer")
+    } else if v.Ps == Pn {
+        p.MOVQ(0, Ptr(self.r(v.Pd), 0))
+    } else {
+        p.MOVQ(self.r(v.Ps), Ptr(self.r(v.Pd), 0))
+    }
+}
+
+func (self *CodeGen) translate_OP_ldaq(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_ldaq
+}
+
+func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_ldap
+}
+
+func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_strq
+}
+
+func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_strp
+}
+
+func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *Instr) {
+    if v.Pd != Pn {
+        if v.Ps == Pn {
+            panic("addp: direct conversion of integer to pointer")
+        } else if self.dup(p, v.Ps, v.Pd); v.Rx != Rz {
+            p.ADDQ(self.r(v.Rx), self.r(v.Pd))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_subp(p *x86_64.Program, v *Instr) {
+    if v.Pd != Pn {
+        if v.Ps == Pn {
+            panic("subp: direct conversion of integer to pointer")
+        } else if self.dup(p, v.Ps, v.Pd); v.Rx != Rz {
+            p.SUBQ(self.r(v.Rx), self.r(v.Pd))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *Instr) {
+    if v.Pd != Pn {
+        if v.Ps == Pn {
+            panic("addpi: direct conversion of integer to pointer")
+        } else if !isInt32(v.Iv) {
+            panic("addpi: offset too large, may result in an invalid pointer")
+        } else if self.dup(p, v.Ps, v.Pd); v.Iv != 0 {
+            p.ADDQ(v.Iv, self.r(v.Pd))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *Instr) {
+    if v.Rz != Rz {
+        if v.Rx != Rz {
+            if self.dup(p, v.Rx, v.Rz); v.Ry != Rz {
+                p.ADDQ(self.r(v.Ry), self.r(v.Rz))
+            }
+        } else {
+            if v.Ry != Rz {
+                self.dup(p, v.Ry, v.Rz)
+            } else {
+                p.XORQ(self.r(v.Rz), self.r(v.Rz))
+            }
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *Instr) {
+    if v.Rz != Rz {
+        if v.Rx != Rz {
+            if self.dup(p, v.Rx, v.Rz); v.Ry != Rz {
+                p.SUBQ(self.r(v.Ry), self.r(v.Rz))
+            }
+        } else {
+            if v.Ry != Rz {
+                self.dup(p, v.Ry, v.Rz)
+            } else {
+                p.XORQ(self.r(v.Rz), self.r(v.Rz))
+            }
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Rx != Rz {
+            if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
+                p.ADDQ(self.i32(p, v), self.r(v.Ry))
+            }
+        } else {
+            if v.Iv != 0 {
+                p.MOVQ(v.Iv, self.r(v.Ry))
+            } else {
+                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+            }
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Iv == 0 || v.Rx == Rz {
+            p.XORQ(self.r(v.Ry), self.r(v.Ry))
+        } else if isInt32(v.Iv) {
+            p.IMULQ(v.Iv, self.r(v.Rx), self.r(v.Ry))
+        } else {
+            self.dup(p, v.Rx, v.Ry)
+            p.MOVQ(v.Iv, self.t(0))
+            p.IMULQ(self.t(0), self.r(v.Ry))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_andi(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Iv == 0 || v.Rx == Rz {
+            p.XORQ(self.r(v.Ry), self.r(v.Ry))
+        } else {
+            self.dup(p, v.Rx, v.Ry)
+            p.ANDQ(self.i32(p, v), self.r(v.Ry))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Rx != Rz {
+            if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
+                p.XORQ(self.i32(p, v), self.r(v.Ry))
+            }
+        } else {
+            if v.Iv != 0 {
+                p.MOVQ(v.Iv, self.r(v.Ry))
+            } else {
+                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+            }
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_sbiti(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Rx == Rz {
+            if v.Iv < 0 {
+                panic("sbiti: negative bit index")
+            } else if v.Iv != 0 && v.Iv < 64 {
+                p.MOVQ(1 << v.Iv, self.r(v.Ry))
+            } else {
+                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+            }
+        } else {
+            if v.Iv < 0 {
+                panic("sbiti: negative bit index")
+            } else if self.dup(p, v.Rx, v.Ry); v.Iv < 32 {
+                p.ORQ(1 << v.Iv, self.r(v.Ry))
+            } else if v.Iv < 64 {
+                p.BTSQ(v.Iv, self.r(v.Ry))
+            }
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_swapw(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        self.dup(p, v.Rx, v.Ry)
+        p.ROLW(8, x86_64.Register16(self.r(v.Ry)))
+    }
+}
+
+func (self *CodeGen) translate_OP_swapl(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        self.dup(p, v.Rx, v.Ry)
+        p.BSWAPL(x86_64.Register32(self.r(v.Ry)))
+    }
+}
+
+func (self *CodeGen) translate_OP_swapq(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        self.dup(p, v.Rx, v.Ry)
+        p.BSWAPQ(self.r(v.Ry))
+    }
+}
+
+func (self *CodeGen) translate_OP_beq(p *x86_64.Program, v *Instr) {
+    if v.Rx == v.Ry {
+        p.JMP(self.to(v.Br))
+    } else if v.Rx == Rz {
+        p.TESTQ(self.r(v.Ry), self.r(v.Ry))
+        p.JZ(self.to(v.Br))
+    } else if v.Ry == Rz {
+        p.TESTQ(self.r(v.Rx), self.r(v.Rx))
+        p.JZ(self.to(v.Br))
+    } else {
+        p.CMPQ(self.r(v.Ry), self.r(v.Rx))
+        p.JE(self.to(v.Br))
+    }
+}
+
+func (self *CodeGen) translate_OP_bne(p *x86_64.Program, v *Instr) {
+    if v.Rx != v.Ry {
+        if v.Rx == Rz {
+            p.TESTQ(self.r(v.Ry), self.r(v.Ry))
+            p.JNZ(self.to(v.Br))
+        } else if v.Ry == Rz {
+            p.TESTQ(self.r(v.Rx), self.r(v.Rx))
+            p.JNZ(self.to(v.Br))
+        } else {
+            p.CMPQ(self.r(v.Ry), self.r(v.Rx))
+            p.JNE(self.to(v.Br))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_blt(p *x86_64.Program, v *Instr) {
+    if v.Rx != v.Ry {
+        if v.Rx == Rz {
+            p.TESTQ(self.r(v.Ry), self.r(v.Ry))
+            p.JNS(self.to(v.Br))
+        } else if v.Ry == Rz {
+            p.TESTQ(self.r(v.Rx), self.r(v.Rx))
+            p.JS(self.to(v.Br))
+        } else {
+            p.CMPQ(self.r(v.Ry), self.r(v.Rx))
+            p.JL(self.to(v.Br))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_bltu(p *x86_64.Program, v *Instr) {
+    if v.Rx != v.Ry {
+        if v.Rx == Rz {
+            p.TESTQ(self.r(v.Ry), self.r(v.Ry))
+            p.JNZ(self.to(v.Br))
+        } else if v.Ry != Rz {
+            p.CMPQ(self.r(v.Ry), self.r(v.Rx))
+            p.JB(self.to(v.Br))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *Instr) {
+    if v.Ry == Rz || v.Rx == v.Ry {
+        p.JMP(self.to(v.Br))
+    } else if v.Rx == Rz {
+        p.TESTQ(self.r(v.Ry), self.r(v.Ry))
+        p.JZ(self.to(v.Br))
+    } else {
+        p.CMPQ(self.r(v.Ry), self.r(v.Rx))
+        p.JA(self.to(v.Br))
+    }
+}
+
+func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_bsw
+}
+
+func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        p.JMP(self.to(v.Br))
+    } else {
+        panic("jal: link-based sub-routine call is not implemented for x86_64")
+    }
+}
+
+func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_ccall
+}
+
+func (self *CodeGen) translate_OP_gcall(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_gcall
+}
+
+func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *Instr) {
+    // TODO: implement OP_icall
+}
+
+func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *Instr) {
+    p.MOVQ(Ptr(RSP, FP_offs), RBP)
+    p.ADDQ(FP_size, RSP)
+    p.RET()
+}
+
+func (self *CodeGen) translate_OP_break(p *x86_64.Program, _ *Instr) {
+    p.INT(3)
+}

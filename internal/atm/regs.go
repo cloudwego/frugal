@@ -21,6 +21,8 @@ import (
 )
 
 type Register interface {
+    fmt.Stringer
+    P() int
     A() uint8
 }
 
@@ -81,6 +83,22 @@ var _PR_Names = [...]string {
     P6: "p6",
     P7: "p7",
     Pn: "nil",
+}
+
+func (self GenericRegister) P() int {
+    if self == Rz {
+        return -1
+    } else {
+        return int(self)
+    }
+}
+
+func (self PointerRegister) P() int {
+    if self == Pn {
+        return -1
+    } else {
+        return int(self) + 8
+    }
 }
 
 func (self GenericRegister) A() uint8 { return uint8(self) | ArgGeneric }

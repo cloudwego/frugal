@@ -40,20 +40,20 @@ const (
     OP_sl                   // i32(Rx) -> *(*i32)Pd
     OP_sq                   //     Rx  -> *(*i64)Pd
     OP_sp                   //     Ps  -> *(*ptr)Pd
-    OP_ldaq                 // arg[Im] -> Rx
-    OP_ldap                 // arg[Im] -> Pd
-    OP_strq                 // Rx -> ret[Im]
-    OP_strp                 // Ps -> ret[Im]
+    OP_ldaq                 // arg[Iv] -> Rx
+    OP_ldap                 // arg[Iv] -> Pd
+    OP_strq                 // Rx -> ret[Iv]
+    OP_strp                 // Ps -> ret[Iv]
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
-    OP_addpi                // Ps + Im -> Pd
+    OP_addpi                // Ps + Iv -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
-    OP_addi                 // Rx + Im -> Ry
-    OP_muli                 // Rx * Im -> Ry
-    OP_andi                 // Rx & Im -> Ry
-    OP_xori                 // Rx ^ Im -> Ry
-    OP_sbiti                // Rx | (1 << Im) -> Ry
+    OP_addi                 // Rx + Iv -> Ry
+    OP_muli                 // Rx * Iv -> Ry
+    OP_andi                 // Rx & Iv -> Ry
+    OP_xori                 // Rx ^ Iv -> Ry
+    OP_sbiti                // Rx | (1 << Iv) -> Ry
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
     OP_swapq                // bswap64(Rx) -> Ry
@@ -70,6 +70,67 @@ const (
     OP_halt                 // halt the emulator
     OP_break                // trigger a debugger breakpoint
 )
+
+type (
+	Operands uint16
+)
+
+const (
+    Orx Operands = 1 << iota    // read Rx register
+    Ory                         // read Ry register
+    Owx                         // write Rx register
+    Owy                         // write Ry register
+    Owz                         // write Rz register
+    Ops                         // read Ps register
+    Opd                         // write Pd register
+    Obiti                       // operand contains bit index
+    Ocall                       // function calls
+    Octrl                       // control OpCodes
+)
+
+var _OperandMask = [256]Operands {
+    OP_nop   : Octrl,              
+    OP_ip    : Opd,
+    OP_lb    : Owx | Ops,
+    OP_lw    : Owx | Ops,
+    OP_ll    : Owx | Ops,
+    OP_lq    : Owx | Ops,
+    OP_lp    : Ops | Opd,
+    OP_sb    : Orx | Opd,
+    OP_sw    : Orx | Opd,
+    OP_sl    : Orx | Opd,
+    OP_sq    : Orx | Opd,
+    OP_sp    : Ops | Opd,
+    OP_ldaq  : Owx,
+    OP_ldap  : Opd,
+    OP_strq  : Orx,
+    OP_strp  : Ops,
+    OP_addp  : Orx | Ops | Opd,
+    OP_subp  : Orx | Ops | Opd,
+    OP_addpi : Ops | Opd,
+    OP_add   : Orx | Ory | Owz,
+    OP_sub   : Orx | Ory | Owz,
+    OP_addi  : Orx | Owy,
+    OP_muli  : Orx | Owy,
+    OP_andi  : Orx | Owy,
+    OP_xori  : Orx | Owy,
+    OP_sbiti : Orx | Owy | Obiti,
+    OP_swapw : Orx | Owy,
+    OP_swapl : Orx | Owy,
+    OP_swapq : Orx | Owy,
+    OP_beq   : Orx | Ory,
+    OP_bne   : Orx | Ory,
+    OP_blt   : Orx | Ory,
+    OP_bltu  : Orx | Ory,
+    OP_bgeu  : Orx | Ory,
+    OP_bsw   : Orx,
+    OP_jal   : Opd,
+    OP_ccall : Ocall,
+    OP_gcall : Ocall,
+    OP_icall : Ocall,
+    OP_halt  : Octrl,
+    OP_break : Octrl,
+}
 
 type Instr struct {
     Op OpCode
@@ -119,6 +180,10 @@ func (self *Instr) Sw() (p []*Instr) {
     (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(self.Iv)
     (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(self.Iv)
     return
+}
+
+func (self *Instr) Ops() Operands {
+    return _OperandMask[self.Op]
 }
 
 func (self *Instr) isBranch() bool {
