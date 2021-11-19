@@ -72,3 +72,20 @@ func isPow2(v int64) bool {
 func isInt32(v int64) bool {
     return v >= math.MinInt32 && v <= math.MaxUint32
 }
+
+func isReg64(v x86_64.Register) (ok bool) {
+    _, ok = v.(x86_64.Register64)
+    return
+}
+
+func isSimpleMem(v *x86_64.MemoryOperand) bool {
+    return !v.Masked                        &&
+            v.Broadcast == 0                &&
+            v.Addr.Type == x86_64.Memory    &&
+            v.Addr.Offset == 0              &&
+            v.Addr.Reference == nil         &&
+            v.Addr.Memory.Scale <= 1        &&
+            v.Addr.Memory.Index == nil      &&
+            v.Addr.Memory.Displacement == 0 &&
+            isReg64(v.Addr.Memory.Base)
+}

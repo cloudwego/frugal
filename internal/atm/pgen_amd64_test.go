@@ -83,7 +83,7 @@ func TestPGen_Generate(t *testing.T) {
     // b.ADDI(R0, 6, R6)
     b.IP(i, P0)
     b.IP(&j, P1)
-    b.SP(Pn, P1)
+    b.SP(P0, P1)
     b.HALT()
     g := CreateCodeGen()
     p := g.Generate(b.Build())

@@ -17,53 +17,53 @@
 package atm
 
 import (
-    `unsafe`
-    _ `unsafe`
-
     `github.com/chenzhuoyu/iasm/x86_64`
 )
 
-func (self *CodeGen) wbStoreNull(p *x86_64.Program, d PointerRegister) {
-    rd := self.r(d)
+func (self *CodeGen) wbStorePointer(p *x86_64.Program, s PointerRegister, d *x86_64.MemoryOperand) {
     wb := x86_64.CreateLabel("_wb_store")
     rt := x86_64.CreateLabel("_wb_return")
 
     /* check for write barrier */
-    p.MOVQ  (uintptr(unsafe.Pointer(&writeBarrier)), RSI)
-    p.CMPB  (0, Ptr(RSI, 0))
-    p.JNE   (wb)
-    p.MOVQ  (0, Ptr(rd, 0))
-    p.Link  (rt)
+    p.MOVQ (V_pWriteBarrier, RSI)
+    p.CMPB (0, Ptr(RSI, 0))
+    p.JNE  (wb)
+
+    /* check for storing nil */
+    if s == Pn {
+        p.MOVQ(0, d)
+    } else {
+        p.MOVQ(self.r(s), d)
+    }
+
+    /* set source pointer */
+    wbSetSrc := func() {
+        if s == Pn {
+            p.XORL(EAX, EAX)
+        } else {
+            p.MOVQ(self.r(s), RAX)
+        }
+    }
+
+    /* set target slot pointer */
+    wbSetSlot := func() {
+        if !isSimpleMem(d) {
+            p.LEAQ(d.Retain(), RDI)
+        } else {
+            p.MOVQ(d.Addr.Memory.Base, RDI)
+        }
+    }
+
+    /* write barrier wrapper */
+    wbStoreFn := func(p *x86_64.Program) {
+        wbSetSrc  ()
+        wbSetSlot ()
+        p.MOVQ    (int64(F_gcWriteBarrier), RSI)
+        p.CALLQ   (RSI)
+        p.JMP     (rt)
+    }
 
     /* defer the call to the end of generated code */
-    self.later(wb, func(p *x86_64.Program) {
-        p.XORL  (EAX, EAX)
-        p.MOVQ  (rd, RDI)
-        p.MOVQ  (int64(F_gcWriteBarrier), RSI)
-        p.CALLQ (RSI)
-        p.JMP   (rt)
-    })
-}
-
-func (self *CodeGen) wbStorePointer(p *x86_64.Program, s PointerRegister, d PointerRegister) {
-    rs := self.r(s)
-    rd := self.r(d)
-    wb := x86_64.CreateLabel("_wb_store")
-    rt := x86_64.CreateLabel("_wb_return")
-
-    /* check for write barrier */
-    p.MOVQ  (uintptr(unsafe.Pointer(&writeBarrier)), RSI)
-    p.CMPB  (0, Ptr(RSI, 0))
-    p.JNE   (wb)
-    p.MOVQ  (rs, Ptr(rd, 0))
-    p.Link  (rt)
-
-    /* defer the call to the end of generated code */
-    self.later(wb, func(p *x86_64.Program) {
-        p.MOVQ  (rs, RAX)
-        p.MOVQ  (rd, RDI)
-        p.MOVQ  (int64(F_gcWriteBarrier), RSI)
-        p.CALLQ (RSI)
-        p.JMP   (rt)
-    })
+    p.Link(rt)
+    self.later(wb, wbStoreFn)
 }

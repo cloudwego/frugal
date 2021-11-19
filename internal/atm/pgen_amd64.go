@@ -439,10 +439,8 @@ func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *Instr) {
 func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *Instr) {
     if v.Pd == Pn {
         panic("sp: store to nil pointer")
-    } else if v.Ps == Pn {
-        self.wbStoreNull(p, v.Pd)
     } else {
-        self.wbStorePointer(p, v.Ps, v.Pd)
+        self.wbStorePointer(p, v.Ps, Ptr(self.r(v.Pd), 0))
     }
 }
 
