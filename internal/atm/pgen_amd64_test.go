@@ -29,23 +29,30 @@ const (
     _MaxByte = 10
 )
 
-func symlookup(pc uint64) (string, uint64) {
-    fn := runtime.FuncForPC(uintptr(pc))
-    if fn == nil {
-        return "", 0
+func symlookup(addr uint64) (string, uint64) {
+    fn := runtime.FuncForPC(uintptr(addr))
+    if fn != nil {
+        ent := uint64(fn.Entry())
+        if addr == ent {
+            return fmt.Sprintf("%#x{%s}", addr, fn.Name()), ent
+        }
+        return fmt.Sprintf("%#x{%s+%#x}", addr, fn.Name(), addr - ent), ent
     }
-    return fn.Name(), uint64(fn.Entry())
+    if addr == uint64(V_pWriteBarrier) {
+        return fmt.Sprintf("%#x{runtime.writeBarrier}", addr), addr
+    }
+    return "", 0
 }
 
-func disasm(c []byte) {
+func disasm(orig uintptr, c []byte) {
     var pc int
     for pc < len(c) {
         i, err := x86asm.Decode(c[pc:], 64)
         if err != nil {
             panic(err)
         }
-        dis := x86asm.GNUSyntax(i, uint64(pc), symlookup)
-        fmt.Printf("0x%08x : ", pc)
+        dis := x86asm.GNUSyntax(i, uint64(pc) + uint64(orig), symlookup)
+        fmt.Printf("0x%08x : ", pc + int(orig))
         for x := 0; x < i.Len; x++ {
             if x != 0 && x % _MaxByte == 0 {
                 fmt.Printf("\n           : ")
@@ -64,15 +71,22 @@ func disasm(c []byte) {
 }
 
 func TestPGen_Generate(t *testing.T) {
+    i := new(*int)
+    j := 12345
     b := CreateBuilder()
-    f := RegisterGCall(newBuilder, nil)
     b.IQ(0x1234, R0)
-    b.ADDI(R0, 0x5678abcde, R1)
-    b.GCALL(f).A0(R0).A1(R1).R0(R2).R1(R3)
-    b.ADDI(R2, 0xaa, R3)
+    // b.ADDI(R0, 1, R1)
+    // b.ADDI(R0, 2, R2)
+    // b.ADDI(R0, 3, R3)
+    // b.ADDI(R0, 4, R4)
+    // b.ADDI(R0, 5, R5)
+    // b.ADDI(R0, 6, R6)
+    b.IP(i, P0)
+    b.IP(&j, P1)
+    b.SP(Pn, P1)
     b.HALT()
     g := CreateCodeGen()
     p := g.Generate(b.Build())
     c := p.Assemble(0)
-    disasm(c)
+    disasm(0, c)
 }

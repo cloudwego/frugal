@@ -30,8 +30,8 @@ type Value struct {
 
 type Emulator struct {
     PC *Instr
-    Gr [9]uint64
-    Pr [9]unsafe.Pointer
+    Gr [6]uint64
+    Pr [7]unsafe.Pointer
     Ar [8]Value
     Rv [8]Value
 }
@@ -163,8 +163,7 @@ const _F_emulator = `Emulator {
     r3  %#x
     r4  %#x
     r5  %#x
-    r6  %#x
-    r7  %#x
+   ----
     p0  %p
     p1  %p
     p2  %p
@@ -172,7 +171,6 @@ const _F_emulator = `Emulator {
     p4  %p
     p5  %p
     p6  %p
-    p7  %p
 }`
 
 func (self *Emulator) String() string {
@@ -186,8 +184,6 @@ func (self *Emulator) String() string {
         self.Gr[3],
         self.Gr[4],
         self.Gr[5],
-        self.Gr[6],
-        self.Gr[7],
         self.Pr[0],
         self.Pr[1],
         self.Pr[2],
@@ -195,6 +191,5 @@ func (self *Emulator) String() string {
         self.Pr[4],
         self.Pr[5],
         self.Pr[6],
-        self.Pr[7],
     )
 }

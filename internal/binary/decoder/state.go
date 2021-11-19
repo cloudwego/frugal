@@ -23,17 +23,16 @@ import (
 )
 
 const (
-    NbSize    = 8
-    WpSize    = 8
-    FmSize    = MaxBitmap * 8
-    NbWpSize  = NbSize + WpSize
-    WpFmSize  = WpSize + FmSize
-    StateSize = NbSize + WpSize + FmSize
+    NbOffset = int64(unsafe.Offsetof(StateItem{}.Nb))
+    WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
+    FmOffset = int64(unsafe.Offsetof(StateItem{}.Fm))
+    VuOffset = int64(unsafe.Offsetof(StateItem{}.Vu))
 )
 
 const (
-    StateMax = StateCap - StateSize
-    StateCap = defs.MaxStack * StateSize
+    StateMax  = StateCap - StateSize
+    StateCap  = defs.MaxStack * StateSize
+    StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
 // StateItem is the runtime state item.
@@ -42,6 +41,7 @@ type StateItem struct {
     Nb uint64
     Wp unsafe.Pointer
     Fm FieldBitmap
+    Vu uint64
 }
 
 type RuntimeState struct {

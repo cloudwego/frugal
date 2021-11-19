@@ -23,6 +23,7 @@ import (
 )
 
 const (
+    EAX = x86_64.EAX
     RAX = x86_64.RAX
     RCX = x86_64.RCX
     RDX = x86_64.RDX
@@ -45,20 +46,27 @@ const (
     NA x86_64.Register64 = 0xff
 )
 
-var defaultRegs = [16]x86_64.Register64 {
-    NA, NA, NA, NA, NA, NA, NA, NA,
-    NA, NA, NA, NA, NA, NA, NA, NA,
+var defaultRegs = [11]x86_64.Register64 {
+    NA, NA, NA, NA, NA, NA,
+    NA, NA, NA, NA, NA,
 }
 
-var allocationOrder = [14]x86_64.Register64 {
-    R10, R11, R12, R13, R14, R15,   // reserved registers first
-    RAX,                            // then the return value
-    RBX,                            // then RBX
-    R9, R8, RCX, RDX, RSI, RDI,     // then argument registers in reverse order
+var allocationOrder = [11]x86_64.Register64 {
+    R12, R13, R14, R15, RBX,    // reserved registers first
+    R10, R11,                   // then scratch registers
+    R9, R8, RCX, RDX,           // then argument registers in reverse order (RDI, RSI and RAX are always free)
 }
 
 func Ptr(base x86_64.Register, disp int32) *x86_64.MemoryOperand {
     return x86_64.Ptr(base, disp)
+}
+
+func Sib(base x86_64.Register, index x86_64.Register64, scale uint8, disp int32) *x86_64.MemoryOperand {
+    return x86_64.Sib(base, index, scale, disp)
+}
+
+func isPow2(v int64) bool {
+    return v & (v - 1) == 0
 }
 
 func isInt32(v int64) bool {

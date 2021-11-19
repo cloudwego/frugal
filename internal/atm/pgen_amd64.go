@@ -18,6 +18,7 @@ package atm
 
 import (
     `fmt`
+    `math/bits`
     `sync/atomic`
 
     `github.com/chenzhuoyu/iasm/expr`
@@ -43,10 +44,10 @@ var (
     stabCount uint64
 )
 
-func newSwitchTab(n int) (v *_SwitchTab) {
-    return &_SwitchTab {
+func newSwitchTab(n int) (v _SwitchTab) {
+    return _SwitchTab {
         tab: make([]*x86_64.Label, n),
-        ref: x86_64.CreateLabel(fmt.Sprintf("_switch_tab_%d", atomic.AddUint64(&stabCount, 1))),
+        ref: x86_64.CreateLabel(fmt.Sprintf("_table_%d", atomic.AddUint64(&stabCount, 1))),
     }
 }
 
@@ -55,23 +56,37 @@ func (self *_SwitchTab) link(p *x86_64.Program) {
     self.refs(p, self.ref)
 }
 
+func (self *_SwitchTab) mark(i int, to *x86_64.Label) {
+    if i >= len(self.tab) {
+        panic("pgen: stab: index out of bound")
+    } else {
+        self.tab[i] = to
+    }
+}
+
 func (self *_SwitchTab) refs(p *x86_64.Program, to *x86_64.Label) {
     for _, v := range self.tab {
         p.Long(expr.Ref(v).Sub(expr.Ref(to)))
     }
 }
 
+type _DeferBlock struct {
+    ref *x86_64.Label
+    def func(p *x86_64.Program)
+}
+
 type CodeGen struct {
+    nins int
     regi int
     arch *x86_64.Arch
-    stab []*_SwitchTab
-    regs [16]x86_64.Register64
+    stab []_SwitchTab
+    defs []_DeferBlock
+    regs [11]x86_64.Register64
     jmps map[string]*x86_64.Label
 }
 
 func CreateCodeGen() *CodeGen {
     return &CodeGen {
-        regi: 0,
         regs: defaultRegs,
         arch: x86_64.CreateArch(),
         jmps: make(map[string]*x86_64.Label),
@@ -112,9 +127,22 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
         panic("pgen: program does not halt")
     }
 
+    /* generate all defered blocks */
+    for _, fn := range self.defs {
+        p.Link(fn.ref)
+        fn.def(p)
+    }
+
     /* generate all the lookup tables */
     self.tables(p)
     return p
+}
+
+func (self *CodeGen) later(ref *x86_64.Label, def func(*x86_64.Program)) {
+    self.defs = append(self.defs, _DeferBlock {
+        ref: ref,
+        def: def,
+    })
 }
 
 func (self *CodeGen) tables(p *x86_64.Program) {
@@ -123,8 +151,13 @@ func (self *CodeGen) tables(p *x86_64.Program) {
     }
 }
 
+func (self *CodeGen) register(p *x86_64.Program, v *Instr) {
+    self.nins++
+    p.Link(self.to(v))
+}
+
 func (self *CodeGen) translate(p *x86_64.Program, v *Instr) {
-    if p.Link(self.to(v)); v.Op != OP_nop {
+    if self.register(p, v); v.Op != OP_nop {
         if fn := translators[v.Op]; fn != nil {
             fn(self, p, v)
         } else {
@@ -219,19 +252,6 @@ func (self *CodeGen) walloc(v *Instr, p Operands) {
 
 /** Generator Helpers **/
 
-func (self *CodeGen) t(i int) x86_64.Register64 {
-    if i += self.regi; i >= len(allocationOrder) {
-        panic("pgen: no more spare registers")
-    } else {
-        return allocationOrder[i]
-    }
-}
-
-func (self *CodeGen) m(i int) *x86_64.MemoryOperand {
-    // TODO: fix the slot offset
-    return Ptr(RSP, FP_args + int32(i) * 8)
-}
-
 func (self *CodeGen) r(reg Register) x86_64.Register64 {
     if r := self.regs[reg.P()]; r == NA {
         panic("pgen: access to unallocated register: " + reg.String())
@@ -245,9 +265,9 @@ func (self *CodeGen) to(v *Instr) *x86_64.Label {
 }
 
 func (self *CodeGen) tab(i int64) *_SwitchTab {
-    p := newSwitchTab(int(i))
-    self.stab = append(self.stab, p)
-    return p
+    p := len(self.stab)
+    self.stab = append(self.stab, newSwitchTab(int(i)))
+    return &self.stab[p]
 }
 
 func (self *CodeGen) ref(s string) *x86_64.Label {
@@ -266,18 +286,17 @@ func (self *CodeGen) ref(s string) *x86_64.Label {
 }
 
 func (self *CodeGen) i32(p *x86_64.Program, v *Instr) interface{} {
-    var i int64
-    var t x86_64.Register64
-
-    /* check for 32-bit compatible values */
-    if i = v.Iv; isInt32(i) {
-        return i
+    if isInt32(v.Iv) {
+        return v.Iv
+    } else {
+        p.MOVQ(v.Iv, RAX)
+        return RAX
     }
+}
 
-    /* otherwise wrap with the temporary register */
-    t = self.t(0)
-    p.MOVQ(v.Iv, t)
-    return t
+func (self *CodeGen) clr(p *x86_64.Program, r Register) {
+    rx := self.r(r)
+    p.XORL(x86_64.Register32(rx), x86_64.Register32(rx))
 }
 
 func (self *CodeGen) dup(p *x86_64.Program, r Register, d Register) {
@@ -418,13 +437,12 @@ func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *Instr) {
-    // TODO: consider insert write barrier before move
     if v.Pd == Pn {
         panic("sp: store to nil pointer")
     } else if v.Ps == Pn {
-        p.MOVQ(0, Ptr(self.r(v.Pd), 0))
+        self.wbStoreNull(p, v.Pd)
     } else {
-        p.MOVQ(self.r(v.Ps), Ptr(self.r(v.Pd), 0))
+        self.wbStorePointer(p, v.Ps, v.Pd)
     }
 }
 
@@ -483,10 +501,10 @@ func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *Instr) {
                 p.ADDQ(self.r(v.Ry), self.r(v.Rz))
             }
         } else {
-            if v.Ry != Rz {
-                self.dup(p, v.Ry, v.Rz)
+            if v.Ry == Rz {
+                self.clr(p, v.Rz)
             } else {
-                p.XORQ(self.r(v.Rz), self.r(v.Rz))
+                self.dup(p, v.Ry, v.Rz)
             }
         }
     }
@@ -499,10 +517,10 @@ func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *Instr) {
                 p.SUBQ(self.r(v.Ry), self.r(v.Rz))
             }
         } else {
-            if v.Ry != Rz {
-                self.dup(p, v.Ry, v.Rz)
+            if v.Ry == Rz {
+                self.clr(p, v.Rz)
             } else {
-                p.XORQ(self.r(v.Rz), self.r(v.Rz))
+                self.dup(p, v.Ry, v.Rz)
             }
         }
     }
@@ -515,25 +533,82 @@ func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *Instr) {
                 p.ADDQ(self.i32(p, v), self.r(v.Ry))
             }
         } else {
-            if v.Iv != 0 {
-                p.MOVQ(v.Iv, self.r(v.Ry))
+            if v.Iv == 0 {
+                self.clr(p, v.Ry)
             } else {
-                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+                p.MOVQ(v.Iv, self.r(v.Ry))
             }
         }
     }
 }
 
 func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *Instr) {
-    if v.Ry != Rz {
-        if v.Iv == 0 || v.Rx == Rz {
-            p.XORQ(self.r(v.Ry), self.r(v.Ry))
-        } else if isInt32(v.Iv) {
-            p.IMULQ(v.Iv, self.r(v.Rx), self.r(v.Ry))
-        } else {
+    var z x86_64.Register
+    var x x86_64.Register64
+    var y x86_64.Register64
+
+    /* no need to calculate if the result was to be discarded */
+    if v.Ry == Rz {
+        return
+    }
+
+    /* multiply anything by zero is zero */
+    if v.Rx == Rz {
+        self.clr(p, v.Ry)
+        return
+    }
+
+    /* get the allocated registers */
+    x = self.r(v.Rx)
+    y = self.r(v.Ry)
+
+    /* optimized multiplication */
+    switch {
+        case v.Iv == 0: self.clr(p, v.Ry)           // x * 0 == 0
+        case v.Iv == 1: self.dup(p, v.Rx, v.Ry)     // x * 1 == x
+
+        /* multiply by 2, 4 or 8, choose between ADD / SHL and LEA */
+        case v.Iv == 2: if x == y { p.ADDQ(x, y) } else { p.LEAQ(Sib(x, x, 1, 0), y) }
+        case v.Iv == 4: if x == y { p.SHLQ(2, y) } else { p.LEAQ(Sib(z, x, 4, 0), y) }
+        case v.Iv == 8: if x == y { p.SHLQ(3, y) } else { p.LEAQ(Sib(z, x, 8, 0), y) }
+
+        /* small multipliers, use optimized multiplication algorithm */
+        case v.Iv == 3  : p.LEAQ(Sib(x, x, 2, 0), y)                                // x * 3  == x + x * 2
+        case v.Iv == 5  : p.LEAQ(Sib(x, x, 4, 0), y)                                // x * 5  == x + x * 4
+        case v.Iv == 6  : p.LEAQ(Sib(x, x, 2, 0), y); p.ADDQ(y, y)                  // x * 6  == x * 3 * 2
+        case v.Iv == 9  : p.LEAQ(Sib(x, x, 8, 0), y)                                // x * 9  == x + x * 8
+        case v.Iv == 10 : p.LEAQ(Sib(x, x, 4, 0), y); p.ADDQ(y, y)                  // x * 10 == x * 5 * 2
+        case v.Iv == 12 : p.LEAQ(Sib(x, x, 2, 0), y); p.SHLQ(2, y)                  // x * 12 == x * 3 * 4
+        case v.Iv == 15 : p.LEAQ(Sib(x, x, 4, 0), y); p.LEAQ(Sib(y, y, 2, 0), y)    // x * 15 == x * 5 * 3
+        case v.Iv == 18 : p.LEAQ(Sib(x, x, 8, 0), y); p.ADDQ(y, y)                  // x * 18 == x * 9 * 2
+        case v.Iv == 20 : p.LEAQ(Sib(x, x, 4, 0), y); p.SHLQ(2, y)                  // x * 20 == x * 5 * 4
+        case v.Iv == 24 : p.LEAQ(Sib(x, x, 2, 0), y); p.SHLQ(3, y)                  // x * 24 == x * 3 * 8
+        case v.Iv == 25 : p.LEAQ(Sib(x, x, 4, 0), y); p.LEAQ(Sib(y, y, 4, 0), y)    // x * 25 == x * 5 * 5
+        case v.Iv == 27 : p.LEAQ(Sib(x, x, 8, 0), y); p.LEAQ(Sib(y, y, 2, 0), y)    // x * 27 == x * 9 * 3
+        case v.Iv == 36 : p.LEAQ(Sib(x, x, 8, 0), y); p.SHLQ(2, y)                  // x * 36 == x * 9 * 4
+        case v.Iv == 40 : p.LEAQ(Sib(x, x, 4, 0), y); p.SHLQ(3, y)                  // x * 40 == x * 5 * 8
+        case v.Iv == 45 : p.LEAQ(Sib(x, x, 8, 0), y); p.LEAQ(Sib(y, y, 4, 0), y)    // x * 45 == x * 9 * 5
+        case v.Iv == 48 : p.LEAQ(Sib(x, x, 2, 0), y); p.SHLQ(4, y)                  // x * 48 == x * 3 * 16
+        case v.Iv == 72 : p.LEAQ(Sib(x, x, 8, 0), y); p.SHLQ(3, y)                  // x * 72 == x * 9 * 8
+        case v.Iv == 80 : p.LEAQ(Sib(x, x, 4, 0), y); p.SHLQ(4, y)                  // x * 80 == x * 5 * 16
+        case v.Iv == 81 : p.LEAQ(Sib(x, x, 8, 0), y); p.LEAQ(Sib(y, y, 8, 0), y)    // x * 81 == x * 9 * 9
+
+        /* multiplier is a power of 2, use shifts */
+        case isPow2(v.Iv): {
             self.dup(p, v.Rx, v.Ry)
-            p.MOVQ(v.Iv, self.t(0))
-            p.IMULQ(self.t(0), self.r(v.Ry))
+            p.SHLQ(bits.TrailingZeros64(uint64(v.Iv)), y)
+        }
+
+        /* multiplier can fit into a 32-bit integer, use 3-operand IMUL instruction */
+        case isInt32(v.Iv): {
+            p.IMULQ(v.Iv, x, y)
+        }
+
+        /* none of above matches, we need an extra temporary register */
+        default: {
+            self.dup(p, v.Rx, v.Ry)
+            p.MOVQ(v.Iv, RAX)
+            p.IMULQ(RAX, y)
         }
     }
 }
@@ -541,7 +616,7 @@ func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *Instr) {
 func (self *CodeGen) translate_OP_andi(p *x86_64.Program, v *Instr) {
     if v.Ry != Rz {
         if v.Iv == 0 || v.Rx == Rz {
-            p.XORQ(self.r(v.Ry), self.r(v.Ry))
+            self.clr(p, v.Ry)
         } else {
             self.dup(p, v.Rx, v.Ry)
             p.ANDQ(self.i32(p, v), self.r(v.Ry))
@@ -556,10 +631,10 @@ func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *Instr) {
                 p.XORQ(self.i32(p, v), self.r(v.Ry))
             }
         } else {
-            if v.Iv != 0 {
-                p.MOVQ(v.Iv, self.r(v.Ry))
+            if v.Iv == 0 {
+                self.clr(p, v.Ry)
             } else {
-                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+                p.MOVQ(v.Iv, self.r(v.Ry))
             }
         }
     }
@@ -573,7 +648,7 @@ func (self *CodeGen) translate_OP_sbiti(p *x86_64.Program, v *Instr) {
             } else if v.Iv != 0 && v.Iv < 64 {
                 p.MOVQ(1 << v.Iv, self.r(v.Ry))
             } else {
-                p.XORQ(self.r(v.Ry), self.r(v.Ry))
+                self.clr(p, v.Ry)
             }
         } else {
             if v.Iv < 0 {
@@ -678,7 +753,36 @@ func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_bsw
+    nsw := v.Iv
+    tab := v.Sw()
+
+    /* empty switch */
+    if nsw == 0 {
+        return
+    }
+
+    /* allocate switch buffer and default switch label */
+    buf := self.tab(nsw)
+    def := x86_64.CreateLabel("_default")
+
+    /* set default switch targets */
+    for i := 0; i < int(v.Iv); i++ {
+        buf.mark(i, def)
+    }
+
+    /* assign the specified switch targets */
+    for i, ref := range tab {
+        buf.mark(i, self.to(ref))
+    }
+
+    /* switch on v.Rx */
+    p.CMPQ   (nsw, self.r(v.Rx))
+    p.JAE    (def)
+    p.LEAQ   (buf.ref, RAX)
+    p.MOVSLQ (Sib(RAX, self.r(v.Rx), 4, 0), RSI)
+    p.ADDQ   (RSI, RAX)
+    p.JMPQ   (RAX)
+    p.Link   (def)
 }
 
 func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {

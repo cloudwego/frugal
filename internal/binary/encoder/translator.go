@@ -30,29 +30,29 @@ import (
 
 /** Register Allocations
  *
- *      P3      Current Working Pointer
- *      P4      Output Buffer Pointer
- *      P5      Runtime State Pointer
- *      P6      Error Type Pointer
- *      P7      Error Value Pointer
+ *      P1      Current Working Pointer
+ *      P2      Output Buffer Pointer
+ *      P3      Runtime State Pointer
+ *      P4      Error Type Pointer
+ *      P5      Error Value Pointer
  *
- *      R5      Output Buffer Length
- *      R6      Output Buffer Capacity
- *      R7      State Index
+ *      R2      Output Buffer Length
+ *      R3      Output Buffer Capacity
+ *      R4      State Index
  */
 
 const (
-    WP = atm.P3
-    RP = atm.P4
-    RS = atm.P5
-    ET = atm.P6     // may also be used as a temporary pointer register
-    EP = atm.P7     // may also be used as a temporary pointer register
+    WP = atm.P1
+    RP = atm.P2
+    RS = atm.P3
+    ET = atm.P4     // may also be used as a temporary pointer register
+    EP = atm.P5     // may also be used as a temporary pointer register
 )
 
 const (
-    RL = atm.R5
-    RC = atm.R6
-    ST = atm.R7
+    RL = atm.R2
+    RC = atm.R3
+    ST = atm.R4
 )
 
 const (

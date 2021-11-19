@@ -43,9 +43,6 @@ const (
     R2
     R3
     R4
-    R5
-    R6
-    R7
     Rz
 )
 
@@ -56,8 +53,6 @@ const (
     P3
     P4
     P5
-    P6
-    P7
     Pn
 )
 
@@ -67,9 +62,6 @@ var _GR_Names = [...]string {
     R2: "r2",
     R3: "r3",
     R4: "r4",
-    R5: "r5",
-    R6: "r6",
-    R7: "r7",
     Rz: "z",
 }
 
@@ -80,8 +72,6 @@ var _PR_Names = [...]string {
     P3: "p3",
     P4: "p4",
     P5: "p5",
-    P6: "p6",
-    P7: "p7",
     Pn: "nil",
 }
 
