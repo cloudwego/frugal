@@ -23,10 +23,6 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func init() {
-    Link = link_emu
-}
-
 func link_emu(prog atm.Program) Decoder {
     return func(buf []byte, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
         emu := atm.LoadProgram(prog)

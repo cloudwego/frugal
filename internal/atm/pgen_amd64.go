@@ -19,20 +19,12 @@ package atm
 import (
     `fmt`
     `math/bits`
+    `reflect`
+    `sort`
     `sync/atomic`
 
     `github.com/chenzhuoyu/iasm/expr`
     `github.com/chenzhuoyu/iasm/x86_64`
-)
-
-const (
-    FP_args = 0
-)
-
-const (
-    FP_save = 128               // 128 bytes for saving the registers before calling subroutines
-    FP_offs = FP_args + FP_save // frame pointer offset
-    FP_size = FP_offs + 8       // 8 bytes for the parent frame pointer
 )
 
 type _SwitchTab struct {
@@ -75,9 +67,94 @@ type _DeferBlock struct {
     def func(p *x86_64.Program)
 }
 
+type _RegSeq []Register
+func (self _RegSeq) Len() int               { return len(self) }
+func (self _RegSeq) Swap(i int, j int)      { self[i], self[j] = self[j], self[i] }
+func (self _RegSeq) Less(i int, j int) bool { return self[i].P() < self[j].P() }
+
+type _FrameInfo struct {
+    alen int
+    regs _RegSeq
+    args *FunctionLayout
+    regi map[Register]int32
+}
+
+func (self *_FrameInfo) regc() int {
+    return len(self.regs)
+}
+
+func (self *_FrameInfo) argc() int {
+    return len(self.args.Args)
+}
+
+func (self *_FrameInfo) retc() int {
+    return len(self.args.Rets)
+}
+
+func (self *_FrameInfo) save() int32 {
+    return int32(self.alen)
+}
+
+func (self *_FrameInfo) base() int32 {
+    return self.size() + _PS
+}
+
+func (self *_FrameInfo) size() int32 {
+    return self.offs() + _PS
+}
+
+func (self *_FrameInfo) offs() int32 {
+    return self.save() + int32(len(self.regs)) * _PS
+}
+
+func (self *_FrameInfo) argv(i int) *x86_64.MemoryOperand {
+    return Ptr(RSP, self.base() + int32(self.args.Args[i].Mem))
+}
+
+func (self *_FrameInfo) retv(i int) *x86_64.MemoryOperand {
+    return Ptr(RSP, self.base() + int32(self.args.Rets[i].Mem))
+}
+
+func (self *_FrameInfo) slot(r Register) *x86_64.MemoryOperand {
+    return Ptr(RSP, self.save() + self.regi[r] * _PS)
+}
+
+func (self *_FrameInfo) alloc(r Register) {
+    self.regs = append(self.regs, r)
+    sort.Sort(self.regs)
+
+    /* assign slots in ascending order */
+    for i, v := range self.regs {
+        self.regi[v] = int32(i)
+    }
+}
+
+func (self *_FrameInfo) require(n uintptr) {
+    if self.alen < int(n) {
+        self.alen = int(n)
+    }
+}
+
+func newContext(proto interface{}) (ret _FrameInfo) {
+    vt := reflect.TypeOf(proto)
+    vk := vt.Kind()
+
+    /* must be a function */
+    if vk != reflect.Func {
+        panic("pgen: proto must be a function")
+    }
+
+    /* layout the function */
+    ret.regi = make(map[Register]int32)
+    ret.args = ABI.layoutFunction(-1, vt)
+    println(ret.args.String())
+    return
+}
+
 type CodeGen struct {
     nins int
     regi int
+    ctxt _FrameInfo
     arch *x86_64.Arch
     stab []_SwitchTab
     defs []_DeferBlock
@@ -85,9 +162,10 @@ type CodeGen struct {
     jmps map[string]*x86_64.Label
 }
 
-func CreateCodeGen() *CodeGen {
+func CreateCodeGen(proto interface{}) *CodeGen {
     return &CodeGen {
         regs: defaultRegs,
+        ctxt: newContext(proto),
         arch: x86_64.CreateArch(),
         jmps: make(map[string]*x86_64.Label),
     }
@@ -110,10 +188,29 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
         self.walloc(v, v.Ops())
     }
 
+    /* argument space calculation */
+    for v := s.Head; v != nil; v = v.Ln {
+        switch v.Op {
+            case OP_gcall: fallthrough
+            case OP_icall: self.ctxt.require(ABI.FnTab[invokeTab[v.Iv].Id].Sp)
+        }
+    }
+
     /* program prologue */
-    p.SUBQ(FP_size, RSP)
-    p.MOVQ(RBP, Ptr(RSP, FP_offs))
-    p.LEAQ(Ptr(RSP, FP_offs), RBP)
+    p.SUBQ(self.ctxt.size(), RSP)
+    p.MOVQ(RBP, Ptr(RSP, self.ctxt.offs()))
+    p.LEAQ(Ptr(RSP, self.ctxt.offs()), RBP)
+
+    /* ABI-specific prologue */
+    i := 0
+    self.abiPrologue(p)
+
+    /* clear all the save slots, if any */
+    if n := self.ctxt.regc(); n != 0 {
+        if  n >= 2 { p.PXOR   (XMM15, XMM15) }
+        for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)); i += 2; n -= 2 }
+        if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)) }
+    }
 
     /* translate the entire program */
     for v := s.Head; v != nil; v = v.Ln {
@@ -207,7 +304,7 @@ func (self *CodeGen) rstore(v *Instr, r Register) {
     }
 
     /* check for allocation */
-    if self.regi >= len(allocationOrder) {
+    if self.ctxt.alloc(r); self.regi >= len(allocationOrder) {
         panic("pgen: program is too complex to translate on x86_64 (requiring too many registers): " + v.disassemble(nil))
     }
 
@@ -218,20 +315,20 @@ func (self *CodeGen) rstore(v *Instr, r Register) {
 
 func (self *CodeGen) ldcall(v *Instr) {
     for i := 0; i < int(v.An); i++ {
-        if r := v.Ar[i]; r & ArgPointer != 0 {
-            self.rload(v, PointerRegister(r))
-        } else {
+        if r := v.Ar[i]; r & ArgPointer == 0 {
             self.rload(v, GenericRegister(r))
+        } else {
+            self.rload(v, PointerRegister(r & ArgMask))
         }
     }
 }
 
 func (self *CodeGen) stcall(v *Instr) {
     for i := 0; i < int(v.Rn); i++ {
-        if r := v.Rr[i]; r & ArgPointer != 0 {
-            self.rstore(v, PointerRegister(r))
-        } else {
+        if r := v.Rr[i]; r & ArgPointer == 0 {
             self.rstore(v, GenericRegister(r))
+        } else {
+            self.rstore(v, PointerRegister(r & ArgMask))
         }
     }
 }
@@ -445,19 +542,39 @@ func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_ldaq(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_ldaq
+    if v.Rx != Rz {
+        if i := int(v.Iv); i < self.ctxt.argc() {
+            self.abiLoadInt(p, i, v.Rx)
+        } else {
+            panic(fmt.Sprintf("ldaq: argument index out of range: %d", i))
+        }
+    }
 }
 
 func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_ldap
+    if v.Pd != Pn {
+        if i := int(v.Iv); i < self.ctxt.argc() {
+            self.abiLoadPtr(p, i, v.Pd)
+        } else {
+            panic(fmt.Sprintf("ldap: argument index out of range: %d", v.Iv))
+        }
+    }
 }
 
 func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_strq
+    if i := int(v.Iv); i < self.ctxt.retc() {
+        self.abiStoreInt(p, v.Rx, i)
+    } else {
+        panic(fmt.Sprintf("strq: return value index out of range: %d", v.Iv))
+    }
 }
 
 func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_strp
+    if i := int(v.Iv); i < self.ctxt.retc() {
+        self.abiStorePtr(p, v.Ps, i)
+    } else {
+        panic(fmt.Sprintf("strp: return value index out of range: %d", v.Iv))
+    }
 }
 
 func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *Instr) {
@@ -804,8 +921,8 @@ func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *Instr) {
-    p.MOVQ(Ptr(RSP, FP_offs), RBP)
-    p.ADDQ(FP_size, RSP)
+    p.MOVQ(Ptr(RSP, self.ctxt.offs()), RBP)
+    p.ADDQ(self.ctxt.size(), RSP)
     p.RET()
 }
 

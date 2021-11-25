@@ -1,5 +1,3 @@
-// +build go1.17,!go1.18
-
 /*
  * Copyright 2021 ByteDance Inc.
  *
@@ -17,3 +15,22 @@
  */
 
 package atm
+
+import (
+    `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
+)
+
+type AbstractABI interface {
+    RegisterMethod(id int, mt rt.Method) int
+    RegisterFunction(id int, fn interface{}) unsafe.Pointer
+}
+
+var (
+    ABI = ArchCreateABI()
+)
+
+func alignUp(n uintptr, a int) uintptr {
+    return (n + uintptr(a) - 1) &^ (uintptr(a) - 1)
+}

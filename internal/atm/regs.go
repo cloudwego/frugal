@@ -87,7 +87,7 @@ func (self PointerRegister) P() int {
     if self == Pn {
         return -1
     } else {
-        return int(self) + 8
+        return int(self) + 5
     }
 }
 

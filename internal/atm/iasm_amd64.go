@@ -23,23 +23,24 @@ import (
 )
 
 const (
-    EAX = x86_64.EAX
-    RAX = x86_64.RAX
-    RCX = x86_64.RCX
-    RDX = x86_64.RDX
-    RBX = x86_64.RBX
-    RSP = x86_64.RSP
-    RBP = x86_64.RBP
-    RSI = x86_64.RSI
-    RDI = x86_64.RDI
-    R8  = x86_64.R8
-    R9  = x86_64.R9
-    R10 = x86_64.R10
-    R11 = x86_64.R11
-    R12 = x86_64.R12
-    R13 = x86_64.R13
-    R14 = x86_64.R14
-    R15 = x86_64.R15
+    EAX   = x86_64.EAX
+    RAX   = x86_64.RAX
+    RCX   = x86_64.RCX
+    RDX   = x86_64.RDX
+    RBX   = x86_64.RBX
+    RSP   = x86_64.RSP
+    RBP   = x86_64.RBP
+    RSI   = x86_64.RSI
+    RDI   = x86_64.RDI
+    R8    = x86_64.R8
+    R9    = x86_64.R9
+    R10   = x86_64.R10
+    R11   = x86_64.R11
+    R12   = x86_64.R12
+    R13   = x86_64.R13
+    R14   = x86_64.R14
+    R15   = x86_64.R15
+    XMM15 = x86_64.XMM15
 )
 
 const (
@@ -52,7 +53,7 @@ var defaultRegs = [11]x86_64.Register64 {
 }
 
 var allocationOrder = [11]x86_64.Register64 {
-    R12, R13, R14, R15, RBX,    // reserved registers first
+    RBX, R12, R13, R14, R15,    // reserved registers first
     R10, R11,                   // then scratch registers
     R9, R8, RCX, RDX,           // then argument registers in reverse order (RDI, RSI and RAX are always free)
 }

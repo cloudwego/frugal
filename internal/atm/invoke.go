@@ -30,31 +30,29 @@ type CallHandle struct {
 }
 
 var (
-    icallTab []CallHandle
-    ccallTab []CallHandle
-    gcallTab []CallHandle
+    invokeTab []CallHandle
 )
 
 func RegisterICall(mt rt.Method, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
-    h.Id     = len(icallTab)
-    h.Slot   = mt.Id
-    h.Proxy  = proxy
-    icallTab = append(icallTab, h)
+    h.Id      = len(invokeTab)
+    h.Slot    = ABI.RegisterMethod(h.Id, mt)
+    h.Proxy   = proxy
+    invokeTab = append(invokeTab, h)
     return
 }
 
 func RegisterGCall(fn interface{}, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
-    h.Id     = len(gcallTab)
-    h.Func   = rt.FuncAddr(fn)
-    h.Proxy  = proxy
-    gcallTab = append(gcallTab, h)
+    h.Id      = len(invokeTab)
+    h.Func    = ABI.RegisterFunction(h.Id, fn)
+    h.Proxy   = proxy
+    invokeTab = append(invokeTab, h)
     return
 }
 
 func RegisterCCall(fn unsafe.Pointer, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
-    h.Id     = len(ccallTab)
-    h.Func   = fn
-    h.Proxy  = proxy
-    ccallTab = append(ccallTab, h)
+    h.Id      = len(invokeTab)
+    h.Func    = fn
+    h.Proxy   = proxy
+    invokeTab = append(invokeTab, h)
     return
 }

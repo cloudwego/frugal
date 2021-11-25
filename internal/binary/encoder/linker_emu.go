@@ -24,10 +24,6 @@ import (
     `github.com/cloudwego/frugal/iovec`
 )
 
-func init() {
-    Link = link_emu
-}
-
 func link_emu(prog atm.Program) Encoder {
     return func(iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
         emu := atm.LoadProgram(prog)

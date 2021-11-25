@@ -1,3 +1,5 @@
+// +build go1.17,!go1.18
+
 /*
  * Copyright 2021 ByteDance Inc.
  *
@@ -14,18 +16,14 @@
  * limitations under the License.
  */
 
-package decoder
+package atm
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `testing`
+
+    `github.com/davecgh/go-spew/spew`
 )
 
-var (
-    Link     func(prog atm.Program) Decoder
-    F_decode atm.CallHandle
-)
-
-func init() {
-    Link     = link_emu
-    F_decode = atm.RegisterGCall(decode, emu_gcall_decode)
+func TestABI_FunctionLayout(t *testing.T) {
+    spew.Dump(ABI.FnTab)
 }

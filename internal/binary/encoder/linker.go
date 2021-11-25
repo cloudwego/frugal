@@ -26,5 +26,6 @@ var (
 )
 
 func init() {
+    Link     = link_emu
     F_encode = atm.RegisterGCall(encode, emu_gcall_encode)
 }

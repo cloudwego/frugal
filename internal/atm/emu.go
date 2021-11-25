@@ -114,30 +114,14 @@ func (self *Emulator) Run() {
                 }
             }
 
-            /* call to C functions */
-            case OP_ccall: {
-                if p.Iv < 0 || p.Iv >= int64(len(ccallTab)) {
-                    panic("invalid CCALL index")
-                } else {
-                    ccallTab[p.Iv].Proxy(self, p)
-                }
-            }
-
-            /* call to Go functions */
-            case OP_gcall: {
-                if p.Iv < 0 || p.Iv >= int64(len(gcallTab)) {
-                    panic("invalid GCALL index")
-                } else {
-                    gcallTab[p.Iv].Proxy(self, p)
-                }
-            }
-
-            /* call to Go interface methods */
+            /* call to C / Go / Go interface functions */
+            case OP_ccall: fallthrough
+            case OP_gcall: fallthrough
             case OP_icall: {
-                if p.Iv < 0 || p.Iv >= int64(len(icallTab)) {
-                    panic("invalid ICALL index")
+                if p.Iv < 0 || p.Iv >= int64(len(invokeTab)) {
+                    panic("invalid function ID")
                 } else {
-                    icallTab[p.Iv].Proxy(self, p)
+                    invokeTab[p.Iv].Proxy(self, p)
                 }
             }
         }
