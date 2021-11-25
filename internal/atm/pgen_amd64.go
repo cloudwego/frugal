@@ -147,7 +147,6 @@ func newContext(proto interface{}) (ret _FrameInfo) {
     /* layout the function */
     ret.regi = make(map[Register]int32)
     ret.args = ABI.layoutFunction(-1, vt)
-    println(ret.args.String())
     return
 }
 
