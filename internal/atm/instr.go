@@ -194,7 +194,7 @@ func (self *Instr) formatFunc() string {
     return fmt.Sprintf("%s[*%p]", runtime.FuncForPC(uintptr(self.Pr)).Name(), self.Pr)
 }
 
-func (self *Instr) formatCalls() string {
+func (self *Instr) formatCall() string {
     args := make([]string, self.An)
     rets := make([]string, self.Rn)
 
@@ -224,6 +224,14 @@ func (self *Instr) formatCalls() string {
     )
 }
 
+func (self *Instr) formatRefs(refs map[*Instr]string, v *Instr) string {
+    if vv, ok := refs[v]; ok {
+        return vv
+    } else {
+        return fmt.Sprintf("@%p", v)
+    }
+}
+
 func (self *Instr) formatTable(refs map[*Instr]string) string {
     tab := self.Sw()
     ret := make([]string, 0, self.Iv)
@@ -236,7 +244,7 @@ func (self *Instr) formatTable(refs map[*Instr]string) string {
     /* format every label */
     for i, lb := range tab {
         if lb != nil {
-            ret = append(ret, fmt.Sprintf("\t%4ccase %d: %s\n", ' ', i, refs[lb]))
+            ret = append(ret, fmt.Sprintf("\t%4ccase %d: %s\n", ' ', i, self.formatRefs(refs, lb)))
         }
     }
 
@@ -278,16 +286,16 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
-        case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
-        case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
-        case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
-        case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
-        case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, refs[self.Br])
+        case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
+        case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
+        case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
+        case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
+        case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
-        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", refs[self.Br], self.Pd)
-        case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCalls())
-        case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCalls())
-        case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCalls())
+        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", self.formatRefs(refs, self.Br), self.Pd)
+        case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCall())
+        case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCall())
+        case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCall())
         case OP_halt  : return "halt"
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))

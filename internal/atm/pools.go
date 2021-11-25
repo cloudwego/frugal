@@ -23,9 +23,11 @@ import (
 )
 
 var (
-    instrPool    sync.Pool
-    builderPool  sync.Pool
-    emulatorPool sync.Pool
+    instrPool        sync.Pool
+    builderPool      sync.Pool
+    emulatorPool     sync.Pool
+    basicBlockPool   sync.Pool
+    graphBuilderPool sync.Pool
 )
 
 func newInstr(op OpCode) *Instr {
@@ -94,4 +96,16 @@ func freeEmulator(p *Emulator) {
 func resetEmulator(p *Emulator) *Emulator {
     *p = Emulator{}
     return p
+}
+
+func newBasicBlock() *BasicBlock {
+    if v := basicBlockPool.Get(); v != nil {
+        return v.(*BasicBlock)
+    } else {
+        return new(BasicBlock)
+    }
+}
+
+func freeBasicBlock(p *BasicBlock) {
+    basicBlockPool.Put(p)
 }

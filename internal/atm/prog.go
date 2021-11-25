@@ -26,7 +26,8 @@ type Program struct {
 }
 
 func (self Program) Free() {
-    for p := self.Head; p != nil; p = p.Ln {
+    for p, q := self.Head, self.Head; p != nil; p = q {
+        q = p.Ln
         freeInstr(p)
     }
 }
