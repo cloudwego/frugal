@@ -24,6 +24,7 @@ type BasicBlock struct {
     Id   int
     Len  int
     Src  *Instr
+    Cond *Instr
     Link []*BasicBlock
 }
 
@@ -50,9 +51,10 @@ func (self *BasicBlock) Free() {
 
     /* reset and free all the nodes */
     for p := range m {
-        p.Id  = 0
+        p.Id = 0
         p.Len = 0
         p.Src = nil
+        p.Cond = nil
         freeBasicBlock(p)
     }
 }
@@ -76,7 +78,9 @@ func (self *GraphBuilder) scan(p Program) {
                 self.Pin[v.Br] = true
             } else {
                 for _, lb := range v.Sw() {
-                    self.Pin[lb] = true
+                    if lb != nil {
+                        self.Pin[lb] = true
+                    }
                 }
             }
         }
@@ -104,8 +108,13 @@ func (self *GraphBuilder) block(p *Instr, bb *BasicBlock) {
         return
     }
 
-    /* JAL instruction doesn't technically "branch" */
-    if bb.Len++; p.Op != OP_jal {
+    /* also include the branch instruction */
+    bb.Len++
+    bb.Cond = p
+
+    /* JAL instruction doesn't technically "branch", anything
+     * sits between it and the next branch target are unreachable. */
+    if p.Op != OP_jal {
         bb.Link = append(bb.Link, self.branch(p.Ln))
     }
 
@@ -117,7 +126,9 @@ func (self *GraphBuilder) block(p *Instr, bb *BasicBlock) {
 
     /* add every branch of the switch instruction */
     for _, br := range p.Sw() {
-        bb.Link = append(bb.Link, self.branch(br))
+        if br != nil {
+            bb.Link = append(bb.Link, self.branch(br))
+        }
     }
 }
 

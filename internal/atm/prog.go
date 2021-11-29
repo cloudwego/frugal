@@ -45,8 +45,10 @@ func (self Program) Disassemble() string {
                 }
             } else {
                 for _, lb := range p.Sw() {
-                    if _, ok := ref[lb]; !ok {
-                        ref[lb] = fmt.Sprintf("L_%d", len(ref))
+                    if lb != nil {
+                        if _, ok := ref[lb]; !ok {
+                            ref[lb] = fmt.Sprintf("L_%d", len(ref))
+                        }
                     }
                 }
             }
@@ -55,10 +57,17 @@ func (self Program) Disassemble() string {
 
     /* dump all the instructions */
     for p := self.Head; p != nil; p = p.Ln {
-        if vv, ok := ref[p]; !ok {
-            ret = append(ret, "\t" + p.disassemble(ref))
-        } else {
-            ret = append(ret, vv + ":", "\t" + p.disassemble(ref))
+        var ok bool
+        var vv string
+
+        /* check for label reference */
+        if vv, ok = ref[p]; ok {
+            ret = append(ret, vv + ":")
+        }
+
+        /* indent each line */
+        for _, ln := range strings.Split(p.disassemble(ref), "\n") {
+            ret = append(ret, "    " + ln)
         }
     }
 

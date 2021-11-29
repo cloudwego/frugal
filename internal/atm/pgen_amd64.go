@@ -886,7 +886,9 @@ func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *Instr) {
 
     /* assign the specified switch targets */
     for i, ref := range tab {
-        buf.mark(i, self.to(ref))
+        if ref != nil {
+            buf.mark(i, self.to(ref))
+        }
     }
 
     /* switch on v.Rx */

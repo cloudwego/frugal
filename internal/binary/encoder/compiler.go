@@ -104,9 +104,9 @@ func (self Program) Disassemble() string {
     /* disassemble each instruction */
     for i, ins := range self {
         if !tab[i] {
-            ret = append(ret, "\t" + ins.Disassemble())
+            ret = append(ret, "    " + ins.Disassemble())
         } else {
-            ret = append(ret, fmt.Sprintf("L_%d:\n\t%s", i, ins.Disassemble()))
+            ret = append(ret, fmt.Sprintf("L_%d:\n    %s", i, ins.Disassemble()))
         }
     }
 
@@ -116,7 +116,7 @@ func (self Program) Disassemble() string {
     }
 
     /* add an "end" indicator, and join all the strings */
-    return strings.Join(append(ret, "\tend"), "\n")
+    return strings.Join(append(ret, "    end"), "\n")
 }
 
 func CreateCompiler() Compiler {

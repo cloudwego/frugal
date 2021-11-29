@@ -244,13 +244,13 @@ func (self *Instr) formatTable(refs map[*Instr]string) string {
     /* format every label */
     for i, lb := range tab {
         if lb != nil {
-            ret = append(ret, fmt.Sprintf("\t%4ccase %d: %s\n", ' ', i, self.formatRefs(refs, lb)))
+            ret = append(ret, fmt.Sprintf("%4ccase %d: %s\n", ' ', i, self.formatRefs(refs, lb)))
         }
     }
 
     /* join them together */
     return fmt.Sprintf(
-        "{\n%s\t}",
+        "{\n%s}",
         strings.Join(ret, ""),
     )
 }
