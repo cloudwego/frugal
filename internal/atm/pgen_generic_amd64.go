@@ -48,16 +48,43 @@ func (self *CodeGen) internalLoadArg(p *x86_64.Program, i int, d Register) {
     p.MOVQ(self.ctxt.argv(i), self.r(d))
 }
 
+// internalStoreRet stores return value s into return value slot i.
+//
+// FIXME: This implementation messes with the register allocation, but currently
+//        all the STRP / STRQ instructions appear at the end of the generated code
+//        (guaranteed by `{encoder,decoder}/translator.go`), everything generated
+//        after this is under our control, so it should be fine. This should be
+//        fixed once SSA backend is ready.
 func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
-    // FIXME: This may cause register confliction, but it's only possible when
-    //  storing return values, which is ususally located at the end of function.
-    //  If such thing happens, adjust the order of STRP / STRQ instructions to
-    //  remove confliction between stores.
-    //  This issue should be resolved after we implemented a better register
-    //  allocation algorithm.
-    switch m := self.ctxt.args.Rets[i]; m.Tag {
-        case ByReg   : p.MOVQ(self.r(s), m.Reg)
-        case ByStack : p.MOVQ(self.r(s), self.ctxt.retv(i))
-        default      : panic("internalStoreRet: invalid stack frame")
+    var m Parameter
+    var r *x86_64.Register64
+
+    /* if return with stack, store directly */
+    if m = self.ctxt.args.Rets[i]; m.Tag == ByStack {
+        p.MOVQ(self.r(s), self.ctxt.retv(i))
+        return
     }
+
+    /* check if the value is the very register required for return */
+    if self.r(s) == m.Reg {
+        return
+    }
+
+    /* search for register allocation */
+    for n, v := range self.regs {
+        if v == m.Reg {
+            r = &self.regs[n]
+            break
+        }
+    }
+
+    /* if return with free registers, simply overwrite with new value */
+    if r == nil {
+        p.MOVQ(self.r(s), m.Reg)
+        return
+    }
+
+    /* if not, swap the register allocation to meet the requirement */
+    p.XCHGQ(self.r(s), m.Reg)
+    self.regs[s.P()], *r = *r, self.regs[s.P()]
 }

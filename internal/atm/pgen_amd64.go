@@ -171,14 +171,21 @@ func CreateCodeGen(proto interface{}) *CodeGen {
 }
 
 func (self *CodeGen) Generate(s Program) *x86_64.Program {
-    h := false
+    h := 0
     p := self.arch.CreateProgram()
 
-    /* check for invalid instructions */
-    for v := s.Head; v != nil; v = v.Ln {
-        if v.Ops() == 0 {
-            panic("pgen: invalid instruction: " + v.disassemble(nil))
+    /* find the halting points */
+    for v := s.Head; h < 2 && v != nil; v = v.Ln {
+        if v.Op == OP_halt {
+            h++
         }
+    }
+
+    /* program must halt exactly once */
+    switch h {
+        case 1  : break
+        case 0  : panic("pgen: program does not halt")
+        default : panic("pgen: program halts more than once")
     }
 
     /* static register allocation */
@@ -213,14 +220,7 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
 
     /* translate the entire program */
     for v := s.Head; v != nil; v = v.Ln {
-        if self.translate(p, v); v.Op == OP_halt {
-            h = true
-        }
-    }
-
-    /* program must halt */
-    if !h {
-        panic("pgen: program does not halt")
+        self.translate(p, v)
     }
 
     /* generate all defered blocks */
