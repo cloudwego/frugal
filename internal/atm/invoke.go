@@ -22,37 +22,154 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+type (
+    CallType uint8
+)
+
+const (
+    CCall CallType = iota
+    GCall
+    ICall
+)
+
 type CallHandle struct {
     Id    int
-    Slot  int
-    Func  unsafe.Pointer
-    Proxy func(e *Emulator, p *Instr)
+    Type  CallType
+    slot  int
+    faddr unsafe.Pointer
+    proxy func(CallContext)
+}
+
+func (self CallHandle) Call(e *Emulator, p *Instr) {
+    self.proxy(CallContext {
+        Emu  : e,
+        Type : self.Type,
+        argc : p.An,
+        retc : p.Rn,
+        argv : p.Ar,
+        retv : p.Rr,
+        itab : p.Ps,
+        data : p.Pd,
+    })
+}
+
+type CallContext struct {
+    Emu  *Emulator
+    Type CallType
+    itab PointerRegister
+    data PointerRegister
+    argc uint8
+    retc uint8
+    argv [8]uint8
+    retv [8]uint8
+}
+
+func (self CallContext) Au(i int) uint64 {
+    if p := self.argv[i]; p & ArgPointer != 0 {
+        panic("invoke: invalid int argument")
+    } else {
+        return self.Emu.Gr[p & ArgMask]
+    }
+}
+
+func (self CallContext) Ap(i int) unsafe.Pointer {
+    if p := self.argv[i]; p & ArgPointer == 0 {
+        panic("invoke: invalid pointer argument")
+    } else {
+        return self.Emu.Pr[p & ArgMask]
+    }
+}
+
+func (self CallContext) Ru(i int, v uint64) {
+    if p := self.retv[i]; p & ArgPointer != 0 {
+        panic("invoke: invalid int return value")
+    } else {
+        self.Emu.Gr[p & ArgMask] = v
+    }
+}
+
+func (self CallContext) Rp(i int, v unsafe.Pointer) {
+    if p := self.retv[i]; p & ArgPointer == 0 {
+        panic("invoke: invalid pointer return value")
+    } else {
+        self.Emu.Pr[p & ArgMask] = v
+    }
+}
+
+func (self CallContext) Itab() *rt.GoItab {
+    if self.Type != ICall {
+        panic("invoke: itab is not available")
+    } else {
+        return (*rt.GoItab)(self.Emu.Pr[self.itab])
+    }
+}
+
+func (self CallContext) Data() unsafe.Pointer {
+    if self.Type != ICall {
+        panic("invoke: data is not available")
+    } else {
+        return self.Emu.Pr[self.data]
+    }
+}
+
+func (self CallContext) Verify(args string, rets string) bool {
+    return self.verifySeq(args, self.argc, self.argv) && self.verifySeq(rets, self.retc, self.retv)
+}
+
+func (self CallContext) verifySeq(s string, n uint8, v [8]uint8) bool {
+    nb := int(n)
+    ne := len(s)
+
+    /* sanity check */
+    if ne > len(v) {
+        panic("invoke: invalid descriptor")
+    }
+
+    /* check for value count */
+    if nb != ne {
+        return false
+    }
+
+    /* check for every argument */
+    for i := 0; i < nb; i++ {
+        switch s[i] {
+            case 'i' : if v[i] & ArgPointer != 0 { return false }
+            case '*' : if v[i] & ArgPointer == 0 { return false }
+            default  : panic("invoke: invalid descriptor char: " + s[i:i + 1])
+        }
+    }
+
+    /* all checked ok */
+    return true
 }
 
 var (
     invokeTab []CallHandle
 )
 
-func RegisterICall(mt rt.Method, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
+func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
-    h.Slot    = ABI.RegisterMethod(h.Id, mt)
-    h.Proxy   = proxy
+    h.Type    = ICall
+    h.slot    = ABI.RegisterMethod(h.Id, mt)
+    h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return
 }
 
-func RegisterGCall(fn interface{}, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
+func RegisterGCall(fn interface{}, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
-    h.Func    = ABI.RegisterFunction(h.Id, fn)
-    h.Proxy   = proxy
+    h.Type    = GCall
+    h.faddr   = ABI.RegisterFunction(h.Id, fn)
+    h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return
 }
 
-func RegisterCCall(fn unsafe.Pointer, proxy func(e *Emulator, p *Instr)) (h CallHandle) {
+func RegisterCCall(fn unsafe.Pointer, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
-    h.Func    = fn
-    h.Proxy   = proxy
+    h.Type    = CCall
+    h.faddr   = fn
+    h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return
 }

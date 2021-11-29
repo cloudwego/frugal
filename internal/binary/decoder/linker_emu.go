@@ -44,46 +44,33 @@ func link_emu(prog atm.Program) Decoder {
     }
 }
 
-func emu_gcall_decode(e *atm.Emulator, p *atm.Instr) {
-    var v5 int
-    var v2 int
-    var v1 rt.GoSlice
-    var v0 *rt.GoType
-    var v4 *RuntimeState
-    var v3 unsafe.Pointer
+func emu_bytes(ctx atm.CallContext, i int) (v []byte) {
+    (*rt.GoSlice)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
+    (*rt.GoSlice)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
+    (*rt.GoSlice)(unsafe.Pointer(&v)).Cap = int(ctx.Au(i + 2))
+    return
+}
+
+func emu_gcall_decode(ctx atm.CallContext) {
+    var ret int
+    var err error
 
     /* check for arguments and return values */
-    if (p.An != 8 || p.Rn != 3) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Ar[3] & atm.ArgPointer) != 0 ||
-       (p.Ar[4] & atm.ArgPointer) != 0 ||
-       (p.Ar[5] & atm.ArgPointer) == 0 ||
-       (p.Ar[6] & atm.ArgPointer) == 0 ||
-       (p.Ar[7] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) != 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 ||
-       (p.Rr[2] & atm.ArgPointer) == 0 {
+    if !ctx.Verify("**iii**i", "i**") {
         panic("invalid decode call")
     }
 
-    /* extract the arguments */
-    v0       =    (*rt.GoType)(e.Pr[p.Ar[0] & atm.ArgMask])
-    v1.Ptr  =                  e.Pr[p.Ar[1] & atm.ArgMask]
-    v1.Len =               int(e.Gr[p.Ar[2] & atm.ArgMask])
-    v1.Cap =               int(e.Gr[p.Ar[3] & atm.ArgMask])
-    v2       =             int(e.Gr[p.Ar[4] & atm.ArgMask])
-    v3       =                 e.Pr[p.Ar[5] & atm.ArgMask]
-    v4       = (*RuntimeState)(e.Pr[p.Ar[6] & atm.ArgMask])
-    v5       =             int(e.Gr[p.Ar[7] & atm.ArgMask])
-
-    /* call the function */
-    buf := *(*[]byte)(unsafe.Pointer(&v1))
-    ret, err := decode(v0, buf, v2, v3, v4, v5)
+    /* call the decoder */
+    ret, err = decode(
+        (*rt.GoType)(ctx.Ap(0)),
+        emu_bytes(ctx, 1),
+        int(ctx.Au(4)),
+        ctx.Ap(5),
+        (*RuntimeState)(ctx.Ap(6)),
+        int(ctx.Au(7)),
+    )
 
     /* pack the result */
-    e.Gr[p.Rr[0] & atm.ArgMask] = uint64(ret)
-    e.Pr[p.Rr[1] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[0]
-    e.Pr[p.Rr[2] & atm.ArgMask] = (*[2]unsafe.Pointer)(unsafe.Pointer(&err))[1]
+    ctx.Ru(0, uint64(ret))
+    emu_seterr(ctx, 1, err)
 }

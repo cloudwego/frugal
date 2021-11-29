@@ -23,156 +23,48 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_mapassign(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
+func emu_string(ctx atm.CallContext, i int) (v string) {
+    (*rt.GoString)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
+    (*rt.GoString)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
+    return
+}
 
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) == 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_mapassign(ctx atm.CallContext) {
+    if !ctx.Verify("***", "*") {
         panic("invalid mapassign call")
+    } else {
+        ctx.Rp(0, mapassign((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = mapassign(
-        (*rt.GoMapType) (e.Pr[a0]),
-        (*rt.GoMap)     (e.Pr[a1]),
-        e.Pr[a2],
-    )
 }
 
-func emu_gcall_mapassign_fast32(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_mapassign_fast32(ctx atm.CallContext) {
+    if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast32 call")
+    } else {
+        ctx.Rp(0, mapassign_fast32((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), uint32(ctx.Au(2))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = mapassign_fast32(
-        (*rt.GoMapType) (e.Pr[a0]),
-        (*rt.GoMap)     (e.Pr[a1]),
-        uint32          (e.Gr[a2]),
-    )
 }
 
-func emu_gcall_mapassign_fast64(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_mapassign_fast64(ctx atm.CallContext) {
+    if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast64 call")
+    } else {
+        ctx.Rp(0, mapassign_fast64((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Au(2)))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = mapassign_fast64(
-        (*rt.GoMapType) (e.Pr[a0]),
-        (*rt.GoMap)     (e.Pr[a1]),
-        e.Gr[a2],
-    )
 }
 
-func emu_gcall_mapassign_faststr(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var a3 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 4 || p.Rn != 1) ||
-        (p.Ar[0] & atm.ArgPointer) == 0 ||
-        (p.Ar[1] & atm.ArgPointer) == 0 ||
-        (p.Ar[2] & atm.ArgPointer) == 0 ||
-        (p.Ar[3] & atm.ArgPointer) != 0 ||
-        (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_mapassign_faststr(ctx atm.CallContext) {
+    if !ctx.Verify("***i", "*") {
         panic("invalid mapassign_faststr call")
+    } else {
+        ctx.Rp(0, mapassign_faststr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), emu_string(ctx, 2)))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    a3 = p.Ar[3] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* construct the key */
-    key := rt.GoString {
-        Ptr: e.Pr[a2],
-        Len: int(e.Gr[a3]),
-    }
-
-    /* call the function */
-    e.Pr[r0] = mapassign_faststr(
-        (*rt.GoMapType) (e.Pr[a0]),
-        (*rt.GoMap)     (e.Pr[a1]),
-        *(*string)      (unsafe.Pointer(&key)),
-    )
 }
 
-func emu_gcall_mapassign_fast64ptr(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) == 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
-        panic("invalid mapassign_fast64ptr call")
+func emu_gcall_mapassign_fast64ptr(ctx atm.CallContext) {
+    if !ctx.Verify("***", "*") {
+        panic("invalid mapassign_fast64 call")
+    } else {
+        ctx.Rp(0, mapassign_fast64ptr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = mapassign_fast64ptr(
-        (*rt.GoMapType) (e.Pr[a0]),
-        (*rt.GoMap)     (e.Pr[a1]),
-        e.Pr[a2],
-    )
 }

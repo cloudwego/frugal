@@ -121,7 +121,7 @@ func (self *Emulator) Run() {
                 if p.Iv < 0 || p.Iv >= int64(len(invokeTab)) {
                     panic("invalid function ID")
                 } else {
-                    invokeTab[p.Iv].Proxy(self, p)
+                    invokeTab[p.Iv].Call(self, p)
                 }
             }
         }

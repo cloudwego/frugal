@@ -23,44 +23,27 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func getiter(e *atm.Emulator, p *atm.Instr, fn string) (it *rt.GoMapIterator) {
-    if p.An != 1 || p.Rn != 0 || (p.Ar[0] & atm.ArgPointer) == 0 {
-        panic("invalid " + fn + " call")
+func emu_gcall_mapiternext(ctx atm.CallContext) {
+    if !ctx.Verify("*", "") {
+        panic("invalid mapiternext call")
     } else {
-        return (*rt.GoMapIterator)(e.Pr[p.Ar[0] & atm.ArgMask])
+        mapiternext((*rt.GoMapIterator)(ctx.Ap(0)))
     }
 }
 
-func emu_gcall_mapiternext(e *atm.Emulator, p *atm.Instr) {
-    mapiternext(getiter(e, p, "mapiternext"))
+
+func emu_gcall_MapEndIterator(ctx atm.CallContext) {
+    if !ctx.Verify("*", "") {
+        panic("invalid MapEndIterator call")
+    } else {
+        MapEndIterator((*rt.GoMapIterator)(ctx.Ap(0)))
+    }
 }
 
-
-func emu_gcall_MapEndIterator(e *atm.Emulator, p *atm.Instr) {
-    MapEndIterator(getiter(e, p, "MapEndIterator"))
-}
-
-func emu_gcall_MapBeginIterator(e *atm.Emulator, p *atm.Instr) {
-    var v0 uint8
-    var v1 uint8
-    var v2 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 2 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_MapBeginIterator(ctx atm.CallContext) {
+    if !ctx.Verify("**", "*") {
         panic("invalid MapBeginIterator call")
+    } else {
+        ctx.Rp(0, unsafe.Pointer(MapBeginIterator((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)))))
     }
-
-    /* extract the arguments and return value index */
-    v0 = p.Ar[0] & atm.ArgMask
-    v1 = p.Ar[1] & atm.ArgMask
-    v2 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[v2] = unsafe.Pointer(MapBeginIterator(
-        (*rt.GoMapType) (e.Pr[v0]),
-        (*rt.GoMap)     (e.Pr[v1]),
-    ))
 }

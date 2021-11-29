@@ -42,39 +42,22 @@ func link_emu(prog atm.Program) Encoder {
     }
 }
 
-func emu_gcall_encode(e *atm.Emulator, p *atm.Instr) {
-    var v4 int
-    var v1 rt.GoIface
-    var v0 *rt.GoType
-    var v3 *RuntimeState
-    var v2 unsafe.Pointer
+func emu_iovec(ctx atm.CallContext, i int) (v iovec.IoVec) {
+    (*rt.GoIface)(unsafe.Pointer(&v)).Itab = (*rt.GoItab)(ctx.Ap(i))
+    (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Ap(i + 1)
+    return
+}
 
-    /* check for arguments and return values */
-    if (p.An != 6 || p.Rn != 2) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) == 0 ||
-       (p.Ar[3] & atm.ArgPointer) == 0 ||
-       (p.Ar[4] & atm.ArgPointer) == 0 ||
-       (p.Ar[5] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 {
+func emu_seterr(ctx atm.CallContext, err error) {
+    vv := (*rt.GoIface)(unsafe.Pointer(&err))
+    ctx.Rp(0, unsafe.Pointer(vv.Itab))
+    ctx.Rp(1, vv.Value)
+}
+
+func emu_gcall_encode(ctx atm.CallContext) {
+    if !ctx.Verify("*****i", "**") {
         panic("invalid encode call")
+    } else {
+        emu_seterr(ctx, encode((*rt.GoType)(ctx.Ap(0)), emu_iovec(ctx, 1), ctx.Ap(3), (*RuntimeState)(ctx.Ap(4)), int(ctx.Au(5))))
     }
-
-    /* extract the arguments and return value index */
-    v0       =    (*rt.GoType)(e.Pr[p.Ar[0] & atm.ArgMask])
-    v1.Itab  =    (*rt.GoItab)(e.Pr[p.Ar[1] & atm.ArgMask])
-    v1.Value =                 e.Pr[p.Ar[2] & atm.ArgMask]
-    v2       =                 e.Pr[p.Ar[3] & atm.ArgMask]
-    v3       = (*RuntimeState)(e.Pr[p.Ar[4] & atm.ArgMask])
-    v4       =             int(e.Gr[p.Ar[5] & atm.ArgMask])
-
-    /* call the function */
-    iov := *(*iovec.IoVec)(unsafe.Pointer(&v1))
-    ret := encode(v0, iov, v2, v3, v4)
-
-    /* pack the result */
-    e.Pr[p.Rr[0] & atm.ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&ret))
-    e.Pr[p.Rr[1] & atm.ArgMask] = (*rt.GoIface)(unsafe.Pointer(&ret)).Value
 }

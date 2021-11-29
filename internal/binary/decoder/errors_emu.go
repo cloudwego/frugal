@@ -23,124 +23,40 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_error_eof(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var r0 uint8
-    var r1 uint8
+func emu_seterr(ctx atm.CallContext, i int, err error) {
+    vv := (*rt.GoIface)(unsafe.Pointer(&err))
+    ctx.Rp(i, unsafe.Pointer(vv.Itab))
+    ctx.Rp(i + 1, vv.Value)
+}
 
-    /* check for arguments and return values */
-    if (p.An != 1 || p.Rn != 2) ||
-       (p.Ar[0] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 {
+func emu_gcall_error_eof(ctx atm.CallContext) {
+    if !ctx.Verify("i", "**") {
         panic("invalid error_eof call")
+    } else {
+        emu_seterr(ctx, 0, error_eof(int(ctx.Au(0))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-    r1 = p.Rr[1] & atm.ArgMask
-
-    /* call the function */
-    ex := error_eof(int(e.Gr[a0]))
-    vv := (*rt.GoIface)(unsafe.Pointer(&ex))
-
-    /* update the result register */
-    e.Pr[r1] = vv.Value
-    e.Pr[r0] = unsafe.Pointer(vv.Itab)
 }
 
-func emu_gcall_error_skip(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var r0 uint8
-    var r1 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 1 || p.Rn != 2) ||
-       (p.Ar[0] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 {
+func emu_gcall_error_skip(ctx atm.CallContext) {
+    if !ctx.Verify("i", "**") {
         panic("invalid error_skip call")
+    } else {
+        emu_seterr(ctx, 0, error_skip(int(ctx.Au(0))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-    r1 = p.Rr[1] & atm.ArgMask
-
-    /* call the function */
-    ex := error_skip(int(e.Gr[a0]))
-    vv := (*rt.GoIface)(unsafe.Pointer(&ex))
-
-    /* update the result register */
-    e.Pr[r1] = vv.Value
-    e.Pr[r0] = unsafe.Pointer(vv.Itab)
 }
 
-func emu_gcall_error_type(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var r0 uint8
-    var r1 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 2 || p.Rn != 2) ||
-       (p.Ar[0] & atm.ArgPointer) != 0 ||
-       (p.Ar[1] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 {
+func emu_gcall_error_type(ctx atm.CallContext) {
+    if !ctx.Verify("ii", "**") {
         panic("invalid error_type call")
+    } else {
+        emu_seterr(ctx, 0, error_type(uint8(ctx.Au(0)), uint8(ctx.Au(1))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-    r1 = p.Rr[1] & atm.ArgMask
-
-    /* call the function */
-    ret := error_type(
-        uint8(e.Gr[a0]),
-        uint8(e.Gr[a1]),
-    )
-
-    /* update the result register */
-    e.Pr[r0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[0]
-    e.Pr[r1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[1]
 }
 
-func emu_gcall_error_missing(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-    var r1 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 2) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) != 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 ||
-       (p.Rr[1] & atm.ArgPointer) == 0 {
-        panic("invalid error_type call")
+func emu_gcall_error_missing(ctx atm.CallContext) {
+    if !ctx.Verify("*ii", "**") {
+        panic("invalid error_skip call")
+    } else {
+        emu_seterr(ctx, 0, error_missing((*rt.GoType)(ctx.Ap(0)), int(ctx.Au(1)), ctx.Au(2)))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-    r1 = p.Rr[1] & atm.ArgMask
-
-    /* call the function */
-    ret := error_missing(
-        (*rt.GoType)(e.Pr[a0]),
-        int(e.Gr[a1]),
-        e.Gr[a2],
-    )
-
-    /* update the result register */
-    e.Pr[r0] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[0]
-    e.Pr[r1] = (*[2]unsafe.Pointer)(unsafe.Pointer(&ret))[1]
 }

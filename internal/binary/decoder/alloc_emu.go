@@ -23,60 +23,18 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_makemap(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) != 0 ||
-       (p.Ar[2] & atm.ArgPointer) == 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_makemap(ctx atm.CallContext) {
+    if !ctx.Verify("*i*", "*") {
         panic("invalid makemap call")
+    } else {
+        ctx.Rp(0, unsafe.Pointer(makemap((*rt.GoMapType)(ctx.Ap(0)), int(ctx.Au(1)), (*rt.GoMap)(ctx.Ap(2)))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = unsafe.Pointer(makemap(
-        (*rt.GoMapType) (e.Pr[a0]),
-        int             (e.Gr[a1]),
-        (*rt.GoMap)     (e.Pr[a2]),
-    ))
 }
 
-func emu_gcall_mallocgc(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) != 0 ||
-       (p.Ar[1] & atm.ArgPointer) == 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) == 0 {
+func emu_gcall_mallocgc(ctx atm.CallContext) {
+    if !ctx.Verify("i*i", "*") {
         panic("invalid mallocgc call")
+    } else {
+        ctx.Rp(0, mallocgc(uintptr(ctx.Au(0)), (*rt.GoType)(ctx.Ap(1)), ctx.Au(2) != 0))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Pr[r0] = mallocgc(
-        uintptr      (e.Gr[a0]),
-        (*rt.GoType) (e.Pr[a1]),
-        e.Gr[a2] != 0,
-    )
 }

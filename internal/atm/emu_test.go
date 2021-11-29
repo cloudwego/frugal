@@ -24,38 +24,28 @@ import (
 )
 
 var (
-    testfn = RegisterGCall(testemu_pfunc, func(e *Emulator, p *Instr) {
+    testfn = RegisterGCall(testemu_pfunc, func(ctx CallContext) {
         var v0 struct {P unsafe.Pointer; L uint64}
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
-        if (p.An != 6 || p.Rn != 4) ||
-           (p.Ar[0] & ArgPointer) == 0 ||
-           (p.Ar[1] & ArgPointer) != 0 ||
-           (p.Ar[2] & ArgPointer) == 0 ||
-           (p.Ar[3] & ArgPointer) != 0 ||
-           (p.Ar[4] & ArgPointer) == 0 ||
-           (p.Ar[5] & ArgPointer) != 0 ||
-           (p.Rr[0] & ArgPointer) == 0 ||
-           (p.Rr[1] & ArgPointer) != 0 ||
-           (p.Rr[2] & ArgPointer) == 0 ||
-           (p.Rr[3] & ArgPointer) != 0 {
+        if !ctx.Verify("*i*i*i", "*i*i") {
             panic("invalid testemu_pfunc call")
         }
-        v0.P = e.Pr[p.Ar[0] & ArgMask]
-        v0.L = e.Gr[p.Ar[1] & ArgMask]
-        v1.P = e.Pr[p.Ar[2] & ArgMask]
-        v1.L = e.Gr[p.Ar[3] & ArgMask]
-        v2.P = e.Pr[p.Ar[4] & ArgMask]
-        v2.L = e.Gr[p.Ar[5] & ArgMask]
+        v0.P = ctx.Ap(0)
+        v0.L = ctx.Au(1)
+        v1.P = ctx.Ap(2)
+        v1.L = ctx.Au(3)
+        v2.P = ctx.Ap(4)
+        v2.L = ctx.Au(5)
         r0, r1 := testemu_pfunc(
             *(*string)(unsafe.Pointer(&v0)),
             *(*string)(unsafe.Pointer(&v1)),
             *(*string)(unsafe.Pointer(&v2)),
         )
-        e.Gr[p.Rr[1] & ArgMask] = uint64(len(r0))
-        e.Gr[p.Rr[3] & ArgMask] = uint64(len(r1))
-        e.Pr[p.Rr[0] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r0))
-        e.Pr[p.Rr[2] & ArgMask] = *(*unsafe.Pointer)(unsafe.Pointer(&r1))
+        ctx.Ru(1, uint64(len(r0)))
+        ctx.Ru(3, uint64(len(r1)))
+        ctx.Rp(0, *(*unsafe.Pointer)(unsafe.Pointer(&r0)))
+        ctx.Rp(2, *(*unsafe.Pointer)(unsafe.Pointer(&r1)))
     })
 )
 

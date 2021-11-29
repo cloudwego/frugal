@@ -287,31 +287,10 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
     return
 }
 
-func emu_ccall_skip(e *atm.Emulator, p *atm.Instr) {
-    var a0 uint8
-    var a1 uint8
-    var a2 uint8
-    var r0 uint8
-
-    /* check for arguments and return values */
-    if (p.An != 3 || p.Rn != 1) ||
-       (p.Ar[0] & atm.ArgPointer) == 0 ||
-       (p.Ar[1] & atm.ArgPointer) != 0 ||
-       (p.Ar[2] & atm.ArgPointer) != 0 ||
-       (p.Rr[0] & atm.ArgPointer) != 0 {
+func emu_ccall_skip(ctx atm.CallContext) {
+    if !ctx.Verify("*ii", "i") {
         panic("invalid skip call")
+    } else {
+        ctx.Ru(0, uint64(do_skip(ctx.Ap(0), int(ctx.Au(1)), defs.Tag(ctx.Au(2)))))
     }
-
-    /* extract the arguments and return value index */
-    a0 = p.Ar[0] & atm.ArgMask
-    a1 = p.Ar[1] & atm.ArgMask
-    a2 = p.Ar[2] & atm.ArgMask
-    r0 = p.Rr[0] & atm.ArgMask
-
-    /* call the function */
-    e.Gr[r0] = uint64(do_skip(
-        e.Pr[a0],
-        int(e.Gr[a1]),
-        defs.Tag(e.Gr[a2]),
-    ))
 }
