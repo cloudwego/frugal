@@ -26,36 +26,29 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type Style int
-
-const (
-    ByReg Style = iota + 1
-    ByStack
-)
-
 type Parameter struct {
-    Tag Style
-    Mem uintptr
-    Reg x86_64.Register64
+    Mem        uintptr
+    Reg        x86_64.Register64
+    InRegister bool
 }
 
 func mkReg(reg x86_64.Register64) (p Parameter) {
     p.Reg = reg
-    p.Tag = ByReg
+    p.InRegister = true
     return
 }
 
 func mkStack(mem uintptr) (p Parameter) {
     p.Mem = mem
-    p.Tag = ByStack
+    p.InRegister = false
     return
 }
 
 func (self Parameter) String() string {
-    switch self.Tag {
-        case ByReg   : return fmt.Sprintf("%%%s", self.Reg)
-        case ByStack : return fmt.Sprintf("%d(%%rsp)", self.Mem)
-        default      : return "(invalid parameter)"
+    if self.InRegister {
+        return fmt.Sprintf("%%%s", self.Reg)
+    } else {
+        return fmt.Sprintf("%d(%%rsp)", self.Mem)
     }
 }
 
@@ -102,7 +95,7 @@ func ArchCreateABI() *AMD64ABI {
 }
 
 func (self *AMD64ABI) RegisterMethod(id int, mt rt.Method) int {
-    self.FnTab[id] = self.layoutFunction(mt.Id, mt.Vt.Pack().Method(mt.Id).Type)
+    self.FnTab[id] = self.LayoutFunc(mt.Id, mt.Vt.Pack().Method(mt.Id).Type)
     return mt.Id
 }
 
@@ -116,6 +109,6 @@ func (self *AMD64ABI) RegisterFunction(id int, fn interface{}) (fp unsafe.Pointe
     }
 
     /* layout the function, and get the real function address */
-    self.FnTab[id] = self.layoutFunction(-1, vt)
+    self.FnTab[id] = self.LayoutFunc(-1, vt)
     return *(*unsafe.Pointer)(vv.Value)
 }

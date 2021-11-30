@@ -108,7 +108,14 @@ func (self *_StackAlloc) alloc(p []Parameter, vt reflect.Type) []Parameter {
     return p
 }
 
-func (self *AMD64ABI) layoutFunction(id int, ft reflect.Type) *FunctionLayout {
+func (self *AMD64ABI) Reserved() map[x86_64.Register64]int32 {
+    return map[x86_64.Register64]int32 {
+        R14: 0,    // current goroutine
+        R15: 1,    // GOT reference
+    }
+}
+
+func (self *AMD64ABI) LayoutFunc(id int, ft reflect.Type) *FunctionLayout {
     var sa _StackAlloc
     var fn FunctionLayout
 
@@ -133,7 +140,7 @@ func (self *AMD64ABI) layoutFunction(id int, ft reflect.Type) *FunctionLayout {
 
     /* assign spill slots */
     for i := 0; i < len(fn.Args); i++ {
-        if fn.Args[i].Tag == ByReg {
+        if fn.Args[i].InRegister {
             fn.Args[i].Mem = sa.spill(_PS, _PA) - _PS
         }
     }

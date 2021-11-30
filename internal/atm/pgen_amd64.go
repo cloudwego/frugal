@@ -18,6 +18,7 @@ package atm
 
 import (
     `fmt`
+    `math`
     `math/bits`
     `reflect`
     `sort`
@@ -77,6 +78,7 @@ type _FrameInfo struct {
     regs _RegSeq
     args *FunctionLayout
     regi map[Register]int32
+    regr map[x86_64.Register64]int32
 }
 
 func (self *_FrameInfo) regc() int {
@@ -104,6 +106,10 @@ func (self *_FrameInfo) size() int32 {
 }
 
 func (self *_FrameInfo) offs() int32 {
+    return self.rsvd() + int32(len(self.regr)) * _PS
+}
+
+func (self *_FrameInfo) rsvd() int32 {
     return self.save() + int32(len(self.regs)) * _PS
 }
 
@@ -119,7 +125,11 @@ func (self *_FrameInfo) slot(r Register) *x86_64.MemoryOperand {
     return Ptr(RSP, self.save() + self.regi[r] * _PS)
 }
 
-func (self *_FrameInfo) alloc(r Register) {
+func (self *_FrameInfo) rslot(r x86_64.Register64) *x86_64.MemoryOperand {
+    return Ptr(RSP, self.rsvd() + self.regr[r] * _PS)
+}
+
+func (self *_FrameInfo) ralloc(r Register) {
     self.regs = append(self.regs, r)
     sort.Sort(self.regs)
 
@@ -145,8 +155,9 @@ func newContext(proto interface{}) (ret _FrameInfo) {
     }
 
     /* layout the function */
+    ret.regr = ABI.Reserved()
+    ret.args = ABI.LayoutFunc(-1, vt)
     ret.regi = make(map[Register]int32)
-    ret.args = ABI.layoutFunction(-1, vt)
     return
 }
 
@@ -208,11 +219,11 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
     p.LEAQ(Ptr(RSP, self.ctxt.offs()), RBP)
 
     /* ABI-specific prologue */
-    i := 0
+    self.abiSaveReserved(p)
     self.abiPrologue(p)
 
-    /* clear all the save slots, if any */
-    if n := self.ctxt.regc(); n != 0 {
+    /* clear all the spill slots, if any */
+    if i, n := 0, self.ctxt.regc(); n != 0 {
         if  n >= 2 { p.PXOR   (XMM15, XMM15) }
         for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)); i += 2; n -= 2 }
         if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)) }
@@ -303,7 +314,7 @@ func (self *CodeGen) rstore(v *Instr, r Register) {
     }
 
     /* check for allocation */
-    if self.ctxt.alloc(r); self.regi >= len(allocationOrder) {
+    if self.ctxt.ralloc(r); self.regi >= len(allocationOrder) {
         panic("pgen: program is too complex to translate on x86_64 (requiring too many registers): " + v.disassemble(nil))
     }
 
@@ -344,6 +355,11 @@ func (self *CodeGen) walloc(v *Instr, p Operands) {
         if p & Ocall != 0 { self.stcall(v) }
         if p & cc.bv != 0 { self.rstore(v, cc.fn(v)) }
     }
+}
+
+func (self *CodeGen) isRegUsed(r x86_64.Register64) bool {
+    for _, v := range self.regs { if v == r { return true }}
+    return false
 }
 
 /** Generator Helpers **/
@@ -448,7 +464,11 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *Instr) {
 
 func (self *CodeGen) translate_OP_ip(p *x86_64.Program, v *Instr) {
     if v.Pd != Pn {
-        p.MOVQ(int64(uintptr(v.Pr)), self.r(v.Pd))
+        if addr := uintptr(v.Pr); addr > math.MaxUint32 {
+            p.MOVQ(addr, self.r(v.Pd))
+        } else {
+            p.MOVL(addr, x86_64.Register32(self.r(v.Pd)))
+        }
     }
 }
 
@@ -649,8 +669,10 @@ func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *Instr) {
         } else {
             if v.Iv == 0 {
                 self.clr(p, v.Ry)
-            } else {
+            } else if !isInt32(v.Iv) {
                 p.MOVQ(v.Iv, self.r(v.Ry))
+            } else {
+                p.MOVL(v.Iv, x86_64.Register32(self.r(v.Ry)))
             }
         }
     }
@@ -747,8 +769,10 @@ func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *Instr) {
         } else {
             if v.Iv == 0 {
                 self.clr(p, v.Ry)
-            } else {
+            } else if !isInt32(v.Iv) {
                 p.MOVQ(v.Iv, self.r(v.Ry))
+            } else {
+                p.MOVL(v.Iv, x86_64.Register32(self.r(v.Ry)))
             }
         }
     }
@@ -910,18 +934,20 @@ func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_ccall
+    self.abiCallNative(p, v)
 }
 
 func (self *CodeGen) translate_OP_gcall(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_gcall
+    self.abiCallGo(p, v)
 }
 
 func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *Instr) {
-    // TODO: implement OP_icall
+    self.abiCallMethod(p, v)
 }
 
 func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *Instr) {
+    self.abiEpilogue(p)
+    self.abiLoadReserved(p)
     p.MOVQ(Ptr(RSP, self.ctxt.offs()), RBP)
     p.ADDQ(self.ctxt.size(), RSP)
     p.RET()

@@ -53,7 +53,7 @@ var defaultRegs = [11]x86_64.Register64 {
 }
 
 var allocationOrder = [11]x86_64.Register64 {
-    RBX, R12, R13, R14, R15,    // reserved registers first
+    R12, R13, R14, R15, RBX,    // reserved registers first
     R10, R11,                   // then scratch registers
     R9, R8, RCX, RDX,           // then argument registers in reverse order (RDI, RSI and RAX are always free)
 }
