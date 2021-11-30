@@ -190,6 +190,7 @@ func (self *CodeGen) abiCallGo(p *x86_64.Program, v *Instr) {
     self.abiLoadReserved(p)
     p.MOVQ(uintptr(fp.faddr), R12)
     p.CALLQ(R12)
+    self.abiSaveReserved(p)
 
     /* if the function returns a value with a used register, spill it on stack */
     for i, retv := range fn.Rets {
