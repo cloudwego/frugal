@@ -25,8 +25,8 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s PointerRegister, d *x86
     rt := x86_64.CreateLabel("_wb_return")
 
     /* check for write barrier */
-    p.MOVQ (V_pWriteBarrier, RSI)
-    p.CMPB (0, Ptr(RSI, 0))
+    p.MOVQ (V_pWriteBarrier, RAX)
+    p.CMPB (0, Ptr(RAX, 0))
     p.JNE  (wb)
 
     /* check for storing nil */
