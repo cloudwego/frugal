@@ -162,7 +162,6 @@ func newContext(proto interface{}) (ret _FrameInfo) {
 }
 
 type CodeGen struct {
-    nins int
     regi int
     ctxt _FrameInfo
     arch *x86_64.Arch
@@ -258,13 +257,8 @@ func (self *CodeGen) tables(p *x86_64.Program) {
     }
 }
 
-func (self *CodeGen) register(p *x86_64.Program, v *Instr) {
-    self.nins++
-    p.Link(self.to(v))
-}
-
 func (self *CodeGen) translate(p *x86_64.Program, v *Instr) {
-    if self.register(p, v); v.Op != OP_nop {
+    if p.Link(self.to(v)); v.Op != OP_nop {
         if fn := translators[v.Op]; fn != nil {
             fn(self, p, v)
         } else {
