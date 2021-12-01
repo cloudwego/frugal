@@ -443,7 +443,7 @@ func translate_OP_map_set_str_safe(p *atm.Builder, v Instr) {
     p.BLTU  (IL, TR, LB_eof)            //  if IL < TR then GOTO _eof
     p.SUBP  (RS, ST, TP)                //  TP <=  RS - ST
     p.ADDPI (TP, StateCap, TP)          //  TP <=  TP + StateCap
-    p.ADDPI (TP, defs.PtrSize, EP)      //  EP <=  TP + defs.PtrSize
+    p.ADDPI (TP, atm.PtrSize, EP)       //  EP <=  TP + atm.PtrSize
     p.SP    (atm.Pn, TP)                // *TP <=  nil
     p.SQ    (TR, EP)                    // *EP <=  TR
     p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}

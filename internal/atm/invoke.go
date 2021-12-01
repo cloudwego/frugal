@@ -34,9 +34,9 @@ const (
 
 type CallHandle struct {
     Id    int
+    Slot  int
     Type  CallType
-    slot  int
-    faddr unsafe.Pointer
+    Func  unsafe.Pointer
     proxy func(CallContext)
 }
 
@@ -150,7 +150,7 @@ var (
 func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
     h.Type    = ICall
-    h.slot    = ABI.RegisterMethod(h.Id, mt)
+    h.Slot    = ABI.RegisterMethod(h.Id, mt)
     h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return
@@ -159,7 +159,7 @@ func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
 func RegisterGCall(fn interface{}, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
     h.Type    = GCall
-    h.faddr   = ABI.RegisterFunction(h.Id, fn)
+    h.Func    = ABI.RegisterFunction(h.Id, fn)
     h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return
@@ -168,7 +168,7 @@ func RegisterGCall(fn interface{}, proxy func(CallContext)) (h CallHandle) {
 func RegisterCCall(fn unsafe.Pointer, proxy func(CallContext)) (h CallHandle) {
     h.Id      = len(invokeTab)
     h.Type    = CCall
-    h.faddr   = fn
+    h.Func    = fn
     h.proxy   = proxy
     invokeTab = append(invokeTab, h)
     return

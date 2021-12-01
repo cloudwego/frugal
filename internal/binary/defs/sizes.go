@@ -18,12 +18,5 @@ package defs
 
 const (
     IntSize  = 4 << (^uint(0) >> 63)
-    PtrSize  = 4 << (^uintptr(0) >> 63)
     MaxStack = 65536
 )
-
-func init() {
-    if PtrSize != 8 {
-        panic("frugal requires 64-bit pointers to run")
-    }
-}

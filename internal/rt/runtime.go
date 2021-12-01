@@ -90,6 +90,10 @@ type GoItab struct {
     fn [1]uintptr
 }
 
+const (
+    GoItabFuncBase = unsafe.Offsetof(GoItab{}.fn)
+)
+
 type GoIface struct {
     Itab  *GoItab
     Value unsafe.Pointer

@@ -26,20 +26,28 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+const (
+    PtrSize  = 8    // pointer size
+    PtrAlign = 8    // pointer alignment
+)
+
 type Parameter struct {
     Mem        uintptr
     Reg        x86_64.Register64
+    Type       reflect.Type
     InRegister bool
 }
 
-func mkReg(reg x86_64.Register64) (p Parameter) {
+func mkReg(vt reflect.Type, reg x86_64.Register64) (p Parameter) {
     p.Reg = reg
+    p.Type = vt
     p.InRegister = true
     return
 }
 
-func mkStack(mem uintptr) (p Parameter) {
+func mkStack(vt reflect.Type, mem uintptr) (p Parameter) {
     p.Mem = mem
+    p.Type = vt
     p.InRegister = false
     return
 }

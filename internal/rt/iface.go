@@ -33,7 +33,9 @@ func AsMethod(id int, vt *GoType) Method {
 }
 
 func GetMethod(tp interface{}, name string) Method {
-    if vt := reflect.TypeOf(tp); vt.Kind() != reflect.Ptr {
+    if tp == nil {
+        panic("value must be an interface pointer")
+    } else if vt := reflect.TypeOf(tp); vt.Kind() != reflect.Ptr {
         panic("value must be an interface pointer")
     } else if et := vt.Elem(); et.Kind() != reflect.Interface {
         panic("value must be an interface pointer")

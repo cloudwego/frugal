@@ -98,19 +98,19 @@ func (self *_FrameInfo) save() int32 {
 }
 
 func (self *_FrameInfo) base() int32 {
-    return self.size() + _PS
+    return self.size() + PtrSize
 }
 
 func (self *_FrameInfo) size() int32 {
-    return self.offs() + _PS
+    return self.offs() + PtrSize
 }
 
 func (self *_FrameInfo) offs() int32 {
-    return self.rsvd() + int32(len(self.regr)) * _PS
+    return self.rsvd() + int32(len(self.regr)) *PtrSize
 }
 
 func (self *_FrameInfo) rsvd() int32 {
-    return self.save() + int32(len(self.regs)) * _PS
+    return self.save() + int32(len(self.regs)) *PtrSize
 }
 
 func (self *_FrameInfo) argv(i int) *x86_64.MemoryOperand {
@@ -122,11 +122,11 @@ func (self *_FrameInfo) retv(i int) *x86_64.MemoryOperand {
 }
 
 func (self *_FrameInfo) slot(r Register) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.save() + self.regi[r] * _PS)
+    return Ptr(RSP, self.save() + self.regi[r] *PtrSize)
 }
 
 func (self *_FrameInfo) rslot(r x86_64.Register64) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.rsvd() + self.regr[r] * _PS)
+    return Ptr(RSP, self.rsvd() + self.regr[r] *PtrSize)
 }
 
 func (self *_FrameInfo) ralloc(r Register) {
@@ -224,8 +224,8 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
     /* clear all the spill slots, if any */
     if i, n := 0, self.ctxt.regc(); n != 0 {
         if  n >= 2 { p.PXOR   (XMM15, XMM15) }
-        for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)); i += 2; n -= 2 }
-        if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) * _PS)) }
+        for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) *PtrSize)); i += 2; n -= 2 }
+        if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) *PtrSize)) }
     }
 
     /* translate the entire program */
@@ -613,11 +613,17 @@ func (self *CodeGen) translate_OP_subp(p *x86_64.Program, v *Instr) {
 func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *Instr) {
     if v.Pd != Pn {
         if v.Ps == Pn {
-            panic("addpi: direct conversion of integer to pointer")
-        } else if !isInt32(v.Iv) {
-            panic("addpi: offset too large, may result in an invalid pointer")
-        } else if self.dup(p, v.Ps, v.Pd); v.Iv != 0 {
-            p.ADDQ(v.Iv, self.r(v.Pd))
+            if v.Iv != 0 {
+                panic("addpi: direct conversion of integer to pointer")
+            } else {
+                self.clr(p, v.Pd)
+            }
+        } else {
+            if !isInt32(v.Iv) {
+                panic("addpi: offset too large, may result in an invalid pointer")
+            } else if self.dup(p, v.Ps, v.Pd); v.Iv != 0 {
+                p.ADDQ(v.Iv, self.r(v.Pd))
+            }
         }
     }
 }

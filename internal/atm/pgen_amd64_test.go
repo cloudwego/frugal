@@ -23,6 +23,7 @@ import (
     `testing`
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/rt`
     `golang.org/x/arch/x86/x86asm`
 )
 
@@ -71,44 +72,37 @@ func disasm(orig uintptr, c []byte) {
     }
 }
 
+type TestIface interface {
+    Bar(x int, y int) int
+    Foo(x int, y int) int
+}
+
 var (
     hfunc CallHandle
+    hmeth CallHandle
     cfunc unsafe.Pointer
 )
 
 func init() {
     cfunc = unsafe.Pointer(&cfunc)
     hfunc = RegisterCCall(cfunc, nil)
+    hmeth = RegisterICall(rt.GetMethod((*TestIface)(nil), "Foo"), nil)
 }
 
 func TestPGen_Generate(t *testing.T) {
     p := CreateBuilder()
-    // p.IQ(0, R0)
-    // p.IQ(1, R1)
-    // p.IQ(2, R2)
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    // p.CCALL(hfunc).A0(R0).A1(R1).A2(R2).R0(R0)
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    // p.BREAK()
-    p.LDAP(0, P0)
-    p.LDAP(1, P1)
-    p.LDAP(2, P2)
-    p.ADDPI(P0, 8, P3)
-    p.LQ(P3, R0)
-    p.LP(P0, P0)
-    p.ADDPI(P1, 8, P3)
-    p.LQ(P3, R1)
-    p.LP(P1, P1)
-    p.ADDPI(P2, 8, P3)
-    p.LQ(P3, R2)
-    p.LP(P2, P2)
+    p.IQ(0, R0)
+    p.IQ(1, R1)
+    p.IQ(2, R2)
+    p.MOVP(Pn, P0)
+    p.MOVP(Pn, P1)
+    p.MOVP(Pn, P2)
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
+    p.CCALL(hfunc).A0(R0).A1(R1).A2(R2).R0(R0)
     p.BREAK()
     p.BREAK()
     p.BREAK()
@@ -120,12 +114,14 @@ func TestPGen_Generate(t *testing.T) {
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.STRP(P0, 0)
-    p.STRQ(R0, 1)
-    p.STRP(P1, 2)
-    p.STRQ(R1, 3)
+    p.ICALL(P0, P1, hmeth).A0(R0).A1(R1).R0(R2)
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
+    p.BREAK()
     p.HALT()
-    g := CreateCodeGen((func(*string, *string, *string) (string, string))(nil))
+    g := CreateCodeGen((func())(nil))
     m := g.Generate(p.Build())
     c := m.Assemble(0)
     disasm(0, c)

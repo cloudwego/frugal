@@ -18,8 +18,10 @@ package atm
 
 import (
     `fmt`
+    `reflect`
 
     `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 /** Prologue & Epilogue **/
@@ -145,86 +147,40 @@ func ri2reg(ri uint8) Register {
     }
 }
 
+func checkptr(ri uint8, arg Parameter) bool {
+    switch arg.Type.Kind() {
+        case reflect.Bool          : fallthrough
+        case reflect.Int           : fallthrough
+        case reflect.Int8          : fallthrough
+        case reflect.Int16         : fallthrough
+        case reflect.Int32         : fallthrough
+        case reflect.Int64         : fallthrough
+        case reflect.Uint          : fallthrough
+        case reflect.Uint8         : fallthrough
+        case reflect.Uint16        : fallthrough
+        case reflect.Uint32        : fallthrough
+        case reflect.Uint64        : fallthrough
+        case reflect.Uintptr       : return (ri & ArgPointer) == 0
+        case reflect.Chan          : fallthrough
+        case reflect.Func          : fallthrough
+        case reflect.Map           : fallthrough
+        case reflect.Ptr           : fallthrough
+        case reflect.UnsafePointer : return (ri & ArgPointer) != 0
+        case reflect.Float32       : fallthrough
+        case reflect.Float64       : fallthrough
+        case reflect.Complex64     : fallthrough
+        case reflect.Complex128    : fallthrough
+        case reflect.Array         : fallthrough
+        case reflect.Struct        : panic("pgen: checkptr: unsupported types")
+        default                    : panic("pgen: checkptr: invalid value type")
+    }
+}
+
 func (self *CodeGen) abiCallGo(p *x86_64.Program, v *Instr) {
-    fp := invokeTab[v.Iv]
-    fn := ABI.FnTab[fp.Id]
-    rm := make(map[Register]int32)
-
-    /* find the function */
-    if fn == nil {
-        panic(fmt.Sprintf("abiCallGo: invalid function ID: %d", v.Iv))
-    }
-
-    /* check for argument and return value count */
-    if int(v.An) != len(fn.Args) || int(v.Rn) != len(fn.Rets) {
-        panic("abiCallGo: argument or return value count mismatch")
-    }
-
-    /* save all the allocated registers before function call */
-    for _, lr := range self.ctxt.regs {
-        p.MOVQ(self.r(lr), self.ctxt.slot(lr))
-    }
-
-    /* load all the args */
-    for i, argv := range fn.Args {
-        if rr := ri2reg(v.Ar[i]); !argv.InRegister {
-            if rr.P() == -1 {
-                p.MOVQ(0, Ptr(RSP, int32(argv.Mem)))
-            } else {
-                p.MOVQ(self.r(rr), Ptr(RSP, int32(argv.Mem)))
-            }
-        } else {
-            if rr.P() == -1 {
-                p.XORL(x86_64.Register32(argv.Reg), x86_64.Register32(argv.Reg))
-            } else if self.isRegUsed(argv.Reg) {
-                p.MOVQ(self.ctxt.slot(rr), argv.Reg)
-            } else {
-                p.MOVQ(self.r(rr), argv.Reg)
-            }
-        }
-    }
-
-    /* restore reserved registers, and call the function, since
-     * all the registers are been saved, and R12 is not one of
-     * the argument registers in Go 1.17, we can clobber R12 safely */
-    self.abiLoadReserved(p)
-    p.MOVQ(uintptr(fp.faddr), R12)
-    p.CALLQ(R12)
-    self.abiSaveReserved(p)
-
-    /* if the function returns a value with a used register, spill it on stack */
-    for i, retv := range fn.Rets {
-        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
-            if !retv.InRegister {
-                rm[rr] = int32(retv.Mem)
-            } else if self.isRegUsed(retv.Reg) {
-                p.MOVQ(retv.Reg, self.ctxt.slot(rr))
-            }
-        }
-    }
-
-    /* save all the non-spilled arguments */
-    for i, retv := range fn.Rets {
-        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
-            if retv.InRegister && !self.isRegUsed(retv.Reg) {
-                p.MOVQ(retv.Reg, self.r(rr))
-            }
-        }
-    }
-
-    /* restore all the allocated registers (except return values) after function call */
-    for _, lr := range self.ctxt.regs {
-        if _, ok := rm[lr]; !ok {
-            p.MOVQ(self.ctxt.slot(lr), self.r(lr))
-        }
-    }
-
-    /* store all the stack-based return values */
-    for rr, mem := range rm {
-        if mem != -1 {
-            p.MOVQ(Ptr(RSP, mem), self.r(rr))
-        }
-    }
+    self.internalCallFunction(p, v, nil, func(fp CallHandle) {
+        p.MOVQ(uintptr(fp.Func), R12)
+        p.CALLQ(R12)
+    })
 }
 
 func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
@@ -264,7 +220,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
     }
 
     /* call the function */
-    p.MOVQ(uintptr(fp.faddr), RAX)
+    p.MOVQ(uintptr(fp.Func), RAX)
     p.CALLQ(RAX)
 
     /* store the result */
@@ -283,5 +239,111 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *Instr) {
+    self.internalCallFunction(p, v, v.Pd, func(fp CallHandle) {
+        p.MOVQ(self.ctxt.slot(v.Ps), R12)
+        p.CALLQ(Ptr(R12, int32(rt.GoItabFuncBase) + int32(fp.Slot) * PtrSize))
+    })
+}
 
+func (self *CodeGen) internalSetArg(p *x86_64.Program, ri uint8, arg Parameter) {
+    if !checkptr(ri, arg) {
+        panic("internalSetArg: passing arguments in different kind of registers")
+    } else if !arg.InRegister {
+        self.internalSetStack(p, ri2reg(ri), arg)
+    } else {
+        self.internalSetRegister(p, ri2reg(ri), arg)
+    }
+}
+
+func (self *CodeGen) internalSetStack(p *x86_64.Program, rr Register, arg Parameter) {
+    if rr.P() == -1 {
+        p.MOVQ(0, Ptr(RSP, int32(arg.Mem)))
+    } else {
+        p.MOVQ(self.r(rr), Ptr(RSP, int32(arg.Mem)))
+    }
+}
+
+func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr Register, arg Parameter) {
+    if rr.P() == -1 {
+        p.XORL(x86_64.Register32(arg.Reg), x86_64.Register32(arg.Reg))
+    } else if self.isRegUsed(arg.Reg) {
+        p.MOVQ(self.ctxt.slot(rr), arg.Reg)
+    } else {
+        p.MOVQ(self.r(rr), arg.Reg)
+    }
+}
+
+func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Register, makeFuncCall func(fp CallHandle)) {
+    ac := 0
+    fp := invokeTab[v.Iv]
+    fn := ABI.FnTab[fp.Id]
+    rm := make(map[Register]int32)
+
+    /* find the function */
+    if fn == nil {
+        panic(fmt.Sprintf("internalCallFunction: invalid function ID: %d", v.Iv))
+    }
+
+    /* "this" is an implicit argument, so exclude from argument count */
+    if this != nil {
+        ac = 1
+    }
+
+    /* check for argument and return value count */
+    if int(v.Rn) != len(fn.Rets) || int(v.An) != len(fn.Args) - ac {
+        panic("internalCallFunction: argument or return value count mismatch")
+    }
+
+    /* save all the allocated registers before function call */
+    for _, lr := range self.ctxt.regs {
+        p.MOVQ(self.r(lr), self.ctxt.slot(lr))
+    }
+
+    /* load all the arguments */
+    for i, vv := range fn.Args {
+        if i == 0 && this != nil {
+            self.internalSetArg(p, this.A(), vv)
+        } else {
+            self.internalSetArg(p, v.Ar[i - ac], vv)
+        }
+    }
+
+    /* call the function with reserved registers restored */
+    self.abiLoadReserved(p)
+    makeFuncCall(fp)
+    self.abiSaveReserved(p)
+
+    /* if the function returns a value with a used register, spill it on stack */
+    for i, retv := range fn.Rets {
+        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
+            if !retv.InRegister {
+                rm[rr] = int32(retv.Mem)
+            } else if self.isRegUsed(retv.Reg) {
+                p.MOVQ(retv.Reg, self.ctxt.slot(rr))
+            }
+        }
+    }
+
+    /* save all the non-spilled arguments */
+    for i, retv := range fn.Rets {
+        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
+            if retv.InRegister && !self.isRegUsed(retv.Reg) {
+                p.MOVQ(retv.Reg, self.r(rr))
+            }
+        }
+    }
+
+    /* restore all the allocated registers (except return values) after function call */
+    for _, lr := range self.ctxt.regs {
+        if _, ok := rm[lr]; !ok {
+            p.MOVQ(self.ctxt.slot(lr), self.r(lr))
+        }
+    }
+
+    /* store all the stack-based return values */
+    for rr, mem := range rm {
+        if mem != -1 {
+            p.MOVQ(Ptr(RSP, mem), self.r(rr))
+        }
+    }
 }
