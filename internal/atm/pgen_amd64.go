@@ -26,6 +26,7 @@ import (
 
     `github.com/chenzhuoyu/iasm/expr`
     `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type _SwitchTab struct {
@@ -161,8 +162,8 @@ func (self *_FrameInfo) require(n uintptr) {
     }
 }
 
-func (self *_FrameInfo) StackMap() (*StackMap, *StackMap) {
-    mb := StackMapBuilder{}
+func (self *_FrameInfo) StackMap() (*rt.StackMap, *rt.StackMap) {
+    mb := rt.StackMapBuilder{}
     am := self.desc.StackMap()
 
     /* reserved register slots */
@@ -214,7 +215,7 @@ func CreateCodeGen(proto interface{}) *CodeGen {
     }
 }
 
-func (self *CodeGen) StackMap() (*StackMap, *StackMap) {
+func (self *CodeGen) StackMap() (*rt.StackMap, *rt.StackMap) {
     return self.ctxt.StackMap()
 }
 

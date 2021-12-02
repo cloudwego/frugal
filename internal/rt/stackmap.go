@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package atm
+package rt
 
 import (
+    `sync`
     `unsafe`
-
-    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Bitmap struct {
@@ -61,23 +60,39 @@ func (self *Bitmap) AppendMany(n int, bv int) {
     }
 }
 
+var (
+    _stackMapLock  = sync.Mutex{}
+    _stackMapCache = make(map[*StackMap]struct{})
+)
+
 type StackMap struct {
     N int32
     L int32
     B [1]byte
 }
 
+func (self *StackMap) Pin() uintptr {
+    self.freeze()
+    return uintptr(unsafe.Pointer(self))
+}
+
+func (self *StackMap) freeze() {
+    _stackMapLock.Lock()
+    _stackMapCache[self] = struct{}{}
+    _stackMapLock.Unlock()
+}
+
 var (
-    byteType = rt.UnpackEface(byte(0)).Type
+    byteType = UnpackEface(byte(0)).Type
 )
 
 const (
-    _StackMapBase = unsafe.Sizeof(StackMap{})
+    _StackMapSize = unsafe.Sizeof(StackMap{})
 )
 
 //go:linkname mallocgc runtime.mallocgc
 //goland:noinspection GoUnusedParameter
-func mallocgc(nb uintptr, vt *rt.GoType, zero bool) unsafe.Pointer
+func mallocgc(nb uintptr, vt *GoType, zero bool) unsafe.Pointer
 
 type StackMapBuilder struct {
     n int
@@ -86,12 +101,12 @@ type StackMapBuilder struct {
 
 func (self *StackMapBuilder) Build() (p *StackMap) {
     nb := len(self.b.B)
-    bm := mallocgc(_StackMapBase + uintptr(nb) - 1, byteType, false)
+    bm := mallocgc(_StackMapSize + uintptr(nb) - 1, byteType, false)
 
     /* initialize as 1 bitmap of N bits */
     p = (*StackMap)(bm)
     p.N, p.L = 1, int32(self.b.N)
-    copy(rt.BytesFrom(unsafe.Pointer(&p.B), nb, nb), self.b.B)
+    copy(BytesFrom(unsafe.Pointer(&p.B), nb, nb), self.b.B)
     return
 }
 

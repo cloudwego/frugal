@@ -104,8 +104,8 @@ func (self *FunctionLayout) String() string {
     }
 }
 
-func (self *FunctionLayout) StackMap() *StackMap {
-    var mb StackMapBuilder
+func (self *FunctionLayout) StackMap() *rt.StackMap {
+    var mb rt.StackMapBuilder
     for _, v := range self.Args { mb.AddField(v.IsPointer()) }
     return mb.Build()
 }
