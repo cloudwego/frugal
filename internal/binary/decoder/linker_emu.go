@@ -44,33 +44,28 @@ func link_emu(prog atm.Program) Decoder {
     }
 }
 
-func emu_bytes(ctx atm.CallContext, i int) (v []byte) {
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Cap = int(ctx.Au(i + 2))
-    return
-}
-
-func emu_gcall_decode(ctx atm.CallContext) {
-    var ret int
-    var err error
-
-    /* check for arguments and return values */
-    if !ctx.Verify("**iii**i", "i**") {
-        panic("invalid decode call")
-    }
-
-    /* call the decoder */
-    ret, err = decode(
+func emu_decode(ctx atm.CallContext) (int, error) {
+    return decode(
         (*rt.GoType)(ctx.Ap(0)),
-        emu_bytes(ctx, 1),
+        rt.BytesFrom(ctx.Ap(1), int(ctx.Au(2)), int(ctx.Au(3))),
         int(ctx.Au(4)),
         ctx.Ap(5),
         (*RuntimeState)(ctx.Ap(6)),
         int(ctx.Au(7)),
     )
+}
 
-    /* pack the result */
-    ctx.Ru(0, uint64(ret))
-    emu_seterr(ctx, 1, err)
+func emu_mkreturn(ctx atm.CallContext) func(int, error) {
+    return func(ret int, err error) {
+        ctx.Ru(0, uint64(ret))
+        emu_seterr(ctx, 1, err)
+    }
+}
+
+func emu_gcall_decode(ctx atm.CallContext) {
+    if !ctx.Verify("**iii**i", "i**") {
+        panic("invalid decode call")
+    } else {
+        emu_mkreturn(ctx)(emu_decode(ctx))
+    }
 }

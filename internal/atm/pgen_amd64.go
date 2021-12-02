@@ -73,10 +73,26 @@ func (self _RegSeq) Len() int               { return len(self) }
 func (self _RegSeq) Swap(i int, j int)      { self[i], self[j] = self[j], self[i] }
 func (self _RegSeq) Less(i int, j int) bool { return self[i].P() < self[j].P() }
 
+/** Frame Structure of the Generated Function
+ *
+ *                 (Previous Frame)
+ *      prev() ------------------------
+ *                    Return PC
+ *      size() ------------------------
+ *                    Saved RBP             |
+ *      offs() ------------------------     |
+ *                Reserved Registers        | (decrease)
+ *      rsvd() ------------------------     |
+ *                   Spill Slots            ↓
+ *      save() ------------------------
+ *                Outgoing Arguments
+ *         RSP ------------------------
+ */
+
 type _FrameInfo struct {
     alen int
     regs _RegSeq
-    args *FunctionLayout
+    desc *FunctionLayout
     regi map[Register]int32
     regr map[x86_64.Register64]int32
 }
@@ -86,18 +102,18 @@ func (self *_FrameInfo) regc() int {
 }
 
 func (self *_FrameInfo) argc() int {
-    return len(self.args.Args)
+    return len(self.desc.Args)
 }
 
 func (self *_FrameInfo) retc() int {
-    return len(self.args.Rets)
+    return len(self.desc.Rets)
 }
 
 func (self *_FrameInfo) save() int32 {
     return int32(self.alen)
 }
 
-func (self *_FrameInfo) base() int32 {
+func (self *_FrameInfo) prev() int32 {
     return self.size() + PtrSize
 }
 
@@ -106,27 +122,27 @@ func (self *_FrameInfo) size() int32 {
 }
 
 func (self *_FrameInfo) offs() int32 {
-    return self.rsvd() + int32(len(self.regr)) *PtrSize
+    return self.rsvd() + int32(len(self.regr)) * PtrSize
 }
 
 func (self *_FrameInfo) rsvd() int32 {
-    return self.save() + int32(len(self.regs)) *PtrSize
+    return self.save() + int32(len(self.regs)) * PtrSize
 }
 
 func (self *_FrameInfo) argv(i int) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.base() + int32(self.args.Args[i].Mem))
+    return Ptr(RSP, self.prev() + int32(self.desc.Args[i].Mem))
 }
 
 func (self *_FrameInfo) retv(i int) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.base() + int32(self.args.Rets[i].Mem))
+    return Ptr(RSP, self.prev() + int32(self.desc.Rets[i].Mem))
 }
 
 func (self *_FrameInfo) slot(r Register) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.save() + self.regi[r] *PtrSize)
+    return Ptr(RSP, self.save() + self.regi[r] * PtrSize)
 }
 
 func (self *_FrameInfo) rslot(r x86_64.Register64) *x86_64.MemoryOperand {
-    return Ptr(RSP, self.rsvd() + self.regr[r] *PtrSize)
+    return Ptr(RSP, self.rsvd() + self.regr[r] * PtrSize)
 }
 
 func (self *_FrameInfo) ralloc(r Register) {
@@ -145,6 +161,24 @@ func (self *_FrameInfo) require(n uintptr) {
     }
 }
 
+func (self *_FrameInfo) StackMap() (*StackMap, *StackMap) {
+    mb := StackMapBuilder{}
+    am := self.desc.StackMap()
+
+    /* reserved register slots */
+    for range self.regr {
+        mb.AddField(false)
+    }
+
+    /* register spill slots */
+    for _, reg := range self.regs {
+        mb.AddField(reg.A() & ArgPointer != 0)
+    }
+
+    /* build the stackmap */
+    return am, mb.Build()
+}
+
 func newContext(proto interface{}) (ret _FrameInfo) {
     vt := reflect.TypeOf(proto)
     vk := vt.Kind()
@@ -156,7 +190,7 @@ func newContext(proto interface{}) (ret _FrameInfo) {
 
     /* layout the function */
     ret.regr = ABI.Reserved()
-    ret.args = ABI.LayoutFunc(-1, vt)
+    ret.desc = ABI.LayoutFunc(-1, vt)
     ret.regi = make(map[Register]int32)
     return
 }
@@ -178,6 +212,10 @@ func CreateCodeGen(proto interface{}) *CodeGen {
         arch: x86_64.CreateArch(),
         jmps: make(map[string]*x86_64.Label),
     }
+}
+
+func (self *CodeGen) StackMap() (*StackMap, *StackMap) {
+    return self.ctxt.StackMap()
 }
 
 func (self *CodeGen) Generate(s Program) *x86_64.Program {
@@ -224,8 +262,8 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
     /* clear all the spill slots, if any */
     if i, n := 0, self.ctxt.regc(); n != 0 {
         if  n >= 2 { p.PXOR   (XMM15, XMM15) }
-        for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) *PtrSize)); i += 2; n -= 2 }
-        if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) *PtrSize)) }
+        for n >= 2 { p.MOVDQU (XMM15, Ptr(RSP, self.ctxt.save() + int32(i) * PtrSize)); i += 2; n -= 2 }
+        if  n != 0 { p.MOVQ   (0, Ptr(RSP, self.ctxt.save() + int32(i) * PtrSize)) }
     }
 
     /* translate the entire program */

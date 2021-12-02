@@ -170,6 +170,13 @@ func FuncAddr(f interface{}) unsafe.Pointer {
     }
 }
 
+func BytesFrom(p unsafe.Pointer, n int, c int) (r []byte) {
+    (*GoSlice)(unsafe.Pointer(&r)).Ptr = p
+    (*GoSlice)(unsafe.Pointer(&r)).Len = n
+    (*GoSlice)(unsafe.Pointer(&r)).Cap = c
+    return
+}
+
 func UnpackType(t reflect.Type) *GoType {
     return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
 }

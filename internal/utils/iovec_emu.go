@@ -31,10 +31,7 @@ func emu_iovec(ctx atm.CallContext) (v iovec.IoVec) {
 }
 
 func emu_bytes(ctx atm.CallContext, i int) (v []byte) {
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
-    (*rt.GoSlice)(unsafe.Pointer(&v)).Cap = int(ctx.Au(i + 2))
-    return
+    return rt.BytesFrom(ctx.Ap(i), int(ctx.Au(i + 1)), int(ctx.Au(i + 2)))
 }
 
 func emu_setbytes(ctx atm.CallContext, v []byte) {

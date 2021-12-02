@@ -18,7 +18,6 @@ package atm
 
 import (
     `fmt`
-    `reflect`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
@@ -27,7 +26,7 @@ import (
 /** Prologue & Epilogue **/
 
 func (self *CodeGen) abiPrologue(p *x86_64.Program) {
-    for i, v := range self.ctxt.args.Args {
+    for i, v := range self.ctxt.desc.Args {
         if v.InRegister {
             p.MOVQ(v.Reg, self.ctxt.argv(i))
         }
@@ -82,7 +81,7 @@ func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
     var r *x86_64.Register64
 
     /* if return with stack, store directly */
-    if m = self.ctxt.args.Rets[i]; !m.InRegister {
+    if m = self.ctxt.desc.Rets[i]; !m.InRegister {
         p.MOVQ(self.r(s), self.ctxt.retv(i))
         return
     }
@@ -148,32 +147,7 @@ func ri2reg(ri uint8) Register {
 }
 
 func checkptr(ri uint8, arg Parameter) bool {
-    switch arg.Type.Kind() {
-        case reflect.Bool          : fallthrough
-        case reflect.Int           : fallthrough
-        case reflect.Int8          : fallthrough
-        case reflect.Int16         : fallthrough
-        case reflect.Int32         : fallthrough
-        case reflect.Int64         : fallthrough
-        case reflect.Uint          : fallthrough
-        case reflect.Uint8         : fallthrough
-        case reflect.Uint16        : fallthrough
-        case reflect.Uint32        : fallthrough
-        case reflect.Uint64        : fallthrough
-        case reflect.Uintptr       : return (ri & ArgPointer) == 0
-        case reflect.Chan          : fallthrough
-        case reflect.Func          : fallthrough
-        case reflect.Map           : fallthrough
-        case reflect.Ptr           : fallthrough
-        case reflect.UnsafePointer : return (ri & ArgPointer) != 0
-        case reflect.Float32       : fallthrough
-        case reflect.Float64       : fallthrough
-        case reflect.Complex64     : fallthrough
-        case reflect.Complex128    : fallthrough
-        case reflect.Array         : fallthrough
-        case reflect.Struct        : panic("pgen: checkptr: unsupported types")
-        default                    : panic("pgen: checkptr: invalid value type")
-    }
+    return arg.IsPointer() == ((ri & ArgPointer) != 0)
 }
 
 func (self *CodeGen) abiCallGo(p *x86_64.Program, v *Instr) {

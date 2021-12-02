@@ -60,6 +60,35 @@ func (self Parameter) String() string {
     }
 }
 
+func (self Parameter) IsPointer() bool {
+    switch self.Type.Kind() {
+        case reflect.Bool          : fallthrough
+        case reflect.Int           : fallthrough
+        case reflect.Int8          : fallthrough
+        case reflect.Int16         : fallthrough
+        case reflect.Int32         : fallthrough
+        case reflect.Int64         : fallthrough
+        case reflect.Uint          : fallthrough
+        case reflect.Uint8         : fallthrough
+        case reflect.Uint16        : fallthrough
+        case reflect.Uint32        : fallthrough
+        case reflect.Uint64        : fallthrough
+        case reflect.Uintptr       : return false
+        case reflect.Chan          : fallthrough
+        case reflect.Func          : fallthrough
+        case reflect.Map           : fallthrough
+        case reflect.Ptr           : fallthrough
+        case reflect.UnsafePointer : return true
+        case reflect.Float32       : fallthrough
+        case reflect.Float64       : fallthrough
+        case reflect.Complex64     : fallthrough
+        case reflect.Complex128    : fallthrough
+        case reflect.Array         : fallthrough
+        case reflect.Struct        : panic("abi: unsupported types")
+        default                    : panic("abi: invalid value type")
+    }
+}
+
 type FunctionLayout struct {
     Id   int
     Sp   uintptr
@@ -73,6 +102,12 @@ func (self *FunctionLayout) String() string {
     } else {
         return fmt.Sprintf("{meth/%d,%s}", self.Id, self.formatFn())
     }
+}
+
+func (self *FunctionLayout) StackMap() *StackMap {
+    var mb StackMapBuilder
+    for _, v := range self.Args { mb.AddField(v.IsPointer()) }
+    return mb.Build()
 }
 
 func (self *FunctionLayout) formatFn() string {
