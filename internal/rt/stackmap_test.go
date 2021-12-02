@@ -99,7 +99,7 @@ func stackmaptestfunc(s string, i int, vp unsafe.Pointer, sb interface{}, fv uin
     return
 }
 
-func TestPGen_StackMap(t *testing.T) {
+func TestStackMap_Dump(t *testing.T) {
     args, locals := stackMap(stackmaptestfunc)
     println("--- args ---")
     dumpstackmap(args)
