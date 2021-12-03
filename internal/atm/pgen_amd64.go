@@ -171,9 +171,9 @@ func (self *_FrameInfo) StackMap() (*rt.StackMap, *rt.StackMap) {
         mb.AddField(false)
     }
 
-    /* register spill slots */
-    for _, reg := range self.regs {
-        mb.AddField(reg.A() & ArgPointer != 0)
+    /* register spill slots, in reverse order */
+    for i := len(self.regs) - 1; i >= 0; i-- {
+        mb.AddField(self.regs[i].A() & ArgPointer != 0)
     }
 
     /* build the stackmap */
