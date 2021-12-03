@@ -23,6 +23,7 @@ import (
     `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/stretchr/testify/assert`
     `github.com/stretchr/testify/require`
 )
@@ -41,12 +42,15 @@ func findfunc(pc uintptr) funcInfo
 func pcdatavalue2(f funcInfo, table uint32, targetpc uintptr) (int32, uintptr)
 
 func TestLoader_Load(t *testing.T) {
+    var src string
     var asm x86_64.Assembler
-    if runtime.Version() >= "go1.17" {
-        require.NoError(t, asm.Assemble("movq $1234, (%rax)\nret"))
-    } else {
-        require.NoError(t, asm.Assemble("movq 8(%rsp), %rax\nmovq $1234, (%rax)\nret"))
+    if runtime.Version() < "go1.17" { src += `
+        movq 8(%rsp), %rax`
     }
+    src += `
+        movq $1234, (%rax)
+        ret`
+    require.NoError(t, asm.Assemble(src))
     v0 := 0
     cc := asm.Code()
     fp := Loader(cc).Load("test", 0, 0, nil, nil)
@@ -63,4 +67,52 @@ func TestLoader_Load(t *testing.T) {
     aup, startpc2 := pcdatavalue2(findfunc(pc), _PCDATA_UnsafePoint, pc + uintptr(len(cc)) - 1)
     assert.Equal(t, int32(_PCDATA_UnsafePointUnsafe), aup)
     assert.Equal(t, pc, startpc2)
+}
+
+func mkpointer() *int {
+    ret := new(int)
+    *ret = 1234
+    runtime.SetFinalizer(ret, func(_ *int) {
+        println("ret has been recycled")
+    })
+    println("ret is allocated")
+    return ret
+}
+
+func collect() {
+    println("start collecting")
+    for i := 1; i < 1000; i++ {
+        runtime.GC()
+    }
+    println("done collecting")
+}
+
+func TestLoader_StackMap(t *testing.T) {
+    var asm x86_64.Assembler
+    var smb rt.StackMapBuilder
+    src := `
+        subq    $24, %rsp
+        movq    %rbp, 16(%rsp)
+        leaq    16(%rsp), %rbp
+        
+        movq    $` + fmt.Sprintf("%p", mkpointer) + `, %r12
+        callq   %r12`
+    if runtime.Version() < "go1.17" { src += `
+        movq    (%rsp), %rax`
+    }
+    src += `
+        movq    %rax, 8(%rsp)
+        movq    $0x123, (%rsp)
+        movq    $` + fmt.Sprintf("%p", collect) + `, %r12
+        callq   %r12
+        movq    16(%rsp), %rbp
+        addq    $24, %rsp
+        ret`
+    require.NoError(t, asm.Assemble(src))
+    smb.AddField(true)
+    fp := Loader(asm.Code()).Load("test_with_stackmap", 24, 0, new(rt.StackMapBuilder).Build(), smb.Build())
+    println("enter function")
+    (*(*func())(unsafe.Pointer(&fp)))()
+    println("leave function")
+    collect()
 }
