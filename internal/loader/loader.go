@@ -51,7 +51,7 @@ func (self Loader) Load(fn string, fp int, args int, argptrs *rt.StackMap, local
     nb := alignUp(nf, os.Getpagesize())
 
     /* allocate a block of memory */
-    if mm, _, er = syscall.RawSyscall6(syscall.SYS_MMAP, 0, nb, _RW, _AP, 0, 0); er != 0 {
+    if mm, _, er = syscall.Syscall6(syscall.SYS_MMAP, 0, nb, _RW, _AP, 0, 0); er != 0 {
         panic(er)
     }
 
@@ -60,7 +60,7 @@ func (self Loader) Load(fn string, fp int, args int, argptrs *rt.StackMap, local
     registerFunction(fmt.Sprintf("(frugal).%s_%x", fn, mm), mm, fp, args, nf, argptrs.Pin(), localptrs.Pin())
 
     /* make it executable */
-    if _, _, err := syscall.RawSyscall(syscall.SYS_MPROTECT, mm, nb, _RX); err != 0 {
+    if _, _, err := syscall.Syscall(syscall.SYS_MPROTECT, mm, nb, _RX); err != 0 {
         panic(err)
     } else {
         return Function(&mm)
