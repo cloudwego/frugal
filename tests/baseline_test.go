@@ -65,7 +65,7 @@ func BenchmarkMarshalVanilla(b *testing.B) {
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         mm.Reset()
-        _ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+        _ = v.Write(thrift.NewTBinaryProtocolTransport(mm))
     }
 }
 
