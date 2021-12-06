@@ -17,7 +17,6 @@
 package atm
 
 import (
-    `reflect`
     `strconv`
     `strings`
     `unsafe`
@@ -200,7 +199,7 @@ func (self *Builder) IQ(v int64, rx GenericRegister) *Instr {
 }
 
 func (self *Builder) IP(v interface{}, pd PointerRegister) *Instr {
-    if vv := rt.UnpackEface(v); vv.Type.Kind() != reflect.Ptr {
+    if vv := rt.UnpackEface(v); !rt.IsPtr(vv.Type) {
         panic("v is not a pointer")
     } else {
         return self.add(newInstr(OP_ip).pr(vv.Value).pd(pd))

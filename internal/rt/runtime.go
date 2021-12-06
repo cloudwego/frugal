@@ -154,6 +154,10 @@ type GoSliceType struct {
     Elem *GoType
 }
 
+func IsPtr(t *GoType) bool {
+    return t.Kind() == reflect.Ptr || t.Kind() == reflect.UnsafePointer
+}
+
 func MapType(t *GoType) *GoMapType {
     if t.Kind() != reflect.Map {
         panic("t is not a map")

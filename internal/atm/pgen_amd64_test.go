@@ -23,6 +23,8 @@ import (
     `testing`
     `unsafe`
 
+    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/frugal/internal/loader`
     `github.com/cloudwego/frugal/internal/rt`
     `golang.org/x/arch/x86/x86asm`
 )
@@ -125,4 +127,66 @@ func TestPGen_Generate(t *testing.T) {
     m := g.Generate(p.Build())
     c := m.Assemble(0)
     disasm(0, c)
+}
+
+type ifacetest interface {
+    Foo(int) int
+}
+
+type ifacetesttype int
+func (self ifacetesttype) Foo(v int) int {
+    println("iface Foo(), self is", self, ", v is", v)
+    return int(self) + v
+}
+
+func gcalltestfn(a int) (int, int, int) {
+    println("a is", a)
+    return a + 100, a + 200, a + 300
+}
+
+func mkccalltestfn() unsafe.Pointer {
+    var asm x86_64.Assembler
+    err := asm.Assemble(`
+        movq    %rdi, %rax
+        addq    $10087327, %rax
+        ret
+    `)
+    if err != nil {
+        panic(err)
+    }
+    p := loader.Loader(asm.Code()).Load("_ccalltestfn", 0, 0, nil, nil)
+    return *(*unsafe.Pointer)(p)
+}
+
+func TestPGen_FunctionCall(t *testing.T) {
+    var s ifacetest
+    var i ifacetesttype = 123456
+    s = i
+    m := RegisterICall(rt.GetMethod((*ifacetest)(nil), "Foo"), nil)
+    c := RegisterCCall(mkccalltestfn(), nil)
+    h := RegisterGCall(gcalltestfn, nil)
+    p := CreateBuilder()
+    e := *(*rt.GoIface)(unsafe.Pointer(&s))
+    p.IP(e.Itab, P0)
+    p.IP(e.Value, P1)
+    p.LDAQ(0, R0)
+    p.GCALL(h).A0(R0).R0(R1).R1(R2).R2(R3)
+    p.ADD(R1, R2, R1)
+    p.ADD(R2, R3, R2)
+    p.ICALL(P0, P1, m).A0(R3).R0(R4)
+    p.ADDI(R4, 10000000, R3)
+    p.CCALL(c).A0(R3).R0(R4)
+    p.STRQ(R1, 0)
+    p.STRQ(R2, 1)
+    p.STRQ(R4, 2)
+    p.HALT()
+    g := CreateCodeGen((func(int) (int, int, int))(nil))
+    b := g.Generate(p.Build())
+    a, l := g.StackMap()
+    r := b.Assemble(0)
+    v := loader.Loader(r).Load("_test_gcall", 0, 24, a, l)
+    disasm(*(*uintptr)(v), r)
+    f := *(*func(int) (int, int, int))(unsafe.Pointer(&v))
+    x, y, z := f(123)
+    println("f(123) is", x, y, z)
 }

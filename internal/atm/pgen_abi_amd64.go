@@ -302,6 +302,7 @@ func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Regi
     for i, retv := range fn.Rets {
         if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
             if retv.InRegister && !self.isRegUsed(retv.Reg) {
+                rm[rr] = -1
                 p.MOVQ(retv.Reg, self.r(rr))
             }
         }
