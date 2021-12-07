@@ -26,7 +26,8 @@ import (
     `github.com/apache/thrift/lib/go/thrift`
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/iovec`
-    `github.com/cloudwego/frugal/testdata/baseline`
+    vanilla_basline `github.com/cloudwego/frugal/testdata/baseline`
+    kitex_baseline `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
@@ -41,9 +42,20 @@ func dumpval(v interface{}) {
     c.Dump(v)
 }
 
+func loaddata(t require.TestingT, v thrift.TStruct) int {
+    buf, err := ioutil.ReadFile("testdata/object.bin")
+    require.NoError(t, err)
+    mm := thrift.NewTMemoryBuffer()
+    _, err = mm.Write(buf)
+    require.NoError(t, err)
+    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(t, err)
+    return len(buf)
+}
+
 func TestMarshal(t *testing.T) {
     var m iovec.SimpleIoVec
-    var v baseline.Nesting2
+    var v vanilla_basline.Nesting2
     rand.Seed(time.Now().UnixNano())
     GenValue(&v)
     err := frugal.EncodeObject(&m, v)
@@ -54,27 +66,15 @@ func TestMarshal(t *testing.T) {
 
 func TestMarshalBaseline(t *testing.T) {
     var m iovec.SimpleIoVec
-    var v baseline.Nesting2
-    buf, err := ioutil.ReadFile("testdata/object.bin")
-    require.NoError(t, err)
-    mm := thrift.NewTMemoryBuffer()
-    _, err = mm.Write(buf)
-    require.NoError(t, err)
-    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
-    require.NoError(t, err)
+    var v vanilla_basline.Nesting2
+    loaddata(t, &v)
     _ = frugal.EncodeObject(&m, v)
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {
-    var v baseline.Nesting2
-    buf, err := ioutil.ReadFile("testdata/object.bin")
-    require.NoError(b, err)
+    var v vanilla_basline.Nesting2
     mm := thrift.NewTMemoryBuffer()
-    _, err = mm.Write(buf)
-    require.NoError(b, err)
-    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
-    require.NoError(b, err)
-    b.SetBytes(int64(len(buf)))
+    b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         mm.Reset()
@@ -84,18 +84,21 @@ func BenchmarkMarshalVanilla(b *testing.B) {
 
 func BenchmarkMarshalFrugal(b *testing.B) {
     var m iovec.SimpleIoVec
-    var v baseline.Nesting2
-    buf, err := ioutil.ReadFile("testdata/object.bin")
-    require.NoError(b, err)
-    mm := thrift.NewTMemoryBuffer()
-    _, err = mm.Write(buf)
-    require.NoError(b, err)
-    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
-    require.NoError(b, err)
-    b.SetBytes(int64(len(buf)))
+    var v vanilla_basline.Nesting2
+    b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         m.Reset()
         _ = frugal.EncodeObject(&m, v)
+    }
+}
+
+func BenchmarkMarshalKitexFast(b *testing.B) {
+    var v kitex_baseline.Nesting2
+    b.SetBytes(int64(loaddata(b, &v)))
+    b.ResetTimer()
+    buf := make([]byte, v.BLength())
+    for i := 0; i < b.N; i++ {
+        _ = v.FastWriteNocopy(buf, nil)
     }
 }
