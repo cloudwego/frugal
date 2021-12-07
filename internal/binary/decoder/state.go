@@ -23,7 +23,6 @@ import (
 )
 
 const (
-    NbOffset = int64(unsafe.Offsetof(StateItem{}.Nb))
     WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
     FmOffset = int64(unsafe.Offsetof(StateItem{}.Fm))
     VuOffset = int64(unsafe.Offsetof(StateItem{}.Vu))

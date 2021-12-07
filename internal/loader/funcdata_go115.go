@@ -99,7 +99,7 @@ var findFuncTab = &_FindFuncBucket {
     idx: 1,
 }
 
-func registerFunction(name string, pc uintptr, fp int, args int, size uintptr, argptrs uintptr, localptrs uintptr) {
+func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     minpc := pc
     maxpc := pc + size
 
@@ -118,19 +118,19 @@ func registerFunction(name string, pc uintptr, fp int, args int, size uintptr, a
 
     /* add PCDATA */
     pcsp := len(pclnt)
-    pclnt = append(pclnt, encodeValue(fp)...)
+    pclnt = append(pclnt, encodeValue(frame.Size)...)
     pclnt = append(pclnt, encodeVariant(int(size))...)
 
     /* function entry */
     fn := _Func {
         entry     : pc,
         nameoff   : int32(noff),
-        args      : int32(args),
+        args      : int32(frame.ArgSize),
         pcsp      : int32(pcsp),
         npcdata   : 2,
         nfuncdata : 2,
-        argptrs   : argptrs,
-        localptrs : localptrs,
+        argptrs   : frame.ArgPtrs.Pin(),
+        localptrs : frame.LocalPtrs.Pin(),
     }
 
     /* mark the entire function as a single line of code */

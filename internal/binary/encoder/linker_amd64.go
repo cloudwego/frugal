@@ -17,30 +17,22 @@
 package encoder
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/loader`
 )
 
-type Linker interface {
-    Link(p atm.Program) Encoder
-}
-
-var (
-    linker   Linker
-    F_encode atm.CallHandle
+type (
+	LinkerAMD64 struct{}
 )
 
 func init() {
-    F_encode = atm.RegisterGCall(encode, emu_gcall_encode)
+    SetLinker(new(LinkerAMD64))
 }
 
-func Link(p atm.Program) Encoder {
-    if linker == nil {
-        return link_emu(p)
-    } else {
-        return linker.Link(p)
-    }
-}
-
-func SetLinker(v Linker) {
-    linker = v
+func (LinkerAMD64) Link(p atm.Program) Encoder {
+    cc := atm.CreateCodeGen((Encoder)(nil))
+    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("encoder", cc.Frame())
+    return *(*Encoder)(unsafe.Pointer(&fp))
 }

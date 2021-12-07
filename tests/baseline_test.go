@@ -41,7 +41,7 @@ func dumpval(v interface{}) {
     c.Dump(v)
 }
 
-func TestMarshalEmulator(t *testing.T) {
+func TestMarshal(t *testing.T) {
     var m iovec.SimpleIoVec
     var v baseline.Nesting2
     rand.Seed(time.Now().UnixNano())
@@ -50,6 +50,19 @@ func TestMarshalEmulator(t *testing.T) {
     require.NoError(t, err)
     spew.Dump(m.Bytes())
     dumpval(v)
+}
+
+func TestMarshalBaseline(t *testing.T) {
+    var m iovec.SimpleIoVec
+    var v baseline.Nesting2
+    buf, err := ioutil.ReadFile("testdata/object.bin")
+    require.NoError(t, err)
+    mm := thrift.NewTMemoryBuffer()
+    _, err = mm.Write(buf)
+    require.NoError(t, err)
+    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(t, err)
+    _ = frugal.EncodeObject(&m, v)
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {
@@ -69,7 +82,7 @@ func BenchmarkMarshalVanilla(b *testing.B) {
     }
 }
 
-func BenchmarkMarshalEmulator(b *testing.B) {
+func BenchmarkMarshalFrugal(b *testing.B) {
     var m iovec.SimpleIoVec
     var v baseline.Nesting2
     buf, err := ioutil.ReadFile("testdata/object.bin")

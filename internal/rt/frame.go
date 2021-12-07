@@ -14,33 +14,11 @@
  * limitations under the License.
  */
 
-package encoder
+package rt
 
-import (
-    `github.com/cloudwego/frugal/internal/atm`
-)
-
-type Linker interface {
-    Link(p atm.Program) Encoder
-}
-
-var (
-    linker   Linker
-    F_encode atm.CallHandle
-)
-
-func init() {
-    F_encode = atm.RegisterGCall(encode, emu_gcall_encode)
-}
-
-func Link(p atm.Program) Encoder {
-    if linker == nil {
-        return link_emu(p)
-    } else {
-        return linker.Link(p)
-    }
-}
-
-func SetLinker(v Linker) {
-    linker = v
+type Frame struct {
+    Size      int
+    ArgSize   int
+    ArgPtrs   *StackMap
+    LocalPtrs *StackMap
 }

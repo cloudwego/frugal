@@ -43,15 +43,6 @@ const (
     XMM15 = x86_64.XMM15
 )
 
-const (
-    NA x86_64.Register64 = 0xff
-)
-
-var defaultRegs = [11]x86_64.Register64 {
-    NA, NA, NA, NA, NA, NA,
-    NA, NA, NA, NA, NA,
-}
-
 var allocationOrder = [11]x86_64.Register64 {
     R12, R13, R14, R15, RBX,    // reserved registers first
     R10, R11,                   // then scratch registers

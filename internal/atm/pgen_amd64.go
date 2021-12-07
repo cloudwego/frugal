@@ -72,7 +72,7 @@ type _DeferBlock struct {
 type _RegSeq []Register
 func (self _RegSeq) Len() int               { return len(self) }
 func (self _RegSeq) Swap(i int, j int)      { self[i], self[j] = self[j], self[i] }
-func (self _RegSeq) Less(i int, j int) bool { return self[i].P() < self[j].P() }
+func (self _RegSeq) Less(i int, j int) bool { return self[i].A() < self[j].A() }
 
 /** Frame Structure of the Generated Function
  *
@@ -162,22 +162,22 @@ func (self *_FrameInfo) require(n uintptr) {
     }
 }
 
-func (self *_FrameInfo) StackMap() (*rt.StackMap, *rt.StackMap) {
-    mb := rt.StackMapBuilder{}
-    am := self.desc.StackMap()
+func (self *_FrameInfo) ArgPtrs() *rt.StackMap {
+    return self.desc.StackMap()
+}
 
-    /* reserved register slots */
-    for range self.regr {
-        mb.AddField(false)
+func (self *_FrameInfo) LocalPtrs() *rt.StackMap {
+    var v Register
+    var m rt.StackMapBuilder
+
+    /* register spill slots */
+    for _, v = range self.regs {
+        m.AddField(v.A() & ArgPointer != 0)
     }
 
-    /* register spill slots, in reverse order */
-    for i := len(self.regs) - 1; i >= 0; i-- {
-        mb.AddField(self.regs[i].A() & ArgPointer != 0)
-    }
-
-    /* build the stackmap */
-    return am, mb.Build()
+    /* preserved registers, and the frame pointer slot */
+    m.AddFields(len(self.regr) + 1, false)
+    return m.Build()
 }
 
 func newContext(proto interface{}) (ret _FrameInfo) {
@@ -202,21 +202,26 @@ type CodeGen struct {
     arch *x86_64.Arch
     stab []_SwitchTab
     defs []_DeferBlock
-    regs [11]x86_64.Register64
     jmps map[string]*x86_64.Label
+    regs map[Register]x86_64.Register64
 }
 
 func CreateCodeGen(proto interface{}) *CodeGen {
     return &CodeGen {
-        regs: defaultRegs,
         ctxt: newContext(proto),
         arch: x86_64.CreateArch(),
         jmps: make(map[string]*x86_64.Label),
+        regs: make(map[Register]x86_64.Register64),
     }
 }
 
-func (self *CodeGen) StackMap() (*rt.StackMap, *rt.StackMap) {
-    return self.ctxt.StackMap()
+func (self *CodeGen) Frame() rt.Frame {
+    return rt.Frame {
+        Size      : int(self.ctxt.size()),
+        ArgSize   : int(self.ctxt.save()),
+        ArgPtrs   : self.ctxt.ArgPtrs(),
+        LocalPtrs : self.ctxt.LocalPtrs(),
+    }
 }
 
 func (self *CodeGen) Generate(s Program) *x86_64.Program {
@@ -327,33 +332,19 @@ var _writeAllocs = [...]_Check {
 }
 
 func (self *CodeGen) rload(v *Instr, r Register) {
-    if i := r.P(); i >= 0 && self.regs[i] == NA {
+    if _, ok := self.regs[r]; !ok && !r.Z() {
         panic(fmt.Sprintf("pgen: access to unallocated register %s: %s", r.String(), v.disassemble(nil)))
     }
 }
 
 func (self *CodeGen) rstore(v *Instr, r Register) {
-    var i int
-    var d x86_64.Register64
-
-    /* no need to allocate for zero registers */
-    if i = r.P(); i < 0 {
-        return
+    if _, ok := self.regs[r]; !ok && !r.Z() {
+        if self.ctxt.ralloc(r); self.regi < len(allocationOrder) {
+            self.regi, self.regs[r] = self.regi + 1, allocationOrder[self.regi]
+        } else {
+            panic("pgen: program is too complex to translate on x86_64 (requiring too many registers): " + v.disassemble(nil))
+        }
     }
-
-    /* check for register allocation */
-    if d = self.regs[i]; d != NA {
-        return
-    }
-
-    /* check for allocation */
-    if self.ctxt.ralloc(r); self.regi >= len(allocationOrder) {
-        panic("pgen: program is too complex to translate on x86_64 (requiring too many registers): " + v.disassemble(nil))
-    }
-
-    /* allocate new registers */
-    d = allocationOrder[self.regi]
-    self.regi, self.regs[i] = self.regi + 1, d
 }
 
 func (self *CodeGen) ldcall(v *Instr) {
@@ -390,18 +381,18 @@ func (self *CodeGen) walloc(v *Instr, p Operands) {
     }
 }
 
-func (self *CodeGen) isRegUsed(r x86_64.Register64) bool {
-    for _, v := range self.regs { if v == r { return true }}
-    return false
+func (self *CodeGen) rindex(r x86_64.Register64) Register {
+    for k, v := range self.regs { if v == r { return k } }
+    return nil
 }
 
 /** Generator Helpers **/
 
 func (self *CodeGen) r(reg Register) x86_64.Register64 {
-    if r := self.regs[reg.P()]; r == NA {
+    if rr, ok := self.regs[reg]; !ok {
         panic("pgen: access to unallocated register: " + reg.String())
     } else {
-        return r
+        return rr
     }
 }
 

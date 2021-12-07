@@ -95,7 +95,6 @@ const (
 func mallocgc(nb uintptr, vt *GoType, zero bool) unsafe.Pointer
 
 type StackMapBuilder struct {
-    n int
     b Bitmap
 }
 
@@ -111,11 +110,17 @@ func (self *StackMapBuilder) Build() (p *StackMap) {
 }
 
 func (self *StackMapBuilder) AddField(ptr bool) {
-    if !ptr {
-        self.n++
-    } else {
-        self.b.AppendMany(self.n, 0)
+    if ptr {
         self.b.Append(1)
-        self.n = 0
+    } else {
+        self.b.Append(0)
+    }
+}
+
+func (self *StackMapBuilder) AddFields(n int, ptr bool) {
+    if ptr {
+        self.b.AppendMany(n, 1)
+    } else {
+        self.b.AppendMany(n, 0)
     }
 }

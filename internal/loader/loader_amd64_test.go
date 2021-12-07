@@ -53,7 +53,7 @@ func TestLoader_Load(t *testing.T) {
     require.NoError(t, asm.Assemble(src))
     v0 := 0
     cc := asm.Code()
-    fp := Loader(cc).Load("test", 0, 0, nil, nil)
+    fp := Loader(cc).Load("test", rt.Frame{})
     (*(*func(*int))(unsafe.Pointer(&fp)))(&v0)
     pc := *(*uintptr)(fp)
     assert.Equal(t, 1234, v0)
@@ -110,7 +110,12 @@ func TestLoader_StackMap(t *testing.T) {
         ret`
     require.NoError(t, asm.Assemble(src))
     smb.AddField(true)
-    fp := Loader(asm.Code()).Load("test_with_stackmap", 24, 0, new(rt.StackMapBuilder).Build(), smb.Build())
+    fp := Loader(asm.Code()).Load("test_with_stackmap", rt.Frame {
+        Size      : 24,
+        ArgSize   : 0,
+        ArgPtrs   : new(rt.StackMapBuilder).Build(),
+        LocalPtrs : smb.Build(),
+    })
     println("enter function")
     (*(*func())(unsafe.Pointer(&fp)))()
     println("leave function")

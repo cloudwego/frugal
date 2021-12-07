@@ -20,6 +20,8 @@ package loader
 
 import (
     `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type _Func struct {
@@ -123,26 +125,26 @@ var findFuncTab = &_FindFuncBucket {
     idx: 1,
 }
 
-func registerFunction(name string, pc uintptr, fp int, alen int, size uintptr, argptrs uintptr, localptrs uintptr) {
+func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     minpc := pc
     maxpc := pc + size
     pctab := []byte{0}
 
     /* mark the entire section with the same FP */
-    pctab = append(pctab, encodeValue(fp)...)
+    pctab = append(pctab, encodeValue(frame.Size)...)
     pctab = append(pctab, encodeVariant(int(size))...)
 
     /* function entry */
     fn := _Func {
         entry     : pc,
         nameoff   : 1,
-        args      : int32(alen),
+        args      : int32(frame.ArgSize),
         pcsp      : 1,
         npcdata   : 2,
         nfuncdata : 2,
         cuOffset  : 1,
-        argptrs   : argptrs,
-        localptrs : localptrs,
+        argptrs   : frame.ArgPtrs.Pin(),
+        localptrs : frame.LocalPtrs.Pin(),
     }
 
     /* mark the entire function as a single line of code */

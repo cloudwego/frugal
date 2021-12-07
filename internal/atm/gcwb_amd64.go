@@ -56,11 +56,15 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s PointerRegister, d *x86
 
     /* write barrier wrapper */
     wbStoreFn := func(p *x86_64.Program) {
-        wbSetSrc  ()
-        wbSetSlot ()
-        p.MOVQ    (int64(F_gcWriteBarrier), RSI)
-        p.CALLQ   (RSI)
-        p.JMP     (rt)
+        wbSetSrc                ()
+        wbSetSlot               ()
+        self.abiSpillReserved   (p)
+        self.abiLoadReserved    (p)
+        p.MOVQ                  (int64(F_gcWriteBarrier), RSI)
+        p.CALLQ                 (RSI)
+        self.abiSaveReserved    (p)
+        self.abiRestoreReserved (p)
+        p.JMP                   (rt)
     }
 
     /* defer the call to the end of generated code */

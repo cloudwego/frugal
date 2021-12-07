@@ -55,9 +55,7 @@ func resolve(vt *rt.GoType) (Encoder, error) {
 }
 
 func compile(vt *rt.GoType) (interface{}, error) {
-    if Link == nil {
-        panic("no linker available for encoder")
-    } else if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
+    if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
         return nil, err
     } else {
         return Link(Translate(pp)), nil

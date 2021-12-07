@@ -51,6 +51,22 @@ func (self *CodeGen) abiLoadReserved(p *x86_64.Program) {
     }
 }
 
+func (self *CodeGen) abiSpillReserved(p *x86_64.Program) {
+    for rr := range self.ctxt.regr {
+        if lr := self.rindex(rr); lr != nil {
+            p.MOVQ(rr, self.ctxt.slot(lr))
+        }
+    }
+}
+
+func (self *CodeGen) abiRestoreReserved(p *x86_64.Program) {
+    for rr := range self.ctxt.regr {
+        if lr := self.rindex(rr); lr != nil {
+            p.MOVQ(self.ctxt.slot(lr), rr)
+        }
+    }
+}
+
 /** Argument & Return Value Management **/
 
 func (self *CodeGen) abiLoadInt(p *x86_64.Program, i int, d GenericRegister) {
@@ -77,8 +93,8 @@ func (self *CodeGen) abiStorePtr(p *x86_64.Program, s PointerRegister, i int) {
 //        after this is under our control, so it should be fine. This should be
 //        fixed once SSA backend is ready.
 func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
+    var r Register
     var m Parameter
-    var r *x86_64.Register64
 
     /* if return with stack, store directly */
     if m = self.ctxt.desc.Rets[i]; !m.InRegister {
@@ -91,23 +107,15 @@ func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
         return
     }
 
-    /* search for register allocation */
-    for n, v := range self.regs {
-        if v == m.Reg {
-            r = &self.regs[n]
-            break
-        }
-    }
-
     /* if return with free registers, simply overwrite with new value */
-    if r == nil {
+    if r = self.rindex(m.Reg); r == nil {
         p.MOVQ(self.r(s), m.Reg)
         return
     }
 
     /* if not, swap the register allocation to meet the requirement */
     p.XCHGQ(self.r(s), m.Reg)
-    self.regs[s.P()], *r = *r, self.regs[s.P()]
+    self.regs[s], self.regs[r] = self.regs[r], self.regs[s]
 }
 
 /** Function & Method Call **/
@@ -184,7 +192,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
         rd := argumentOrder[i]
 
         /* check for zero source and spilled arguments */
-        if rr.P() == -1 {
+        if rr.Z() {
             p.XORL(x86_64.Register32(rd), x86_64.Register32(rd))
         } else if rs := self.r(rr); argumentRegisters[rs] {
             p.MOVQ(self.ctxt.slot(rr), rd)
@@ -199,7 +207,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
 
     /* store the result */
     if v.Rn != 0 {
-        if rv = ri2reg(v.Rr[0]); rv.P() != -1 {
+        if rv = ri2reg(v.Rr[0]); !rv.Z() {
             p.MOVQ(RAX, self.r(rv))
         }
     }
@@ -219,31 +227,33 @@ func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *Instr) {
     })
 }
 
-func (self *CodeGen) internalSetArg(p *x86_64.Program, ri uint8, arg Parameter) {
+func (self *CodeGen) internalSetArg(p *x86_64.Program, ri uint8, arg Parameter, clobberSet map[x86_64.Register64]bool) {
     if !checkptr(ri, arg) {
         panic("internalSetArg: passing arguments in different kind of registers")
     } else if !arg.InRegister {
         self.internalSetStack(p, ri2reg(ri), arg)
     } else {
-        self.internalSetRegister(p, ri2reg(ri), arg)
+        self.internalSetRegister(p, ri2reg(ri), arg, clobberSet)
     }
 }
 
 func (self *CodeGen) internalSetStack(p *x86_64.Program, rr Register, arg Parameter) {
-    if rr.P() == -1 {
+    if rr.Z() {
         p.MOVQ(0, Ptr(RSP, int32(arg.Mem)))
     } else {
         p.MOVQ(self.r(rr), Ptr(RSP, int32(arg.Mem)))
     }
 }
 
-func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr Register, arg Parameter) {
-    if rr.P() == -1 {
+func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr Register, arg Parameter, clobberSet map[x86_64.Register64]bool) {
+    if rr.Z() {
         p.XORL(x86_64.Register32(arg.Reg), x86_64.Register32(arg.Reg))
-    } else if self.isRegUsed(arg.Reg) {
+    } else if lr := self.r(rr); clobberSet[lr] {
+        p.MOVQ(self.ctxt.slot(rr), arg.Reg)
+    } else if clobberSet[arg.Reg] = true; self.rindex(arg.Reg) != nil {
         p.MOVQ(self.ctxt.slot(rr), arg.Reg)
     } else {
-        p.MOVQ(self.r(rr), arg.Reg)
+        p.MOVQ(lr, arg.Reg)
     }
 }
 
@@ -252,6 +262,7 @@ func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Regi
     fp := invokeTab[v.Iv]
     fn := ABI.FnTab[fp.Id]
     rm := make(map[Register]int32)
+    cs := make(map[x86_64.Register64]bool)
 
     /* find the function */
     if fn == nil {
@@ -276,9 +287,9 @@ func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Regi
     /* load all the arguments */
     for i, vv := range fn.Args {
         if i == 0 && this != nil {
-            self.internalSetArg(p, this.A(), vv)
+            self.internalSetArg(p, this.A(), vv, cs)
         } else {
-            self.internalSetArg(p, v.Ar[i - ac], vv)
+            self.internalSetArg(p, v.Ar[i - ac], vv, cs)
         }
     }
 
@@ -289,10 +300,10 @@ func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Regi
 
     /* if the function returns a value with a used register, spill it on stack */
     for i, retv := range fn.Rets {
-        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
+        if rr := ri2reg(v.Rr[i]); !rr.Z() {
             if !retv.InRegister {
                 rm[rr] = int32(retv.Mem)
-            } else if self.isRegUsed(retv.Reg) {
+            } else if self.rindex(retv.Reg) != nil {
                 p.MOVQ(retv.Reg, self.ctxt.slot(rr))
             }
         }
@@ -300,8 +311,8 @@ func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *Instr, this Regi
 
     /* save all the non-spilled arguments */
     for i, retv := range fn.Rets {
-        if rr := ri2reg(v.Rr[i]); rr.P() != -1 {
-            if retv.InRegister && !self.isRegUsed(retv.Reg) {
+        if rr := ri2reg(v.Rr[i]); !rr.Z() {
+            if retv.InRegister && self.rindex(retv.Reg) == nil {
                 rm[rr] = -1
                 p.MOVQ(retv.Reg, self.r(rr))
             }

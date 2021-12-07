@@ -34,7 +34,7 @@ const (
 type Loader   []byte
 type Function unsafe.Pointer
 
-func ptr(m uintptr) unsafe.Pointer {
+func mkptr(m uintptr) unsafe.Pointer {
     return *(*unsafe.Pointer)(unsafe.Pointer(&m))
 }
 
@@ -42,7 +42,7 @@ func alignUp(n uintptr, a int) uintptr {
     return (n + uintptr(a) - 1) &^ (uintptr(a) - 1)
 }
 
-func (self Loader) Load(fn string, fp int, args int, argptrs *rt.StackMap, localptrs *rt.StackMap) (f Function) {
+func (self Loader) Load(fn string, frame rt.Frame) (f Function) {
     var mm uintptr
     var er syscall.Errno
 
@@ -56,8 +56,8 @@ func (self Loader) Load(fn string, fp int, args int, argptrs *rt.StackMap, local
     }
 
     /* copy code into the memory, and register the function */
-    copy(rt.BytesFrom(ptr(mm), len(self), int(nb)), self)
-    registerFunction(fmt.Sprintf("(frugal).%s_%x", fn, mm), mm, fp, args, nf, argptrs.Pin(), localptrs.Pin())
+    copy(rt.BytesFrom(mkptr(mm), len(self), int(nb)), self)
+    registerFunction(fmt.Sprintf("(frugal).%s_%x", fn, mm), mm, nf, frame)
 
     /* make it executable */
     if _, _, err := syscall.Syscall(syscall.SYS_MPROTECT, mm, nb, _RX); err != 0 {

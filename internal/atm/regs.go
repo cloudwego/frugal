@@ -22,7 +22,7 @@ import (
 
 type Register interface {
     fmt.Stringer
-    P() int
+    Z() bool
     A() uint8
 }
 
@@ -75,21 +75,8 @@ var _PR_Names = [...]string {
     Pn: "nil",
 }
 
-func (self GenericRegister) P() int {
-    if self == Rz {
-        return -1
-    } else {
-        return int(self)
-    }
-}
-
-func (self PointerRegister) P() int {
-    if self == Pn {
-        return -1
-    } else {
-        return int(self) + 5
-    }
-}
+func (self GenericRegister) Z() bool { return self == Rz }
+func (self PointerRegister) Z() bool { return self == Pn }
 
 func (self GenericRegister) A() uint8 { return uint8(self) | ArgGeneric }
 func (self PointerRegister) A() uint8 { return uint8(self) | ArgPointer }

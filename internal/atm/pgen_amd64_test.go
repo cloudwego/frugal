@@ -26,6 +26,7 @@ import (
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/loader`
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/davecgh/go-spew/spew`
     `golang.org/x/arch/x86/x86asm`
 )
 
@@ -135,11 +136,13 @@ type ifacetest interface {
 
 type ifacetesttype int
 func (self ifacetesttype) Foo(v int) int {
+    runtime.GC()
     println("iface Foo(), self is", self, ", v is", v)
     return int(self) + v
 }
 
 func gcalltestfn(a int) (int, int, int) {
+    runtime.GC()
     println("a is", a)
     return a + 100, a + 200, a + 300
 }
@@ -154,7 +157,7 @@ func mkccalltestfn() unsafe.Pointer {
     if err != nil {
         panic(err)
     }
-    p := loader.Loader(asm.Code()).Load("_ccalltestfn", 0, 0, nil, nil)
+    p := loader.Loader(asm.Code()).Load("_ccalltestfn", rt.Frame{})
     return *(*unsafe.Pointer)(p)
 }
 
@@ -182,9 +185,9 @@ func TestPGen_FunctionCall(t *testing.T) {
     p.HALT()
     g := CreateCodeGen((func(int) (int, int, int))(nil))
     b := g.Generate(p.Build())
-    a, l := g.StackMap()
+    spew.Dump(g.Frame())
     r := b.Assemble(0)
-    v := loader.Loader(r).Load("_test_gcall", 0, 24, a, l)
+    v := loader.Loader(r).Load("_test_gcall", g.Frame())
     disasm(*(*uintptr)(v), r)
     f := *(*func(int) (int, int, int))(unsafe.Pointer(&v))
     x, y, z := f(123)
