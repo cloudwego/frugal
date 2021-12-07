@@ -99,6 +99,7 @@ func BenchmarkMarshalKitexFast(b *testing.B) {
     b.ResetTimer()
     buf := make([]byte, v.BLength())
     for i := 0; i < b.N; i++ {
+        v.BLength()
         _ = v.FastWriteNocopy(buf, nil)
     }
 }
