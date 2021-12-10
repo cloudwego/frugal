@@ -3,7 +3,7 @@ module github.com/cloudwego/frugal
 go 1.15
 
 require (
-	github.com/chenzhuoyu/iasm v0.0.0-20211206121418-f6666edfd2d3
+	github.com/chenzhuoyu/iasm v0.0.0-20211210100842-dc510f40f4fd
 	github.com/davecgh/go-spew v1.1.1
 	github.com/oleiade/lane v1.0.1
 	github.com/stretchr/testify v1.7.0

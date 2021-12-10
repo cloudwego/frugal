@@ -975,7 +975,7 @@ func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *Instr) {
     /* switch on v.Rx */
     p.CMPQ   (nsw, self.r(v.Rx))
     p.JAE    (def)
-    p.LEAQ   (buf.ref, RAX)
+    p.LEAQ   (x86_64.Ref(buf.ref), RAX)
     p.MOVSLQ (Sib(RAX, self.r(v.Rx), 4, 0), RSI)
     p.ADDQ   (RSI, RAX)
     p.JMPQ   (RAX)

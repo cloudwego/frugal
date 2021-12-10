@@ -17,31 +17,22 @@
 package decoder
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/utils`
+    `github.com/cloudwego/frugal/internal/loader`
 )
 
-type Linker interface {
-    Link(p atm.Program) Decoder
-}
-
-var (
-    linker   Linker
-    F_decode atm.CallHandle
+type (
+    LinkerAMD64 struct{}
 )
 
 func init() {
-    F_decode = atm.RegisterGCall(decode, emu_gcall_decode)
+    SetLinker(new(LinkerAMD64))
 }
 
-func Link(p atm.Program) Decoder {
-    if linker == nil || utils.ForceEmulator {
-        return link_emu(p)
-    } else {
-        return linker.Link(p)
-    }
-}
-
-func SetLinker(v Linker) {
-    linker = v
+func (LinkerAMD64) Link(p atm.Program) Decoder {
+    cc := atm.CreateCodeGen((Decoder)(nil))
+    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("decoder", cc.Frame())
+    return *(*Decoder)(unsafe.Pointer(&fp))
 }

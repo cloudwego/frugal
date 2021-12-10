@@ -64,7 +64,7 @@ func TestMarshal(t *testing.T) {
     dumpval(v)
 }
 
-func TestMarshalBaseline(t *testing.T) {
+func TestMarshalUnmarshal(t *testing.T) {
     var v vanilla_baseline.Nesting2
     loaddata(t, &v)
     nb := frugal.EncodedSize(v)
