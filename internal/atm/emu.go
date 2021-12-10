@@ -101,7 +101,10 @@ func (self *Emulator) Run() {
             case OP_blt   : if int64(self.Gr[p.Rx]) <  int64(self.Gr[p.Ry]) { self.PC = p.Br }
             case OP_bltu  : if       self.Gr[p.Rx]  <        self.Gr[p.Ry]  { self.PC = p.Br }
             case OP_bgeu  : if       self.Gr[p.Rx]  >=       self.Gr[p.Ry]  { self.PC = p.Br }
+            case OP_beqn  : if       self.Pr[p.Ps]  ==                 nil  { self.PC = p.Br }
+            case OP_bnen  : if       self.Pr[p.Ps]  !=                 nil  { self.PC = p.Br }
             case OP_jal   : self.Pr[p.Pd], self.PC = unsafe.Pointer(self.PC), p.Br
+            case OP_bcopy : memmove(self.Pr[p.Pd], self.Pr[p.Ps], uintptr(self.Gr[p.Rx]))
             case OP_halt  : self.PC = nil
             case OP_break : self.trap()
 

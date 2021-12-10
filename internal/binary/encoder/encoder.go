@@ -17,30 +17,32 @@
 package encoder
 
 import (
-    `runtime`
+    `fmt`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
-    `github.com/cloudwego/frugal/iovec`
+    `github.com/cloudwego/frugal/iov`
 )
 
 type Encoder func (
-    iov iovec.IoVec,
+    buf unsafe.Pointer,
+    len int,
+    mem iov.BufferWriter,
     p   unsafe.Pointer,
     rs  *RuntimeState,
     st  int,
-) error
+) (int, error)
 
 var (
     programCache = utils.CreateProgramCache()
 )
 
-func encode(vt *rt.GoType, iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) error {
+func encode(vt *rt.GoType, buf unsafe.Pointer, len int, mem iov.BufferWriter, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
     if enc, err := resolve(vt); err != nil {
-        return err
+        return -1, err
     } else {
-        return enc(iov, p, rs, st)
+        return enc(buf, len, mem, p, rs, st)
     }
 }
 
@@ -62,19 +64,26 @@ func compile(vt *rt.GoType) (interface{}, error) {
     }
 }
 
-func EncodeObject(iov iovec.IoVec, val interface{}) (err error) {
-    efv := rt.UnpackEface(val)
+func EncodedSize(val interface{}) int {
+    if ret, err := EncodeObject(nil, nil, val); err != nil {
+        panic(fmt.Errorf("frugal: cannot measure encoded size: %w", err))
+    } else {
+        return ret
+    }
+}
+
+func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (ret int, err error) {
     rst := newRuntimeState()
+    out := (*rt.GoSlice)(unsafe.Pointer(&buf))
 
     /* check for indirect types */
-    if efv.Type.IsIndirect() {
-        err = encode(efv.Type, iov, efv.Value, rst, 0)
+    if efv := rt.UnpackEface(val); efv.Type.IsIndirect() {
+        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, efv.Value, rst, 0)
     } else {
-        err = encode(efv.Type, iov, unsafe.Pointer(&efv.Value), rst, 0)
+        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, unsafe.Pointer(&efv.Value), rst, 0)
     }
 
     /* return the state into pool */
     freeRuntimeState(rst)
-    runtime.KeepAlive(efv)
     return
 }

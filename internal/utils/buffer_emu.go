@@ -21,10 +21,10 @@ import (
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
-    `github.com/cloudwego/frugal/iovec`
+    `github.com/cloudwego/frugal/iov`
 )
 
-func emu_iovec(ctx atm.CallContext) (v iovec.IoVec) {
+func emu_wbuf(ctx atm.CallContext) (v iov.BufferWriter) {
     (*rt.GoIface)(unsafe.Pointer(&v)).Itab = ctx.Itab()
     (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Data()
     return
@@ -34,32 +34,16 @@ func emu_bytes(ctx atm.CallContext, i int) (v []byte) {
     return rt.BytesFrom(ctx.Ap(i), int(ctx.Au(i + 1)), int(ctx.Au(i + 2)))
 }
 
-func emu_setbytes(ctx atm.CallContext, v []byte) {
-    ctx.Rp(0, (*rt.GoSlice)(unsafe.Pointer(&v)).Ptr)
-    ctx.Ru(1, uint64((*rt.GoSlice)(unsafe.Pointer(&v)).Len))
-    ctx.Ru(2, uint64((*rt.GoSlice)(unsafe.Pointer(&v)).Cap))
+func emu_seterr(ctx atm.CallContext, err error) {
+    vv := (*rt.GoIface)(unsafe.Pointer(&err))
+    ctx.Rp(0, unsafe.Pointer(vv.Itab))
+    ctx.Rp(1, vv.Value)
 }
 
-func emu_icall_IoVecPut(ctx atm.CallContext) {
-    if !ctx.Verify("*ii", "") {
-        panic("invalid IoVecPut call")
+func emu_icall_ZeroCopyWriter_WriteDirect(ctx atm.CallContext) {
+    if !ctx.Verify("*iii", "**") {
+        panic("invalid ZeroCopyWriter.WriteDirect call")
     } else {
-        emu_iovec(ctx).Put(emu_bytes(ctx, 0))
-    }
-}
-
-func emu_icall_IoVecCat(ctx atm.CallContext) {
-    if !ctx.Verify("*ii*ii", "") {
-        panic("invalid IoVecCat call")
-    } else {
-        emu_iovec(ctx).Cat(emu_bytes(ctx, 0), emu_bytes(ctx, 3))
-    }
-}
-
-func emu_icall_IoVecAdd(ctx atm.CallContext) {
-    if !ctx.Verify("i*ii", "*ii") {
-        panic("invalid IoVecAdd call")
-    } else {
-        emu_setbytes(ctx, emu_iovec(ctx).Add(int(ctx.Au(0)), emu_bytes(ctx, 1)))
+        emu_seterr(ctx, emu_wbuf(ctx).WriteDirect(emu_bytes(ctx, 0), int(ctx.Au(3))))
     }
 }

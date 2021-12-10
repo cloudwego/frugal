@@ -25,7 +25,6 @@ import (
 
     `github.com/apache/thrift/lib/go/thrift`
     `github.com/cloudwego/frugal`
-    `github.com/cloudwego/frugal/iovec`
     vanilla_basline `github.com/cloudwego/frugal/testdata/baseline`
     kitex_baseline `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
@@ -54,21 +53,25 @@ func loaddata(t require.TestingT, v thrift.TStruct) int {
 }
 
 func TestMarshal(t *testing.T) {
-    var m iovec.SimpleIoVec
     var v vanilla_basline.Nesting2
     rand.Seed(time.Now().UnixNano())
     GenValue(&v)
-    err := frugal.EncodeObject(&m, v)
+    nb := frugal.EncodedSize(v)
+    buf := make([]byte, nb)
+    _, err := frugal.EncodeObject(buf, nil, v)
     require.NoError(t, err)
-    spew.Dump(m.Bytes())
+    spew.Dump(buf)
     dumpval(v)
 }
 
 func TestMarshalBaseline(t *testing.T) {
-    var m iovec.SimpleIoVec
     var v vanilla_basline.Nesting2
     loaddata(t, &v)
-    _ = frugal.EncodeObject(&m, v)
+    nb := frugal.EncodedSize(v)
+    println("Estimated Size:", nb)
+    buf := make([]byte, nb)
+    _, err := frugal.EncodeObject(buf, nil, v)
+    require.NoError(t, err)
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {
@@ -83,13 +86,13 @@ func BenchmarkMarshalVanilla(b *testing.B) {
 }
 
 func BenchmarkMarshalFrugal(b *testing.B) {
-    var m iovec.SimpleIoVec
     var v vanilla_basline.Nesting2
     b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
+    buf := make([]byte, frugal.EncodedSize(v))
     for i := 0; i < b.N; i++ {
-        m.Reset()
-        _ = frugal.EncodeObject(&m, v)
+        frugal.EncodedSize(v)
+        _, _ = frugal.EncodeObject(buf, nil, v)
     }
 }
 

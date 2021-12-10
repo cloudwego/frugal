@@ -14,19 +14,13 @@
  * limitations under the License.
  */
 
-package frugal
+package atm
 
 import (
-    `github.com/cloudwego/frugal/internal/binary/encoder`
-    `github.com/cloudwego/frugal/iov`
+    `unsafe`
 )
 
-// EncodedSize measures the encoded size of val.
-func EncodedSize(val interface{}) int {
-    return encoder.EncodedSize(val)
-}
-
-// EncodeObject serializes val into buf with Thrift Binary Protocol.
-func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (int, error) {
-    return encoder.EncodeObject(buf, mem, val)
-}
+//go:noescape
+//go:linkname memmove runtime.memmove
+//goland:noinspection GoUnusedParameter
+func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)

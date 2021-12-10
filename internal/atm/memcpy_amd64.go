@@ -14,28 +14,5 @@
  * limitations under the License.
  */
 
-package iovec
+package atm
 
-import (
-    `bytes`
-)
-
-// SimpleIoVec provides a very basic implementation of IoVec using bytes.Buffer.
-type SimpleIoVec struct {
-    bytes.Buffer
-}
-
-func (self *SimpleIoVec) Put(v []byte) {
-    _, _ = self.Write(v)
-}
-
-func (self *SimpleIoVec) Cat(v []byte, w []byte) {
-    self.Put(v)
-    self.Put(w)
-}
-
-func (self *SimpleIoVec) Add(n int, v []byte) []byte {
-    self.Put(v)
-    self.Grow(n)
-    return self.Bytes()[self.Len():]
-}

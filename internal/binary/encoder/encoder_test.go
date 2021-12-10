@@ -21,7 +21,6 @@ import (
     `encoding/base64`
     `testing`
 
-    `github.com/cloudwego/frugal/iovec`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
@@ -44,11 +43,14 @@ func TestEncoder_Encode(t *testing.T) {
             },
         },
     }
-    iov := new(iovec.SimpleIoVec)
-    err := EncodeObject(iov, v)
+    nb := EncodedSize(v)
+    println("Estimated Size:", nb)
+    buf := make([]byte, nb)
+    ret, err := EncodeObject(buf, nil, v)
     require.NoError(t, err)
-    spew.Dump(iov.Bytes())
+    buf = buf[:ret]
+    spew.Dump(buf)
     mm := bytes.NewBufferString("\x80\x01\x00\x01\x00\x00\x00\x01a\x00\x00\x00\x00")
-    mm.Write(iov.Bytes())
+    mm.Write(buf)
     println("Base64 Encoded Message:", base64.StdEncoding.EncodeToString(mm.Bytes()))
 }

@@ -354,8 +354,20 @@ func (self *Builder) BSW(rx GenericRegister, sw []string) *Instr {
     return self.tab(newInstr(OP_bsw).rx(rx), sw)
 }
 
+func (self *Builder) BEQN(ps PointerRegister, to string) *Instr {
+    return self.jmp(newInstr(OP_beqn).ps(ps), to)
+}
+
+func (self *Builder) BNEN(ps PointerRegister, to string) *Instr {
+    return self.jmp(newInstr(OP_bnen).ps(ps), to)
+}
+
 func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
+}
+
+func (self *Builder) BCOPY(ps PointerRegister, rx GenericRegister, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_bcopy).ps(ps).rx(rx).pd(pd))
 }
 
 func (self *Builder) CCALL(fn CallHandle) *Instr {

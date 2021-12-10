@@ -42,10 +42,10 @@ func freeProgram(p Program) {
 }
 
 func newCompiler() Compiler {
-    if v := compilerPool.Get(); v == nil {
-        return make(Compiler)
+    if v := compilerPool.Get(); v != nil {
+        return v.(Compiler)
     } else {
-        return resetCompiler(v.(Compiler))
+        return make(Compiler)
     }
 }
 

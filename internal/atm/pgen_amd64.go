@@ -478,7 +478,10 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *Instr) {
     OP_bltu  : (*CodeGen).translate_OP_bltu,
     OP_bgeu  : (*CodeGen).translate_OP_bgeu,
     OP_bsw   : (*CodeGen).translate_OP_bsw,
+    OP_beqn  : (*CodeGen).translate_OP_beqn,
+    OP_bnen  : (*CodeGen).translate_OP_bnen,
     OP_jal   : (*CodeGen).translate_OP_jal,
+    OP_bcopy : (*CodeGen).translate_OP_bcopy,
     OP_ccall : (*CodeGen).translate_OP_ccall,
     OP_gcall : (*CodeGen).translate_OP_gcall,
     OP_icall : (*CodeGen).translate_OP_icall,
@@ -955,12 +958,32 @@ func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *Instr) {
     p.Link   (def)
 }
 
+func (self *CodeGen) translate_OP_beqn(p *x86_64.Program, v *Instr) {
+    if v.Ps == Pn {
+        p.JMP(self.to(v.Br))
+    } else {
+        p.TESTQ(self.r(v.Ps), self.r(v.Ps))
+        p.JZ(self.to(v.Br))
+    }
+}
+
+func (self *CodeGen) translate_OP_bnen(p *x86_64.Program, v *Instr) {
+    if v.Ps != Pn {
+        p.TESTQ(self.r(v.Ps), self.r(v.Ps))
+        p.JNZ(self.to(v.Br))
+    }
+}
+
 func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {
     if v.Pd == Pn {
         p.JMP(self.to(v.Br))
     } else {
         panic("jal: link-based sub-routine call is not implemented for x86_64")
     }
+}
+
+func (self *CodeGen) translate_OP_bcopy(p *x86_64.Program, v *Instr) {
+    // todo: block copy
 }
 
 func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *Instr) {

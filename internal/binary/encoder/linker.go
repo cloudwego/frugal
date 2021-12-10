@@ -18,6 +18,7 @@ package encoder
 
 import (
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 type Linker interface {
@@ -34,7 +35,7 @@ func init() {
 }
 
 func Link(p atm.Program) Encoder {
-    if linker == nil {
+    if linker == nil || utils.ForceEmulator {
         return link_emu(p)
     } else {
         return linker.Link(p)

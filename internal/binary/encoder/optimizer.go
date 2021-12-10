@@ -34,7 +34,12 @@ var (
 )
 
 var _PassTab = [...]func(p Program) Program {
-    _PASS_SizeMerging,
+    _PASS_StaticSizeMerging,
+    _PASS_Compacting,
+    _PASS_SeekMerging,
+    _PASS_ZeroSeekElimination,
+    _PASS_Compacting,
+    _PASS_SizeCheckMerging,
     _PASS_Compacting,
     _PASS_LiteralMerging,
     _PASS_Compacting,
@@ -112,14 +117,14 @@ func _PASS_Compacting(p Program) Program {
 
     /* scan for PC adjustments */
     for _, v := range p {
-        if v.Op() == _OP_adjpc { n += v.To() }
+        if v.Op == _OP_adjpc { n += int(v.Iv) }
         a = append(a, n)
     }
 
     /* adjust branch offsets */
     for i < len(p) {
         iv := p[i]
-        op := iv.Op()
+        op := iv.Op
 
         /* skip the PC adjustment */
         if op == _OP_adjpc {
@@ -129,7 +134,7 @@ func _PASS_Compacting(p Program) Program {
 
         /* copy instructions and adjust branch targets */
         if p[j] = p[i]; _OpBranches[op] {
-            p[j] = mkins(op, iv.To() + a[iv.To()], iv.Iv(), nil)
+            p[j].To = iv.To + a[iv.To]
         }
 
         /* move forward */
@@ -142,18 +147,18 @@ func _PASS_Compacting(p Program) Program {
     return p[:j]
 }
 
-// Size Merging Pass: merges size-checking instructions as much as possible.
-func _PASS_SizeMerging(p Program) Program {
+// Size Check Merging Pass: merges size-checking instructions as much as possible.
+func _PASS_SizeCheckMerging(p Program) Program {
     i := 0
     n := len(p)
 
     /* scan every instruction */
     for i < n {
         iv := p[i]
-        op := iv.Op()
+        op := iv.Op
 
         /* only interested in size instructions */
-        if op != OP_size {
+        if op != OP_size_check {
             i++
             continue
         }
@@ -165,29 +170,35 @@ func _PASS_SizeMerging(p Program) Program {
         /* scan for mergable size instructions */
         loop: for i < n {
             iv = p[i]
-            op = iv.Op()
+            op = iv.Op
 
             /* check for mergable instructions */
             switch op {
-                default      : break loop
-                case OP_byte : break
-                case OP_word : break
-                case OP_long : break
-                case OP_quad : break
-                case OP_sint : break
-                case OP_seek : break
-                case OP_size : nb += iv.Iv()
+                default            : break loop
+                case OP_byte       : break
+                case OP_word       : break
+                case OP_long       : break
+                case OP_quad       : break
+                case OP_sint       : break
+                case OP_seek       : break
+                case OP_size_check : nb += iv.Iv
             }
 
             /* adjust the program counter */
-            if i++; op == OP_size {
-                p[i - 1] = mkins(_OP_adjpc, -1, 0, nil)
+            if i++; op == OP_size_check {
+                p[i - 1] = Instr {
+                    Iv: -1,
+                    Op: _OP_adjpc,
+                }
             }
         }
 
         /* replace the size instruction */
         if i != ip {
-            p[ip] = mkins(OP_size, 0, nb, nil)
+            p[ip] = Instr {
+                Iv: nb,
+                Op: OP_size_check,
+            }
         }
     }
 
@@ -203,10 +214,10 @@ func _PASS_LiteralMerging(p Program) Program {
     /* scan every instruction */
     for i < n {
         iv := p[i]
-        op := iv.Op()
+        op := iv.Op
 
         /* only interested in literal instructions */
-        if op > OP_quad {
+        if op < OP_byte || op > OP_quad {
             i++
             continue
         }
@@ -219,24 +230,24 @@ func _PASS_LiteralMerging(p Program) Program {
         /* scan for consecutive bytes */
         loop: for i < n {
             iv = p[i]
-            op = iv.Op()
+            op = iv.Op
 
             /* check for OpCode */
             switch op {
                 default      : break loop
-                case OP_byte : append1(&sl, byte(iv.Iv()))
-                case OP_word : append2(&sl, uint16(iv.Iv()))
-                case OP_long : append4(&sl, uint32(iv.Iv()))
-                case OP_quad : append8(&sl, uint64(iv.Iv()))
+                case OP_byte : append1(&sl, byte(iv.Iv))
+                case OP_word : append2(&sl, uint16(iv.Iv))
+                case OP_long : append4(&sl, uint32(iv.Iv))
+                case OP_quad : append8(&sl, uint64(iv.Iv))
             }
 
             /* adjust the program counter */
-            p[i] = mkins(_OP_adjpc, -1, 0, nil)
+            p[i] = Instr{Op: _OP_adjpc, Iv: -1}
             i++
 
             /* commit the buffer if needed */
             for len(sl) >= 8 {
-                p[ip] = mkins(OP_quad, 0, int64(binary.BigEndian.Uint64(sl)), nil)
+                p[ip] = Instr{Op: OP_quad, Iv: int64(binary.BigEndian.Uint64(sl))}
                 sl = sl[8:]
                 ip++
             }
@@ -247,9 +258,137 @@ func _PASS_LiteralMerging(p Program) Program {
         }
 
         /* add the remaining bytes */
-        if len(sl) >= 4 { p[ip] = mkins(OP_long, 0, int64(binary.BigEndian.Uint32(sl)), nil) ; sl = sl[4:]; ip++ }
-        if len(sl) >= 2 { p[ip] = mkins(OP_word, 0, int64(binary.BigEndian.Uint16(sl)), nil) ; sl = sl[2:]; ip++ }
-        if len(sl) >= 1 { p[ip] = mkins(OP_byte, 0, int64(sl[0]), nil)                       ; sl = sl[1:]; ip++ }
+        if len(sl) >= 4 { p[ip] = Instr{Op: OP_long, Iv: int64(binary.BigEndian.Uint32(sl))} ; sl = sl[4:]; ip++ }
+        if len(sl) >= 2 { p[ip] = Instr{Op: OP_word, Iv: int64(binary.BigEndian.Uint16(sl))} ; sl = sl[2:]; ip++ }
+        if len(sl) >= 1 { p[ip] = Instr{Op: OP_byte, Iv: int64(sl[0])}                       ; sl = sl[1:]; ip++ }
+    }
+
+    /* all done */
+    return p
+}
+
+// Static Size Merging Pass: merges constant size instructions as much as possible.
+func _PASS_StaticSizeMerging(p Program) Program {
+    i := 0
+    n := len(p)
+
+    /* scan every instruction */
+    for i < n {
+        iv := p[i]
+        op := iv.Op
+
+        /* only interested in size instructions */
+        if op != OP_size_const {
+            i++
+            continue
+        }
+
+        /* size accumulator */
+        ip := i
+        nb := int64(0)
+
+        /* scan for mergable size instructions */
+        loop: for i < n {
+            iv = p[i]
+            op = iv.Op
+
+            /* check for mergable instructions */
+            switch op {
+                default            : break loop
+                case OP_seek       : break
+                case OP_size_dyn   : break
+                case OP_size_const : nb += iv.Iv
+            }
+
+            /* adjust the program counter */
+            if i++; op == OP_size_const {
+                p[i - 1] = Instr {
+                    Iv: -1,
+                    Op: _OP_adjpc,
+                }
+            }
+        }
+
+        /* replace the size instruction */
+        if i != ip {
+            p[ip] = Instr {
+                Iv: nb,
+                Op: OP_size_const,
+            }
+        }
+    }
+
+    /* all done */
+    return p
+}
+
+// Seek Merging Pass: merges seeking instructions as much as possible.
+func _PASS_SeekMerging(p Program) Program {
+    i := 0
+    n := len(p)
+
+    /* scan every instruction */
+    for i < n {
+        iv := p[i]
+        op := iv.Op
+
+        /* only interested in size instructions */
+        if op != OP_seek {
+            i++
+            continue
+        }
+
+        /* size accumulator */
+        ip := i
+        nb := int64(0)
+
+        /* scan for mergable size instructions */
+        for i < n {
+            iv = p[i]
+            op = iv.Op
+
+            /* check for mergable instructions */
+            if op != OP_seek {
+                break
+            }
+
+            /* add up the offsets */
+            i++
+            nb += iv.Iv
+
+            /* adjust the program counter */
+            p[i - 1] = Instr {
+                Iv: -1,
+                Op: _OP_adjpc,
+            }
+        }
+
+        /* replace the size instruction */
+        if i != ip {
+            p[ip] = Instr {
+                Iv: nb,
+                Op: OP_seek,
+            }
+        }
+    }
+
+    /* all done */
+    return p
+}
+
+// Zero Seek Elimination Pass: remove seek instruction with zero offsets
+func _PASS_ZeroSeekElimination(p Program) Program {
+    var i int
+    var v Instr
+
+    /* replace every zero-offset seek with NOP */
+    for i, v = range p {
+        if v.Iv == 0 && v.Op == OP_seek {
+            p[i] = Instr {
+                Iv: -1,
+                Op: _OP_adjpc,
+            }
+        }
     }
 
     /* all done */

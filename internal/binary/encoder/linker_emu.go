@@ -21,43 +21,61 @@ import (
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/rt`
-    `github.com/cloudwego/frugal/iovec`
+    `github.com/cloudwego/frugal/iov`
 )
 
 func link_emu(prog atm.Program) Encoder {
-    return func(iov iovec.IoVec, p unsafe.Pointer, rs *RuntimeState, st int) (err error) {
+    return func(buf unsafe.Pointer, len int, mem iov.BufferWriter, p unsafe.Pointer, rs *RuntimeState, st int) (ret int, err error) {
         emu := atm.LoadProgram(prog)
-        ret := (*rt.GoIface)(unsafe.Pointer(&err))
-        iop := (*rt.GoIface)(unsafe.Pointer(&iov))
-        emu.Ap(0, unsafe.Pointer(iop.Itab))
-        emu.Ap(1, iop.Value)
-        emu.Ap(2, p)
-        emu.Ap(3, unsafe.Pointer(rs))
-        emu.Au(4, uint64(st))
+        exc := (*rt.GoIface)(unsafe.Pointer(&err))
+        iop := (*rt.GoIface)(unsafe.Pointer(&mem))
+        emu.Ap(0,buf)
+        emu.Au(1, uint64(len))
+        emu.Ap(2, unsafe.Pointer(iop.Itab))
+        emu.Ap(3, iop.Value)
+        emu.Ap(4, p)
+        emu.Ap(5, unsafe.Pointer(rs))
+        emu.Au(6, uint64(st))
         emu.Run()
-        ret.Itab = (*rt.GoItab)(emu.Rp(0))
-        ret.Value = emu.Rp(1)
+        ret = int(emu.Ru(0))
+        exc.Itab = (*rt.GoItab)(emu.Rp(1))
+        exc.Value = emu.Rp(2)
         emu.Free()
         return
     }
 }
 
-func emu_iovec(ctx atm.CallContext, i int) (v iovec.IoVec) {
+func emu_wbuf(ctx atm.CallContext, i int) (v iov.BufferWriter) {
     (*rt.GoIface)(unsafe.Pointer(&v)).Itab = (*rt.GoItab)(ctx.Ap(i))
     (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Ap(i + 1)
     return
 }
 
-func emu_seterr(ctx atm.CallContext, err error) {
-    vv := (*rt.GoIface)(unsafe.Pointer(&err))
-    ctx.Rp(0, unsafe.Pointer(vv.Itab))
-    ctx.Rp(1, vv.Value)
+func emu_setret(ctx atm.CallContext) func(int, error) {
+    return func(ret int, err error) {
+        vv := (*rt.GoIface)(unsafe.Pointer(&err))
+        ctx.Ru(0, uint64(ret))
+        ctx.Rp(1, unsafe.Pointer(vv.Itab))
+        ctx.Rp(2, vv.Value)
+    }
+}
+
+func emu_encode(ctx atm.CallContext) (int, error) {
+    return encode(
+        (*rt.GoType)(ctx.Ap(0)),
+        ctx.Ap(1),
+        int(ctx.Au(2)),
+        emu_wbuf(ctx, 3),
+        ctx.Ap(5),
+        (*RuntimeState)(ctx.Ap(6)),
+        int(ctx.Au(7)),
+    )
 }
 
 func emu_gcall_encode(ctx atm.CallContext) {
-    if !ctx.Verify("*****i", "**") {
+    if !ctx.Verify("**i****i", "i**") {
         panic("invalid encode call")
     } else {
-        emu_seterr(ctx, encode((*rt.GoType)(ctx.Ap(0)), emu_iovec(ctx, 1), ctx.Ap(3), (*RuntimeState)(ctx.Ap(4)), int(ctx.Au(5))))
+        emu_setret(ctx)(emu_encode(ctx))
     }
 }

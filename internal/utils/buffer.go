@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package frugal
+package utils
 
 import (
-    `github.com/cloudwego/frugal/internal/binary/encoder`
+    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-// EncodedSize measures the encoded size of val.
-func EncodedSize(val interface{}) int {
-    return encoder.EncodedSize(val)
-}
-
-// EncodeObject serializes val into buf with Thrift Binary Protocol.
-func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (int, error) {
-    return encoder.EncodeObject(buf, mem, val)
-}
+var FnWrite = atm.RegisterICall(
+    rt.GetMethod((*iov.BufferWriter)(nil), "WriteDirect"),
+    emu_icall_ZeroCopyWriter_WriteDirect,
+)

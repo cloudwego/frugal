@@ -23,16 +23,14 @@ import (
 )
 
 const (
-    LnSize    = 8
-    MiSize    = 8
-    WpSize    = 8
-    LnMiSize  = LnSize + MiSize
-    MiWpSize  = MiSize + WpSize
-    StateSize = LnSize + MiSize + WpSize
+    LnOffset = int64(unsafe.Offsetof(StateItem{}.Ln))
+    MiOffset = int64(unsafe.Offsetof(StateItem{}.Mi))
+    WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
 )
 
 const (
-    StateMax = (defs.MaxStack - 1) * StateSize
+    StateMax  = (defs.MaxStack - 1) * StateSize
+    StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
 // StateItem is the runtime state.

@@ -17,13 +17,7 @@
 package utils
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/rt`
-    `github.com/cloudwego/frugal/iovec`
+    `os`
 )
 
-var (
-    IoVecPut = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Put"), emu_icall_IoVecPut)
-    IoVecCat = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Cat"), emu_icall_IoVecCat)
-    IoVecAdd = atm.RegisterICall(rt.GetMethod((*iovec.IoVec)(nil), "Add"), emu_icall_IoVecAdd)
-)
+var ForceEmulator = os.Getenv("FRUGAL_BACKEND") == "emu"

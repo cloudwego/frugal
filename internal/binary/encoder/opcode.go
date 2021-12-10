@@ -23,16 +23,22 @@ import (
 type OpCode uint8
 
 const (
-    OP_byte OpCode = iota
+    OP_size_check OpCode = iota
+    OP_size_const
+    OP_size_dyn
+    OP_size_map
+    OP_size_defer
+    OP_byte
     OP_word
     OP_long
     OP_quad
-    OP_size
     OP_sint
-    OP_vstr
+    OP_length
+    OP_memcpy_be
     OP_seek
     OP_deref
     OP_defer
+    OP_map_len
     OP_map_end
     OP_map_key
     OP_map_next
@@ -44,22 +50,29 @@ const (
     OP_list_if_end
     OP_goto
     OP_if_nil
+    OP_if_hasbuf
     OP_make_state
     OP_drop_state
     OP_halt
 )
 
 var _OpNames = [256]string {
+    OP_size_check  : "size_check",
+    OP_size_const  : "size_const",
+    OP_size_dyn    : "size_dyn",
+    OP_size_map    : "size_map",
+    OP_size_defer  : "size_defer",
     OP_byte        : "byte",
     OP_word        : "word",
     OP_long        : "long",
-    OP_quad        : "long",
-    OP_size        : "size",
+    OP_quad        : "quad",
     OP_sint        : "sint",
-    OP_vstr        : "vstr",
+    OP_length      : "length",
+    OP_memcpy_be   : "memcpy_be",
     OP_seek        : "seek",
     OP_deref       : "deref",
     OP_defer       : "defer",
+    OP_map_len     : "map_len",
     OP_map_end     : "map_end",
     OP_map_key     : "map_key",
     OP_map_next    : "map_next",
@@ -71,16 +84,18 @@ var _OpNames = [256]string {
     OP_list_if_end : "list_if_end",
     OP_goto        : "goto",
     OP_if_nil      : "if_nil",
+    OP_if_hasbuf   : "if_hasbuf",
     OP_make_state  : "make_state",
     OP_drop_state  : "drop_state",
     OP_halt        : "halt",
 }
 
 var _OpBranches = [256]bool {
-    OP_goto        : true,
-    OP_if_nil      : true,
     OP_map_if_end  : true,
     OP_list_if_end : true,
+    OP_goto        : true,
+    OP_if_nil      : true,
+    OP_if_hasbuf   : true,
 }
 
 func (self OpCode) String() string {

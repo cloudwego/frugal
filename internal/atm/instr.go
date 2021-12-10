@@ -63,7 +63,10 @@ const (
     OP_bltu                 // if (u(Rx) <  u(Ry)) Br.PC -> PC
     OP_bgeu                 // if (u(Rx) >= u(Ry)) Br.PC -> PC
     OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
+    OP_beqn                 // if (Ps == nil) Br.PC -> PC
+    OP_bnen                 // if (Ps != nil) Br.PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
+    OP_bcopy                // memcpy(Ps, Rx, Pd)
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
     OP_icall                // call external Go iface methods
@@ -89,7 +92,7 @@ const (
 )
 
 var _OperandMask = [256]Operands {
-    OP_nop   : Octrl,              
+    OP_nop   : Octrl,
     OP_ip    : Opd,
     OP_lb    : Owx | Ops,
     OP_lw    : Owx | Ops,
@@ -124,7 +127,10 @@ var _OperandMask = [256]Operands {
     OP_bltu  : Orx | Ory,
     OP_bgeu  : Orx | Ory,
     OP_bsw   : Orx,
+    OP_beqn  : Ops,
+    OP_bnen  : Ops,
     OP_jal   : Opd,
+    OP_bcopy : Orx | Ops | Opd,
     OP_ccall : Ocall,
     OP_gcall : Ocall,
     OP_icall : Ocall,
@@ -191,7 +197,8 @@ func (self *Instr) isBranch() bool {
 }
 
 func (self *Instr) formatFunc() string {
-    return fmt.Sprintf("%s[*%p]", runtime.FuncForPC(uintptr(self.Pr)).Name(), self.Pr)
+    fp := invokeTab[self.Iv]
+    return fmt.Sprintf("%s[*%p]", runtime.FuncForPC(uintptr(fp.Func)).Name(), fp.Func)
 }
 
 func (self *Instr) formatCall() string {
@@ -292,7 +299,10 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
+        case OP_beqn  : return fmt.Sprintf("beq     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
+        case OP_bnen  : return fmt.Sprintf("bne     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", self.formatRefs(refs, self.Br), self.Pd)
+        case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCall())
         case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCall())
