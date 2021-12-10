@@ -43,10 +43,17 @@ const (
     XMM15 = x86_64.XMM15
 )
 
+var freeRegisters = map[x86_64.Register64]bool {
+    RAX: true,
+    RSI: true,
+    RDI: true,
+}
+
 var allocationOrder = [11]x86_64.Register64 {
-    R12, R13, R14, R15, RBX,    // reserved registers first
+    R12, R13, R14, R15,         // reserved registers first (except for RBX)
     R10, R11,                   // then scratch registers
     R9, R8, RCX, RDX,           // then argument registers in reverse order (RDI, RSI and RAX are always free)
+    RBX,                        // finally the RBX, we put RBX here to reduce collision with Go register ABI
 }
 
 func Ptr(base x86_64.Register, disp int32) *x86_64.MemoryOperand {

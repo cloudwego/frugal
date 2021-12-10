@@ -18,9 +18,15 @@ package atm
 
 import (
     `unsafe`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 //go:noescape
 //go:linkname memmove runtime.memmove
 //goland:noinspection GoUnusedParameter
 func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
+
+var (
+    F_memmove = uintptr(rt.FuncAddr(memmove))
+)

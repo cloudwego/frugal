@@ -200,8 +200,10 @@ type CodeGen struct {
     regi int
     ctxt _FrameInfo
     arch *x86_64.Arch
+    exit *x86_64.Label
     stab []_SwitchTab
     defs []_DeferBlock
+    abix _CodeGenExtension
     jmps map[string]*x86_64.Label
     regs map[Register]x86_64.Register64
 }
@@ -262,6 +264,7 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
     p.LEAQ(Ptr(RSP, self.ctxt.offs()), RBP)
 
     /* ABI-specific prologue */
+    self.exit = x86_64.CreateLabel("_halt_exit")
     self.abiSaveReserved(p)
     self.abiPrologue(p)
 
@@ -282,6 +285,16 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
         p.Link(fn.ref)
         fn.def(p)
     }
+
+    /* ABI-specific epilogue */
+    p.Link(self.exit)
+    self.abiEpilogue(p)
+    self.abiLoadReserved(p)
+
+    /* program epilogue */
+    p.MOVQ(Ptr(RSP, self.ctxt.offs()), RBP)
+    p.ADDQ(self.ctxt.size(), RSP)
+    p.RET()
 
     /* generate all the lookup tables */
     self.tables(p)
@@ -663,15 +676,20 @@ func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *Instr) {
 
 func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *Instr) {
     if v.Rz != Rz {
-        if v.Rx != Rz {
-            if self.dup(p, v.Rx, v.Rz); v.Ry != Rz {
-                p.ADDQ(self.r(v.Ry), self.r(v.Rz))
-            }
-        } else {
+        if v.Rx == Rz {
             if v.Ry == Rz {
                 self.clr(p, v.Rz)
             } else {
                 self.dup(p, v.Ry, v.Rz)
+            }
+        } else {
+            if v.Ry == Rz {
+                self.dup(p, v.Rx, v.Rz)
+            } else if v.Ry == v.Rz {
+                p.ADDQ(self.r(v.Rx), self.r(v.Rz))
+            } else {
+                self.dup(p, v.Rx, v.Rz)
+                p.ADDQ(self.r(v.Ry), self.r(v.Rz))
             }
         }
     }
@@ -679,15 +697,21 @@ func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *Instr) {
 
 func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *Instr) {
     if v.Rz != Rz {
-        if v.Rx != Rz {
-            if self.dup(p, v.Rx, v.Rz); v.Ry != Rz {
-                p.SUBQ(self.r(v.Ry), self.r(v.Rz))
-            }
-        } else {
+        if v.Rx == Rz {
             if v.Ry == Rz {
                 self.clr(p, v.Rz)
             } else {
                 self.dup(p, v.Ry, v.Rz)
+            }
+        } else {
+            if v.Ry == Rz {
+                self.dup(p, v.Rx, v.Rz)
+            } else if v.Ry == v.Rz {
+                p.SUBQ(self.r(v.Rx), self.r(v.Rz))
+                p.NEGQ(self.r(v.Rz))
+            } else {
+                self.dup(p, v.Rx, v.Rz)
+                p.SUBQ(self.r(v.Ry), self.r(v.Rz))
             }
         }
     }
@@ -983,7 +1007,13 @@ func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_bcopy(p *x86_64.Program, v *Instr) {
-    // todo: block copy
+    if v.Ps == Pn {
+        panic("bcopy: copy from nil pointer")
+    } else if v.Pd == Pn {
+        panic("bcopy: copy into nil pointer")
+    } else if v.Rx != Rz && v.Ps != v.Pd {
+        self.abiBlockCopy(p, v.Pd, v.Ps, v.Rx)
+    }
 }
 
 func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *Instr) {
@@ -999,11 +1029,7 @@ func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *Instr) {
-    self.abiEpilogue(p)
-    self.abiLoadReserved(p)
-    p.MOVQ(Ptr(RSP, self.ctxt.offs()), RBP)
-    p.ADDQ(self.ctxt.size(), RSP)
-    p.RET()
+    p.JMP(self.exit)
 }
 
 func (self *CodeGen) translate_OP_break(p *x86_64.Program, _ *Instr) {

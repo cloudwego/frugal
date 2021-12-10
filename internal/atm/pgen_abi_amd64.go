@@ -23,6 +23,16 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+type _SwapPair struct {
+    rs Register
+    rd Register
+    rr x86_64.Register64
+}
+
+type _CodeGenExtension struct {
+    rets []_SwapPair
+}
+
 /** Prologue & Epilogue **/
 
 func (self *CodeGen) abiPrologue(p *x86_64.Program) {
@@ -33,8 +43,11 @@ func (self *CodeGen) abiPrologue(p *x86_64.Program) {
     }
 }
 
-func (self *CodeGen) abiEpilogue(_ *x86_64.Program) {
-    /* do nothing */
+func (self *CodeGen) abiEpilogue(p *x86_64.Program) {
+    for _, v := range self.abix.rets {
+        p.XCHGQ(self.r(v.rs), v.rr)
+        self.regs[v.rs], self.regs[v.rd] = self.regs[v.rd], self.regs[v.rs]
+    }
 }
 
 /** Reserved Register Management **/
@@ -87,11 +100,11 @@ func (self *CodeGen) abiStorePtr(p *x86_64.Program, s PointerRegister, i int) {
 
 // internalStoreRet stores return value s into return value slot i.
 //
-// FIXME: This implementation messes with the register allocation, but currently
-//        all the STRP / STRQ instructions appear at the end of the generated code
-//        (guaranteed by `{encoder,decoder}/translator.go`), everything generated
-//        after this is under our control, so it should be fine. This should be
-//        fixed once SSA backend is ready.
+// FIXME: This implementation assumes no modification after storing the result.
+//        Currently all the STRP / STRQ instructions appear at the end of the
+//        generated code (guaranteed by `{encoder,decoder}/translator.go`),
+//        everything generated after this is under our control, so it should be
+//        fine. This should be fixed once SSA backend is ready.
 func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
     var r Register
     var m Parameter
@@ -113,9 +126,12 @@ func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
         return
     }
 
-    /* if not, swap the register allocation to meet the requirement */
-    p.XCHGQ(self.r(s), m.Reg)
-    self.regs[s], self.regs[r] = self.regs[r], self.regs[s]
+    /* if not, mark the register to store later */
+    self.abix.rets = append(self.abix.rets, _SwapPair {
+        rs: s,
+        rd: r,
+        rr: m.Reg,
+    })
 }
 
 /** Function & Method Call **/

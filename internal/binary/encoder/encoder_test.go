@@ -47,7 +47,10 @@ func TestEncoder_Encode(t *testing.T) {
     println("Estimated Size:", nb)
     buf := make([]byte, nb)
     ret, err := EncodeObject(buf, nil, v)
-    require.NoError(t, err)
+    if err != nil {
+        println("Buffer Shortage:", ret - nb)
+        require.NoError(t, err)
+    }
     buf = buf[:ret]
     spew.Dump(buf)
     mm := bytes.NewBufferString("\x80\x01\x00\x01\x00\x00\x00\x01a\x00\x00\x00\x00")

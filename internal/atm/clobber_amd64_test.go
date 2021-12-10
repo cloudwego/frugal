@@ -16,3 +16,12 @@
 
 package atm
 
+import (
+    `testing`
+
+    `github.com/davecgh/go-spew/spew`
+)
+
+func TestClobber_ClobberSet(t *testing.T) {
+    spew.Dump(memcpyClobberSet)
+}

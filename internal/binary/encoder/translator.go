@@ -92,7 +92,6 @@ const (
     LB_halt     = "_halt"
     LB_error    = "_error"
     LB_nomem    = "_nomem"
-    LB_nomemc   = "_nomemc"
     LB_overflow = "_overflow"
 )
 
@@ -112,9 +111,8 @@ func Translate(s Program) atm.Program {
 }
 
 func errors(p *atm.Builder) {
-    p.Label (LB_nomemc)                 // _nomemc:
-    p.MOV   (TR, RL)                    // RL <= TR
     p.Label (LB_nomem)                  // _nomem:
+    p.MOV   (UR, RL)                    // RL <= UR
     p.IP    (&_E_nomem, TP)             // TP <= &_E_overflow
     p.JAL   ("_basic_error", atm.Pn)    // GOTO _basic_error
     p.Label (LB_overflow)               // _overflow:
@@ -189,8 +187,8 @@ var translators = [256]func(*atm.Builder, Instr) {
 }
 
 func translate_OP_size_check(p *atm.Builder, v Instr) {
-    p.ADDI  (RL, v.Iv, TR)              // TR <= RL + v.Iv
-    p.BLTU  (RC, TR, LB_nomemc)         // if RC < TR then GOTO _nomemc
+    p.ADDI  (RL, v.Iv, UR)              // UR <= RL + v.Iv
+    p.BLTU  (RC, UR, LB_nomem)          // if RC < UR then GOTO _nomem
 }
 
 func translate_OP_size_const(p *atm.Builder, v Instr) {
@@ -226,8 +224,8 @@ func translate_OP_size_defer(p *atm.Builder, v Instr) {
       R0    (TR).                       //     pos      => TR
       R1    (ET).                       //     err.type => ET
       R2    (EP)                        //     err.data => EP
-    p.ADDP  (RS, ST, RS)                // RS <= RS + ST
     p.BNEN  (ET, LB_error)              // if ET != nil then GOTO _error
+    p.ADDP  (RS, ST, RS)                // RS <= RS + ST
     p.ADD   (RL, TR, RL)                // RL <= RL + TR
 }
 
@@ -371,8 +369,8 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
       R0    (TR).                       //     pos      => TR
       R1    (ET).                       //     err.type => ET
       R2    (EP)                        //     err.data => EP
-    p.ADDP  (RS, ST, RS)                // RS <= RS + ST
     p.BNEN  (ET, LB_error)              // if ET != nil then GOTO _error
+    p.ADDP  (RS, ST, RS)                // RS <= RS + ST
     p.SUBP  (RP, RL, RP)                // RP <= RP - RL
     p.ADD   (RL, TR, RL)                // RL <= RL + TR
 }

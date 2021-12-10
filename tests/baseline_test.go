@@ -25,7 +25,7 @@ import (
 
     `github.com/apache/thrift/lib/go/thrift`
     `github.com/cloudwego/frugal`
-    vanilla_basline `github.com/cloudwego/frugal/testdata/baseline`
+    vanilla_baseline `github.com/cloudwego/frugal/testdata/baseline`
     kitex_baseline `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
@@ -53,7 +53,7 @@ func loaddata(t require.TestingT, v thrift.TStruct) int {
 }
 
 func TestMarshal(t *testing.T) {
-    var v vanilla_basline.Nesting2
+    var v vanilla_baseline.Nesting2
     rand.Seed(time.Now().UnixNano())
     GenValue(&v)
     nb := frugal.EncodedSize(v)
@@ -65,7 +65,7 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestMarshalBaseline(t *testing.T) {
-    var v vanilla_basline.Nesting2
+    var v vanilla_baseline.Nesting2
     loaddata(t, &v)
     nb := frugal.EncodedSize(v)
     println("Estimated Size:", nb)
@@ -75,7 +75,7 @@ func TestMarshalBaseline(t *testing.T) {
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {
-    var v vanilla_basline.Nesting2
+    var v vanilla_baseline.Nesting2
     mm := thrift.NewTMemoryBuffer()
     b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
@@ -85,18 +85,17 @@ func BenchmarkMarshalVanilla(b *testing.B) {
     }
 }
 
-func BenchmarkMarshalFrugal(b *testing.B) {
-    var v vanilla_basline.Nesting2
+func BenchmarkMarshalKitexFast(b *testing.B) {
+    var v kitex_baseline.Nesting2
     b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
-    buf := make([]byte, frugal.EncodedSize(v))
+    buf := make([]byte, v.BLength())
     for i := 0; i < b.N; i++ {
-        frugal.EncodedSize(v)
-        _, _ = frugal.EncodeObject(buf, nil, v)
+        _ = v.FastWriteNocopy(buf, nil)
     }
 }
 
-func BenchmarkMarshalKitexFast(b *testing.B) {
+func BenchmarkMarshalKitexFastWithLength(b *testing.B) {
     var v kitex_baseline.Nesting2
     b.SetBytes(int64(loaddata(b, &v)))
     b.ResetTimer()
@@ -104,5 +103,26 @@ func BenchmarkMarshalKitexFast(b *testing.B) {
     for i := 0; i < b.N; i++ {
         v.BLength()
         _ = v.FastWriteNocopy(buf, nil)
+    }
+}
+
+func BenchmarkMarshalFrugal(b *testing.B) {
+    var v vanilla_baseline.Nesting2
+    b.SetBytes(int64(loaddata(b, &v)))
+    b.ResetTimer()
+    buf := make([]byte, frugal.EncodedSize(v))
+    for i := 0; i < b.N; i++ {
+        _, _ = frugal.EncodeObject(buf, nil, v)
+    }
+}
+
+func BenchmarkMarshalFrugalWithLength(b *testing.B) {
+    var v vanilla_baseline.Nesting2
+    b.SetBytes(int64(loaddata(b, &v)))
+    b.ResetTimer()
+    buf := make([]byte, frugal.EncodedSize(v))
+    for i := 0; i < b.N; i++ {
+        frugal.EncodedSize(v)
+        _, _ = frugal.EncodeObject(buf, nil, v)
     }
 }
