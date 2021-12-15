@@ -28,6 +28,7 @@ import (
     vanilla_baseline `github.com/cloudwego/frugal/testdata/baseline`
     kitex_baseline `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
+    `github.com/stretchr/testify/assert`
     `github.com/stretchr/testify/require`
 )
 
@@ -52,26 +53,37 @@ func loaddata(t require.TestingT, v thrift.TStruct) int {
     return len(buf)
 }
 
-func TestMarshal(t *testing.T) {
+func TestMarshalCompare(t *testing.T) {
     var v vanilla_baseline.Nesting2
     rand.Seed(time.Now().UnixNano())
     GenValue(&v)
     nb := frugal.EncodedSize(v)
     buf := make([]byte, nb)
-    _, err := frugal.EncodeObject(buf, nil, v)
+    ret, err := frugal.EncodeObject(buf, nil, v)
     require.NoError(t, err)
-    spew.Dump(buf)
+    buf = buf[:ret]
+    mm := thrift.NewTMemoryBuffer()
+    err = v.Write(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(t, err)
     dumpval(v)
+    require.Equal(t, mm.Bytes(), buf)
 }
 
 func TestMarshalUnmarshal(t *testing.T) {
     var v vanilla_baseline.Nesting2
+    var v2 vanilla_baseline.Nesting2
     loaddata(t, &v)
     nb := frugal.EncodedSize(v)
     println("Estimated Size:", nb)
     buf := make([]byte, nb)
     _, err := frugal.EncodeObject(buf, nil, v)
     require.NoError(t, err)
+    mm := thrift.NewTMemoryBuffer()
+    _, _ = mm.Write(buf)
+    err = v2.Read(thrift.NewTBinaryProtocolTransport(mm))
+    // _, err = frugal.DecodeObject(buf, &v2)
+    require.NoError(t, err)
+    assert.Equal(t, v, v2)
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {

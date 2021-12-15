@@ -45,7 +45,7 @@ func genvalue(v reflect.Value) {
         case reflect.Map     : genmap(v)
         case reflect.Ptr     : genptr(v)
         case reflect.Slice   : genslice(v)
-        case reflect.String  : v.SetString(genstring(30))
+        case reflect.String  : v.SetString(genstring())
         case reflect.Struct  : genstruct(v)
         default              : panic("unsupported type for thrift: " + v.Type().String())
     }
@@ -67,7 +67,7 @@ func genmap(v reflect.Value) {
         v.Set(reflect.Zero(t))
         return
     }
-    n := rand.Intn(32)
+    n := 1
     v.Set(reflect.MakeMap(t))
     for i := 0; i < n; i++ {
         k := reflect.New(t.Key()).Elem()
@@ -85,15 +85,30 @@ func genslice(v reflect.Value) {
         return
     }
     if t.Elem().Kind() == reflect.Uint8 {
-        b := make([]byte, rand.Intn(256))
+        b := make([]byte, rand.Intn(16))
         _, _ = rand.Read(b)
         v.SetBytes(b)
         return
     }
-    n := rand.Intn(32)
+    n := rand.Intn(2)
     v.Set(reflect.MakeSlice(t, n, n))
     for i := 0; i < n; i++ {
-        genvalue(v.Index(i))
+        vv := v.Index(i)
+        dup := true
+        for dup {
+            dup = false
+            genvalue(vv)
+            if vv.CanInterface() {
+                a := vv.Interface()
+                for j := 0; j < i; j++ {
+                    b := v.Index(j).Interface()
+                    if reflect.DeepEqual(a, b) {
+                        dup = true
+                        break
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -103,8 +118,8 @@ func genstruct(v reflect.Value) {
     }
 }
 
-func genstring(stddev float64) string {
-    n := int(math.Abs(rand.NormFloat64() * stddev + stddev / 2))
+func genstring() string {
+    n := rand.Intn(16)
     c := make([]rune, n)
     for i := range c {
         f := math.Abs(rand.NormFloat64() * 64 + 32)

@@ -66,6 +66,11 @@ func (self *GoType) IsIndirect() bool {
     return (self.KindFlags & F_direct) == 0
 }
 
+type GoPtrType struct {
+    GoType
+    Elem *GoType
+}
+
 type GoMapType struct {
     GoType
     Key        *GoType
@@ -156,6 +161,10 @@ type GoSliceType struct {
 
 func IsPtr(t *GoType) bool {
     return t.Kind() == reflect.Ptr || t.Kind() == reflect.UnsafePointer
+}
+
+func PtrElem(t *GoType) *GoType {
+    return (*GoPtrType)(unsafe.Pointer(t)).Elem
 }
 
 func MapType(t *GoType) *GoMapType {

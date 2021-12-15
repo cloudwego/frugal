@@ -259,17 +259,19 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.add(OP_ctr_decr)
     p.jmp(OP_goto, i)
     p.pin(i)
+    p.add(OP_map_close)
     p.add(OP_drop_state)
 }
 
 func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
-    switch vt.K.Tag() {
+    switch vt.K.T {
         case defs.T_bool    : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
         case defs.T_i8      : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
         case defs.T_double  : p.i64(OP_size, 8); p.rtt(OP_map_set_i64, vt.S)
         case defs.T_i16     : p.i64(OP_size, 2); p.rtt(OP_map_set_i16, vt.S)
         case defs.T_i32     : p.i64(OP_size, 4); p.rtt(OP_map_set_i32, vt.S)
         case defs.T_i64     : p.i64(OP_size, 8); p.rtt(OP_map_set_i64, vt.S)
+        case defs.T_binary  : p.i64(OP_size, 4); p.rtt(OP_map_set_str, vt.S)
         case defs.T_string  : p.i64(OP_size, 4); p.rtt(OP_map_set_str, vt.S)
         case defs.T_pointer : self.compileKeyPtr(p, sp, vt)
         default             : panic("unreachable")
@@ -281,7 +283,7 @@ func (self Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
     st := pt.V
 
     /* must be a struct */
-    if st.Tag() != defs.T_struct {
+    if st.T != defs.T_struct {
         panic("map key cannot be non-struct pointers")
     }
 
@@ -360,12 +362,8 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
             off -= fvs[id - 1].F
         }
 
-        /* seek the field, if needed */
-        if off != 0 {
-            p.i64(OP_seek, int64(off))
-        }
-
-        /* parse the field */
+        /* seek and parse the field */
+        p.i64(OP_seek, int64(off))
         self.compileOne(p, sp + 1, fv.Type)
         p.jmp(OP_goto, i)
     }

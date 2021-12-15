@@ -34,6 +34,7 @@ const (
     OP_ctr_decr
     OP_ctr_is_zero
     OP_map_alloc
+    OP_map_close
     OP_map_set_i8
     OP_map_set_i16
     OP_map_set_i32
@@ -70,6 +71,7 @@ var _OpNames = [256]string {
     OP_ctr_decr          : "ctr_decr",
     OP_ctr_is_zero       : "ctr_is_zero",
     OP_map_alloc         : "map_alloc",
+    OP_map_close         : "map_close",
     OP_map_set_i8        : "map_set_i8",
     OP_map_set_i16       : "map_set_i16",
     OP_map_set_i32       : "map_set_i32",

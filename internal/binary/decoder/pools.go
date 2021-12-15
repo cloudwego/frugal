@@ -23,8 +23,9 @@ import (
 )
 
 var (
-    programPool  sync.Pool
-    compilerPool sync.Pool
+    programPool      sync.Pool
+    compilerPool     sync.Pool
+    runtimeStatePool sync.Pool
 )
 
 func newProgram() Program {
@@ -54,4 +55,16 @@ func freeCompiler(p Compiler) {
 func resetCompiler(p Compiler) Compiler {
     rt.MapClear(p)
     return p
+}
+
+func newRuntimeState() *RuntimeState {
+    if v := runtimeStatePool.Get(); v != nil {
+        return v.(*RuntimeState)
+    } else {
+        return new(RuntimeState)
+    }
+}
+
+func freeRuntimeState(p *RuntimeState) {
+    runtimeStatePool.Put(p)
 }

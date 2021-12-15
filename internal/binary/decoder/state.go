@@ -20,27 +20,31 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 const (
+    NbOffset = int64(unsafe.Offsetof(StateItem{}.Nb))
+    MpOffset = int64(unsafe.Offsetof(StateItem{}.Mp))
     WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
     FmOffset = int64(unsafe.Offsetof(StateItem{}.Fm))
-    VuOffset = int64(unsafe.Offsetof(StateItem{}.Vu))
 )
 
 const (
-    StateMax  = StateCap - StateSize
-    StateCap  = defs.MaxStack * StateSize
+    PrOffset = int64(unsafe.Offsetof(RuntimeState{}.Pr))
+    IvOffset = int64(unsafe.Offsetof(RuntimeState{}.Iv))
+)
+
+const (
+    StateMax  = (defs.MaxStack - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
-// StateItem is the runtime state item.
-// The translator knows the layout and size of this struct, so please keep in sync with it.
 type StateItem struct {
     Nb uint64
+    Mp *rt.GoMap
     Wp unsafe.Pointer
     Fm FieldBitmap
-    Vu uint64
 }
 
 type RuntimeState struct {

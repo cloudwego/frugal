@@ -21,20 +21,28 @@ import (
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type) {
-    if vt.T == defs.T_pointer {
-        self.measurePtr(p, sp, vt)
-    } else if _, ok := self[vt.S]; !ok {
-        self.measureTag(p, sp, vt)
+func (self Compiler) measure(p *Program, sp int, vt *defs.Type) {
+    if vt.T != defs.T_pointer {
+        self.measureOne(p, sp, vt)
     } else {
-        p.rtt(OP_size_defer, vt.S)
+        self.measurePtr(p, sp, vt, self.measure)
     }
 }
 
-func (self Compiler) measureTag(p *Program, sp int, vt *defs.Type) {
-    self[vt.S] = true
+func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type) {
+    rt := vt.S
+    ok := self[rt]
+
+    /* check for loops */
+    if ok {
+        p.rtt(OP_size_defer, vt.S)
+        return
+    }
+
+    /* measure the type recursively */
+    self[rt] = true
     self.measureRec(p, sp, vt)
-    delete(self, vt.S)
+    delete(self, rt)
 }
 
 func (self Compiler) measureRec(p *Program, sp int, vt *defs.Type) {
@@ -55,7 +63,7 @@ func (self Compiler) measureRec(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, action func(*Program, int, *defs.Type)) {
     i := p.pc()
     n := defs.GetSize(vt.V.S)
 
@@ -73,7 +81,7 @@ func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type) {
     /* complex values */
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.measureOne(p, sp + 1, vt.V)
+    action(p, sp + 1, vt.V)
     p.add(OP_drop_state)
     p.pin(i)
 }
@@ -110,13 +118,13 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type) {
     /* complex keys */
     if nk <= 0 {
         p.add(OP_map_key)
-        self.measureOne(p, sp + 1, vt.K)
+        self.measure(p, sp + 1, vt.K)
     }
 
     /* complex values */
     if nv <= 0 {
         p.add(OP_map_value)
-        self.measureOne(p, sp + 1, vt.V)
+        self.measure(p, sp + 1, vt.V)
     }
 
     /* move to the next state */
@@ -154,16 +162,32 @@ func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type) {
 
     /* every field requires at least 3 bytes, plus the 1-byte stop field */
     p.tag(sp)
-    p.i64(OP_size_const, 4)
+    p.i64(OP_size_const, 1)
     p.i64(OP_seek, int64(fvs[0].F))
-    self.measureOne(p, sp + 1, fvs[0].Type)
+    self.measureField(p, sp + 1, fvs[0].Type)
 
     /* remaining fields */
     for i, fv := range fvs[1:] {
-        p.i64(OP_size_const, 3)
         p.i64(OP_seek, int64(fv.F - fvs[i].F))
-        self.measureOne(p, sp + 1, fv.Type)
+        self.measureField(p, sp + 1, fv.Type)
     }
+}
+
+func (self Compiler) measureField(p *Program, sp int, vt *defs.Type) {
+    if vt.T != defs.T_pointer {
+        self.measureFieldStd(p, sp, vt)
+    } else {
+        self.measureFieldPtr(p, sp, vt)
+    }
+}
+
+func (self Compiler) measureFieldPtr(p *Program, sp int, vt *defs.Type) {
+    self.measurePtr(p, sp, vt, self.measureField)
+}
+
+func (self Compiler) measureFieldStd(p *Program, sp int, vt *defs.Type) {
+    p.i64(OP_size_const, 3)
+    self.measureOne(p, sp, vt)
 }
 
 func (self Compiler) measureSetList(p *Program, sp int, vt *defs.Type) {
@@ -186,7 +210,7 @@ func (self Compiler) measureSetList(p *Program, sp int, vt *defs.Type) {
     i := p.pc()
     p.add(OP_list_if_end)
     j := p.pc()
-    self.measureOne(p, sp + 1, et)
+    self.measure(p, sp + 1, et)
     p.add(OP_list_decr)
     k := p.pc()
     p.add(OP_list_if_end)

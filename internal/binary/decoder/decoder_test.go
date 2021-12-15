@@ -46,7 +46,8 @@ func TestDecoder_Decode(t *testing.T) {
         0x00, 0x08, 0x08, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x09, 0x0b, 0x0b, 0x00, 0x00, 0x00, 0x00,
         0x0d, 0x00, 0x41, 0x0b, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     }
-    pos, err := decode(rt.UnpackEface(v).Type, buf, 0, unsafe.Pointer(&v), rs, 0)
+    sl := (*rt.GoSlice)(unsafe.Pointer(&buf))
+    pos, err := decode(rt.UnpackEface(v).Type, sl.Ptr, sl.Len, 0, unsafe.Pointer(&v), rs, 0)
     require.NoError(t, err)
     require.Equal(t, len(buf), pos)
     require.Equal(t, TranslatorTestStruct {

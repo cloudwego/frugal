@@ -24,17 +24,15 @@ import (
 )
 
 func link_emu(prog atm.Program) Decoder {
-    return func(buf []byte, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
+    return func(buf unsafe.Pointer, nb int, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
         emu := atm.LoadProgram(prog)
         ret := (*rt.GoIface)(unsafe.Pointer(&err))
-        src := (*rt.GoSlice)(unsafe.Pointer(&buf))
-        emu.Ap(0, src.Ptr)
-        emu.Au(1, uint64(src.Len))
-        emu.Au(2, uint64(src.Cap))
-        emu.Au(3, uint64(i))
-        emu.Ap(4, p)
-        emu.Ap(5, unsafe.Pointer(rs))
-        emu.Au(6, uint64(st))
+        emu.Ap(0, buf)
+        emu.Au(1, uint64(nb))
+        emu.Au(2, uint64(i))
+        emu.Ap(3, p)
+        emu.Ap(4, unsafe.Pointer(rs))
+        emu.Au(5, uint64(st))
         emu.Run()
         pos = int(emu.Ru(0))
         ret.Itab = (*rt.GoItab)(emu.Rp(1))
@@ -47,11 +45,12 @@ func link_emu(prog atm.Program) Decoder {
 func emu_decode(ctx atm.CallContext) (int, error) {
     return decode(
         (*rt.GoType)(ctx.Ap(0)),
-        rt.BytesFrom(ctx.Ap(1), int(ctx.Au(2)), int(ctx.Au(3))),
-        int(ctx.Au(4)),
-        ctx.Ap(5),
-        (*RuntimeState)(ctx.Ap(6)),
-        int(ctx.Au(7)),
+        ctx.Ap(1),
+        int(ctx.Au(2)),
+        int(ctx.Au(3)),
+        ctx.Ap(4),
+        (*RuntimeState)(ctx.Ap(5)),
+        int(ctx.Au(6)),
     )
 }
 
@@ -63,7 +62,7 @@ func emu_mkreturn(ctx atm.CallContext) func(int, error) {
 }
 
 func emu_gcall_decode(ctx atm.CallContext) {
-    if !ctx.Verify("**iii**i", "i**") {
+    if !ctx.Verify("**ii**i", "i**") {
         panic("invalid decode call")
     } else {
         emu_mkreturn(ctx)(emu_decode(ctx))

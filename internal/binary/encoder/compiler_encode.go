@@ -21,20 +21,28 @@ import (
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
-    if vt.T == defs.T_pointer {
-        self.compilePtr(p, sp, vt)
-    } else if _, ok := self[vt.S]; !ok {
-        self.compileTag(p, sp, vt)
+func (self Compiler) compile(p *Program, sp int, vt *defs.Type) {
+    if vt.T != defs.T_pointer {
+        self.compileOne(p, sp, vt)
     } else {
-        p.rtt(OP_defer, vt.S)
+        self.compilePtr(p, sp, vt, self.compileOne)
     }
 }
 
-func (self Compiler) compileTag(p *Program, sp int, vt *defs.Type) {
-    self[vt.S] = true
+func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
+    rt := vt.S
+    ok := self[rt]
+
+    /* check for loops */
+    if ok {
+        p.rtt(OP_defer, rt)
+        return
+    }
+
+    /* compile the type recursively */
+    self[rt] = true
     self.compileRec(p, sp, vt)
-    delete(self, vt.S)
+    delete(self, rt)
 }
 
 func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
@@ -55,12 +63,12 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type, action func(*Program, int, *defs.Type)) {
     i := p.pc()
     p.add(OP_if_nil)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.compileOne(p, sp, vt.V)
+    action(p, sp, vt.V)
     p.add(OP_drop_state)
     p.pin(i)
 }
@@ -78,9 +86,9 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     j := p.pc()
     p.add(OP_map_if_end)
     p.add(OP_map_key)
-    self.compileOne(p, sp + 1, vt.K)
+    self.compile(p, sp + 1, vt.K)
     p.add(OP_map_value)
-    self.compileOne(p, sp + 1, vt.V)
+    self.compile(p, sp + 1, vt.V)
     p.add(OP_map_next)
     p.jmp(OP_goto, j)
     p.pin(j)
@@ -125,7 +133,7 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     i := p.pc()
     p.add(OP_list_if_end)
     j := p.pc()
-    self.compileOne(p, sp + 1, et)
+    self.compile(p, sp + 1, et)
     p.add(OP_list_decr)
     k := p.pc()
     p.add(OP_list_if_end)
@@ -154,23 +162,40 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 
     /* every field requires at least 3 bytes */
     p.tag(sp)
-    p.i64(OP_size_check, 3)
     p.i64(OP_seek, int64(fvs[0].F))
-    p.i64(OP_byte, int64(fvs[0].Type.Tag()))
-    p.i64(OP_word, int64(fvs[0].ID))
-    self.compileOne(p, sp + 1, fvs[0].Type)
+    self.compileField(p, sp + 1, fvs[0].Type, fvs[0].ID)
 
     /* remaining fields */
     for i, fv := range fvs[1:] {
         f := fvs[i].F
-        p.i64(OP_size_check, 3)
         p.i64(OP_seek, int64(fv.F - f))
-        p.i64(OP_byte, int64(fv.Type.Tag()))
-        p.i64(OP_word, int64(fv.ID))
-        self.compileOne(p, sp + 1, fv.Type)
+        self.compileField(p, sp + 1, fv.Type, fv.ID)
     }
 
     /* add the STOP field */
     p.i64(OP_size_check, 1)
     p.i64(OP_byte, 0)
+}
+
+func (self Compiler) compileField(p *Program, sp int, vt *defs.Type, id uint16) {
+    if vt.T != defs.T_pointer {
+        self.compileFieldStd(p, sp, vt, id)
+    } else {
+        self.compileFieldPtr(p, sp, vt, id)
+    }
+}
+
+func (self Compiler) compileFieldPtr(p *Program, sp int, vt *defs.Type, id uint16) {
+    self.compilePtr(p, sp, vt, func(p *Program, ep int, et *defs.Type) { self.compileField(p, ep, et, id) })
+}
+
+func (self Compiler) compileFieldStd(p *Program, sp int, vt *defs.Type, id uint16) {
+    self.compileFieldHeader(p, vt.Tag(), id)
+    self.compile(p, sp, vt)
+}
+
+func (self Compiler) compileFieldHeader(p *Program, t defs.Tag, id uint16) {
+    p.i64(OP_size_check, 3)
+    p.i64(OP_byte, int64(t))
+    p.i64(OP_word, int64(id))
 }

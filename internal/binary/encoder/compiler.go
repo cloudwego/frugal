@@ -142,13 +142,13 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     /* object measuring */
     i := ret.pc()
     ret.add(OP_if_hasbuf)
-    resetCompiler(self).measureOne(&ret, 0, vtp)
+    resetCompiler(self).measure(&ret, 0, vtp)
 
     /* object encoding */
     j := ret.pc()
     ret.add(OP_goto)
     ret.pin(i)
-    resetCompiler(self).compileOne(&ret, 0, vtp)
+    resetCompiler(self).compile(&ret, 0, vtp)
 
     /* halt the program */
     ret.pin(j)

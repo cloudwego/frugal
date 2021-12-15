@@ -17,6 +17,7 @@
 package frugal
 
 import (
+    `github.com/cloudwego/frugal/internal/binary/decoder`
     `github.com/cloudwego/frugal/internal/binary/encoder`
     `github.com/cloudwego/frugal/iov`
 )
@@ -26,7 +27,13 @@ func EncodedSize(val interface{}) int {
     return encoder.EncodedSize(val)
 }
 
-// EncodeObject serializes val into buf with Thrift Binary Protocol.
+// EncodeObject serializes val into buf with Thrift Binary Protocol, with optional Zero-Copy iov.BufferWriter.
+// buf must be large enough to contain the entire serialization result.
 func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (int, error) {
     return encoder.EncodeObject(buf, mem, val)
+}
+
+// DecodeObject deserializes buf into val with Thrift Binary Protocol.
+func DecodeObject(buf []byte, val interface{}) (int, error) {
+    return decoder.DecodeObject(buf, val)
 }

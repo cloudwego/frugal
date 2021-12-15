@@ -33,8 +33,6 @@ const (
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
-// StateItem is the runtime state.
-// The translator knows the layout and size of this struct, so please keep in sync with it.
 type StateItem struct {
     Ln uintptr
     Mi unsafe.Pointer

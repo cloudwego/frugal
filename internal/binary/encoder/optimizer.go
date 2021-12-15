@@ -100,6 +100,24 @@ func append8(s *[]byte, v uint64) {
     sl.Len += 8
 }
 
+func makeadj(v Instr, n *int) {
+    if v.Op == _OP_adjpc {
+        *n += int(v.Iv)
+    }
+}
+
+func adjustpc(v *Instr, adj []int) {
+    if _OpBranches[v.Op] {
+        v.To += adj[v.To]
+    }
+}
+
+func removeadj(p Program, v *Instr) {
+    for p[v.To].Op == _OP_adjpc {
+        v.To++
+    }
+}
+
 func newAdjustBuffer(n int) []int {
     if v := adjustPool.Get(); v != nil {
         return v.([]int)[:0]
@@ -110,36 +128,30 @@ func newAdjustBuffer(n int) []int {
 
 // Compacting Pass: remove all the PC-adjustment instructions inserted in the previous pass.
 func _PASS_Compacting(p Program) Program {
-    i := 0
     j := 0
     n := 0
     a := newAdjustBuffer(len(p))
 
+    /* move all the jumps so that it does not point to any PC adjustment pseudo-instructions */
+    for i := 0; i < len(p); i++ {
+        if _OpBranches[p[i].Op] {
+            removeadj(p, &p[i])
+        }
+    }
+
     /* scan for PC adjustments */
     for _, v := range p {
-        if v.Op == _OP_adjpc { n += int(v.Iv) }
+        makeadj(v, &n)
         a = append(a, n)
     }
 
     /* adjust branch offsets */
-    for i < len(p) {
-        iv := p[i]
-        op := iv.Op
-
-        /* skip the PC adjustment */
-        if op == _OP_adjpc {
-            i++
-            continue
+    for _, v := range p {
+        if v.Op != _OP_adjpc {
+            adjustpc(&v, a)
+            p[j] = v
+            j++
         }
-
-        /* copy instructions and adjust branch targets */
-        if p[j] = p[i]; _OpBranches[op] {
-            p[j].To = iv.To + a[iv.To]
-        }
-
-        /* move forward */
-        i++
-        j++
     }
 
     /* all done */
