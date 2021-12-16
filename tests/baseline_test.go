@@ -53,11 +53,13 @@ func dumpval(v interface{}) string {
 func loaddata(t require.TestingT, v thrift.TStruct) []byte {
     buf, err := ioutil.ReadFile("testdata/object.bin")
     require.NoError(t, err)
-    mm := thrift.NewTMemoryBuffer()
-    _, err = mm.Write(buf)
-    require.NoError(t, err)
-    err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
-    require.NoError(t, err)
+    if v != nil {
+        mm := thrift.NewTMemoryBuffer()
+        _, err = mm.Write(buf)
+        require.NoError(t, err)
+        err = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+        require.NoError(t, err)
+    }
     return buf
 }
 
@@ -233,5 +235,40 @@ func BenchmarkMarshalFrugalWithLength(b *testing.B) {
     for i := 0; i < b.N; i++ {
         frugal.EncodedSize(v)
         _, _ = frugal.EncodeObject(buf, nil, v)
+    }
+}
+
+func BenchmarkUnmarshalVanilla(b *testing.B) {
+    mm := thrift.NewTMemoryBuffer()
+    buf := loaddata(b, nil)
+    b.SetBytes(int64(len(buf)))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        var v vanilla_baseline.Nesting2
+        mm.Reset()
+        _, _ = mm.Write(buf)
+        _ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+    }
+}
+
+func BenchmarkUnmarshalKitexFast(b *testing.B) {
+    buf := loaddata(b, nil)
+    b.SetBytes(int64(len(buf)))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        var v kitex_baseline.Nesting2
+        _, _ = v.FastRead(buf)
+    }
+}
+
+func BenchmarkUnmarshalFrugal(b *testing.B) {
+    var r kitex_baseline.Nesting2
+    buf := loaddata(b, nil)
+    _, _ = frugal.DecodeObject(buf, &r)
+    b.SetBytes(int64(len(buf)))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        var v kitex_baseline.Nesting2
+        _, _ = frugal.DecodeObject(buf, &v)
     }
 }

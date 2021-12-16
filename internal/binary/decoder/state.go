@@ -31,6 +31,7 @@ const (
 )
 
 const (
+    SkOffset = int64(unsafe.Offsetof(RuntimeState{}.Sk))
     PrOffset = int64(unsafe.Offsetof(RuntimeState{}.Pr))
     IvOffset = int64(unsafe.Offsetof(RuntimeState{}.Iv))
 )
@@ -39,6 +40,13 @@ const (
     StateMax  = (defs.MaxStack - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
+
+type SkipItem struct {
+    T defs.Tag
+    K defs.Tag
+    V defs.Tag
+    N uint32
+}
 
 type StateItem struct {
     Nb uint64
@@ -49,6 +57,7 @@ type StateItem struct {
 
 type RuntimeState struct {
     St [defs.MaxStack]StateItem     // Must be the first field.
+    Sk [defs.MaxStack]SkipItem      // Skip buffer, used for non-recursive skipping
     Pr unsafe.Pointer               // Pointer spill space, used for non-fast string or pointer map access.
     Iv uint64                       // Integer spill space, used for non-fast string map access.
 }

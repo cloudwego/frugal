@@ -565,27 +565,31 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_struct_skip(p *atm.Builder, _ Instr) {
-    p.LDAQ  (ARG_nb, TR)                // TR <=  ARG.nb
-    p.SUB   (TR, IC, TR)                // TR <=  TR - IC
-    p.ADDP  (IP, IC, EP)                // EP <=  IP + IC
+    p.ADDPI (RS, SkOffset, TP)          // TP <= RS + SkOffset
+    p.LDAQ  (ARG_nb, TR)                // TR <= ARG.nb
+    p.SUB   (TR, IC, TR)                // TR <= TR - IC
+    p.ADDP  (IP, IC, EP)                // EP <= IP + IC
     p.CCALL (C_skip).                   // CCALL skip:
-      A0    (EP).                       //     s   <= EP
-      A1    (TR).                       //     n   <= TR
-      A2    (TG).                       //     t   <= TG
+      A0    (TP).                       //     st  <= TP
+      A1    (EP).                       //     s   <= EP
+      A2    (TR).                       //     n   <= TR
+      A3    (TG).                       //     t   <= TG
       R0    (TR)                        //     ret => TR
     p.BLT   (TR, atm.Rz, LB_skip)       // if TR < 0 then GOTO _skip
     p.ADD   (IC, TR, IC)                // IC <= IC + TR
 }
 
 func translate_OP_struct_ignore(p *atm.Builder, _ Instr) {
-    p.LDAQ  (1, TR)                     // TR <= a1
+    p.ADDPI (RS, SkOffset, TP)          // TP <= RS + SkOffset
+    p.LDAQ  (ARG_nb, TR)                // TR <= ARG.nb
     p.SUB   (TR, IC, TR)                // TR <= TR - IC
     p.ADDP  (IP, IC, EP)                // EP <= IP + IC
-    p.IB    (int8(defs.T_struct), UR)   // UR <= defs.T_struct
+    p.IB    (int8(defs.T_struct), TG)   // TG <= defs.T_struct
     p.CCALL (C_skip).                   // CCALL skip:
-      A0    (EP).                       //     s   <= EP
-      A1    (TR).                       //     n   <= TR
-      A2    (UR).                       //     t   <= UR
+      A0    (TP).                       //     st  <= TP
+      A1    (EP).                       //     s   <= EP
+      A2    (TR).                       //     n   <= TR
+      A3    (TG).                       //     t   <= TG
       R0    (TR)                        //     ret => TR
     p.BLT   (TR, atm.Rz, LB_skip)       // if TR < 0 then GOTO _skip
     p.ADD   (IC, TR, IC)                // IC <= IC + TR

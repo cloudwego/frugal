@@ -18,22 +18,14 @@ package decoder
 
 import (
     `math/bits`
-    `sync`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-type _skipbuf_t [defs.MaxStack]struct {
-    t defs.Tag
-    k defs.Tag
-    v defs.Tag
-    n uint32
-}
-
-var (
-	_skipbuf_p sync.Pool
+type (
+    _skipbuf_t [defs.MaxStack]SkipItem
 )
 
 var _SkipSizeFixed = [256]int {
@@ -49,31 +41,23 @@ const (
     _T_map_pair defs.Tag = 0xa0
 )
 
-func mksb() *_skipbuf_t {
-    if v := _skipbuf_p.Get(); v != nil {
-        return v.(*_skipbuf_t)
-    } else {
-        return new(_skipbuf_t)
-    }
-}
-
 func u32be(s unsafe.Pointer) int {
     return int(bits.ReverseBytes32(*(*uint32)(s)))
 }
 
 func stpop(s *_skipbuf_t, p *int) bool {
-    if s[*p].n == 0 {
+    if s[*p].N == 0 {
         *p--
         return true
     } else {
-        s[*p].n--
+        s[*p].N--
         return false
     }
 }
 
 func stadd(s *_skipbuf_t, p *int, t defs.Tag) {
     if *p++; *p < defs.MaxStack {
-        s[*p].t, s[*p].n = t, 0
+        s[*p].T, s[*p].N = t, 0
     } else {
         panic("skip stack overflow")
     }
@@ -85,16 +69,14 @@ func mvbuf(s *unsafe.Pointer, n *int, r *int, nb int) {
     *s = unsafe.Pointer(uintptr(*s) + uintptr(nb))
 }
 
-func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
+func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
     sp := 0
-    st := mksb()
-    st[0].t = t
+    st[0].T = t
 
     /* run until drain */
     for sp >= 0 {
-        switch st[sp].t {
+        switch st[sp].T {
             default: {
-                _skipbuf_p.Put(st)
                 return ETAG
             }
 
@@ -105,8 +87,7 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
             case defs.T_i16    : fallthrough
             case defs.T_i32    : fallthrough
             case defs.T_i64    : {
-                if nb := _SkipSizeFixed[st[sp].t]; n < nb {
-                    _skipbuf_p.Put(st)
+                if nb := _SkipSizeFixed[st[sp].T]; n < nb {
                     return EEOF
                 } else {
                     stpop(st, &sp)
@@ -117,10 +98,8 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
             /* strings & binaries */
             case defs.T_string: {
                 if n < 4 {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 } else if nb := u32be(s) + 4; n < nb {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 } else {
                     stpop(st, &sp)
@@ -135,7 +114,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* must have at least 1 byte */
                 if n < 1 {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 }
 
@@ -148,14 +126,12 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* check for tag value */
                 if !vt.IsWireTag() {
-                    _skipbuf_p.Put(st)
                     return ETAG
                 }
 
                 /* fast-path for primitive fields */
                 if nb = _SkipSizeFixed[vt]; nb != 0 {
                     if n < nb + 3 {
-                        _skipbuf_p.Put(st)
                         return EEOF
                     } else {
                         mvbuf(&s, &n, &rv, nb + 3)
@@ -165,7 +141,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* must have more than 3 bytes (fields cannot have a size of zero) */
                 if n <= 3 {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 }
 
@@ -182,7 +157,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* must have at least 6 bytes */
                 if n < 6 {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 }
 
@@ -193,7 +167,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* check for tag value */
                 if !kt.IsWireTag() || !vt.IsWireTag() {
-                    _skipbuf_p.Put(st)
                     return ETAG
                 }
 
@@ -207,7 +180,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                 /* fast path for fixed key and value */
                 if nk, nv := _SkipSizeFixed[kt], _SkipSizeFixed[vt]; nk != 0 && nv != 0 {
                     if nb := np * (nk + nv) + 6; n < nb {
-                        _skipbuf_p.Put(st)
                         return EEOF
                     } else {
                         stpop(st, &sp)
@@ -217,19 +189,19 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                 }
 
                 /* set to parse the map pairs */
-                st[sp].k = kt
-                st[sp].v = vt
-                st[sp].t = _T_map_pair
-                st[sp].n = uint32(np) * 2 - 1
+                st[sp].K = kt
+                st[sp].V = vt
+                st[sp].T = _T_map_pair
+                st[sp].N = uint32(np) * 2 - 1
                 mvbuf(&s, &n, &rv, 6)
             }
 
             /* map pairs */
             case _T_map_pair: {
-                if vt := st[sp].v; stpop(st, &sp) || st[sp].n & 1 != 0 {
+                if vt := st[sp].V; stpop(st, &sp) || st[sp].N & 1 != 0 {
                     stadd(st, &sp, vt)
                 } else {
-                    stadd(st, &sp, st[sp].k)
+                    stadd(st, &sp, st[sp].K)
                 }
             }
 
@@ -241,7 +213,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* must have at least 5 bytes */
                 if n < 5 {
-                    _skipbuf_p.Put(st)
                     return EEOF
                 }
 
@@ -251,7 +222,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
 
                 /* check for tag value */
                 if !et.IsWireTag() {
-                    _skipbuf_p.Put(st)
                     return ETAG
                 }
 
@@ -265,7 +235,6 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                 /* fast path for fixed types */
                 if nt := _SkipSizeFixed[et]; nt != 0 {
                     if nb := nv * nt + 5; n < nb {
-                        _skipbuf_p.Put(st)
                         return EEOF
                     } else {
                         stpop(st, &sp)
@@ -275,22 +244,21 @@ func do_skip(s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                 }
 
                 /* set to parse the elements */
-                st[sp].t = et
-                st[sp].n = uint32(nv) - 1
+                st[sp].T = et
+                st[sp].N = uint32(nv) - 1
                 mvbuf(&s, &n, &rv, 5)
             }
         }
     }
 
-    /* return the skipbuf to the pool */
-    _skipbuf_p.Put(st)
+    /* all done */
     return
 }
 
 func emu_ccall_skip(ctx atm.CallContext) {
-    if !ctx.Verify("*ii", "i") {
+    if !ctx.Verify("**ii", "i") {
         panic("invalid skip call")
     } else {
-        ctx.Ru(0, uint64(do_skip(ctx.Ap(0), int(ctx.Au(1)), defs.Tag(ctx.Au(2)))))
+        ctx.Ru(0, uint64(do_skip((*_skipbuf_t)(ctx.Ap(0)), ctx.Ap(1), int(ctx.Au(2)), defs.Tag(ctx.Au(3)))))
     }
 }
