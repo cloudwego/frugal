@@ -169,17 +169,16 @@ func TestUnmarshalCompare(t *testing.T) {
     var v vanilla_baseline.Nesting2
     var v1 vanilla_baseline.Nesting2
     var v2 vanilla_baseline.Nesting2
-    // loaddata(t, &v)
-    GenValue(&v)
+    loaddata(t, &v)
     nb := frugal.EncodedSize(v)
     println("Estimated Size:", nb)
     buf := make([]byte, nb)
     _, err := frugal.EncodeObject(buf, nil, v)
     require.NoError(t, err)
-    _, err = frugal.DecodeObject(buf, &v1)
     mm := thrift.NewTMemoryBuffer()
     _, _ = mm.Write(buf)
-    err = v2.Read(thrift.NewTBinaryProtocolTransport(mm))
+    err = v1.Read(thrift.NewTBinaryProtocolTransport(mm))
+    _, err = frugal.DecodeObject(buf, &v2)
     require.NoError(t, err)
     assert.Equal(t, dumpval(v1), dumpval(v2))
 }

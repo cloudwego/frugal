@@ -88,7 +88,8 @@ const (
 )
 
 var (
-    _E_overflow error
+    _E_overflow  error
+    _V_zerovalue uint64
 )
 
 func init() {
@@ -216,13 +217,25 @@ func translate_OP_int(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_str(p *atm.Builder, _ Instr) {
+    p.SP    (atm.Pn, WP)                // *WP <= nil
+    translate_OP_binstr(p)              // (read buffer)
+}
+
+func translate_OP_bin(p *atm.Builder, _ Instr) {
+    p.IP    (&_V_zerovalue, TP)         //  TP <= &_V_zerovalue
+    p.SP    (TP, WP)                    // *WP <= TP
+    translate_OP_binstr(p)              // (read buffer)
+    p.ADDPI (TP, 8, TP)                 //  TP <= TP + 8
+    p.SQ    (TR, TP)                    // *TP <= TR
+}
+
+func translate_OP_binstr(p *atm.Builder) {
     p.ADDP  (IP, IC, EP)                //  EP <=  IP + IC
     p.ADDI  (IC, 4, IC)                 //  IC <=  IC + 4
     p.LL    (EP, TR)                    //  TR <= *EP
     p.SWAPL (TR, TR)                    //  TR <=  bswap32(TR)
     p.LDAQ  (ARG_nb, UR)                //  UR <= ARG.nb
     p.BLTU  (UR, TR, LB_eof)            //  if UR < TR then GOTO _eof
-    p.SP    (atm.Pn, WP)                // *WP <=  nil
     p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
     p.ADDPI (EP, 4, EP)                 //  EP <=  EP + 4
     p.ADD   (IC, TR, IC)                //  IC <=  IC + TR
@@ -230,12 +243,6 @@ func translate_OP_str(p *atm.Builder, _ Instr) {
     p.Label ("_empty_{n}")              // _empty_{n}:
     p.ADDPI (WP, 8, TP)                 //  TP <=  WP + 8
     p.SQ    (TR, TP)                    // *TP <=  TR
-}
-
-func translate_OP_bin(p *atm.Builder, v Instr) {
-    translate_OP_str(p, v)
-    p.ADDPI (TP, 8, TP)                 //  TP <= TP + 8
-    p.SQ    (TR, TP)                    // *TP <= TR
 }
 
 func translate_OP_size(p *atm.Builder, v Instr) {
@@ -301,7 +308,6 @@ func translate_OP_map_alloc(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)                //  TP <=  RS + ST
     p.ADDPI (TP, NbOffset, TP)          //  TP <=  TP + NbOffset
     p.LQ    (TP, TR)                    //  TR <= *TP
-    p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
     p.LP    (WP, TP)                    //  TP <= *WP
     p.IP    (v.Vt, ET)                  //  ET <=  v.Vt
     p.GCALL (F_makemap).                //  GCALL makemap:
@@ -313,13 +319,6 @@ func translate_OP_map_alloc(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, EP)                //  EP <=  RS + ST
     p.ADDPI (EP, MpOffset, EP)          //  EP <=  EP + MpOffset
     p.SP    (TP, EP)                    // *EP <=  TP
-    p.JAL   ("_done_{n}", atm.Pn)       //  GOTO _done_{n}
-    p.Label ("_empty_{n}")              // _empty_{n}:
-    p.ADDP  (RS, ST, TP)                //  TP <=  RS + ST
-    p.ADDPI (TP, MpOffset, TP)          //  TP <=  TP + MpOffset
-    p.SP    (atm.Pn, TP)                // *TP <=  nil
-    p.SP    (atm.Pn, WP)                // *WP <=  nil
-    p.Label ("_done_{n}")               // _done_{n}
 }
 
 func translate_OP_map_close(p *atm.Builder, _ Instr) {
@@ -549,7 +548,7 @@ func translate_OP_list_alloc(p *atm.Builder, v Instr) {
     p.LQ    (TP, UR)                    //  UR <= *TP
     p.BGEU  (UR, TR, "_noalloc_{n}")    //  if UR >= TR then GOTO _noalloc_{n}
     p.SQ    (TR, TP)                    // *TP <=  TR
-    p.MOVP  (atm.Pn, TP)                //  TP <=  nil
+    p.IP    (&_V_zerovalue, TP)         //  TP <=  &_V_zerovalue
     p.BEQ   (TR, atm.Rz, "_empty_{n}")  //  if TR == 0 then GOTO _empty_{n}
     p.IB    (1, UR)                     //  UR <=  1
     p.IP    (v.Vt, TP)                  //  TP <=  v.Vt

@@ -206,7 +206,7 @@ func (self Compiler) rescue(ep *error) {
 func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
     if vt.T == defs.T_pointer {
         self.compilePtr(p, sp, vt)
-    } else if _, ok := self[vt.S]; !ok {
+    } else if _, ok := self[vt.S]; !ok || vt.T != defs.T_struct {
         self.compileTag(p, sp, vt)
     } else {
         p.rtt(OP_defer, vt.S)
