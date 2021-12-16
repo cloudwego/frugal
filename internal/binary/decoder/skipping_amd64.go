@@ -16,16 +16,6 @@
 
 package decoder
 
-import (
-    `github.com/cloudwego/frugal/internal/atm`
-)
-
-const (
-    ETAG   = -1
-    EEOF   = -2
-    ESTACK = -3
-)
-
-var (
-    C_skip = atm.RegisterCCall(archSkippingFn(), emu_ccall_skip)
-)
+func archSkippingFn() uintptr {
+    return _subr__do_skip
+}
