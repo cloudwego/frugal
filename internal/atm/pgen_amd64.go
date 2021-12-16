@@ -175,8 +175,8 @@ func (self *_FrameInfo) LocalPtrs() *rt.StackMap {
         m.AddField(v.A() & ArgPointer != 0)
     }
 
-    /* preserved registers, and the frame pointer slot */
-    m.AddFields(len(self.regr) + 1, false)
+    /* reserved registers */
+    m.AddFields(len(self.regr), false)
     return m.Build()
 }
 
