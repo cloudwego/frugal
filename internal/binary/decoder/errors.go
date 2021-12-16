@@ -32,9 +32,10 @@ func error_eof(n int) error {
 //go:nosplit
 func error_skip(e int) error {
     switch e {
-        case ETAG : return fmt.Errorf("frugal: error when skipping fields: -1 (invalid tag)")
-        case EEOF : return fmt.Errorf("frugal: error when skipping fields: -2 (unexpected EOF)")
-        default   : return fmt.Errorf("frugal: error when skipping fields: %d (unknown error)", e)
+        case ETAG   : return fmt.Errorf("frugal: error when skipping fields: -1 (invalid tag)")
+        case EEOF   : return fmt.Errorf("frugal: error when skipping fields: -2 (unexpected EOF)")
+        case ESTACK : return fmt.Errorf("frugal: error when skipping fields: -3 (value nesting too deep)")
+        default     : return fmt.Errorf("frugal: error when skipping fields: %d (unknown error)", e)
     }
 }
 

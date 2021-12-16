@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
+//go:generate make
 package decoder
 
-import (
-    `github.com/cloudwego/frugal/internal/atm`
-)
-
-const (
-    ETAG   = -1
-    EEOF   = -2
-    ESTACK = -3
-)
-
-var (
-    C_skip = atm.RegisterCCall(_subr__do_skip, emu_ccall_skip)
-)
+//go:nosplit
+//go:noescape
+//goland:noinspection GoUnusedParameter,GoUnusedFunction
+func __do_skip(out *[]byte, src *[]byte, mode int)

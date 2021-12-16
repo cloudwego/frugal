@@ -38,7 +38,7 @@ var _SkipSizeFixed = [256]int {
 }
 
 const (
-    _T_map_pair defs.Tag = 0xa0
+    _T_map_pair defs.Tag = 0xff
 )
 
 func u32be(s unsafe.Pointer) int {
@@ -55,11 +55,12 @@ func stpop(s *_skipbuf_t, p *int) bool {
     }
 }
 
-func stadd(s *_skipbuf_t, p *int, t defs.Tag) {
-    if *p++; *p < defs.MaxStack {
-        s[*p].T, s[*p].N = t, 0
+func stadd(s *_skipbuf_t, p *int, t defs.Tag) bool {
+    if *p++; *p >= defs.MaxStack {
+        return false
     } else {
-        panic("skip stack overflow")
+        s[*p].T, s[*p].N = t, 0
+        return true
     }
 }
 
@@ -139,14 +140,14 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                     }
                 }
 
-                /* must have more than 3 bytes (fields cannot have a size of zero) */
+                /* must have more than 3 bytes (fields cannot have a size of zero), also skip the field ID cause we don't care */
                 if n <= 3 {
                     return EEOF
+                } else if !stadd(st, &sp, vt) {
+                    return ESTACK
+                } else {
+                    mvbuf(&s, &n, &rv, 3)
                 }
-
-                /* also skip the field ID cause we don't care */
-                stadd(st, &sp, vt)
-                mvbuf(&s, &n, &rv, 3)
             }
 
             /* maps */
@@ -199,9 +200,13 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
             /* map pairs */
             case _T_map_pair: {
                 if vt := st[sp].V; stpop(st, &sp) || st[sp].N & 1 != 0 {
-                    stadd(st, &sp, vt)
+                    if !stadd(st, &sp, vt) {
+                        return ESTACK
+                    }
                 } else {
-                    stadd(st, &sp, st[sp].K)
+                    if !stadd(st, &sp, st[sp].K) {
+                        return ESTACK
+                    }
                 }
             }
 

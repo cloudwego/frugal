@@ -18,7 +18,6 @@ package atm
 
 import (
     `fmt`
-    `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
@@ -171,11 +170,11 @@ func ri2reg(ri uint8) Register {
     }
 }
 
-func fn2addr(fp unsafe.Pointer) uintptr {
-    if fp == nil {
-        panic("fn2addr: nil function")
+func checkfp(fp uintptr) uintptr {
+    if fp == 0 {
+        panic("checkfp: nil function")
     } else {
-        return uintptr(fp)
+        return fp
     }
 }
 
@@ -185,7 +184,7 @@ func checkptr(ri uint8, arg Parameter) bool {
 
 func (self *CodeGen) abiCallGo(p *x86_64.Program, v *Instr) {
     self.internalCallFunction(p, v, nil, func(fp CallHandle) {
-        p.MOVQ(fn2addr(fp.Func), R12)
+        p.MOVQ(checkfp(fp.Func), R12)
         p.CALLQ(R12)
     })
 }
@@ -227,7 +226,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *Instr) {
     }
 
     /* call the function */
-    p.MOVQ(fn2addr(fp.Func), RAX)
+    p.MOVQ(checkfp(fp.Func), RAX)
     p.CALLQ(RAX)
 
     /* store the result */

@@ -20,7 +20,6 @@ import (
     `fmt`
     `reflect`
     `strings`
-    `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
@@ -142,7 +141,7 @@ func (self *AMD64ABI) RegisterMethod(id int, mt rt.Method) int {
     return mt.Id
 }
 
-func (self *AMD64ABI) RegisterFunction(id int, fn interface{}) (fp unsafe.Pointer) {
+func (self *AMD64ABI) RegisterFunction(id int, fn interface{}) (fp uintptr) {
     vv := rt.UnpackEface(fn)
     vt := vv.Type.Pack()
 
@@ -153,5 +152,5 @@ func (self *AMD64ABI) RegisterFunction(id int, fn interface{}) (fp unsafe.Pointe
 
     /* layout the function, and get the real function address */
     self.FnTab[id] = self.LayoutFunc(-1, vt)
-    return *(*unsafe.Pointer)(vv.Value)
+    return *(*uintptr)(vv.Value)
 }

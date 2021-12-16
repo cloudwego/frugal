@@ -198,7 +198,7 @@ func (self *Instr) isBranch() bool {
 
 func (self *Instr) formatFunc() string {
     fp := invokeTab[self.Iv]
-    return fmt.Sprintf("%s[*%p]", runtime.FuncForPC(uintptr(fp.Func)).Name(), fp.Func)
+    return fmt.Sprintf("%s[*%#x]", runtime.FuncForPC(fp.Func).Name(), fp.Func)
 }
 
 func (self *Instr) formatCall() string {
