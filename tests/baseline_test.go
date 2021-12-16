@@ -262,13 +262,13 @@ func BenchmarkUnmarshalKitexFast(b *testing.B) {
 }
 
 func BenchmarkUnmarshalFrugal(b *testing.B) {
-    var r kitex_baseline.Nesting2
+    var r vanilla_baseline.Nesting2
     buf := loaddata(b, nil)
     _, _ = frugal.DecodeObject(buf, &r)
     b.SetBytes(int64(len(buf)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        var v kitex_baseline.Nesting2
+        var v vanilla_baseline.Nesting2
         _, _ = frugal.DecodeObject(buf, &v)
     }
 }
