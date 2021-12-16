@@ -28,9 +28,9 @@ type TypeError struct {
 
 func (self TypeError) Error() string {
     if self.Note != "" {
-        return fmt.Sprintf("TypeError(%s): %s", self.Type.String(), self.Note)
+        return fmt.Sprintf("TypeError(%s): %s", self.Type, self.Note)
     } else {
-        return fmt.Sprintf("TypeError(%s): not supported by Thrift", self.Type.String())
+        return fmt.Sprintf("TypeError(%s): not supported by Thrift", self.Type)
     }
 }
 
@@ -59,16 +59,12 @@ func ESyntax(pos int, src string, reason string) SyntaxError {
 }
 
 func ESetList(pos int, src string, vt reflect.Type) SyntaxError {
-    return ESyntax(pos, src, fmt.Sprintf(
-        `ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`,
-        vt.Name(),
-        vt.Name(),
-    ))
+    return ESyntax(pos, src, fmt.Sprintf(`ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`, vt, vt))
 }
 
 func ENotSupp(vt reflect.Type, alt string) TypeError {
     return TypeError {
         Type: vt,
-        Note: fmt.Sprintf("Thrift does not support %s, use %s instead", vt.String(), alt),
+        Note: fmt.Sprintf("Thrift does not support %s, use %s instead", vt, alt),
     }
 }

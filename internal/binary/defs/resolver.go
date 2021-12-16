@@ -50,6 +50,7 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
     /* traverse all the fields */
     for i := 0; i < nfs; i++ {
         var ok bool
+        var rt *Type
         var id uint64
         var tv string
         var ft []string
@@ -91,12 +92,17 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
             return nil, fmt.Errorf("duplicated field ID %d for field %s.%s", id, vt, sf.Name)
         }
 
+        /* only optional fields or structs can be pointers */
+        if rt = ParseType(sf.Type, strings.TrimSpace(ft[2])); rx != Optional && rt.T == T_pointer && rt.V.T != T_struct {
+            return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s", sf.Type)
+        }
+
         /* add to result */
         ret = append(ret, Field {
             F    : int(sf.Offset),
             ID   : uint16(id),
             Spec : rx,
-            Type : ParseType(sf.Type, strings.TrimSpace(ft[2])),
+            Type : rt,
         })
     }
 

@@ -80,6 +80,12 @@ func (self *Program) i64(op OpCode, iv int64)           { self.ins(Instr{Op: op,
 func (self *Program) rtt(op OpCode, vt reflect.Type)    { self.ins(Instr{Op: op, Vt: rt.UnpackType(vt)})}
 func (self *Program) dyn(op OpCode, uv int32, iv int64) { self.ins(Instr{Op: op, Uv: uv, Iv: iv})}
 
+func (self *Program) buf(vv []byte) {
+    for _, v := range vv {
+        self.i64(OP_byte, int64(v))
+    }
+}
+
 func (self Program) Free() {
     freeProgram(self)
 }
@@ -113,6 +119,10 @@ func (self Program) Disassemble() string {
     }
 }
 
+type (
+    _CompilerAction func(*Program, int, *defs.Type, defs.Requiredness)
+)
+
 func CreateCompiler() Compiler {
     return newCompiler()
 }
@@ -142,13 +152,13 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     /* object measuring */
     i := ret.pc()
     ret.add(OP_if_hasbuf)
-    resetCompiler(self).measure(&ret, 0, vtp)
+    resetCompiler(self).measure(&ret, 0, vtp, defs.Default)
 
     /* object encoding */
     j := ret.pc()
     ret.add(OP_goto)
     ret.pin(i)
-    resetCompiler(self).compile(&ret, 0, vtp)
+    resetCompiler(self).compile(&ret, 0, vtp, defs.Default)
 
     /* halt the program */
     ret.pin(j)

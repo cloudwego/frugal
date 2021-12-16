@@ -142,20 +142,9 @@ func errors(p *atm.Builder) {
     p.JAL   (LB_error, atm.Pn)          // GOTO _error
 }
 
-func printv(i int, s *string) {
-    println(fmt.Sprintf("%d: %s", i, *s))
-}
-var tab []*string
-var printvfn = atm.RegisterGCall(printv, func(ctx atm.CallContext) {printv(int(ctx.Au(0)), (*string)(ctx.Ap(1)))})
 func program(p *atm.Builder, s Program) {
     for i, v := range s {
         p.Mark(i)
-        x := new(string)
-        *x = v.Disassemble()
-        tab = append(tab, x)
-        p.IQ(int64(i), TR)
-        p.IP(x, TP)
-        p.GCALL(printvfn).A0(TR).A1(TP)
         translators[v.Op](p, v)
     }
 }

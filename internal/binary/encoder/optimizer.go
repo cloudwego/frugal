@@ -24,6 +24,8 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+// FIXME: this implementation is very buggy, and should be replaced by CFG-based optimizations instead
+
 func Optimize(p Program) Program {
     for _, f := range _PassTab { p = f(p) }
     return p
@@ -34,15 +36,15 @@ var (
 )
 
 var _PassTab = [...]func(p Program) Program {
-    _PASS_StaticSizeMerging,
-    _PASS_Compacting,
-    _PASS_SeekMerging,
-    _PASS_ZeroSeekElimination,
-    _PASS_Compacting,
-    _PASS_SizeCheckMerging,
-    _PASS_Compacting,
-    _PASS_LiteralMerging,
-    _PASS_Compacting,
+    // _PASS_StaticSizeMerging,
+    // _PASS_Compacting,
+    // _PASS_SeekMerging,
+    // _PASS_NopElimination,
+    // _PASS_Compacting,
+    // _PASS_SizeCheckMerging,
+    // _PASS_Compacting,
+    // _PASS_LiteralMerging,
+    // _PASS_Compacting,
 }
 
 const (
@@ -307,7 +309,7 @@ func _PASS_StaticSizeMerging(p Program) Program {
             /* check for mergable instructions */
             switch op {
                 default            : break loop
-                case OP_seek       : break
+                // case OP_seek       : break
                 case OP_size_dyn   : break
                 case OP_size_const : nb += iv.Iv
             }
@@ -388,14 +390,14 @@ func _PASS_SeekMerging(p Program) Program {
     return p
 }
 
-// Zero Seek Elimination Pass: remove seek instruction with zero offsets
-func _PASS_ZeroSeekElimination(p Program) Program {
+// NOP Elimination Pass: remove instructions that are essencially NOPs (`seek 0`, `size_const 0`)
+func _PASS_NopElimination(p Program) Program {
     var i int
     var v Instr
 
-    /* replace every zero-offset seek with NOP */
+    /* replace every NOP with PC adjustment */
     for i, v = range p {
-        if v.Iv == 0 && v.Op == OP_seek {
+        if v.Iv == 0 && (v.Op == OP_seek || v.Op == OP_size_const) {
             p[i] = Instr {
                 Iv: -1,
                 Op: _OP_adjpc,

@@ -21,49 +21,42 @@ import (
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-func (self Compiler) measure(p *Program, sp int, vt *defs.Type) {
-    if vt.T != defs.T_pointer {
-        self.measureOne(p, sp, vt)
-    } else {
-        self.measurePtr(p, sp, vt, self.measure)
-    }
-}
-
-func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measure(p *Program, sp int, vt *defs.Type, req defs.Requiredness) {
     rt := vt.S
-    ok := self[rt]
+    tt := vt.T
 
-    /* check for loops */
-    if ok {
-        p.rtt(OP_size_defer, vt.S)
+    /* check for loops, recursive only on structs */
+    if self[rt] && tt == defs.T_struct {
+        p.rtt(OP_size_defer, rt)
         return
     }
 
     /* measure the type recursively */
     self[rt] = true
-    self.measureRec(p, sp, vt)
+    self.measureOne(p, sp, vt, req)
     delete(self, rt)
 }
 
-func (self Compiler) measureRec(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type, req defs.Requiredness) {
     switch vt.T {
-        case defs.T_bool   : p.i64(OP_size_const, 1)
-        case defs.T_i8     : p.i64(OP_size_const, 1)
-        case defs.T_i16    : p.i64(OP_size_const, 2)
-        case defs.T_i32    : p.i64(OP_size_const, 4)
-        case defs.T_i64    : p.i64(OP_size_const, 8)
-        case defs.T_double : p.i64(OP_size_const, 8)
-        case defs.T_string : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
-        case defs.T_binary : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
-        case defs.T_struct : self.measureStruct  (p, sp, vt)
-        case defs.T_map    : self.measureMap     (p, sp, vt)
-        case defs.T_set    : self.measureSetList (p, sp, vt)
-        case defs.T_list   : self.measureSetList (p, sp, vt)
-        default            : panic("unreachable")
+        case defs.T_bool    : p.i64(OP_size_const, 1)
+        case defs.T_i8      : p.i64(OP_size_const, 1)
+        case defs.T_i16     : p.i64(OP_size_const, 2)
+        case defs.T_i32     : p.i64(OP_size_const, 4)
+        case defs.T_i64     : p.i64(OP_size_const, 8)
+        case defs.T_double  : p.i64(OP_size_const, 8)
+        case defs.T_string  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
+        case defs.T_binary  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
+        case defs.T_map     : self.measureMap     (p, sp, vt, req)
+        case defs.T_set     : self.measureSetList (p, sp, vt, req)
+        case defs.T_list    : self.measureSetList (p, sp, vt, req)
+        case defs.T_struct  : self.measureStruct  (p, sp, vt)
+        case defs.T_pointer : self.measurePtr     (p, sp, vt, req, 1, self.measure)
+        default             : panic("measureOne: unreachable")
     }
 }
 
-func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, action func(*Program, int, *defs.Type)) {
+func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, req defs.Requiredness, nilv int64, measure _CompilerAction) {
     i := p.pc()
     n := defs.GetSize(vt.V.S)
 
@@ -81,22 +74,40 @@ func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, action func(*
     /* complex values */
     p.add(OP_make_state)
     p.add(OP_deref)
-    action(p, sp + 1, vt.V)
+    measure(p, sp + 1, vt.V, req)
     p.add(OP_drop_state)
+
+    /* non-struct pointer or optional field */
+    if req == defs.Optional || vt.V.T != defs.T_struct {
+        p.pin(i)
+        return
+    }
+
+    /* structs always need a 0x00 terminator */
+    j := p.pc()
+    p.add(OP_goto)
     p.pin(i)
+    p.i64(OP_size_const, nilv)
+    p.pin(j)
 }
 
-func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, req defs.Requiredness) {
     nk := defs.GetSize(vt.K.S)
     nv := defs.GetSize(vt.V.S)
 
     /* 6-byte map header */
-    p.tag(sp)
-    p.i64(OP_size_const, 6)
+    if p.tag(sp); req != defs.Optional {
+        p.i64(OP_size_const, 6)
+    }
 
     /* check for nil maps */
     i := p.pc()
     p.add(OP_if_nil)
+
+    /* check for optional map header */
+    if req == defs.Optional {
+        p.i64(OP_size_const, 6)
+    }
 
     /* key and value are both trivially measuable */
     if nk > 0 && nv > 0 {
@@ -118,13 +129,13 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type) {
     /* complex keys */
     if nk <= 0 {
         p.add(OP_map_key)
-        self.measure(p, sp + 1, vt.K)
+        self.measure(p, sp + 1, vt.K, defs.Default)
     }
 
     /* complex values */
     if nv <= 0 {
         p.add(OP_map_value)
-        self.measure(p, sp + 1, vt.V)
+        self.measure(p, sp + 1, vt.V, defs.Default)
     }
 
     /* move to the next state */
@@ -164,59 +175,71 @@ func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type) {
     p.tag(sp)
     p.i64(OP_size_const, 1)
     p.i64(OP_seek, int64(fvs[0].F))
-    self.measureField(p, sp + 1, fvs[0].Type)
+    self.measureField(p, sp + 1, fvs[0])
 
     /* remaining fields */
     for i, fv := range fvs[1:] {
         p.i64(OP_seek, int64(fv.F - fvs[i].F))
-        self.measureField(p, sp + 1, fv.Type)
+        self.measureField(p, sp + 1, fv)
     }
 }
 
-func (self Compiler) measureField(p *Program, sp int, vt *defs.Type) {
-    if vt.T != defs.T_pointer {
-        self.measureFieldStd(p, sp, vt)
+func (self Compiler) measureField(p *Program, sp int, fv defs.Field) {
+    if fv.Type.T == defs.T_pointer {
+        self.measureFieldPtr(p, sp, fv)
     } else {
-        self.measureFieldPtr(p, sp, vt)
+        self.measureFieldStd(p, sp, fv.Type, fv.Spec)
     }
 }
 
-func (self Compiler) measureFieldPtr(p *Program, sp int, vt *defs.Type) {
-    self.measurePtr(p, sp, vt, self.measureField)
+func (self Compiler) measureFieldPtr(p *Program, sp int, fv defs.Field) {
+    self.measurePtr(p, sp, fv.Type, fv.Spec, 4, self.measureFieldStd)
 }
 
-func (self Compiler) measureFieldStd(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measureFieldStd(p *Program, sp int, vt *defs.Type, req defs.Requiredness) {
     p.i64(OP_size_const, 3)
-    self.measureOne(p, sp, vt)
+    self.measure(p, sp, vt, req)
 }
 
-func (self Compiler) measureSetList(p *Program, sp int, vt *defs.Type) {
+func (self Compiler) measureSetList(p *Program, sp int, vt *defs.Type, req defs.Requiredness) {
     et := vt.V
     nb := defs.GetSize(et.S)
 
     /* 5-byte list or set header */
-    p.tag(sp)
-    p.i64(OP_size_const, 5)
+    if p.tag(sp); req != defs.Optional {
+        p.i64(OP_size_const, 5)
+    }
+
+    /* check for nil slice */
+    i := p.pc()
+    p.add(OP_if_nil)
 
     /* element is trivially measuable */
     if nb > 0 {
         p.dyn(OP_size_dyn, atm.PtrSize, int64(nb))
+        p.pin(i)
         return
+    }
+
+    /* check for optional list or set header */
+    if req == defs.Optional {
+        p.i64(OP_size_const, 5)
     }
 
     /* complex lists or sets */
     p.add(OP_make_state)
     p.add(OP_list_begin)
-    i := p.pc()
-    p.add(OP_list_if_end)
     j := p.pc()
-    self.measure(p, sp + 1, et)
-    p.add(OP_list_decr)
+    p.add(OP_list_if_end)
     k := p.pc()
+    self.measure(p, sp + 1, et, defs.Default)
+    p.add(OP_list_decr)
+    r := p.pc()
     p.add(OP_list_if_end)
     p.i64(OP_seek, int64(et.S.Size()))
-    p.jmp(OP_goto, j)
-    p.pin(i)
-    p.pin(k)
+    p.jmp(OP_goto, k)
+    p.pin(j)
+    p.pin(r)
     p.add(OP_drop_state)
+    p.pin(i)
 }

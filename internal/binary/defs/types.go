@@ -92,7 +92,7 @@ type Type struct {
 func (self *Type) Tag() Tag {
     switch self.T {
         case T_binary  : return T_string
-        case T_pointer : return self.V.Tag()
+        case T_pointer : return self.V.T
         default        : return self.T
     }
 }
@@ -136,7 +136,7 @@ func (self *Type) isKeyType() bool {
 
 func ParseType(vt reflect.Type, def string) *Type {
     var i int
-    return doParseType(vt, def, &i)
+    return doParseType(vt, def, &i, true)
 }
 
 func isident(c byte) bool {
@@ -193,15 +193,15 @@ func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) utils.
     }
 }
 
-func doParseType(vt reflect.Type, def string, i *int) *Type {
+func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
     tag := Tag(0)
     ret := newType()
 
-    /* dereference the pointer */
-    if vt.Kind() == reflect.Ptr {
+    /* dereference the pointer if possible */
+    if allowPtrs && vt.Kind() == reflect.Ptr {
         ret.S = vt
         ret.T = T_pointer
-        ret.V = doParseType(vt.Elem(), def, i)
+        ret.V = doParseType(vt.Elem(), def, i, false)
         return ret
     }
 
@@ -265,7 +265,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
     /* parse the key type */
     vi := *i
     kt := vt.Key()
-    ret.K = doParseType(kt, def, i)
+    ret.K = doParseType(kt, def, i, true)
 
     /* validate map key */
     if !ret.K.isKeyType() {
@@ -281,7 +281,7 @@ func doParseType(vt reflect.Type, def string, i *int) *Type {
 
     /* parse the value type */
     et := vt.Elem()
-    ret.V = doParseType(et, def, i)
+    ret.V = doParseType(et, def, i, true)
 
     /* map end */
     if def != "" {
@@ -315,7 +315,7 @@ func doParseSlice(vt reflect.Type, et reflect.Type, def string, i *int, rt *Type
     }
 
     /* set or list element */
-    rt.V = doParseType(et, def, i)
+    rt.V = doParseType(et, def, i, true)
     tk   = nextToken(def, i)
 
     /* list or set end */

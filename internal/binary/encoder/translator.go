@@ -438,7 +438,7 @@ func translate_OP_list_decr(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_list_begin(p *atm.Builder, _ Instr) {
-    p.ADDPI (WP, 8, TP)                 //  TP <=  WP + 8
+    p.ADDPI (WP, atm.PtrSize, TP)       //  TP <=  WP + PtrSize
     p.LQ    (TP, TR)                    //  TR <= *TP
     p.ADDP  (RS, ST, TP)                //  TP <=  RS + ST
     p.ADDPI (TP, LnOffset, TP)          //  TP <=  TP + LnOffset
