@@ -18,41 +18,250 @@ package encoder
 
 import (
     `encoding/binary`
-    `sync`
+    `fmt`
+    `sort`
+    `strings`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/oleiade/lane`
 )
 
-// FIXME: this implementation is very buggy, and should be replaced by CFG-based optimizations instead
-
-func Optimize(p Program) Program {
-    for _, f := range _PassTab { p = f(p) }
-    return p
+type BasicBlock struct {
+    P    Program
+    Src  int
+    End  int
+    Next *BasicBlock
+    Link *BasicBlock
 }
 
-var (
-    adjustPool sync.Pool
-)
+func (self *BasicBlock) Len() int {
+    return self.End - self.Src
+}
 
-var _PassTab = [...]func(p Program) Program {
-    // _PASS_StaticSizeMerging,
-    // _PASS_Compacting,
-    // _PASS_SeekMerging,
-    // _PASS_NopElimination,
-    // _PASS_Compacting,
-    // _PASS_SizeCheckMerging,
-    // _PASS_Compacting,
-    // _PASS_LiteralMerging,
-    // _PASS_Compacting,
+func (self *BasicBlock) Free() {
+    q := lane.NewQueue()
+    m := make(map[*BasicBlock]struct{})
+
+    /* traverse the graph with BFS */
+    for q.Enqueue(self); !q.Empty(); {
+        v := q.Dequeue()
+        p := v.(*BasicBlock)
+
+        /* add branch to queue */
+        if p.Link != nil {
+            if _, ok := m[p.Link]; !ok {
+                q.Enqueue(p.Link)
+            }
+        }
+
+        /* clear branch, and add to free list */
+        m[p] = struct{}{}
+        p.Link = nil
+    }
+
+    /* reset and free all the nodes */
+    for p := range m {
+        p.Next = nil
+        freeBasicBlock(p)
+    }
+}
+
+func (self *BasicBlock) String() string {
+    n := self.End - self.Src
+    v := make([]string, n + 1)
+
+    /* dump every instructions */
+    for i := self.Src; i < self.End; i++ {
+        v[i - self.Src + 1] = "    " + self.P[i].Disassemble()
+    }
+
+    /* add the entry label */
+    v[0] = fmt.Sprintf("L_%d:", self.Src)
+    return strings.Join(v, "\n")
+}
+
+type GraphBuilder struct {
+    Pin   map[int]bool
+    Graph map[int]*BasicBlock
+}
+
+func (self *GraphBuilder) scan(p Program) {
+    for _, v := range p {
+        if _OpBranches[v.Op] {
+            self.Pin[v.To] = true
+        }
+    }
+}
+
+func (self *GraphBuilder) block(p Program, i int, bb *BasicBlock) {
+    bb.Src = i
+    bb.End = i
+
+    /* traverse down until it hits a branch instruction */
+    for i < len(p) && !_OpBranches[p[i].Op] {
+        i++
+        bb.End++
+
+        /* hit a merge point, merge with existing block */
+        if self.Pin[i] {
+            bb.Next = self.branch(p, i)
+            return
+        }
+    }
+
+    /* end of basic block */
+    if i == len(p) {
+        return
+    }
+
+    /* also include the branch instruction */
+    bb.End++
+    bb.Next = self.branch(p, p[i].To)
+
+    /* GOTO instruction doesn't technically "branch", anything
+     * sits between it and the next branch target are unreachable. */
+    if p[i].Op != OP_goto {
+        bb.Link = bb.Next
+        bb.Next = self.branch(p, i + 1)
+    }
+}
+
+func (self *GraphBuilder) branch(p Program, i int) *BasicBlock {
+    var ok bool
+    var bb *BasicBlock
+
+    /* check for existing basic blocks */
+    if bb, ok = self.Graph[i]; ok {
+        return bb
+    }
+
+    /* create a new block */
+    bb = newBasicBlock()
+    bb.P, bb.Next, bb.Link = p, nil, nil
+
+    /* process the new block */
+    self.Graph[i] = bb
+    self.block(p, i, bb)
+    return bb
+}
+
+func (self *GraphBuilder) Free() {
+    rt.MapClear(self.Pin)
+    rt.MapClear(self.Graph)
+    freeGraphBuilder(self)
+}
+
+func (self *GraphBuilder) Build(p Program) *BasicBlock {
+    self.scan(p)
+    return self.branch(p, 0)
+}
+
+func (self *GraphBuilder) BuildAndFree(p Program) (bb *BasicBlock) {
+    bb = self.Build(p)
+    self.Free()
+    return
+}
+
+type _OptimizerState struct {
+    buf  []*BasicBlock
+    refs map[int]int
+    mask map[*BasicBlock]bool
+}
+
+func (self *_OptimizerState) visit(bb *BasicBlock) bool {
+    var mm bool
+    var ok bool
+
+    /* check for duplication */
+    if mm, ok = self.mask[bb]; mm && ok {
+        return false
+    }
+
+    /* add to block buffer */
+    self.buf = append(self.buf, bb)
+    self.mask[bb] = true
+    return true
+}
+
+func Optimize(p Program) Program {
+    acc := 0
+    ret := newProgram()
+    buf := lane.NewQueue()
+    ctx := newOptimizerState()
+    cfg := newGraphBuilder().BuildAndFree(p)
+
+    /* travel with BFS */
+    for buf.Enqueue(cfg); !buf.Empty(); {
+        v := buf.Dequeue()
+        b := v.(*BasicBlock)
+
+        /* check for duplication, and then mark as visited */
+        if !ctx.visit(b) {
+            continue
+        }
+
+        /* optimize each block */
+        for _, pass := range _PassTab {
+            pass(b)
+        }
+
+        /* add conditional branches if any */
+        if b.Next != nil { buf.Enqueue(b.Next) }
+        if b.Link != nil { buf.Enqueue(b.Link) }
+    }
+
+    /* sort the blocks by entry point */
+    sort.Slice(ctx.buf, func(i int, j int) bool {
+        return ctx.buf[i].Src < ctx.buf[j].Src
+    })
+
+    /* remap all the branch locations */
+    for _, bb := range ctx.buf {
+        ctx.refs[bb.Src] = acc
+        acc += bb.End - bb.Src
+    }
+
+    /* adjust all the branch targets */
+    for _, bb := range ctx.buf {
+        if end := bb.End; bb.Src != end {
+            if ins := &bb.P[end - 1]; _OpBranches[ins.Op] {
+                ins.To = ctx.refs[ins.To]
+            }
+        }
+    }
+
+    /* grow the result buffer if needed */
+    if cap(ret) < acc {
+        rt.GrowSlice(&ret, acc)
+    }
+
+    /* merge all the basic blocks */
+    for _, bb := range ctx.buf {
+        ret = append(ret, bb.P[bb.Src:bb.End]...)
+    }
+
+    /* release the original program */
+    p.Free()
+    freeOptimizerState(ctx)
+    return ret
+}
+
+var _PassTab = [...]func(p *BasicBlock) {
+    _PASS_StaticSizeMerging,
+    _PASS_SeekMerging,
+    _PASS_NopElimination,
+    _PASS_SizeCheckMerging,
+    _PASS_LiteralMerging,
+    _PASS_Compacting,
 }
 
 const (
-    _OP_adjpc OpCode = 0xff
+    _NOP OpCode = 0xff
 )
 
 func init() {
-    _OpNames[_OP_adjpc] = "(PC-adjustment)"
+    _OpNames[_NOP] = "(nop)"
 }
 
 func checksl(s *[]byte, n int) *rt.GoSlice {
@@ -60,7 +269,7 @@ func checksl(s *[]byte, n int) *rt.GoSlice {
     sn := sl.Len
 
     /* check for length */
-    if sn > 16 - n {
+    if sn + n > sl.Cap {
         panic("slice overflow")
     } else {
         return sl
@@ -102,131 +311,79 @@ func append8(s *[]byte, v uint64) {
     sl.Len += 8
 }
 
-func makeadj(v Instr, n *int) {
-    if v.Op == _OP_adjpc {
-        *n += int(v.Iv)
-    }
-}
-
-func adjustpc(v *Instr, adj []int) {
-    if _OpBranches[v.Op] {
-        v.To += adj[v.To]
-    }
-}
-
-func removeadj(p Program, v *Instr) {
-    for p[v.To].Op == _OP_adjpc {
-        v.To++
-    }
-}
-
-func newAdjustBuffer(n int) []int {
-    if v := adjustPool.Get(); v != nil {
-        return v.([]int)[:0]
-    } else {
-        return make([]int, 0, n)
-    }
-}
-
-// Compacting Pass: remove all the PC-adjustment instructions inserted in the previous pass.
-func _PASS_Compacting(p Program) Program {
-    j := 0
-    n := 0
-    a := newAdjustBuffer(len(p))
-
-    /* move all the jumps so that it does not point to any PC adjustment pseudo-instructions */
-    for i := 0; i < len(p); i++ {
-        if _OpBranches[p[i].Op] {
-            removeadj(p, &p[i])
-        }
-    }
-
-    /* scan for PC adjustments */
-    for _, v := range p {
-        makeadj(v, &n)
-        a = append(a, n)
-    }
-
-    /* adjust branch offsets */
-    for _, v := range p {
-        if v.Op != _OP_adjpc {
-            adjustpc(&v, a)
-            p[j] = v
-            j++
-        }
-    }
-
-    /* all done */
-    adjustPool.Put(a)
-    return p[:j]
-}
-
-// Size Check Merging Pass: merges size-checking instructions as much as possible.
-func _PASS_SizeCheckMerging(p Program) Program {
-    i := 0
-    n := len(p)
-
-    /* scan every instruction */
-    for i < n {
-        iv := p[i]
-        op := iv.Op
-
-        /* only interested in size instructions */
-        if op != OP_size_check {
-            i++
-            continue
-        }
-
-        /* size accumulator */
-        ip := i
-        nb := int64(0)
-
-        /* scan for mergable size instructions */
-        loop: for i < n {
-            iv = p[i]
-            op = iv.Op
-
-            /* check for mergable instructions */
-            switch op {
-                default            : break loop
-                case OP_byte       : break
-                case OP_word       : break
-                case OP_long       : break
-                case OP_quad       : break
-                case OP_sint       : break
-                case OP_seek       : break
-                case OP_size_check : nb += iv.Iv
-            }
-
-            /* adjust the program counter */
-            if i++; op == OP_size_check {
-                p[i - 1] = Instr {
-                    Iv: -1,
-                    Op: _OP_adjpc,
+// Static Size Merging Pass: merges constant size instructions as much as possible.
+func _PASS_StaticSizeMerging(bb *BasicBlock) {
+    for i := bb.Src; i < bb.End; i++ {
+        if p := &bb.P[i]; p.Op == OP_size_const {
+            for r, j := true, i + 1; r && j < bb.End; i, j = i + 1, j + 1 {
+                switch bb.P[j].Op {
+                    case _NOP          : break
+                    case OP_seek       : break
+                    case OP_deref      : break
+                    case OP_size_dyn   : break
+                    case OP_size_const : p.Iv += bb.P[j].Iv; bb.P[j].Op = _NOP
+                    default            : r = false
                 }
             }
         }
+    }
+}
 
-        /* replace the size instruction */
-        if i != ip {
-            p[ip] = Instr {
-                Iv: nb,
-                Op: OP_size_check,
+// Seek Merging Pass: merges seeking instructions as much as possible.
+func _PASS_SeekMerging(bb *BasicBlock) {
+    for i := bb.Src; i < bb.End; i++ {
+        if p := &bb.P[i]; p.Op == OP_seek {
+            for r, j := true, i + 1; r && j < bb.End; i, j = i + 1, j + 1 {
+                switch bb.P[j].Op {
+                    case _NOP    : break
+                    case OP_seek : p.Iv += bb.P[j].Iv; bb.P[j].Op = _NOP
+                    default      : r = false
+                }
             }
         }
     }
+}
 
-    /* all done */
-    return p
+// NOP Elimination Pass: remove instructions that are effectively NOPs (`seek 0`, `size_const 0`)
+func _PASS_NopElimination(bb *BasicBlock) {
+    for i := bb.Src; i < bb.End; i++ {
+        if bb.P[i].Iv == 0 && (bb.P[i].Op == OP_seek || bb.P[i].Op == OP_size_const) {
+            bb.P[i].Op = _NOP
+        }
+    }
+}
+
+// Size Check Merging Pass: merges size-checking instructions as much as possible.
+func _PASS_SizeCheckMerging(bb *BasicBlock) {
+    for i := bb.Src; i < bb.End; i++ {
+        if p := &bb.P[i]; p.Op == OP_size_check {
+            for r, j := true, i + 1; r && j < bb.End; i, j = i + 1, j + 1 {
+                switch bb.P[j].Op {
+                    case _NOP          : break
+                    case OP_byte       : break
+                    case OP_word       : break
+                    case OP_long       : break
+                    case OP_quad       : break
+                    case OP_sint       : break
+                    case OP_seek       : break
+                    case OP_deref      : break
+                    case OP_length     : break
+                    case OP_memcpy_be  : break
+                    case OP_size_check : p.Iv += bb.P[j].Iv; bb.P[j].Op = _NOP
+                    default            : r = false
+                }
+            }
+        }
+    }
 }
 
 // Literal Merging Pass: merges all consectutive byte, word or long instructions.
-func _PASS_LiteralMerging(p Program) Program {
-    i := 0
-    n := len(p)
+func _PASS_LiteralMerging(bb *BasicBlock) {
+    p := bb.P
+    i := bb.Src
 
     /* scan every instruction */
-    for i < n {
+    for i < bb.End {
         iv := p[i]
         op := iv.Op
 
@@ -238,25 +395,28 @@ func _PASS_LiteralMerging(p Program) Program {
 
         /* byte merging buffer */
         ip := i
-        mm := [16]byte{}
+        mm := [15]byte{}
         sl := mm[:0:cap(mm)]
 
         /* scan for consecutive bytes */
-        loop: for i < n {
+        loop: for i < bb.End {
             iv = p[i]
             op = iv.Op
 
             /* check for OpCode */
             switch op {
-                default      : break loop
-                case OP_byte : append1(&sl, byte(iv.Iv))
-                case OP_word : append2(&sl, uint16(iv.Iv))
-                case OP_long : append4(&sl, uint32(iv.Iv))
-                case OP_quad : append8(&sl, uint64(iv.Iv))
+                case _NOP     : i++; continue
+                case OP_seek  : i++; continue
+                case OP_deref : i++; continue
+                case OP_byte  : append1(&sl, byte(iv.Iv))
+                case OP_word  : append2(&sl, uint16(iv.Iv))
+                case OP_long  : append4(&sl, uint32(iv.Iv))
+                case OP_quad  : append8(&sl, uint64(iv.Iv))
+                default       : break loop
             }
 
             /* adjust the program counter */
-            p[i] = Instr{Op: _OP_adjpc, Iv: -1}
+            p[i].Op = _NOP
             i++
 
             /* commit the buffer if needed */
@@ -276,135 +436,23 @@ func _PASS_LiteralMerging(p Program) Program {
         if len(sl) >= 2 { p[ip] = Instr{Op: OP_word, Iv: int64(binary.BigEndian.Uint16(sl))} ; sl = sl[2:]; ip++ }
         if len(sl) >= 1 { p[ip] = Instr{Op: OP_byte, Iv: int64(sl[0])}                       ; sl = sl[1:]; ip++ }
     }
-
-    /* all done */
-    return p
 }
 
-// Static Size Merging Pass: merges constant size instructions as much as possible.
-func _PASS_StaticSizeMerging(p Program) Program {
-    i := 0
-    n := len(p)
-
-    /* scan every instruction */
-    for i < n {
-        iv := p[i]
-        op := iv.Op
-
-        /* only interested in size instructions */
-        if op != OP_size_const {
-            i++
-            continue
-        }
-
-        /* size accumulator */
-        ip := i
-        nb := int64(0)
-
-        /* scan for mergable size instructions */
-        loop: for i < n {
-            iv = p[i]
-            op = iv.Op
-
-            /* check for mergable instructions */
-            switch op {
-                default            : break loop
-                // case OP_seek       : break
-                case OP_size_dyn   : break
-                case OP_size_const : nb += iv.Iv
-            }
-
-            /* adjust the program counter */
-            if i++; op == OP_size_const {
-                p[i - 1] = Instr {
-                    Iv: -1,
-                    Op: _OP_adjpc,
-                }
-            }
-        }
-
-        /* replace the size instruction */
-        if i != ip {
-            p[ip] = Instr {
-                Iv: nb,
-                Op: OP_size_const,
-            }
-        }
-    }
-
-    /* all done */
-    return p
-}
-
-// Seek Merging Pass: merges seeking instructions as much as possible.
-func _PASS_SeekMerging(p Program) Program {
-    i := 0
-    n := len(p)
-
-    /* scan every instruction */
-    for i < n {
-        iv := p[i]
-        op := iv.Op
-
-        /* only interested in size instructions */
-        if op != OP_seek {
-            i++
-            continue
-        }
-
-        /* size accumulator */
-        ip := i
-        nb := int64(0)
-
-        /* scan for mergable size instructions */
-        for i < n {
-            iv = p[i]
-            op = iv.Op
-
-            /* check for mergable instructions */
-            if op != OP_seek {
-                break
-            }
-
-            /* add up the offsets */
-            i++
-            nb += iv.Iv
-
-            /* adjust the program counter */
-            p[i - 1] = Instr {
-                Iv: -1,
-                Op: _OP_adjpc,
-            }
-        }
-
-        /* replace the size instruction */
-        if i != ip {
-            p[ip] = Instr {
-                Iv: nb,
-                Op: OP_seek,
-            }
-        }
-    }
-
-    /* all done */
-    return p
-}
-
-// NOP Elimination Pass: remove instructions that are essencially NOPs (`seek 0`, `size_const 0`)
-func _PASS_NopElimination(p Program) Program {
+// Compacting Pass: remove all the placeholder NOP instructions inserted in the previous pass.
+func _PASS_Compacting(bb *BasicBlock) {
     var i int
-    var v Instr
+    var j int
 
-    /* replace every NOP with PC adjustment */
-    for i, v = range p {
-        if v.Iv == 0 && (v.Op == OP_seek || v.Op == OP_size_const) {
-            p[i] = Instr {
-                Iv: -1,
-                Op: _OP_adjpc,
-            }
+    /* copy instructins excluding NOPs */
+    for i, j = bb.Src, bb.Src; i < bb.End; i++ {
+        if bb.P[i].Op != _NOP {
+            bb.P[j] = bb.P[i]
+            j++
         }
     }
 
-    /* all done */
-    return p
+    /* update basic block end if needed */
+    if i != j {
+        bb.End = j
+    }
 }

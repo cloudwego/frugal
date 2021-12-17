@@ -25,8 +25,19 @@ import (
 //goland:noinspection GoUnusedParameter
 func mapclear(t *GoType, h unsafe.Pointer)
 
+//go:noescape
+//go:linkname growslice runtime.growslice
+//goland:noinspection GoUnusedParameter
+func growslice(et *GoType, old GoSlice, cap int) GoSlice
+
 //go:nosplit
 func MapClear(m interface{}) {
     v := UnpackEface(m)
     mapclear(v.Type, v.Value)
+}
+
+//go:nosplit
+func GrowSlice(s interface{}, cap int) {
+    v := UnpackEface(s)
+    *(*GoSlice)(v.Value) = growslice(SliceElem(PtrElem(v.Type)), *(*GoSlice)(v.Value), cap)
 }

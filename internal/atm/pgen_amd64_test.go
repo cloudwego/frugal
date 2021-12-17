@@ -83,11 +83,11 @@ type TestIface interface {
 var (
     hfunc CallHandle
     hmeth CallHandle
-    cfunc unsafe.Pointer
+    cfunc uintptr
 )
 
 func init() {
-    cfunc = unsafe.Pointer(&cfunc)
+    cfunc = uintptr(unsafe.Pointer(&cfunc))
     hfunc = RegisterCCall(cfunc, nil)
     hmeth = RegisterICall(rt.GetMethod((*TestIface)(nil), "Foo"), nil)
 }
@@ -153,7 +153,7 @@ func gcalltestfn(a int) (int, int, int) {
     return a + 100, a + 200, a + 300
 }
 
-func mkccalltestfn() unsafe.Pointer {
+func mkccalltestfn() uintptr {
     var asm x86_64.Assembler
     err := asm.Assemble(`
         movq    %rdi, %rax
@@ -164,7 +164,7 @@ func mkccalltestfn() unsafe.Pointer {
         panic(err)
     }
     p := loader.Loader(asm.Code()).Load("_ccalltestfn", rt.Frame{})
-    return *(*unsafe.Pointer)(p)
+    return *(*uintptr)(p)
 }
 
 func TestPGen_FunctionCall(t *testing.T) {

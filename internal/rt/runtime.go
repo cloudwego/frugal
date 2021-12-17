@@ -87,6 +87,11 @@ func (self *GoMapType) IsFastMap() bool {
     return self.Elem.Size <= MaxFastMap
 }
 
+type GoSliceType struct {
+    GoType
+    Elem *GoType
+}
+
 type GoItab struct {
     it unsafe.Pointer
     vt *GoType
@@ -113,6 +118,10 @@ type GoSlice struct {
     Ptr unsafe.Pointer
     Len int
     Cap int
+}
+
+func (self GoSlice) Set(i int, v byte) {
+    *(*byte)(unsafe.Pointer(uintptr(self.Ptr) + uintptr(i))) = v
 }
 
 type GoString struct {
@@ -150,21 +159,16 @@ type GoMapIterator struct {
     CheckBucket uintptr
 }
 
-func (self GoSlice) Set(i int, v byte) {
-    *(*byte)(unsafe.Pointer(uintptr(self.Ptr) + uintptr(i))) = v
-}
-
-type GoSliceType struct {
-    GoType
-    Elem *GoType
-}
-
 func IsPtr(t *GoType) bool {
     return t.Kind() == reflect.Ptr || t.Kind() == reflect.UnsafePointer
 }
 
 func PtrElem(t *GoType) *GoType {
-    return (*GoPtrType)(unsafe.Pointer(t)).Elem
+    if t.Kind() != reflect.Ptr {
+        panic("t is not a ptr")
+    } else {
+        return (*GoPtrType)(unsafe.Pointer(t)).Elem
+    }
 }
 
 func MapType(t *GoType) *GoMapType {
@@ -180,6 +184,14 @@ func FuncAddr(f interface{}) unsafe.Pointer {
         panic("f is not a function")
     } else {
         return *(*unsafe.Pointer)(vv.Value)
+    }
+}
+
+func SliceElem(t *GoType) *GoType {
+    if t.Kind() != reflect.Slice {
+        panic("t is not a slice")
+    } else {
+        return (*GoSliceType)(unsafe.Pointer(t)).Elem
     }
 }
 

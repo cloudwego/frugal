@@ -53,8 +53,8 @@ func (self Instr) Disassemble() string {
         case OP_map_begin   : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
         case OP_byte        : return fmt.Sprintf("%-18s0x%02x", self.Op, self.Iv)
         case OP_word        : return fmt.Sprintf("%-18s0x%04x", self.Op, self.Iv)
-        case OP_long        : return fmt.Sprintf("%-18s0x%06x", self.Op, self.Iv)
-        case OP_quad        : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)
+        case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)
+        case OP_quad        : return fmt.Sprintf("%-18s0x%016x", self.Op, self.Iv)
         case OP_map_if_end  : fallthrough
         case OP_list_if_end : fallthrough
         case OP_goto        : fallthrough
@@ -146,7 +146,7 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     vtp := defs.ParseType(vt, "")
 
     /* catch the exceptions, and free the type */
-    defer self.rescue(&err)
+    // defer self.rescue(&err)
     defer vtp.Free()
 
     /* object measuring */
