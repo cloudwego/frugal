@@ -23,6 +23,8 @@ import (
 )
 
 const (
+    AL    = x86_64.AL
+    AX    = x86_64.AX
     EAX   = x86_64.EAX
     RAX   = x86_64.RAX
     RCX   = x86_64.RCX

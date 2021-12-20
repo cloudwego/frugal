@@ -27,6 +27,11 @@ import (
 //goland:noinspection GoUnusedParameter
 func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 
+//go:noescape
+//go:linkname memclrNoHeapPointers runtime.memclrNoHeapPointers
+//goland:noinspection GoUnusedParameter
+func memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr)
+
 var (
     F_memmove = uintptr(rt.FuncAddr(memmove))
 )

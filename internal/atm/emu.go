@@ -104,6 +104,7 @@ func (self *Emulator) Run() {
             case OP_beqn  : if       self.Pr[p.Ps]  ==                 nil  { self.PC = p.Br }
             case OP_bnen  : if       self.Pr[p.Ps]  !=                 nil  { self.PC = p.Br }
             case OP_jal   : self.Pr[p.Pd], self.PC = unsafe.Pointer(self.PC), p.Br
+            case OP_bzero : memclrNoHeapPointers(self.Pr[p.Pd], uintptr(p.Iv))
             case OP_bcopy : memmove(self.Pr[p.Pd], self.Pr[p.Ps], uintptr(self.Gr[p.Rx]))
             case OP_halt  : self.PC = nil
             case OP_break : self.trap()

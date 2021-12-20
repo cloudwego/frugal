@@ -29,6 +29,60 @@ var (
     memcpyRegisterSet = map[x86_64.Register64]bool{RAX: true, RBX: true, RCX: true}
 )
 
+func (self *CodeGen) abiBlockZero(p *x86_64.Program, pd PointerRegister, nb int64) {
+    dp := int32(0)
+    p.MOVQ(self.r(pd), RDI)
+
+    /* use XMM for larger blocks */
+    if nb >= 16 {
+        p.PXOR(XMM15, XMM15)
+    }
+
+    /* clear every 16-byte block */
+    for nb >= 16 {
+        p.MOVDQU(XMM15, Ptr(RDI, dp))
+        dp += 16
+        nb -= 16
+    }
+
+    /* only 1 byte left */
+    if nb == 1 {
+        p.MOVB(0, Ptr(RDI, dp))
+        return
+    }
+
+    /* still bytes to be zeroed */
+    if nb != 0 {
+        p.XORL(EAX, EAX)
+    }
+
+    /* clear every 8-byte block */
+    if nb >= 8 {
+        p.MOVQ(RAX, Ptr(RDI, dp))
+        dp += 8
+        nb -= 8
+    }
+
+    /* clear every 4-byte block */
+    if nb >= 8 {
+        p.MOVL(EAX, Ptr(RDI, dp))
+        dp += 4
+        nb -= 4
+    }
+
+    /* clear every 2-byte block */
+    if nb >= 2 {
+        p.MOVW(AX, Ptr(RDI, dp))
+        dp += 2
+        nb -= 2
+    }
+
+    /* last byte */
+    if nb > 0 {
+        p.MOVB(AL, Ptr(RDI, dp))
+    }
+}
+
 func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd PointerRegister, ps PointerRegister, nb GenericRegister) {
     rs := self.r(ps)
     rl := self.r(nb)

@@ -66,7 +66,8 @@ const (
     OP_beqn                 // if (Ps == nil) Br.PC -> PC
     OP_bnen                 // if (Ps != nil) Br.PC -> PC
     OP_jal                  // PC -> Pd; Br.PC -> PC
-    OP_bcopy                // memcpy(Ps, Rx, Pd)
+    OP_bzero                // memset(Pd, 0, Iv)
+    OP_bcopy                // memcpy(Pd, Ps, Rx)
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
     OP_icall                // call external Go iface methods
@@ -130,6 +131,7 @@ var _OperandMask = [256]Operands {
     OP_beqn  : Ops,
     OP_bnen  : Ops,
     OP_jal   : Opd,
+    OP_bzero : Opd,
     OP_bcopy : Orx | Ops | Opd,
     OP_ccall : Ocall,
     OP_gcall : Ocall,
@@ -302,6 +304,7 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_beqn  : return fmt.Sprintf("beq     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
         case OP_bnen  : return fmt.Sprintf("bne     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", self.formatRefs(refs, self.Br), self.Pd)
+        case OP_bzero : return fmt.Sprintf("bzero   $%d, %s", self.Iv, self.Pd)
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCall())

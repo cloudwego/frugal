@@ -366,6 +366,10 @@ func (self *Builder) JAL(to string, pd PointerRegister) *Instr {
     return self.jmp(newInstr(OP_jal).pd(pd), to)
 }
 
+func (self *Builder) BZERO(nb int64, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_bzero).iv(nb).pd(pd))
+}
+
 func (self *Builder) BCOPY(ps PointerRegister, rx GenericRegister, pd PointerRegister) *Instr {
     return self.add(newInstr(OP_bcopy).ps(ps).rx(rx).pd(pd))
 }

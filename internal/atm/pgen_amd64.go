@@ -494,6 +494,7 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *Instr) {
     OP_beqn  : (*CodeGen).translate_OP_beqn,
     OP_bnen  : (*CodeGen).translate_OP_bnen,
     OP_jal   : (*CodeGen).translate_OP_jal,
+    OP_bzero : (*CodeGen).translate_OP_bzero,
     OP_bcopy : (*CodeGen).translate_OP_bcopy,
     OP_ccall : (*CodeGen).translate_OP_ccall,
     OP_gcall : (*CodeGen).translate_OP_gcall,
@@ -1003,6 +1004,14 @@ func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *Instr) {
         p.JMP(self.to(v.Br))
     } else {
         panic("jal: link-based sub-routine call is not implemented for x86_64")
+    }
+}
+
+func (self *CodeGen) translate_OP_bzero(p *x86_64.Program, v *Instr) {
+    if v.Pd == Pn {
+        panic("bzero: zeroing nil pointer")
+    } else if v.Iv != 0 {
+        self.abiBlockZero(p, v.Pd, v.Iv)
     }
 }
 
