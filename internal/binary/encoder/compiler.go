@@ -146,7 +146,7 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     vtp := defs.ParseType(vt, "")
 
     /* catch the exceptions, and free the type */
-    // defer self.rescue(&err)
+    defer self.rescue(&err)
     defer vtp.Free()
 
     /* object measuring */
