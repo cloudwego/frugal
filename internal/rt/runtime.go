@@ -202,6 +202,12 @@ func BytesFrom(p unsafe.Pointer, n int, c int) (r []byte) {
     return
 }
 
+func StringFrom(p unsafe.Pointer, n int) (r string) {
+    (*GoString)(unsafe.Pointer(&r)).Ptr = p
+    (*GoString)(unsafe.Pointer(&r)).Len = n
+    return
+}
+
 func UnpackType(t reflect.Type) *GoType {
     return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
 }

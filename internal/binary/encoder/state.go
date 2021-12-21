@@ -39,7 +39,7 @@ const (
 )
 
 const (
-    Uint8Size = int64(unsafe.Sizeof(uint8(0)))
+    Uint8Size  = int64(unsafe.Sizeof(uint8(0)))
     Uint16Size = int64(unsafe.Sizeof(uint16(0)))
 )
 

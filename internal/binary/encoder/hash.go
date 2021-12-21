@@ -18,22 +18,27 @@ package encoder
 
 import (
     `unsafe`
-
-    `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/loader`
 )
 
-type (
-	LinkerAMD64 struct{}
-)
+//go:noescape
+//go:linkname strhash runtime.strhash
+//goland:noinspection GoUnusedParameter
+func strhash(p unsafe.Pointer, h uintptr) uintptr
 
-
-func init() {
-    SetLinker(new(LinkerAMD64))
+func mkhash(v int) int {
+    if v != 0 {
+        return v
+    } else {
+        return 1
+    }
 }
 
-func (LinkerAMD64) Link(p atm.Program) Encoder {
-    cc := atm.CreateCodeGen((Encoder)(nil))
-    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("encoder", cc.Frame())
-    return *(*Encoder)(unsafe.Pointer(&fp))
+func hash64(h uint64) int {
+    h ^= h >> 33
+    h *= 0x9e3779b97f4a7c15
+    return mkhash(int(h &^ (1 << 63)))
+}
+
+func hashstr(p unsafe.Pointer) int {
+    return mkhash(int(strhash(p, 0) &^ (1 << 63)))
 }

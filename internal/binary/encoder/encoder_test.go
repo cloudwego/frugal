@@ -26,11 +26,11 @@ import (
 )
 
 type SetTest struct {
-    X []int8 `frugal:"1,default,set<i8>"`
+    X []string `frugal:"1,default,set<string>"`
 }
 
 func TestEncoder_Encode(t *testing.T) {
-    v := SetTest{X: []int8{1, 2, 3, 4, 5, 6, -1, -2, 0, 100}}
+    v := SetTest{X: []string{"asdf", "qwer", "fghdfghdfgh", "xvcbxcvb", "asdkjhgfasijyhd", "asdkjhgf", "asdf"}}
     // v := TranslatorTestStruct {
     //     A: true,
     //     B: 0x12,

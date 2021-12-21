@@ -23,6 +23,7 @@ import (
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
@@ -462,7 +463,16 @@ func translate_OP_list_if_end(p *atm.Builder, v Instr) {
 }
 
 func translate_OP_unique(p *atm.Builder, v Instr) {
-    switch v.Vt.Kind() {
+    p.ADDPI (WP, atm.PtrSize, TP)       // TP <=  WP + atm.PtrSize
+    p.LQ    (TP, TR)                    // TR <= *TP
+    p.IB    (2, UR)                     // UR <=  2
+    p.BLTU  (TR, UR, "_ok_{n}")         // if TR < UR then GOTO _ok_{n}
+    translate_OP_unique_type(p, v.Vt)   // check_unique(v.Vt)
+    p.Label ("_ok_{n}")                 // _ok_{n}:
+}
+
+func translate_OP_unique_type(p *atm.Builder, vt *rt.GoType) {
+    switch vt.Kind() {
         case reflect.Bool    : translate_OP_unique_b(p)
         case reflect.Int     : translate_OP_unique_int(p)
         case reflect.Int8    : translate_OP_unique_i8(p)
@@ -475,22 +485,17 @@ func translate_OP_unique(p *atm.Builder, v Instr) {
         case reflect.Slice   : break
         case reflect.String  : translate_OP_unique_str(p)
         case reflect.Struct  : break
-        default              : panic("unique: invalid type: " + v.Vt.String())
+        default              : panic("unique: invalid type: " + vt.String())
     }
 }
 
 func translate_OP_unique_b(p *atm.Builder) {
-    p.ADDPI (WP, atm.PtrSize, TP)       // TP <=  WP + atm.PtrSize
-    p.LQ    (TP, TR)                    // TR <= *TP
-    p.IB    (2, UR)                     // UR <=  2
-    p.BLTU  (TR, UR, "_ok_{n}")         // if TR < UR then GOTO _ok_{n}
     p.BLTU  (UR, TR, LB_duplicated)     // if UR < TR then GOTO _duplicated
     p.LP    (WP, TP)                    // TP <= *WP
     p.LB    (TP, TR)                    // TR <= *TP
     p.ADDPI (TP, 1, TP)                 // TP <=  TP + 1
     p.LB    (TP, UR)                    // UR <= *TP
     p.BEQ   (TR, UR, LB_duplicated)     // if TR == UR then GOTO _duplicated
-    p.Label ("_ok_{n}")                 // _ok_{n}:
 }
 
 func translate_OP_unique_i8(p *atm.Builder) {
@@ -501,11 +506,15 @@ func translate_OP_unique_i16(p *atm.Builder) {
     translate_OP_unique_small(p, BitmapMax16, Uint16Size, p.LW)
 }
 
+func translate_OP_unique_int(p *atm.Builder) {
+    switch defs.IntSize {
+        case 4  : translate_OP_unique_i32(p)
+        case 8  : translate_OP_unique_i64(p)
+        default : panic("invalid int size")
+    }
+}
+
 func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.PointerRegister, atm.GenericRegister) *atm.Instr) {
-    p.ADDPI (WP, atm.PtrSize, TP)       //  TP <=  WP + atm.PtrSize
-    p.LQ    (TP, TR)                    //  TR <= *TP
-    p.IB    (2, UR)                     //  UR <=  2
-    p.BLTU  (TR, UR, "_ok_{n}")         //  if TR < UR then GOTO _ok_{n}
     p.ADDPI (RS, TrOffset, ET)          //  ET <=  RS + TrOffset
     p.SQ    (ST, ET)                    // *ET <=  ST
     p.ADDPI (RS, BmOffset, ET)          //  ET <=  RS + BmOffset
@@ -528,27 +537,33 @@ func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.P
     p.Label ("_done_{n}")               // _done_{n}:
     p.ADDPI (RS, TrOffset, ET)          //  ET <=  RS + TrOffset
     p.LQ    (ET, ST)                    //  ST <= *ET
-    p.Label ("_ok_{n}")                 // _ok_{n}:
 }
 
 func translate_OP_unique_i32(p *atm.Builder) {
-    // TODO: implement OP_unique_32
+    p.LP    (WP, TP)                    // TP <= *WP
+    p.GCALL (F_unique32).               // GCALL unique32:
+      A0    (TP).                       //     p   <= TP
+      A1    (TR).                       //     n   <= TR
+      R0    (TR)                        //     ret => TR
+    p.BNE   (TR, atm.Rz, LB_duplicated) // if TR != 0 then GOTO _duplicated
 }
 
 func translate_OP_unique_i64(p *atm.Builder) {
-    // TODO: implement OP_unique_64
-}
-
-func translate_OP_unique_int(p *atm.Builder) {
-    switch defs.IntSize {
-        case 4  : translate_OP_unique_i32(p)
-        case 8  : translate_OP_unique_i64(p)
-        default : panic("invalid int size")
-    }
+    p.LP    (WP, TP)                    // TP <= *WP
+    p.GCALL (F_unique64).               // GCALL unique64:
+      A0    (TP).                       //     p   <= TP
+      A1    (TR).                       //     n   <= TR
+      R0    (TR)                        //     ret => TR
+    p.BNE   (TR, atm.Rz, LB_duplicated) // if TR != 0 then GOTO _duplicated
 }
 
 func translate_OP_unique_str(p *atm.Builder) {
-    // TODO: implement OP_unique_str
+    p.LP    (WP, TP)                    // TP <= *WP
+    p.GCALL (F_uniquestr).              // GCALL uniquestr:
+      A0    (TP).                       //     p   <= TP
+      A1    (TR).                       //     n   <= TR
+      R0    (TR)                        //     ret => TR
+    p.BNE   (TR, atm.Rz, LB_duplicated) // if TR != 0 then GOTO _duplicated
 }
 
 func translate_OP_goto(p *atm.Builder, v Instr) {
