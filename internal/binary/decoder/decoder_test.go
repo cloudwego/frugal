@@ -65,7 +65,6 @@ func TestDecoder_Decode(t *testing.T) {
             "foo": {
                 B: -1,
                 H: []uint8{},
-                I: []int32{},
                 J: map[string]string{},
                 K: map[string]*TranslatorTestStruct{},
             },

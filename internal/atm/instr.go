@@ -30,16 +30,16 @@ type OpCode byte
 const (
     OP_nop OpCode = iota    // no operation
     OP_ip                   // ptr(Pr) -> Pd
-    OP_lb                   // i64(*(* i8)Ps) -> Rx
-    OP_lw                   // i64(*(*i16)Ps) -> Rx
-    OP_ll                   // i64(*(*i32)Ps) -> Rx
-    OP_lq                   //     *(*i64)Ps  -> Rx
-    OP_lp                   //     *(*ptr)Ps  -> Pd
-    OP_sb                   //  i8(Rx) -> *(*i8)Pd
-    OP_sw                   // i16(Rx) -> *(*i16)Pd
-    OP_sl                   // i32(Rx) -> *(*i32)Pd
-    OP_sq                   //     Rx  -> *(*i64)Pd
-    OP_sp                   //     Ps  -> *(*ptr)Pd
+    OP_lb                   // i64(*(* i8)(Ps + Iv)) -> Rx
+    OP_lw                   // i64(*(*i16)(Ps + Iv)) -> Rx
+    OP_ll                   // i64(*(*i32)(Ps + Iv)) -> Rx
+    OP_lq                   //     *(*i64)(Ps + Iv)  -> Rx
+    OP_lp                   //     *(*ptr)(Ps + Iv)  -> Pd
+    OP_sb                   //  i8(Rx) -> *(*i8)(Pd + Iv)
+    OP_sw                   // i16(Rx) -> *(*i16)(Pd + Iv)
+    OP_sl                   // i32(Rx) -> *(*i32)(Pd + Iv)
+    OP_sq                   //     Rx  -> *(*i64)(Pd + Iv)
+    OP_sp                   //     Ps  -> *(*ptr)(Pd + Iv)
     OP_ldaq                 // arg[Iv] -> Rx
     OP_ldap                 // arg[Iv] -> Pd
     OP_strq                 // Rx -> ret[Iv]
@@ -271,16 +271,16 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
     switch self.Op {
         case OP_nop   : return "nop"
         case OP_ip    : return fmt.Sprintf("ip      $%p, %%%s", self.Pr, self.Pd)
-        case OP_lb    : return fmt.Sprintf("lb      %%%s, %%%s", self.Ps, self.Rx)
-        case OP_lw    : return fmt.Sprintf("lw      %%%s, %%%s", self.Ps, self.Rx)
-        case OP_ll    : return fmt.Sprintf("ll      %%%s, %%%s", self.Ps, self.Rx)
-        case OP_lq    : return fmt.Sprintf("lq      %%%s, %%%s", self.Ps, self.Rx)
-        case OP_lp    : return fmt.Sprintf("lp      %%%s, %%%s", self.Ps, self.Pd)
-        case OP_sb    : return fmt.Sprintf("sb      %%%s, %%%s", self.Rx, self.Pd)
-        case OP_sw    : return fmt.Sprintf("sw      %%%s, %%%s", self.Rx, self.Pd)
-        case OP_sl    : return fmt.Sprintf("sl      %%%s, %%%s", self.Rx, self.Pd)
-        case OP_sq    : return fmt.Sprintf("sq      %%%s, %%%s", self.Rx, self.Pd)
-        case OP_sp    : return fmt.Sprintf("sp      %%%s, %%%s", self.Ps, self.Pd)
+        case OP_lb    : return fmt.Sprintf("lb      %d(%%%s), %%%s", self.Iv, self.Ps, self.Rx)
+        case OP_lw    : return fmt.Sprintf("lw      %d(%%%s), %%%s", self.Iv, self.Ps, self.Rx)
+        case OP_ll    : return fmt.Sprintf("ll      %d(%%%s), %%%s", self.Iv, self.Ps, self.Rx)
+        case OP_lq    : return fmt.Sprintf("lq      %d(%%%s), %%%s", self.Iv, self.Ps, self.Rx)
+        case OP_lp    : return fmt.Sprintf("lp      %d(%%%s), %%%s", self.Iv, self.Ps, self.Pd)
+        case OP_sb    : return fmt.Sprintf("sb      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
+        case OP_sw    : return fmt.Sprintf("sw      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
+        case OP_sl    : return fmt.Sprintf("sl      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
+        case OP_sq    : return fmt.Sprintf("sq      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
+        case OP_sp    : return fmt.Sprintf("sp      %%%s, %d(%%%s)", self.Ps, self.Iv, self.Pd)
         case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Rx)
         case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Pd)
         case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, self.Iv)

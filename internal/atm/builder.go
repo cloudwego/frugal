@@ -206,44 +206,44 @@ func (self *Builder) IP(v interface{}, pd PointerRegister) *Instr {
     }
 }
 
-func (self *Builder) LB(ps PointerRegister, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_lb).ps(ps).rx(rx))
+func (self *Builder) LB(ps PointerRegister, disp int64, rx GenericRegister) *Instr {
+    return self.add(newInstr(OP_lb).ps(ps).iv(disp).rx(rx))
 }
 
-func (self *Builder) LW(ps PointerRegister, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_lw).ps(ps).rx(rx))
+func (self *Builder) LW(ps PointerRegister, disp int64, rx GenericRegister) *Instr {
+    return self.add(newInstr(OP_lw).ps(ps).iv(disp).rx(rx))
 }
 
-func (self *Builder) LL(ps PointerRegister, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_ll).ps(ps).rx(rx))
+func (self *Builder) LL(ps PointerRegister, disp int64, rx GenericRegister) *Instr {
+    return self.add(newInstr(OP_ll).ps(ps).iv(disp).rx(rx))
 }
 
-func (self *Builder) LQ(ps PointerRegister, rx GenericRegister) *Instr {
-    return self.add(newInstr(OP_lq).ps(ps).rx(rx))
+func (self *Builder) LQ(ps PointerRegister, disp int64, rx GenericRegister) *Instr {
+    return self.add(newInstr(OP_lq).ps(ps).iv(disp).rx(rx))
 }
 
-func (self *Builder) LP(ps PointerRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_lp).ps(ps).pd(pd))
+func (self *Builder) LP(ps PointerRegister, disp int64, pd PointerRegister) *Instr {
+    return self.add(newInstr(OP_lp).ps(ps).iv(disp).pd(pd))
 }
 
-func (self *Builder) SB(rx GenericRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_sb).rx(rx).pd(pd))
+func (self *Builder) SB(rx GenericRegister, pd PointerRegister, disp int64) *Instr {
+    return self.add(newInstr(OP_sb).rx(rx).pd(pd).iv(disp))
 }
 
-func (self *Builder) SW(rx GenericRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_sw).rx(rx).pd(pd))
+func (self *Builder) SW(rx GenericRegister, pd PointerRegister, disp int64) *Instr {
+    return self.add(newInstr(OP_sw).rx(rx).pd(pd).iv(disp))
 }
 
-func (self *Builder) SL(rx GenericRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_sl).rx(rx).pd(pd))
+func (self *Builder) SL(rx GenericRegister, pd PointerRegister, disp int64) *Instr {
+    return self.add(newInstr(OP_sl).rx(rx).pd(pd).iv(disp))
 }
 
-func (self *Builder) SQ(rx GenericRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_sq).rx(rx).pd(pd))
+func (self *Builder) SQ(rx GenericRegister, pd PointerRegister, disp int64) *Instr {
+    return self.add(newInstr(OP_sq).rx(rx).pd(pd).iv(disp))
 }
 
-func (self *Builder) SP(ps PointerRegister, pd PointerRegister) *Instr {
-    return self.add(newInstr(OP_sp).ps(ps).pd(pd))
+func (self *Builder) SP(ps PointerRegister, pd PointerRegister, disp int64) *Instr {
+    return self.add(newInstr(OP_sp).ps(ps).pd(pd).iv(disp))
 }
 
 func (self *Builder) MOV(rx GenericRegister, ry GenericRegister) *Instr {

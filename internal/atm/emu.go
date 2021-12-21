@@ -69,16 +69,16 @@ func (self *Emulator) Run() {
             default       : return
             case OP_nop   : break
             case OP_ip    : self.Pr[p.Pd] = p.Pr
-            case OP_lb    : self.Gr[p.Rx] = uint64(*(*int8)(self.Pr[p.Ps]))
-            case OP_lw    : self.Gr[p.Rx] = uint64(*(*int16)(self.Pr[p.Ps]))
-            case OP_ll    : self.Gr[p.Rx] = uint64(*(*int32)(self.Pr[p.Ps]))
-            case OP_lq    : self.Gr[p.Rx] = uint64(*(*int64)(self.Pr[p.Ps]))
-            case OP_lp    : self.Pr[p.Pd] = *(*unsafe.Pointer)(self.Pr[p.Ps])
-            case OP_sb    : *(*int8)(self.Pr[p.Pd]) = int8(self.Gr[p.Rx])
-            case OP_sw    : *(*int16)(self.Pr[p.Pd]) = int16(self.Gr[p.Rx])
-            case OP_sl    : *(*int32)(self.Pr[p.Pd]) = int32(self.Gr[p.Rx])
-            case OP_sq    : *(*int64)(self.Pr[p.Pd]) = int64(self.Gr[p.Rx])
-            case OP_sp    : *(*unsafe.Pointer)(self.Pr[p.Pd]) = self.Pr[p.Ps]
+            case OP_lb    : self.Gr[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))))
+            case OP_lw    : self.Gr[p.Rx] = uint64(*(*int16)(unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))))
+            case OP_ll    : self.Gr[p.Rx] = uint64(*(*int32)(unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))))
+            case OP_lq    : self.Gr[p.Rx] = uint64(*(*int64)(unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv))))
+            case OP_lp    : self.Pr[p.Pd] = *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.Pr[p.Ps]) + uintptr(p.Iv)))
+            case OP_sb    : *(*int8)(unsafe.Pointer(uintptr(self.Pr[p.Pd]) + uintptr(p.Iv))) = int8(self.Gr[p.Rx])
+            case OP_sw    : *(*int16)(unsafe.Pointer(uintptr(self.Pr[p.Pd]) + uintptr(p.Iv))) = int16(self.Gr[p.Rx])
+            case OP_sl    : *(*int32)(unsafe.Pointer(uintptr(self.Pr[p.Pd]) + uintptr(p.Iv))) = int32(self.Gr[p.Rx])
+            case OP_sq    : *(*int64)(unsafe.Pointer(uintptr(self.Pr[p.Pd]) + uintptr(p.Iv))) = int64(self.Gr[p.Rx])
+            case OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.Pr[p.Pd]) + uintptr(p.Iv))) = self.Pr[p.Ps]
             case OP_ldaq  : self.Gr[p.Rx] = self.Ar[p.Iv].U
             case OP_ldap  : self.Pr[p.Pd] = self.Ar[p.Iv].P
             case OP_strq  : self.Rv[p.Iv].U = self.Gr[p.Rx]
