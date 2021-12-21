@@ -48,6 +48,7 @@ const (
     OP_list_decr
     OP_list_begin
     OP_list_if_end
+    OP_unique
     OP_goto
     OP_if_nil
     OP_if_hasbuf
@@ -82,6 +83,7 @@ var _OpNames = [256]string {
     OP_list_decr   : "list_decr",
     OP_list_begin  : "list_begin",
     OP_list_if_end : "list_if_end",
+    OP_unique      : "unique",
     OP_goto        : "goto",
     OP_if_nil      : "if_nil",
     OP_if_hasbuf   : "if_hasbuf",

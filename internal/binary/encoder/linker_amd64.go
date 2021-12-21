@@ -17,15 +17,61 @@
 package encoder
 
 import (
+    `fmt`
+    `runtime`
+    `strings`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm`
     `github.com/cloudwego/frugal/internal/loader`
+    `golang.org/x/arch/x86/x86asm`
 )
 
 type (
 	LinkerAMD64 struct{}
 )
+
+const (
+    _MaxByte = 10
+)
+
+func symlookup(addr uint64) (string, uint64) {
+    fn := runtime.FuncForPC(uintptr(addr))
+    if fn != nil {
+        ent := uint64(fn.Entry())
+        if addr == ent {
+            return fmt.Sprintf("%#x{%s}", addr, fn.Name()), ent
+        }
+        return fmt.Sprintf("%#x{%s+%#x}", addr, fn.Name(), addr - ent), ent
+    }
+    return "", 0
+}
+
+func disasm(orig uintptr, c []byte) {
+    var pc int
+    for pc < len(c) {
+        i, err := x86asm.Decode(c[pc:], 64)
+        if err != nil {
+            panic(err)
+        }
+        dis := x86asm.GNUSyntax(i, uint64(pc) + uint64(orig), symlookup)
+        fmt.Printf("0x%08x : ", pc + int(orig))
+        for x := 0; x < i.Len; x++ {
+            if x != 0 && x % _MaxByte == 0 {
+                fmt.Printf("\n           : ")
+            }
+            fmt.Printf(" %02x", c[pc + x])
+            if x == _MaxByte - 1 {
+                fmt.Printf("    %s", dis)
+            }
+        }
+        if i.Len < _MaxByte {
+            fmt.Printf("%s    %s", strings.Repeat(" ", (_MaxByte - i.Len) * 3), dis)
+        }
+        fmt.Printf("\n")
+        pc += i.Len
+    }
+}
 
 func init() {
     SetLinker(new(LinkerAMD64))
@@ -33,6 +79,8 @@ func init() {
 
 func (LinkerAMD64) Link(p atm.Program) Encoder {
     cc := atm.CreateCodeGen((Encoder)(nil))
-    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("encoder", cc.Frame())
+    mc := cc.Generate(p).Assemble(0)
+    fp := loader.Loader(mc).Load("encoder", cc.Frame())
+    disasm(*(*uintptr)(fp), mc)
     return *(*Encoder)(unsafe.Pointer(&fp))
 }

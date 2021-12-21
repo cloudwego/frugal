@@ -25,24 +25,29 @@ import (
     `github.com/stretchr/testify/require`
 )
 
+type SetTest struct {
+    X []int8 `frugal:"1,default,set<i8>"`
+}
+
 func TestEncoder_Encode(t *testing.T) {
-    v := TranslatorTestStruct {
-        A: true,
-        B: 0x12,
-        C: 12.34,
-        D: 0x3456,
-        E: 0x12345678,
-        F: 0x66778899aabbccdd,
-        G: "hello, world",
-        H: []byte("testbytebuffer"),
-        I: []int32{0x11223344, 0x55667788, 3, 4, 5},
-        J: map[string]string{"asdf": "qwer", "zxcv": "hjkl"},
-        K: map[string]*TranslatorTestStruct{
-            "foo": {
-                B: -1,
-            },
-        },
-    }
+    v := SetTest{X: []int8{1, 2, 3, 4, 5, 6, -1, -2, 0, 100}}
+    // v := TranslatorTestStruct {
+    //     A: true,
+    //     B: 0x12,
+    //     C: 12.34,
+    //     D: 0x3456,
+    //     E: 0x12345678,
+    //     F: 0x66778899aabbccdd,
+    //     G: "hello, world",
+    //     H: []byte("testbytebuffer"),
+    //     I: []int32{0x11223344, 0x55667788, 3, 4, 5},
+    //     J: map[string]string{"asdf": "qwer", "zxcv": "hjkl"},
+    //     K: map[string]*TranslatorTestStruct{
+    //         "foo": {
+    //             B: -1,
+    //         },
+    //     },
+    // }
     nb := EncodedSize(v)
     println("Estimated Size:", nb)
     buf := make([]byte, nb)

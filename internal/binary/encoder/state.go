@@ -29,6 +29,21 @@ const (
 )
 
 const (
+    BmOffset = int64(unsafe.Offsetof(RuntimeState{}.Bm))
+    TrOffset = int64(unsafe.Offsetof(RuntimeState{}.Tr))
+)
+
+const (
+    BitmapMax8  = (1 << 8) / 8
+    BitmapMax16 = (1 << 16) / 8
+)
+
+const (
+    Uint8Size = int64(unsafe.Sizeof(uint8(0)))
+    Uint16Size = int64(unsafe.Sizeof(uint16(0)))
+)
+
+const (
     StateMax  = (defs.MaxStack - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
@@ -40,5 +55,7 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem
+    St [defs.MaxStack]StateItem     // Must be the first field.
+    Bm [1024]uint64                 // Bitmap, used for uniqueness check of set<i8> and set<i16>.
+    Tr uint64                       // Integer stash slot.
 }

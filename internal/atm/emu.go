@@ -92,6 +92,7 @@ func (self *Emulator) Run() {
             case OP_muli  : self.Gr[p.Ry] = self.Gr[p.Rx] * uint64(p.Iv)
             case OP_andi  : self.Gr[p.Ry] = self.Gr[p.Rx] & uint64(p.Iv)
             case OP_xori  : self.Gr[p.Ry] = self.Gr[p.Rx] ^ uint64(p.Iv)
+            case OP_shri  : self.Gr[p.Ry] = self.Gr[p.Rx] >> p.Iv
             case OP_sbiti : self.Gr[p.Ry] = self.Gr[p.Rx] | (1 << p.Iv)
             case OP_swapw : self.Gr[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.Gr[p.Rx])))
             case OP_swapl : self.Gr[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.Gr[p.Rx])))
@@ -108,6 +109,19 @@ func (self *Emulator) Run() {
             case OP_bcopy : memmove(self.Pr[p.Pd], self.Pr[p.Ps], uintptr(self.Gr[p.Rx]))
             case OP_halt  : self.PC = nil
             case OP_break : self.trap()
+
+            /* bit test and set */
+            case OP_bts: {
+                x := self.Gr[p.Rx]
+                y := self.Gr[p.Ry]
+
+                /* test and set the bit */
+                if self.Gr[p.Ry] |= 1 << x; y & (1 << x) == 0 {
+                    self.Gr[p.Rz] = 0
+                } else {
+                    self.Gr[p.Rz] = 1
+                }
+            }
 
             /* table switch */
             case OP_bsw: {

@@ -49,10 +49,12 @@ const (
     OP_addpi                // Ps + Iv -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
+    OP_bts                  // Ry & (1 << (Rx % PTR_BITS)) != 0, Ry | (1 << (Rx % PTR_BITS)) -> Rz, Ry
     OP_addi                 // Rx + Iv -> Ry
     OP_muli                 // Rx * Iv -> Ry
     OP_andi                 // Rx & Iv -> Ry
     OP_xori                 // Rx ^ Iv -> Ry
+    OP_shri                 // Rx >> Iv -> Ry
     OP_sbiti                // Rx | (1 << Iv) -> Ry
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
@@ -87,7 +89,6 @@ const (
     Owz                         // write Rz register
     Ops                         // read Ps register
     Opd                         // write Pd register
-    Obiti                       // operand contains bit index
     Ocall                       // function calls
     Octrl                       // control OpCodes
 )
@@ -114,11 +115,13 @@ var _OperandMask = [256]Operands {
     OP_addpi : Ops | Opd,
     OP_add   : Orx | Ory | Owz,
     OP_sub   : Orx | Ory | Owz,
+    OP_bts   : Orx | Ory | Owy | Owz,
     OP_addi  : Orx | Owy,
     OP_muli  : Orx | Owy,
     OP_andi  : Orx | Owy,
     OP_xori  : Orx | Owy,
-    OP_sbiti : Orx | Owy | Obiti,
+    OP_shri  : Orx | Owy,
+    OP_sbiti : Orx | Owy,
     OP_swapw : Orx | Owy,
     OP_swapl : Orx | Owy,
     OP_swapq : Orx | Owy,
@@ -287,10 +290,12 @@ func (self *Instr) disassemble(refs map[*Instr]string) string {
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_bts   : return fmt.Sprintf("bts     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_shri  : return fmt.Sprintf("shr     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_sbiti : return fmt.Sprintf("sbit    %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)

@@ -19,8 +19,10 @@ package encoder
 import (
     `fmt`
     `os`
+    `reflect`
 
     `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
@@ -89,16 +91,18 @@ const (
 )
 
 const (
-    LB_halt     = "_halt"
-    LB_error    = "_error"
-    LB_nomem    = "_nomem"
-    LB_overflow = "_overflow"
+    LB_halt       = "_halt"
+    LB_error      = "_error"
+    LB_nomem      = "_nomem"
+    LB_overflow   = "_overflow"
+    LB_duplicated = "_duplicated"
 )
 
 var (
-    _N_page     = int64(os.Getpagesize())
-    _E_nomem    = fmt.Errorf("frugal: buffer is too small")
-    _E_overflow = fmt.Errorf("frugal: encoder stack overflow")
+    _N_page       = int64(os.Getpagesize())
+    _E_nomem      = fmt.Errorf("frugal: buffer is too small")
+    _E_overflow   = fmt.Errorf("frugal: encoder stack overflow")
+    _E_duplicated = fmt.Errorf("frugal: duplicated element within sets")
 )
 
 func Translate(s Program) atm.Program {
@@ -117,6 +121,9 @@ func errors(p *atm.Builder) {
     p.JAL   ("_basic_error", atm.Pn)    // GOTO _basic_error
     p.Label (LB_overflow)               // _overflow:
     p.IP    (&_E_overflow, TP)          // TP <= &_E_overflow
+    p.JAL   ("_basic_error", atm.Pn)    // GOTO _basic_error
+    p.Label (LB_duplicated)             // _duplicated:
+    p.IP    (&_E_duplicated, TP)        // TP <= &_E_duplicated
     p.Label ("_basic_error")            // _basic_error:
     p.LP    (TP, ET)                    // ET <= *TP
     p.ADDPI (TP, 8, TP)                 // TP <=  TP + 8
@@ -177,6 +184,7 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_list_decr   : translate_OP_list_decr,
     OP_list_begin  : translate_OP_list_begin,
     OP_list_if_end : translate_OP_list_if_end,
+    OP_unique      : translate_OP_unique,
     OP_goto        : translate_OP_goto,
     OP_if_nil      : translate_OP_if_nil,
     OP_if_hasbuf   : translate_OP_if_hasbuf,
@@ -438,12 +446,12 @@ func translate_OP_list_decr(p *atm.Builder, _ Instr) {
 }
 
 func translate_OP_list_begin(p *atm.Builder, _ Instr) {
-    p.ADDPI (WP, atm.PtrSize, TP)       //  TP <=  WP + PtrSize
+    p.ADDPI (WP, atm.PtrSize, TP)       //  TP <=  WP + atm.PtrSize
     p.LQ    (TP, TR)                    //  TR <= *TP
     p.ADDP  (RS, ST, TP)                //  TP <=  RS + ST
     p.ADDPI (TP, LnOffset, TP)          //  TP <=  TP + LnOffset
     p.SQ    (TR, TP)                    // *TP <=  TR
-    p.LP    (WP, WP)                    //  WP <=  WP
+    p.LP    (WP, WP)                    //  WP <= *WP
 }
 
 func translate_OP_list_if_end(p *atm.Builder, v Instr) {
@@ -451,6 +459,96 @@ func translate_OP_list_if_end(p *atm.Builder, v Instr) {
     p.ADDPI (TP, LnOffset, TP)          // TP <=  TP + LnOffset
     p.LQ    (TP, TR)                    // TR <= *TP
     p.BEQ   (TR, atm.Rz, p.At(v.To))    // if TR == 0 then GOTO @v.To
+}
+
+func translate_OP_unique(p *atm.Builder, v Instr) {
+    switch v.Vt.Kind() {
+        case reflect.Bool    : translate_OP_unique_b(p)
+        case reflect.Int     : translate_OP_unique_int(p)
+        case reflect.Int8    : translate_OP_unique_i8(p)
+        case reflect.Int16   : translate_OP_unique_i16(p)
+        case reflect.Int32   : translate_OP_unique_i32(p)
+        case reflect.Int64   : translate_OP_unique_i64(p)
+        case reflect.Float64 : translate_OP_unique_i64(p)
+        case reflect.Map     : break
+        case reflect.Ptr     : break
+        case reflect.Slice   : break
+        case reflect.String  : translate_OP_unique_str(p)
+        case reflect.Struct  : break
+        default              : panic("unique: invalid type: " + v.Vt.String())
+    }
+}
+
+func translate_OP_unique_b(p *atm.Builder) {
+    p.ADDPI (WP, atm.PtrSize, TP)       // TP <=  WP + atm.PtrSize
+    p.LQ    (TP, TR)                    // TR <= *TP
+    p.IB    (2, UR)                     // UR <=  2
+    p.BLTU  (TR, UR, "_ok_{n}")         // if TR < UR then GOTO _ok_{n}
+    p.BLTU  (UR, TR, LB_duplicated)     // if UR < TR then GOTO _duplicated
+    p.LP    (WP, TP)                    // TP <= *WP
+    p.LB    (TP, TR)                    // TR <= *TP
+    p.ADDPI (TP, 1, TP)                 // TP <=  TP + 1
+    p.LB    (TP, UR)                    // UR <= *TP
+    p.BEQ   (TR, UR, LB_duplicated)     // if TR == UR then GOTO _duplicated
+    p.Label ("_ok_{n}")                 // _ok_{n}:
+}
+
+func translate_OP_unique_i8(p *atm.Builder) {
+    translate_OP_unique_small(p, BitmapMax8, Uint8Size, p.LB)
+}
+
+func translate_OP_unique_i16(p *atm.Builder) {
+    translate_OP_unique_small(p, BitmapMax16, Uint16Size, p.LW)
+}
+
+func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.PointerRegister, atm.GenericRegister) *atm.Instr) {
+    p.ADDPI (WP, atm.PtrSize, TP)       //  TP <=  WP + atm.PtrSize
+    p.LQ    (TP, TR)                    //  TR <= *TP
+    p.IB    (2, UR)                     //  UR <=  2
+    p.BLTU  (TR, UR, "_ok_{n}")         //  if TR < UR then GOTO _ok_{n}
+    p.ADDPI (RS, TrOffset, ET)          //  ET <=  RS + TrOffset
+    p.SQ    (ST, ET)                    // *ET <=  ST
+    p.ADDPI (RS, BmOffset, ET)          //  ET <=  RS + BmOffset
+    p.BZERO (nb, ET)                    //  memset(ET, 0, nb)
+    p.LP    (WP, EP)                    //  EP <=  WP
+    p.Label ("_loop_{n}")               // _loop_{n}:
+    ld      (EP, ST)                    //  ST <= *EP
+    p.SHRI  (ST, 3, UR)                 //  UR <=  ST >> 3
+    p.ANDI  (ST, 0x3f, ST)              //  ST <=  ST & 0x3f
+    p.ANDI  (UR, ^0x3f, UR)             //  UR <=  UR & ~0x3f
+    p.ADDP  (ET, UR, TP)                //  TP <=  ET + UR
+    p.LQ    (TP, UR)                    //  UR <= *TP
+    p.BTS   (ST, UR, ST)                //  ST <=  test_and_set(&UR, ST)
+    p.SQ    (UR, TP)                    // *TP <=  UR
+    p.BNE   (ST, atm.Rz, LB_duplicated) //  if ST != 0 then GOTO _duplicated
+    p.SUBI  (TR, 1, TR)                 //  TR <=  TR - 1
+    p.BEQ   (TR, atm.Rz, "_done_{n}")   //  if TR == 0 then GOTO _done_{n}
+    p.ADDPI (EP, dv, EP)                //  EP <=  EP + dv
+    p.JAL   ("_loop_{n}", atm.Pn)       //  GOTO _loop_{n}
+    p.Label ("_done_{n}")               // _done_{n}:
+    p.ADDPI (RS, TrOffset, ET)          //  ET <=  RS + TrOffset
+    p.LQ    (ET, ST)                    //  ST <= *ET
+    p.Label ("_ok_{n}")                 // _ok_{n}:
+}
+
+func translate_OP_unique_i32(p *atm.Builder) {
+    // TODO: implement OP_unique_32
+}
+
+func translate_OP_unique_i64(p *atm.Builder) {
+    // TODO: implement OP_unique_64
+}
+
+func translate_OP_unique_int(p *atm.Builder) {
+    switch defs.IntSize {
+        case 4  : translate_OP_unique_i32(p)
+        case 8  : translate_OP_unique_i64(p)
+        default : panic("invalid int size")
+    }
+}
+
+func translate_OP_unique_str(p *atm.Builder) {
+    // TODO: implement OP_unique_str
 }
 
 func translate_OP_goto(p *atm.Builder, v Instr) {

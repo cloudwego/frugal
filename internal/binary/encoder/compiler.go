@@ -50,7 +50,8 @@ func (self Instr) Disassemble() string {
         case OP_memcpy_be   : return fmt.Sprintf("%-18s%d, %d", self.Op, self.Uv, self.Iv)
         case OP_size_defer  : fallthrough
         case OP_defer       : fallthrough
-        case OP_map_begin   : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
+        case OP_map_begin   : fallthrough
+        case OP_unique      : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
         case OP_byte        : return fmt.Sprintf("%-18s0x%02x", self.Op, self.Iv)
         case OP_word        : return fmt.Sprintf("%-18s0x%04x", self.Op, self.Iv)
         case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)

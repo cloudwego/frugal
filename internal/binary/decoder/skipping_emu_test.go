@@ -25,8 +25,9 @@ import (
 )
 
 func run_skipping_emu(t *testing.T, v []byte, exp int, tag defs.Tag) {
+    var sb _skipbuf_t
     mm := *(*rt.GoSlice)(unsafe.Pointer(&v))
-    rv := do_skip(mm.Ptr, mm.Len, tag)
+    rv := do_skip(&sb, mm.Ptr, mm.Len, tag)
     if rv != exp {
         if rv >= 0 && exp < 0 {
             t.Errorf("got %d while expecting error %d", rv, exp)

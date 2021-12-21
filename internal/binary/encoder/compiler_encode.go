@@ -222,6 +222,11 @@ func (self Compiler) compileSetList(p *Program, sp int, vt *defs.Type, req defs.
         case defs.T_double : nb = 8
     }
 
+    /* check for uniqueness if needed */
+    if verifyUnique {
+        p.rtt(OP_unique, et.S)
+    }
+
     /* check if this is the special case */
     if nb != -1 {
         p.dyn(OP_memcpy_be, atm.PtrSize, int64(nb))

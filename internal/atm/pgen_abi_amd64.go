@@ -18,6 +18,7 @@ package atm
 
 import (
     `fmt`
+    `math`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
@@ -137,56 +138,88 @@ func (self *CodeGen) internalStoreRet(p *x86_64.Program, s Register, i int) {
 /** Memory Zeroing **/
 
 func (self *CodeGen) abiBlockZero(p *x86_64.Program, pd PointerRegister, nb int64) {
-    dp := int32(0)
-    p.MOVQ(self.r(pd), RDI)
+    var dp int32
+    var rd x86_64.Register64
+
+    /* check for block size */
+    if nb <= 0 || nb > math.MaxInt32 {
+        panic("abiBlockZero: invalid block size")
+    }
 
     /* use XMM for larger blocks */
     if nb >= 16 {
         p.PXOR(XMM15, XMM15)
     }
 
+    /* use loops to reduce the code length */
+    if rd = self.r(pd); nb >= 128 {
+        r := x86_64.CreateLabel("loop")
+        t := x86_64.CreateLabel("begin")
+
+        /* setup the zeroing loop, use 8x loop for more efficient pipelining */
+        p.MOVQ (rd, RDI)
+        p.MOVL (nb / 128, EAX)
+        p.JMP  (t)
+        p.Link (r)
+        p.ADDQ (128, RDI)
+        p.Link (t)
+
+        /* generate the zeroing instructions */
+        for i := int32(0); i < 8; i++ {
+            p.MOVDQU(XMM15, Ptr(RDI, i * 16))
+        }
+
+        /* decrease & check loop counter */
+        p.SUBL (1, EAX)
+        p.JNZ  (r)
+
+        /* replace the register */
+        rd = RDI
+        nb %= 128
+    }
+
     /* clear every 16-byte block */
     for nb >= 16 {
-        p.MOVDQU(XMM15, Ptr(RDI, dp))
+        p.MOVDQU(XMM15, Ptr(rd, dp))
         dp += 16
         nb -= 16
     }
 
     /* only 1 byte left */
     if nb == 1 {
-        p.MOVB(0, Ptr(RDI, dp))
+        p.MOVB(0, Ptr(rd, dp))
         return
     }
 
-    /* still bytes to be zeroed */
+    /* still bytes need to be zeroed */
     if nb != 0 {
         p.XORL(EAX, EAX)
     }
 
     /* clear every 8-byte block */
     if nb >= 8 {
-        p.MOVQ(RAX, Ptr(RDI, dp))
+        p.MOVQ(RAX, Ptr(rd, dp))
         dp += 8
         nb -= 8
     }
 
     /* clear every 4-byte block */
     if nb >= 8 {
-        p.MOVL(EAX, Ptr(RDI, dp))
+        p.MOVL(EAX, Ptr(rd, dp))
         dp += 4
         nb -= 4
     }
 
     /* clear every 2-byte block */
     if nb >= 2 {
-        p.MOVW(AX, Ptr(RDI, dp))
+        p.MOVW(AX, Ptr(rd, dp))
         dp += 2
         nb -= 2
     }
 
     /* last byte */
     if nb > 0 {
-        p.MOVB(AL, Ptr(RDI, dp))
+        p.MOVB(AL, Ptr(rd, dp))
     }
 }
 

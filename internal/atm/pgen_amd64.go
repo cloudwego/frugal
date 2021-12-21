@@ -448,6 +448,14 @@ func (self *CodeGen) clr(p *x86_64.Program, r Register) {
     p.XORL(x86_64.Register32(rx), x86_64.Register32(rx))
 }
 
+func (self *CodeGen) set(p *x86_64.Program, r Register, i int64) {
+    if i == 0 {
+        self.clr(p, r)
+    } else {
+        p.MOVQ(i, self.r(r))
+    }
+}
+
 func (self *CodeGen) dup(p *x86_64.Program, r Register, d Register) {
     if r != d {
         p.MOVQ(self.r(r), self.r(d))
@@ -477,10 +485,12 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *Instr) {
     OP_addpi : (*CodeGen).translate_OP_addpi,
     OP_add   : (*CodeGen).translate_OP_add,
     OP_sub   : (*CodeGen).translate_OP_sub,
+    OP_bts   : (*CodeGen).translate_OP_bts,
     OP_addi  : (*CodeGen).translate_OP_addi,
     OP_muli  : (*CodeGen).translate_OP_muli,
     OP_andi  : (*CodeGen).translate_OP_andi,
     OP_xori  : (*CodeGen).translate_OP_xori,
+    OP_shri  : (*CodeGen).translate_OP_shri,
     OP_sbiti : (*CodeGen).translate_OP_sbiti,
     OP_swapw : (*CodeGen).translate_OP_swapw,
     OP_swapl : (*CodeGen).translate_OP_swapl,
@@ -718,6 +728,30 @@ func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *Instr) {
     }
 }
 
+func (self *CodeGen) translate_OP_bts(p *x86_64.Program, v *Instr) {
+    x := v.Rx
+    y := v.Ry
+    z := v.Rz
+
+    /* special case: y is zero */
+    if y == Rz {
+        return
+    }
+
+    /* testing and setting the bits at the same time */
+    if x == Rz {
+        p.BTSQ(0, self.r(y))
+    } else {
+        p.BTSQ(self.r(x), self.r(y))
+    }
+
+    /* set the result if expected */
+    if z != Rz {
+        p.SETC(x86_64.Register8(self.r(z)))
+        p.ANDL(1, x86_64.Register32(self.r(z)))
+    }
+}
+
 func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *Instr) {
     if v.Ry != Rz {
         if v.Rx != Rz {
@@ -836,24 +870,28 @@ func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *Instr) {
     }
 }
 
+func (self *CodeGen) translate_OP_shri(p *x86_64.Program, v *Instr) {
+    if v.Ry != Rz {
+        if v.Iv < 0 {
+            panic("shri: negative bit count")
+        } else if v.Iv >= 64 || v.Rx == Rz {
+            p.XORL(self.r(v.Ry), self.r(v.Ry))
+        } else if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
+            p.SHRQ(v.Iv, self.r(v.Ry))
+        }
+    }
+}
+
 func (self *CodeGen) translate_OP_sbiti(p *x86_64.Program, v *Instr) {
     if v.Ry != Rz {
-        if v.Rx == Rz {
-            if v.Iv < 0 {
-                panic("sbiti: negative bit index")
-            } else if v.Iv != 0 && v.Iv < 64 {
-                p.MOVQ(1 << v.Iv, self.r(v.Ry))
-            } else {
-                self.clr(p, v.Ry)
-            }
-        } else {
-            if v.Iv < 0 {
-                panic("sbiti: negative bit index")
-            } else if self.dup(p, v.Rx, v.Ry); v.Iv < 32 {
-                p.ORQ(1 << v.Iv, self.r(v.Ry))
-            } else if v.Iv < 64 {
-                p.BTSQ(v.Iv, self.r(v.Ry))
-            }
+        if v.Iv < 0 {
+            panic("sbiti: negative bit index")
+        } else if v.Rx == Rz {
+            self.set(p, v.Ry, 1 << v.Iv)
+        } else if self.dup(p, v.Rx, v.Ry); v.Iv < 32 {
+            p.ORQ(1 << v.Iv, self.r(v.Ry))
+        } else if v.Iv < 64 {
+            p.BTSQ(v.Iv, self.r(v.Ry))
         }
     }
 }
