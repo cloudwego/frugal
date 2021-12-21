@@ -499,10 +499,14 @@ func translate_OP_unique_b(p *atm.Builder) {
 }
 
 func translate_OP_unique_i8(p *atm.Builder) {
+    p.IQ    (256, UR)                   // UR <= 256
+    p.BLTU  (UR, TR, LB_duplicated)     // if UR < TR then GOTO _duplicated
     translate_OP_unique_small(p, BitmapMax8, Uint8Size, p.LB)
 }
 
 func translate_OP_unique_i16(p *atm.Builder) {
+    p.IQ    (65536, UR)                 // UR <= 65536
+    p.BLTU  (UR, TR, LB_duplicated)     // if UR < TR then GOTO _duplicated
     translate_OP_unique_small(p, BitmapMax16, Uint16Size, p.LW)
 }
 
