@@ -370,8 +370,8 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
       R0    (TR).
       R1    (ET).
       R2    (EP)
-    p.BNEN  (ET, LB_error)
     p.SUBP  (RP, RL, RP)
+    p.BNEN  (ET, LB_error)
     p.ADD   (RL, TR, RL)
 }
 

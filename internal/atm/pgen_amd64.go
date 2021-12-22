@@ -670,8 +670,10 @@ func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *Instr) {
     if v.Pd != Pn {
         if v.Ps == Pn {
             panic("addp: direct conversion of integer to pointer")
-        } else if self.dup(p, v.Ps, v.Pd); v.Rx != Rz {
-            p.ADDQ(self.r(v.Rx), self.r(v.Pd))
+        } else if v.Rx == Rz {
+            self.dup(p, v.Ps, v.Pd)
+        } else {
+            p.LEAQ(Sib(self.r(v.Ps), self.r(v.Rx), 1, 0), self.r(v.Pd))
         }
     }
 }
@@ -697,8 +699,8 @@ func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *Instr) {
         } else {
             if !isInt32(v.Iv) {
                 panic("addpi: offset too large, may result in an invalid pointer")
-            } else if self.dup(p, v.Ps, v.Pd); v.Iv != 0 {
-                p.ADDQ(v.Iv, self.r(v.Pd))
+            } else {
+                p.LEAQ(Ptr(self.r(v.Ps), int32(v.Iv)), self.r(v.Pd))
             }
         }
     }
