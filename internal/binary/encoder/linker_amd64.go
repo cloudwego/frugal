@@ -27,13 +27,12 @@ type (
 	LinkerAMD64 struct{}
 )
 
-
 func init() {
     SetLinker(new(LinkerAMD64))
 }
 
 func (LinkerAMD64) Link(p atm.Program) Encoder {
     cc := atm.CreateCodeGen((Encoder)(nil))
-    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("encoder", cc.Frame())
+    fp := loader.Loader(cc.Generate(p, 0)).Load("encoder", cc.Frame())
     return *(*Encoder)(unsafe.Pointer(&fp))
 }

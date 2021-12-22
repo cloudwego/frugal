@@ -33,6 +33,6 @@ func init() {
 
 func (LinkerAMD64) Link(p atm.Program) Decoder {
     cc := atm.CreateCodeGen((Decoder)(nil))
-    fp := loader.Loader(cc.Generate(p).Assemble(0)).Load("decoder", cc.Frame())
+    fp := loader.Loader(cc.Generate(p, 0)).Load("decoder", cc.Frame())
     return *(*Decoder)(unsafe.Pointer(&fp))
 }

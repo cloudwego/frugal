@@ -211,7 +211,7 @@ type CodeGen struct {
 func CreateCodeGen(proto interface{}) *CodeGen {
     return &CodeGen {
         ctxt: newContext(proto),
-        arch: x86_64.CreateArch(),
+        arch: x86_64.DefaultArch,
         jmps: make(map[string]*x86_64.Label),
         regs: make(map[Register]x86_64.Register64),
     }
@@ -226,7 +226,7 @@ func (self *CodeGen) Frame() rt.Frame {
     }
 }
 
-func (self *CodeGen) Generate(s Program) *x86_64.Program {
+func (self *CodeGen) Generate(s Program, pc uintptr) []byte {
     h := 0
     p := self.arch.CreateProgram()
 
@@ -296,9 +296,9 @@ func (self *CodeGen) Generate(s Program) *x86_64.Program {
     p.ADDQ(self.ctxt.size(), RSP)
     p.RET()
 
-    /* generate all the lookup tables */
+    /* generate all the lookup tables, and assemble the program */
     self.tables(p)
-    return p
+    return p.AssembleAndFree(pc)
 }
 
 func (self *CodeGen) later(ref *x86_64.Label, def func(*x86_64.Program)) {
