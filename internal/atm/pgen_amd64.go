@@ -443,6 +443,15 @@ func (self *CodeGen) i32(p *x86_64.Program, v *Instr) interface{} {
     }
 }
 
+func (self *CodeGen) ptr(p *x86_64.Program, r PointerRegister, d int64) *x86_64.MemoryOperand {
+    if isInt32(d) {
+        return Ptr(self.r(r), int32(d))
+    } else {
+        p.MOVQ(d, RAX)
+        return Sib(self.r(r), RAX, 1, 0)
+    }
+}
+
 func (self *CodeGen) clr(p *x86_64.Program, r Register) {
     rx := self.r(r)
     p.XORL(x86_64.Register32(rx), x86_64.Register32(rx))
@@ -527,11 +536,8 @@ func (self *CodeGen) translate_OP_lb(p *x86_64.Program, v *Instr) {
     if v.Rx != Rz {
         if v.Ps == Pn {
             panic("lb: load from nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVZBQ(Ptr(self.r(v.Ps), int32(v.Iv)), self.r(v.Rx))
         } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVZBQ(Sib(self.r(v.Ps), RAX, 1, 0), self.r(v.Rx))
+            p.MOVZBQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
         }
     }
 }
@@ -540,11 +546,8 @@ func (self *CodeGen) translate_OP_lw(p *x86_64.Program, v *Instr) {
     if v.Rx != Rz {
         if v.Ps == Pn {
             panic("lw: load from nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVZWQ(Ptr(self.r(v.Ps), int32(v.Iv)), self.r(v.Rx))
         } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVZWQ(Sib(self.r(v.Ps), RAX, 1, 0), self.r(v.Rx))
+            p.MOVZWQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
         }
     }
 }
@@ -553,11 +556,8 @@ func (self *CodeGen) translate_OP_ll(p *x86_64.Program, v *Instr) {
     if v.Rx != Rz {
         if v.Ps == Pn {
             panic("ll: load from nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVL(Ptr(self.r(v.Ps), 0), x86_64.Register32(self.r(v.Rx)))
         } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVL(Sib(self.r(v.Ps), RAX, 1, 0), x86_64.Register32(self.r(v.Rx)))
+            p.MOVL(self.ptr(p, v.Ps, v.Iv), x86_64.Register32(self.r(v.Rx)))
         }
     }
 }
@@ -566,11 +566,8 @@ func (self *CodeGen) translate_OP_lq(p *x86_64.Program, v *Instr) {
     if v.Rx != Rz {
         if v.Ps == Pn {
             panic("lq: load from nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVQ(Ptr(self.r(v.Ps), 0), self.r(v.Rx))
         } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVQ(Sib(self.r(v.Ps), RAX, 1, 0), self.r(v.Rx))
+            p.MOVQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
         }
     }
 }
@@ -579,111 +576,57 @@ func (self *CodeGen) translate_OP_lp(p *x86_64.Program, v *Instr) {
     if v.Pd != Pn {
         if v.Ps == Pn {
             panic("lp: load from nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVQ(Ptr(self.r(v.Ps), 0), self.r(v.Pd))
         } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVQ(Sib(self.r(v.Ps), RAX, 1, 0), self.r(v.Pd))
+            p.MOVQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Pd))
         }
     }
 }
 
 func (self *CodeGen) translate_OP_sb(p *x86_64.Program, v *Instr) {
-    if v.Rx == Rz {
-        if v.Pd == Pn {
-            panic("sb: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVB(0, Ptr(self.r(v.Pd), int32(v.Iv)))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVB(0, Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+    if v.Pd == Pn {
+        panic("sb: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVB(0, self.ptr(p, v.Pd, v.Iv))
     } else {
-        if v.Pd == Pn {
-            panic("sb: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVB(x86_64.Register8(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVB(x86_64.Register8(self.r(v.Rx)), Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+        p.MOVB(x86_64.Register8(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
 func (self *CodeGen) translate_OP_sw(p *x86_64.Program, v *Instr) {
-    if v.Rx == Rz {
-        if v.Pd == Pn {
-            panic("sw: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVW(0, Ptr(self.r(v.Pd), int32(v.Iv)))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVW(0, Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+    if v.Pd == Pn {
+        panic("sw: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVW(0, self.ptr(p, v.Pd, v.Iv))
     } else {
-        if v.Pd == Pn {
-            panic("sw: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVW(x86_64.Register16(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVW(x86_64.Register16(self.r(v.Rx)), Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+        p.MOVW(x86_64.Register16(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
 func (self *CodeGen) translate_OP_sl(p *x86_64.Program, v *Instr) {
-    if v.Rx == Rz {
-        if v.Pd == Pn {
-            panic("sl: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVL(0, Ptr(self.r(v.Pd), int32(v.Iv)))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVL(0, Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+    if v.Pd == Pn {
+        panic("sl: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVL(0, self.ptr(p, v.Pd, v.Iv))
     } else {
-        if v.Pd == Pn {
-            panic("sl: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVL(x86_64.Register32(self.r(v.Rx)), Ptr(self.r(v.Pd), 0))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVL(x86_64.Register32(self.r(v.Rx)), Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+        p.MOVL(x86_64.Register32(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
 func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *Instr) {
-    if v.Rx == Rz {
-        if v.Pd == Pn {
-            panic("sq: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVQ(0, Ptr(self.r(v.Pd), int32(v.Iv)))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVQ(0, Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+    if v.Pd == Pn {
+        panic("sq: store to nil pointer")
+    } else if v.Rx == Rz {
+        p.MOVQ(0, self.ptr(p, v.Pd, v.Iv))
     } else {
-        if v.Pd == Pn {
-            panic("sq: store to nil pointer")
-        } else if isInt32(v.Iv) {
-            p.MOVQ(self.r(v.Rx), Ptr(self.r(v.Pd), 0))
-        } else {
-            p.MOVQ(v.Iv, RAX)
-            p.MOVQ(self.r(v.Rx), Sib(self.r(v.Ps), RAX, 1, 0))
-        }
+        p.MOVQ(self.r(v.Rx), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
 func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *Instr) {
     if v.Pd == Pn {
         panic("sp: store to nil pointer")
-    } else if isInt32(v.Iv) {
-        self.wbStorePointer(p, v.Ps, Ptr(self.r(v.Pd), int32(v.Iv)))
     } else {
-        p.MOVQ(v.Iv, RAX)
-        self.wbStorePointer(p, v.Ps, Sib(self.r(v.Ps), RAX, 1, 0))
+        self.wbStorePointer(p, v.Ps, self.ptr(p, v.Pd, v.Iv))
     }
 }
 
@@ -1058,7 +1001,7 @@ func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *Instr) {
         p.JZ(self.to(v.Br))
     } else {
         p.CMPQ(self.r(v.Ry), self.r(v.Rx))
-        p.JA(self.to(v.Br))
+        p.JAE(self.to(v.Br))
     }
 }
 

@@ -199,42 +199,39 @@ func BenchmarkMarshalVanilla(b *testing.B) {
 func BenchmarkMarshalKitexFast(b *testing.B) {
     var v kitex_baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
-    b.ResetTimer()
     buf := make([]byte, v.BLength())
-    for i := 0; i < b.N; i++ {
-        _ = v.FastWriteNocopy(buf, nil)
-    }
-}
-
-func BenchmarkMarshalKitexFastWithLength(b *testing.B) {
-    var v kitex_baseline.Nesting2
-    b.SetBytes(int64(len(loaddata(b, &v))))
     b.ResetTimer()
-    buf := make([]byte, v.BLength())
     for i := 0; i < b.N; i++ {
-        v.BLength()
         _ = v.FastWriteNocopy(buf, nil)
     }
 }
 
 func BenchmarkMarshalFrugal(b *testing.B) {
     var v vanilla_baseline.Nesting2
+    buf := make([]byte, frugal.EncodedSize(v))
     b.SetBytes(int64(len(loaddata(b, &v))))
     b.ResetTimer()
-    buf := make([]byte, frugal.EncodedSize(v))
     for i := 0; i < b.N; i++ {
         _, _ = frugal.EncodeObject(buf, nil, v)
     }
 }
 
-func BenchmarkMarshalFrugalWithLength(b *testing.B) {
-    var v vanilla_baseline.Nesting2
+func BenchmarkLengthKitexFast(b *testing.B) {
+    var v kitex_baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
     b.ResetTimer()
-    buf := make([]byte, frugal.EncodedSize(v))
+    for i := 0; i < b.N; i++ {
+        v.BLength()
+    }
+}
+
+func BenchmarkLengthFrugal(b *testing.B) {
+    var v vanilla_baseline.Nesting2
+    b.SetBytes(int64(len(loaddata(b, &v))))
+    frugal.EncodedSize(v)
+    b.ResetTimer()
     for i := 0; i < b.N; i++ {
         frugal.EncodedSize(v)
-        _, _ = frugal.EncodeObject(buf, nil, v)
     }
 }
 

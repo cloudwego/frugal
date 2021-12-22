@@ -20,6 +20,7 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 const (
@@ -31,6 +32,11 @@ const (
 const (
     BmOffset = int64(unsafe.Offsetof(RuntimeState{}.Bm))
     TrOffset = int64(unsafe.Offsetof(RuntimeState{}.Tr))
+)
+
+const (
+    MiKeyOffset   = int64(unsafe.Offsetof(rt.GoMapIterator{}.K))
+    MiValueOffset = int64(unsafe.Offsetof(rt.GoMapIterator{}.V))
 )
 
 const (
