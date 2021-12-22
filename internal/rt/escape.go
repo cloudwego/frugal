@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package encoder
+package rt
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
-    `github.com/cloudwego/frugal/internal/rt`
+    `unsafe`
 )
 
-func emu_gcall_mapiternext(ctx atm.CallContext) {
-    if !ctx.Verify("*", "") {
-        panic("invalid mapiternext call")
-    } else {
-        mapiternext((*rt.GoMapIterator)(ctx.Ap(0)))
-    }
-}
-
-func emu_gcall_mapiterinit(ctx atm.CallContext) {
-    if !ctx.Verify("***", "") {
-        panic("invalid MapBeginIterator call")
-    } else {
-        mapiterinit((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), (*rt.GoMapIterator)(ctx.Ap(2)))
-    }
+// NoEscape hides a pointer from escape analysis. NoEscape is
+// the identity function but escape analysis doesn't think the
+// output depends on the input. NoEscape is inlined and currently
+// compiles down to zero instructions.
+// USE CAREFULLY!
+//go:nosplit
+//goland:noinspection GoVetUnsafePointer
+func NoEscape(p unsafe.Pointer) unsafe.Pointer {
+    x := uintptr(p)
+    return unsafe.Pointer(x ^ 0)
 }

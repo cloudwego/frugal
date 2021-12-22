@@ -39,7 +39,6 @@ const (
     OP_deref
     OP_defer
     OP_map_len
-    OP_map_end
     OP_map_key
     OP_map_next
     OP_map_value
@@ -74,7 +73,6 @@ var _OpNames = [256]string {
     OP_deref       : "deref",
     OP_defer       : "defer",
     OP_map_len     : "map_len",
-    OP_map_end     : "map_end",
     OP_map_key     : "map_key",
     OP_map_next    : "map_next",
     OP_map_value   : "map_value",

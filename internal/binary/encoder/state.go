@@ -35,18 +35,9 @@ const (
 )
 
 const (
+    MiSize        = int64(unsafe.Sizeof(rt.GoMapIterator{}))
     MiKeyOffset   = int64(unsafe.Offsetof(rt.GoMapIterator{}.K))
     MiValueOffset = int64(unsafe.Offsetof(rt.GoMapIterator{}.V))
-)
-
-const (
-    BitmapMax8  = (1 << 8) / 8
-    BitmapMax16 = (1 << 16) / 8
-)
-
-const (
-    Uint8Size  = int64(unsafe.Sizeof(uint8(0)))
-    Uint16Size = int64(unsafe.Sizeof(uint16(0)))
 )
 
 const (
@@ -56,8 +47,8 @@ const (
 
 type StateItem struct {
     Ln uintptr
-    Mi unsafe.Pointer
     Wp unsafe.Pointer
+    Mi rt.GoMapIterator
 }
 
 type RuntimeState struct {

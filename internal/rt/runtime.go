@@ -212,8 +212,9 @@ func UnpackType(t reflect.Type) *GoType {
     return (*GoType)((*GoIface)(unsafe.Pointer(&t)).Value)
 }
 
-func UnpackEface(v interface{}) GoEface {
-    return *(*GoEface)(unsafe.Pointer(&v))
+func UnpackEface(v interface{}) (r GoEface) {
+    *(*interface{})(unsafe.Pointer(&r)) = v
+    return
 }
 
 func findReflectRtypeItab() *GoItab {

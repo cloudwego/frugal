@@ -33,20 +33,7 @@ func mapiternext(it *rt.GoMapIterator)
 //goland:noinspection GoUnusedParameter
 func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
-//go:nosplit
-func MapEndIterator(it *rt.GoMapIterator) {
-    freeIterator(it)
-}
-
-//go:nosplit
-func MapBeginIterator(vt *rt.GoMapType, mm *rt.GoMap) (it *rt.GoMapIterator) {
-    it = newIterator()
-    mapiterinit(vt, mm, it)
-    return
-}
-
 var (
-    F_mapiternext      = atm.RegisterGCall(mapiternext, emu_gcall_mapiternext)
-    F_MapEndIterator   = atm.RegisterGCall(MapEndIterator, emu_gcall_MapEndIterator)
-    F_MapBeginIterator = atm.RegisterGCall(MapBeginIterator, emu_gcall_MapBeginIterator)
+    F_mapiternext = atm.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+    F_mapiterinit = atm.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
 )

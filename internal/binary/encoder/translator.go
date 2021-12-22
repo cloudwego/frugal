@@ -18,6 +18,7 @@ package encoder
 
 import (
     `fmt`
+    `math`
     `os`
     `reflect`
 
@@ -175,7 +176,6 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_deref       : translate_OP_deref,
     OP_defer       : translate_OP_defer,
     OP_map_len     : translate_OP_map_len,
-    OP_map_end     : translate_OP_map_end,
     OP_map_key     : translate_OP_map_key,
     OP_map_next    : translate_OP_map_next,
     OP_map_value   : translate_OP_map_value,
@@ -384,46 +384,37 @@ func translate_OP_map_len(p *atm.Builder, _ Instr) {
     p.SL    (TR, TP, 0)
 }
 
-func translate_OP_map_end(p *atm.Builder, _ Instr) {
-    p.ADDP  (RS, ST, TP)
-    p.LP    (TP, MiOffset, EP)
-    p.SP    (atm.Pn, TP, MiOffset)
-    p.GCALL (F_MapEndIterator).A0(EP)
-}
-
 func translate_OP_map_key(p *atm.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
-    p.LP    (TP, MiOffset, TP)
-    p.LP    (TP, MiKeyOffset, WP)
+    p.LP    (TP, MiOffset + MiKeyOffset, WP)
 }
 
 func translate_OP_map_next(p *atm.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
-    p.LP    (TP, MiOffset, TP)
+    p.ADDPI (TP, MiOffset, TP)
     p.GCALL (F_mapiternext).A0(TP)
 }
 
 func translate_OP_map_value(p *atm.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
-    p.LP    (TP, MiOffset, TP)
-    p.LP    (TP, MiValueOffset, WP)
+    p.LP    (TP, MiOffset + MiValueOffset, WP)
 }
 
 func translate_OP_map_begin(p *atm.Builder, v Instr) {
-    p.LP    (WP, 0, EP)
     p.IP    (v.Vt, ET)
-    p.GCALL (F_MapBeginIterator).
+    p.LP    (WP, 0, EP)
+    p.ADDP  (RS, ST, TP)
+    p.ADDPI (TP, MiOffset, TP)
+    p.BZERO (MiSize, TP)
+    p.GCALL (F_mapiterinit).
       A0    (ET).
       A1    (EP).
-      R0    (TP)
-    p.ADDP  (RS, ST, EP)
-    p.SP    (TP, EP, MiOffset)
+      A2    (TP)
 }
 
 func translate_OP_map_if_end(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
-    p.LP    (TP, MiOffset, TP)
-    p.LP    (TP, MiKeyOffset, TP)
+    p.LP    (TP, MiOffset + MiKeyOffset, TP)
     p.BEQN  (TP, p.At(v.To))
 }
 
@@ -484,13 +475,13 @@ func translate_OP_unique_b(p *atm.Builder) {
 func translate_OP_unique_i8(p *atm.Builder) {
     p.IQ    (256, UR)
     p.BLTU  (UR, TR, LB_duplicated)
-    translate_OP_unique_small(p, BitmapMax8, Uint8Size, p.LB)
+    translate_OP_unique_small(p, (math.MaxUint8 + 1) / 8, 1, p.LB)
 }
 
 func translate_OP_unique_i16(p *atm.Builder) {
     p.IQ    (65536, UR)
     p.BLTU  (UR, TR, LB_duplicated)
-    translate_OP_unique_small(p, BitmapMax16, Uint16Size, p.LW)
+    translate_OP_unique_small(p, (math.MaxUint16 + 1) / 8, 2, p.LW)
 }
 
 func translate_OP_unique_int(p *atm.Builder) {

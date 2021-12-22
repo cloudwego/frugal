@@ -113,7 +113,6 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type, req defs.Requ
     p.add(OP_map_next)
     p.jmp(OP_goto, j)
     p.pin(j)
-    p.add(OP_map_end)
     p.add(OP_drop_state)
 
     /* map is optional */
