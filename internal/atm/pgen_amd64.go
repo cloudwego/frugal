@@ -276,8 +276,8 @@ func (self *CodeGen) Generate(s Program, sp uintptr) []byte {
     self.abiStackCheck(p, stack, sp)
 
     /* program prologue */
-    p.Link(self.head)
     p.SUBQ(self.ctxt.size(), RSP)
+    p.Link(self.head)
     p.MOVQ(RBP, Ptr(RSP, self.ctxt.offs()))
     p.LEAQ(Ptr(RSP, self.ctxt.offs()), RBP)
 

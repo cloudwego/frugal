@@ -26,6 +26,7 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/stretchr/testify/assert`
     `github.com/stretchr/testify/require`
+    `golang.org/x/arch/x86/x86asm`
 )
 
 type funcInfo struct {
@@ -120,4 +121,42 @@ func TestLoader_StackMap(t *testing.T) {
     (*(*func())(unsafe.Pointer(&fp)))()
     println("leave function")
     collect()
+}
+
+//go:linkname step runtime.step
+//goland:noinspection GoUnusedParameter
+func step(p []byte, pc *uintptr, val *int32, first bool) (newp []byte, ok bool)
+
+func dumpfunction(f interface{}) {
+    fp := rt.FuncAddr(f)
+    fn := findfunc(uintptr(fp))
+    datap := fn.datap
+    p := datap.pctab[fn.pcsp:]
+    pc := fn.entry
+    val := int32(-1)
+    for {
+        var ok bool
+        lastpc := pc
+        p, ok = step(p, &pc, &val, pc == fn.entry)
+        if !ok {
+            break
+        }
+        fmt.Printf("%#x = %d\n", lastpc, val)
+    }
+    pc = 0
+    for i := 0; i < 16; i++ {
+        ins, err := x86asm.Decode(rt.BytesFrom(unsafe.Pointer(uintptr(fp) + pc), 15, 15), 64)
+        if err != nil {
+            panic(err)
+        }
+        fmt.Printf("%#x %s\n", uintptr(fp) + pc, x86asm.GNUSyntax(ins, uint64(uintptr(fp) + pc), nil))
+        pc += uintptr(ins.Len)
+        if ins.Op == x86asm.RET {
+            break
+        }
+    }
+}
+
+func TestLoader_PCSPDelta(t *testing.T) {
+    dumpfunction(rt.UnpackEface)
 }
