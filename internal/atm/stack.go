@@ -1,5 +1,3 @@
-// +build !go1.15 go1.18
-
 /*
  * Copyright 2021 ByteDance Inc.
  *
@@ -16,17 +14,17 @@
  * limitations under the License.
  */
 
-package loader
+package atm
 
 import (
+    _ `unsafe`
+
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-// triggers a compilation error
-const (
-	_ = panic("Unsupported Go version. Supported versions are: 1.15, 1.16, 1.17")
-)
+//go:linkname morestack_noctxt runtime.morestack_noctxt
+func morestack_noctxt()
 
-func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-    panic("Unsupported Go version. Supported versions are: 1.15, 1.16, 1.17")
-}
+var (
+    F_morestack_noctxt = uintptr(rt.FuncAddr(morestack_noctxt))
+)

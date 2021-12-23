@@ -29,7 +29,7 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type _SwitchTab struct {
+type _SwitchTable struct {
     ref *x86_64.Label
     tab []*x86_64.Label
 }
@@ -38,19 +38,19 @@ var (
     stabCount uint64
 )
 
-func newSwitchTab(n int) (v _SwitchTab) {
-    return _SwitchTab {
+func newSwitchTable(n int) (v _SwitchTable) {
+    return _SwitchTable {
         tab: make([]*x86_64.Label, n),
         ref: x86_64.CreateLabel(fmt.Sprintf("_table_%d", atomic.AddUint64(&stabCount, 1))),
     }
 }
 
-func (self *_SwitchTab) link(p *x86_64.Program) {
+func (self *_SwitchTable) link(p *x86_64.Program) {
     p.Link(self.ref)
     self.refs(p, self.ref)
 }
 
-func (self *_SwitchTab) mark(i int, to *x86_64.Label) {
+func (self *_SwitchTable) mark(i int, to *x86_64.Label) {
     if i >= len(self.tab) {
         panic("pgen: stab: index out of bound")
     } else {
@@ -58,7 +58,7 @@ func (self *_SwitchTab) mark(i int, to *x86_64.Label) {
     }
 }
 
-func (self *_SwitchTab) refs(p *x86_64.Program, to *x86_64.Label) {
+func (self *_SwitchTable) refs(p *x86_64.Program, to *x86_64.Label) {
     for _, v := range self.tab {
         p.Long(expr.Ref(v).Sub(expr.Ref(to)))
     }
@@ -200,9 +200,11 @@ type CodeGen struct {
     regi int
     ctxt _FrameInfo
     arch *x86_64.Arch
-    exit *x86_64.Label
-    stab []_SwitchTab
+    head *x86_64.Label
+    tail *x86_64.Label
+    halt *x86_64.Label
     defs []_DeferBlock
+    stab []_SwitchTable
     abix _CodeGenExtension
     jmps map[string]*x86_64.Label
     regs map[Register]x86_64.Register64
@@ -219,6 +221,8 @@ func CreateCodeGen(proto interface{}) *CodeGen {
 
 func (self *CodeGen) Frame() rt.Frame {
     return rt.Frame {
+        Head      : toAddress(self.head),
+        Tail      : toAddress(self.tail),
         Size      : int(self.ctxt.size()),
         ArgSize   : int(self.ctxt.save()),
         ArgPtrs   : self.ctxt.ArgPtrs(),
@@ -226,7 +230,7 @@ func (self *CodeGen) Frame() rt.Frame {
     }
 }
 
-func (self *CodeGen) Generate(s Program, pc uintptr) []byte {
+func (self *CodeGen) Generate(s Program, sp uintptr) []byte {
     h := 0
     p := self.arch.CreateProgram()
 
@@ -258,13 +262,26 @@ func (self *CodeGen) Generate(s Program, pc uintptr) []byte {
         }
     }
 
+    /* create the labels for stack management */
+    entry := x86_64.CreateLabel("_entry")
+    stack := x86_64.CreateLabel("_stack_grow")
+
+    /* create key anchor points */
+    self.head = x86_64.CreateLabel("_head")
+    self.tail = x86_64.CreateLabel("_tail")
+    self.halt = x86_64.CreateLabel("_halt")
+
+    /* stack checking */
+    p.Link(entry)
+    self.abiStackCheck(p, stack, sp)
+
     /* program prologue */
+    p.Link(self.head)
     p.SUBQ(self.ctxt.size(), RSP)
     p.MOVQ(RBP, Ptr(RSP, self.ctxt.offs()))
     p.LEAQ(Ptr(RSP, self.ctxt.offs()), RBP)
 
     /* ABI-specific prologue */
-    self.exit = x86_64.CreateLabel("_halt_exit")
     self.abiSaveReserved(p)
     self.abiPrologue(p)
 
@@ -287,18 +304,24 @@ func (self *CodeGen) Generate(s Program, pc uintptr) []byte {
     }
 
     /* ABI-specific epilogue */
-    p.Link(self.exit)
+    p.Link(self.halt)
     self.abiEpilogue(p)
     self.abiLoadReserved(p)
 
     /* program epilogue */
     p.MOVQ(Ptr(RSP, self.ctxt.offs()), RBP)
     p.ADDQ(self.ctxt.size(), RSP)
+    p.Link(self.tail)
     p.RET()
+
+    /* stack grow */
+    p.Link(stack)
+    self.abiStackGrow(p)
+    p.JMP(entry)
 
     /* generate all the lookup tables, and assemble the program */
     self.tables(p)
-    return p.AssembleAndFree(pc)
+    return p.AssembleAndFree(0)
 }
 
 func (self *CodeGen) later(ref *x86_64.Label, def func(*x86_64.Program)) {
@@ -413,9 +436,9 @@ func (self *CodeGen) to(v *Instr) *x86_64.Label {
     return self.ref(fmt.Sprintf("_PC_%p", v))
 }
 
-func (self *CodeGen) tab(i int64) *_SwitchTab {
+func (self *CodeGen) tab(i int64) *_SwitchTable {
     p := len(self.stab)
-    self.stab = append(self.stab, newSwitchTab(int(i)))
+    self.stab = append(self.stab, newSwitchTable(int(i)))
     return &self.stab[p]
 }
 
@@ -1097,7 +1120,7 @@ func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *Instr) {
 }
 
 func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *Instr) {
-    p.JMP(self.exit)
+    p.JMP(self.halt)
 }
 
 func (self *CodeGen) translate_OP_break(p *x86_64.Program, _ *Instr) {

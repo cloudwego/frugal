@@ -17,6 +17,8 @@
 package rt
 
 type Frame struct {
+    Head      int
+    Tail      int
     Size      int
     ArgSize   int
     ArgPtrs   *StackMap

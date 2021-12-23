@@ -22,6 +22,18 @@ import (
     `github.com/chenzhuoyu/iasm/x86_64`
 )
 
+/** Stack Checking **/
+
+const (
+    _G_stackguard0 = 0x10
+)
+
+func (self *CodeGen) abiStackCheck(p *x86_64.Program, to *x86_64.Label, sp uintptr) {
+    p.LEAQ (Ptr(RSP, -self.ctxt.size() - int32(sp)), R12)
+    p.CMPQ (Ptr(R14, _G_stackguard0), R12)
+    p.JBE  (to)
+}
+
 /** Efficient Block Copy Algorithm **/
 
 var (

@@ -51,6 +51,31 @@ func (self *CodeGen) abiEpilogue(p *x86_64.Program) {
     }
 }
 
+/** Stack Growing **/
+
+func (self *CodeGen) abiStackGrow(p *x86_64.Program) {
+    self.internalSpillArgs(p)
+    p.MOVQ(F_morestack_noctxt, R12)
+    p.CALLQ(R12)
+    self.internalUnspillArgs(p)
+}
+
+func (self *CodeGen) internalSpillArgs(p *x86_64.Program) {
+    for _, v := range self.ctxt.desc.Args {
+        if v.InRegister {
+            p.MOVQ(v.Reg, Ptr(RSP, int32(v.Mem) + PtrSize))
+        }
+    }
+}
+
+func (self *CodeGen) internalUnspillArgs(p *x86_64.Program) {
+    for _, v := range self.ctxt.desc.Args {
+        if v.InRegister {
+            p.MOVQ(Ptr(RSP, int32(v.Mem) + PtrSize), v.Reg)
+        }
+    }
+}
+
 /** Reserved Register Management **/
 
 func (self *CodeGen) abiSaveReserved(p *x86_64.Program) {

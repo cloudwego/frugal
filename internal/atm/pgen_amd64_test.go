@@ -131,8 +131,7 @@ func TestPGen_Generate(t *testing.T) {
     p.BREAK()
     p.HALT()
     g := CreateCodeGen(func(){})
-    m := g.Generate(p.Build())
-    c := m.Assemble(0)
+    c := g.Generate(p.Build(), 0)
     disasm(0, c)
 }
 
@@ -190,9 +189,8 @@ func TestPGen_FunctionCall(t *testing.T) {
     p.STRQ(R4, 2)
     p.HALT()
     g := CreateCodeGen((func(int) (int, int, int))(nil))
-    b := g.Generate(p.Build())
+    r := g.Generate(p.Build(), 0)
     spew.Dump(g.Frame())
-    r := b.Assemble(0)
     v := loader.Loader(r).Load("_test_gcall", g.Frame())
     disasm(*(*uintptr)(v), r)
     f := *(*func(int) (int, int, int))(unsafe.Pointer(&v))

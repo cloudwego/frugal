@@ -79,6 +79,14 @@ func isReg64(v x86_64.Register) (ok bool) {
     return
 }
 
+func toAddress(p *x86_64.Label) int {
+    if v, err := p.Evaluate(); err != nil {
+        panic(err)
+    } else {
+        return int(v)
+    }
+}
+
 func isSimpleMem(v *x86_64.MemoryOperand) bool {
     return !v.Masked                        &&
             v.Broadcast == 0                &&

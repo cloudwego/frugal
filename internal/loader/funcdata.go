@@ -43,8 +43,12 @@ func toZigzag(v int) int {
     return (v << 1) ^ (v >> 31)
 }
 
+func encodeFirst(v int) []byte {
+    return encodeValue(v + 1)
+}
+
 func encodeValue(v int) []byte {
-    return encodeVariant(toZigzag(v + 1))
+    return encodeVariant(toZigzag(v))
 }
 
 func encodeVariant(v int) []byte {

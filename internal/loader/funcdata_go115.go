@@ -118,8 +118,13 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
 
     /* add PCDATA */
     pcsp := len(pclnt)
+    pclnt = append(pclnt, encodeFirst(0)...)
+    pclnt = append(pclnt, encodeVariant(frame.Head)...)
     pclnt = append(pclnt, encodeValue(frame.Size)...)
-    pclnt = append(pclnt, encodeVariant(int(size))...)
+    pclnt = append(pclnt, encodeVariant(frame.Tail - frame.Head)...)
+    pclnt = append(pclnt, encodeValue(-frame.Size)...)
+    pclnt = append(pclnt, encodeVariant(int(size) - frame.Tail)...)
+    pclnt = append(pclnt, 0)
 
     /* function entry */
     fn := _Func {
@@ -136,18 +141,21 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     /* mark the entire function as a single line of code */
     fn.pcln = int32(len(pclnt))
     fn.pcfile = int32(len(pclnt))
-    pclnt = append(pclnt, encodeValue(1)...)
+    pclnt = append(pclnt, encodeFirst(1)...)
     pclnt = append(pclnt, encodeVariant(int(size))...)
+    pclnt = append(pclnt, 0)
 
     /* set the entire function to use stack map 0 */
     fn.pcdata[_PCDATA_StackMapIndex] = uint32(len(pclnt))
-    pclnt = append(pclnt, encodeValue(0)...)
+    pclnt = append(pclnt, encodeFirst(0)...)
     pclnt = append(pclnt, encodeVariant(int(size))...)
+    pclnt = append(pclnt, 0)
 
     /* mark the entire function as unsafe to async-preempt */
     fn.pcdata[_PCDATA_UnsafePoint] = uint32(len(pclnt))
-    pclnt = append(pclnt, encodeValue(_PCDATA_UnsafePointUnsafe)...)
+    pclnt = append(pclnt, encodeFirst(_PCDATA_UnsafePointUnsafe)...)
     pclnt = append(pclnt, encodeVariant(int(size))...)
+    pclnt = append(pclnt, 0)
 
     /* align the func to 8 bytes */
     if p := len(pclnt) % 8; p != 0 {

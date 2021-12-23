@@ -131,8 +131,13 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     pctab := []byte{0}
 
     /* mark the entire section with the same FP */
+    pctab = append(pctab, encodeFirst(0)...)
+    pctab = append(pctab, encodeVariant(frame.Head)...)
     pctab = append(pctab, encodeValue(frame.Size)...)
-    pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, encodeVariant(frame.Tail - frame.Head)...)
+    pctab = append(pctab, encodeValue(-frame.Size)...)
+    pctab = append(pctab, encodeVariant(int(size) - frame.Tail)...)
+    pctab = append(pctab, 0)
 
     /* function entry */
     fn := _Func {
@@ -150,18 +155,21 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     /* mark the entire function as a single line of code */
     fn.pcln = uint32(len(pctab))
     fn.pcfile = uint32(len(pctab))
-    pctab = append(pctab, encodeValue(1)...)
+    pctab = append(pctab, encodeFirst(1)...)
     pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
     /* set the entire function to use stack map 0 */
     fn.pcdata[_PCDATA_StackMapIndex] = uint32(len(pctab))
-    pctab = append(pctab, encodeValue(0)...)
+    pctab = append(pctab, encodeFirst(0)...)
     pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
     /* mark the entire function as unsafe to async-preempt */
     fn.pcdata[_PCDATA_UnsafePoint] = uint32(len(pctab))
-    pctab = append(pctab, encodeValue(_PCDATA_UnsafePointUnsafe)...)
+    pctab = append(pctab, encodeFirst(_PCDATA_UnsafePointUnsafe)...)
     pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
     /* function table */
     tab := []_FuncTab {
