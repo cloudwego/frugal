@@ -130,7 +130,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     maxpc := pc + size
     pctab := []byte{0}
 
-    /* mark the entire section with the same FP */
+    /* define the PC-SP ranges */
     pctab = append(pctab, encodeFirst(0)...)
     pctab = append(pctab, encodeVariant(frame.Head)...)
     pctab = append(pctab, encodeValue(frame.Size)...)
