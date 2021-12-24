@@ -27,11 +27,7 @@ const (
     LnOffset = int64(unsafe.Offsetof(StateItem{}.Ln))
     MiOffset = int64(unsafe.Offsetof(StateItem{}.Mi))
     WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
-)
-
-const (
     BmOffset = int64(unsafe.Offsetof(RuntimeState{}.Bm))
-    TrOffset = int64(unsafe.Offsetof(RuntimeState{}.Tr))
 )
 
 const (
@@ -54,5 +50,4 @@ type StateItem struct {
 type RuntimeState struct {
     St [defs.MaxStack]StateItem     // Must be the first field.
     Bm [1024]uint64                 // Bitmap, used for uniqueness check of set<i8> and set<i16>.
-    Tr uint64                       // Integer stash slot.
 }

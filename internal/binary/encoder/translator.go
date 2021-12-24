@@ -493,26 +493,25 @@ func translate_OP_unique_int(p *atm.Builder) {
 }
 
 func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.PointerRegister, int64, atm.GenericRegister) *atm.Instr) {
-    p.SQ    (ST, RS, TrOffset)
     p.ADDPI (RS, BmOffset, ET)
     p.BZERO (nb, ET)
     p.LP    (WP, 0, EP)
     p.Label ("_loop_{n}")
-    ld      (EP, 0, ST)
-    p.SHRI  (ST, 3, UR)
-    p.ANDI  (ST, 0x3f, ST)
+    ld      (EP, 0, RC)
+    p.SHRI  (RC, 3, UR)
+    p.ANDI  (RC, 0x3f, RC)
     p.ANDI  (UR, ^0x3f, UR)
     p.ADDP  (ET, UR, TP)
     p.LQ    (TP, 0, UR)
-    p.BTS   (ST, UR, ST)
+    p.BTS   (RC, UR, RC)
     p.SQ    (UR, TP, 0)
-    p.BNE   (ST, atm.Rz, LB_duplicated)
+    p.BNE   (RC, atm.Rz, LB_duplicated)
     p.SUBI  (TR, 1, TR)
     p.BEQ   (TR, atm.Rz, "_done_{n}")
     p.ADDPI (EP, dv, EP)
     p.JAL   ("_loop_{n}", atm.Pn)
     p.Label ("_done_{n}")
-    p.LQ    (RS, TrOffset, ST)
+    p.LDAQ  (ARG_len, RC)
 }
 
 func translate_OP_unique_i32(p *atm.Builder) {
