@@ -19,6 +19,7 @@ package atm
 import (
     `fmt`
     `reflect`
+    `sort`
     `strings`
 
     `github.com/chenzhuoyu/iasm/x86_64`
@@ -88,6 +89,11 @@ func (self Parameter) IsPointer() bool {
     }
 }
 
+type _StackSlot struct {
+    p bool
+    m uintptr
+}
+
 type FunctionLayout struct {
     Id   int
     Sp   uintptr
@@ -104,8 +110,38 @@ func (self *FunctionLayout) String() string {
 }
 
 func (self *FunctionLayout) StackMap() *rt.StackMap {
+    var st []_StackSlot
     var mb rt.StackMapBuilder
-    for _, v := range self.Args { mb.AddField(v.IsPointer()) }
+
+    /* add arguments */
+    for _, v := range self.Args {
+        st = append(st, _StackSlot {
+            m: v.Mem,
+            p: v.IsPointer(),
+        })
+    }
+
+    /* add stack-passed return values */
+    for _, v := range self.Rets {
+        if !v.InRegister {
+            st = append(st, _StackSlot {
+                m: v.Mem,
+                p: v.IsPointer(),
+            })
+        }
+    }
+
+    /* sort by memory offset */
+    sort.Slice(st, func(i int, j int) bool {
+        return st[i].m < st[j].m
+    })
+
+    /* add the bits */
+    for _, v := range st {
+        mb.AddField(v.p)
+    }
+
+    /* build the stack map */
     return mb.Build()
 }
 
