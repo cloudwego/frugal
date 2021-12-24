@@ -160,37 +160,39 @@ func epilogue(p *atm.Builder) {
 }
 
 var translators = [256]func(*atm.Builder, Instr) {
-    OP_size_check  : translate_OP_size_check,
-    OP_size_const  : translate_OP_size_const,
-    OP_size_dyn    : translate_OP_size_dyn,
-    OP_size_map    : translate_OP_size_map,
-    OP_size_defer  : translate_OP_size_defer,
-    OP_byte        : translate_OP_byte,
-    OP_word        : translate_OP_word,
-    OP_long        : translate_OP_long,
-    OP_quad        : translate_OP_quad,
-    OP_sint        : translate_OP_sint,
-    OP_length      : translate_OP_length,
-    OP_memcpy_be   : translate_OP_memcpy_be,
-    OP_seek        : translate_OP_seek,
-    OP_deref       : translate_OP_deref,
-    OP_defer       : translate_OP_defer,
-    OP_map_len     : translate_OP_map_len,
-    OP_map_key     : translate_OP_map_key,
-    OP_map_next    : translate_OP_map_next,
-    OP_map_value   : translate_OP_map_value,
-    OP_map_begin   : translate_OP_map_begin,
-    OP_map_if_end  : translate_OP_map_if_end,
-    OP_list_decr   : translate_OP_list_decr,
-    OP_list_begin  : translate_OP_list_begin,
-    OP_list_if_end : translate_OP_list_if_end,
-    OP_unique      : translate_OP_unique,
-    OP_goto        : translate_OP_goto,
-    OP_if_nil      : translate_OP_if_nil,
-    OP_if_hasbuf   : translate_OP_if_hasbuf,
-    OP_make_state  : translate_OP_make_state,
-    OP_drop_state  : translate_OP_drop_state,
-    OP_halt        : translate_OP_halt,
+    OP_size_check    : translate_OP_size_check,
+    OP_size_const    : translate_OP_size_const,
+    OP_size_dyn      : translate_OP_size_dyn,
+    OP_size_map      : translate_OP_size_map,
+    OP_size_defer    : translate_OP_size_defer,
+    OP_byte          : translate_OP_byte,
+    OP_word          : translate_OP_word,
+    OP_long          : translate_OP_long,
+    OP_quad          : translate_OP_quad,
+    OP_sint          : translate_OP_sint,
+    OP_length        : translate_OP_length,
+    OP_memcpy_be     : translate_OP_memcpy_be,
+    OP_seek          : translate_OP_seek,
+    OP_deref         : translate_OP_deref,
+    OP_defer         : translate_OP_defer,
+    OP_map_len       : translate_OP_map_len,
+    OP_map_key       : translate_OP_map_key,
+    OP_map_next      : translate_OP_map_next,
+    OP_map_value     : translate_OP_map_value,
+    OP_map_begin     : translate_OP_map_begin,
+    OP_map_if_next   : translate_OP_map_if_next,
+    OP_map_if_empty  : translate_OP_map_if_empty,
+    OP_list_decr     : translate_OP_list_decr,
+    OP_list_begin    : translate_OP_list_begin,
+    OP_list_if_next  : translate_OP_list_if_next,
+    OP_list_if_empty : translate_OP_list_if_empty,
+    OP_unique        : translate_OP_unique,
+    OP_goto          : translate_OP_goto,
+    OP_if_nil        : translate_OP_if_nil,
+    OP_if_hasbuf     : translate_OP_if_hasbuf,
+    OP_make_state    : translate_OP_make_state,
+    OP_drop_state    : translate_OP_drop_state,
+    OP_halt          : translate_OP_halt,
 }
 
 func translate_OP_size_check(p *atm.Builder, v Instr) {
@@ -377,7 +379,7 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
 
 func translate_OP_map_len(p *atm.Builder, _ Instr) {
     p.LP    (WP, 0, TP)
-    p.LL    (TP, 0, TR)
+    p.LQ    (TP, 0, TR)
     p.SWAPL (TR, TR)
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, 4, RL)
@@ -412,10 +414,16 @@ func translate_OP_map_begin(p *atm.Builder, v Instr) {
       A2    (TP)
 }
 
-func translate_OP_map_if_end(p *atm.Builder, v Instr) {
+func translate_OP_map_if_next(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MiOffset + MiKeyOffset, TP)
-    p.BEQN  (TP, p.At(v.To))
+    p.BNEN  (TP, p.At(v.To))
+}
+
+func translate_OP_map_if_empty(p *atm.Builder, v Instr) {
+    p.LP    (WP, 0, TP)
+    p.LQ    (TP, 0, TR)
+    p.BEQ   (TR, atm.Rz, p.At(v.To))
 }
 
 func translate_OP_list_decr(p *atm.Builder, _ Instr) {
@@ -432,9 +440,14 @@ func translate_OP_list_begin(p *atm.Builder, _ Instr) {
     p.SQ    (TR, TP, LnOffset)
 }
 
-func translate_OP_list_if_end(p *atm.Builder, v Instr) {
+func translate_OP_list_if_next(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, LnOffset, TR)
+    p.BNE   (TR, atm.Rz, p.At(v.To))
+}
+
+func translate_OP_list_if_empty(p *atm.Builder, v Instr) {
+    p.LQ    (WP, atm.PtrSize, TR)
     p.BEQ   (TR, atm.Rz, p.At(v.To))
 }
 

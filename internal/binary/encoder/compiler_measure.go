@@ -121,10 +121,11 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, req defs.Requ
     if nv > 0 { p.i64(OP_size_map, int64(nv)) }
 
     /* complex maps */
+    j := p.pc()
+    p.add(OP_map_if_empty)
     p.add(OP_make_state)
     p.rtt(OP_map_begin, vt.S)
-    j := p.pc()
-    p.add(OP_map_if_end)
+    k := p.pc()
 
     /* complex keys */
     if nk <= 0 {
@@ -140,10 +141,10 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, req defs.Requ
 
     /* move to the next state */
     p.add(OP_map_next)
-    p.jmp(OP_goto, j)
-    p.pin(j)
+    p.jmp(OP_map_if_next, k)
     p.add(OP_drop_state)
     p.pin(i)
+    p.pin(j)
 }
 
 func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type) {
@@ -223,19 +224,19 @@ func (self Compiler) measureSetList(p *Program, sp int, vt *defs.Type, req defs.
     }
 
     /* complex lists or sets */
+    j := p.pc()
+    p.add(OP_list_if_empty)
     p.add(OP_make_state)
     p.add(OP_list_begin)
-    j := p.pc()
-    p.add(OP_list_if_end)
     k := p.pc()
+    p.add(OP_goto)
+    r := p.pc()
+    p.i64(OP_seek, int64(et.S.Size()))
+    p.pin(k)
     self.measure(p, sp + 1, et, defs.Default)
     p.add(OP_list_decr)
-    r := p.pc()
-    p.add(OP_list_if_end)
-    p.i64(OP_seek, int64(et.S.Size()))
-    p.jmp(OP_goto, k)
-    p.pin(j)
-    p.pin(r)
+    p.jmp(OP_list_if_next, r)
     p.add(OP_drop_state)
     p.pin(i)
+    p.pin(j)
 }

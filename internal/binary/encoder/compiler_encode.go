@@ -102,31 +102,33 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type, req defs.Requ
 
     /* encode the map */
     p.add(OP_map_len)
+    j := p.pc()
+    p.add(OP_map_if_empty)
     p.add(OP_make_state)
     p.rtt(OP_map_begin, vt.S)
-    j := p.pc()
-    p.add(OP_map_if_end)
+    k := p.pc()
     p.add(OP_map_key)
     self.compile(p, sp + 1, kt, defs.Default)
     p.add(OP_map_value)
     self.compile(p, sp + 1, et, defs.Default)
     p.add(OP_map_next)
-    p.jmp(OP_goto, j)
-    p.pin(j)
+    p.jmp(OP_map_if_next, k)
     p.add(OP_drop_state)
 
     /* map is optional */
     if req == defs.Optional {
         p.pin(i)
+        p.pin(j)
         return
     }
 
     /* encode the length for nil maps */
-    k := p.pc()
+    r := p.pc()
     p.add(OP_goto)
     p.pin(i)
     p.i64(OP_long, 0)
-    p.pin(k)
+    p.pin(j)
+    p.pin(r)
 }
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
@@ -234,19 +236,19 @@ func (self Compiler) compileSetList(p *Program, sp int, vt *defs.Type, req defs.
     }
 
     /* complex sets or lists */
+    j := p.pc()
+    p.add(OP_list_if_empty)
     p.add(OP_make_state)
     p.add(OP_list_begin)
-    j := p.pc()
-    p.add(OP_list_if_end)
     k := p.pc()
+    p.add(OP_goto)
+    r := p.pc()
+    p.i64(OP_seek, int64(et.S.Size()))
+    p.pin(k)
     self.compile(p, sp + 1, et, defs.Default)
     p.add(OP_list_decr)
-    r := p.pc()
-    p.add(OP_list_if_end)
-    p.i64(OP_seek, int64(et.S.Size()))
-    p.jmp(OP_goto, k)
-    p.pin(j)
-    p.pin(r)
+    p.jmp(OP_list_if_next, r)
     p.add(OP_drop_state)
     p.pin(i)
+    p.pin(j)
 }

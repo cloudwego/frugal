@@ -40,28 +40,30 @@ type (
 
 func (self Instr) Disassemble() string {
     switch self.Op {
-        case OP_size_check  : fallthrough
-        case OP_size_const  : fallthrough
-        case OP_size_map    : fallthrough
-        case OP_seek        : fallthrough
-        case OP_sint        : fallthrough
-        case OP_length      : return fmt.Sprintf("%-18s%d", self.Op, self.Iv)
-        case OP_size_dyn    : fallthrough
-        case OP_memcpy_be   : return fmt.Sprintf("%-18s%d, %d", self.Op, self.Uv, self.Iv)
-        case OP_size_defer  : fallthrough
-        case OP_defer       : fallthrough
-        case OP_map_begin   : fallthrough
-        case OP_unique      : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
-        case OP_byte        : return fmt.Sprintf("%-18s0x%02x", self.Op, self.Iv)
-        case OP_word        : return fmt.Sprintf("%-18s0x%04x", self.Op, self.Iv)
-        case OP_long        : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)
-        case OP_quad        : return fmt.Sprintf("%-18s0x%016x", self.Op, self.Iv)
-        case OP_map_if_end  : fallthrough
-        case OP_list_if_end : fallthrough
-        case OP_goto        : fallthrough
-        case OP_if_nil      : fallthrough
-        case OP_if_hasbuf   : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
-        default             : return self.Op.String()
+        case OP_size_check    : fallthrough
+        case OP_size_const    : fallthrough
+        case OP_size_map      : fallthrough
+        case OP_seek          : fallthrough
+        case OP_sint          : fallthrough
+        case OP_length        : return fmt.Sprintf("%-18s%d", self.Op, self.Iv)
+        case OP_size_dyn      : fallthrough
+        case OP_memcpy_be     : return fmt.Sprintf("%-18s%d, %d", self.Op, self.Uv, self.Iv)
+        case OP_size_defer    : fallthrough
+        case OP_defer         : fallthrough
+        case OP_map_begin     : fallthrough
+        case OP_unique        : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
+        case OP_byte          : return fmt.Sprintf("%-18s0x%02x", self.Op, self.Iv)
+        case OP_word          : return fmt.Sprintf("%-18s0x%04x", self.Op, self.Iv)
+        case OP_long          : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)
+        case OP_quad          : return fmt.Sprintf("%-18s0x%016x", self.Op, self.Iv)
+        case OP_map_if_next   : fallthrough
+        case OP_map_if_empty  : fallthrough
+        case OP_list_if_next  : fallthrough
+        case OP_list_if_empty : fallthrough
+        case OP_goto          : fallthrough
+        case OP_if_nil        : fallthrough
+        case OP_if_hasbuf     : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
+        default               : return self.Op.String()
     }
 }
 
