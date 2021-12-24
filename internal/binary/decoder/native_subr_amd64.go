@@ -12,6 +12,14 @@ var (
     _subr__do_skip = __native_entry__() + 13
 )
 
+const (
+    _stack__do_skip = 48
+)
+
 var (
     _ = _subr__do_skip
+)
+
+const (
+    _ = _stack__do_skip
 )

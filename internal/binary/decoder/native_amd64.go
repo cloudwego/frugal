@@ -20,4 +20,4 @@ package decoder
 //go:nosplit
 //go:noescape
 //goland:noinspection GoUnusedParameter,GoUnusedFunction
-func __do_skip(out *[]byte, src *[]byte, mode int)
+func __do_skip()

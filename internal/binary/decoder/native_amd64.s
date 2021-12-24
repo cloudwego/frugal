@@ -375,9 +375,6 @@ _WireTags:
 	QUAD $0x0000000000000000; QUAD $0x0000000000000000 // .space 16, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 	QUAD $0x0000000000000000; QUAD $0x0000000000000000 // .space 16, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
-TEXT ·__do_skip(SB), NOSPLIT, $0 - 24
-	MOVQ out+0(FP), DI
-	MOVQ src+8(FP), SI
-	MOVQ mode+16(FP), DX
+TEXT ·__do_skip(SB), NOSPLIT, $48 - 0
 	LEAQ ·__native_entry__+13(SB), AX // _do_skip
 	JMP  AX

@@ -27,12 +27,16 @@ type (
     LinkerAMD64 struct{}
 )
 
+const (
+    _NativeStackSize = _stack__do_skip
+)
+
 func init() {
     SetLinker(new(LinkerAMD64))
 }
 
 func (LinkerAMD64) Link(p atm.Program) Decoder {
     cc := atm.CreateCodeGen((Decoder)(nil))
-    fp := loader.Loader(cc.Generate(p, 0)).Load("decoder", cc.Frame())
+    fp := loader.Loader(cc.Generate(p, _NativeStackSize)).Load("decoder", cc.Frame())
     return *(*Decoder)(unsafe.Pointer(&fp))
 }
