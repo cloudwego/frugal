@@ -509,7 +509,10 @@ func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.P
     p.ADDPI (RS, BmOffset, ET)
     p.BZERO (nb, ET)
     p.LP    (WP, 0, EP)
+    p.JAL   ("_first_{n}", atm.Pn)
     p.Label ("_loop_{n}")
+    p.ADDPI (EP, dv, EP)
+    p.Label ("_first_{n}")
     ld      (EP, 0, RC)
     p.SHRI  (RC, 3, UR)
     p.ANDI  (RC, 0x3f, RC)
@@ -520,10 +523,7 @@ func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.P
     p.SQ    (UR, TP, 0)
     p.BNE   (RC, atm.Rz, LB_duplicated)
     p.SUBI  (TR, 1, TR)
-    p.BEQ   (TR, atm.Rz, "_done_{n}")
-    p.ADDPI (EP, dv, EP)
-    p.JAL   ("_loop_{n}", atm.Pn)
-    p.Label ("_done_{n}")
+    p.BNE   (TR, atm.Rz, "_loop_{n}")
     p.LDAQ  (ARG_len, RC)
 }
 
