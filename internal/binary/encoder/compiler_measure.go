@@ -143,10 +143,7 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, req defs.Requ
     p.jmp(OP_goto, j)
     p.pin(j)
     p.add(OP_drop_state)
-    k := p.pc()
-    p.add(OP_goto)
     p.pin(i)
-    p.pin(k)
 }
 
 func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type) {
