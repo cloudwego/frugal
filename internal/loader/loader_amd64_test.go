@@ -158,5 +158,5 @@ func dumpfunction(f interface{}) {
 }
 
 func TestLoader_PCSPDelta(t *testing.T) {
-    dumpfunction(rt.UnpackEface)
+    dumpfunction(moduledataverify1)
 }

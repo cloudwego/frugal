@@ -1,4 +1,4 @@
-// +build go1.17,!go1.18
+// +build go1.16,!go1.17
 
 /*
  * Copyright 2021 ByteDance Inc.
@@ -25,54 +25,45 @@ import (
 /** Stack Checking **/
 
 const (
-    _M_memcpyargs  = 0
+    _M_memcpyargs  = 24
     _G_stackguard0 = 0x10
 )
 
+var _S_getg = []byte {
+    0x65, 0x48, 0x8b, 0x0c, 0x25, 0x30, 0x00, 0x00, 0x00,   // MOVQ %gs:0x30, %rcx
+}
+
 func (self *CodeGen) abiStackCheck(p *x86_64.Program, to *x86_64.Label, sp uintptr) {
-    p.LEAQ (Ptr(RSP, -self.ctxt.size() - int32(sp)), R12)
-    p.CMPQ (Ptr(R14, _G_stackguard0), R12)
+    p.Data (_S_getg)
+    p.LEAQ (Ptr(RSP, -self.ctxt.size() - int32(sp)), RAX)
+    p.CMPQ (Ptr(RCX, _G_stackguard0), RAX)
     p.JBE  (to)
 }
 
 /** Efficient Block Copy Algorithm **/
 
-var memcpyargs = [256]bool {
-    RAX: true,
-    RBX: true,
-    RCX: true,
-}
-
 func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd PointerRegister, ps PointerRegister, nb GenericRegister) {
-    rd := self.r(ps)
+    rd := self.r(pd)
     rs := self.r(ps)
     rl := self.r(nb)
 
     /* save all the registers, if they will be clobbered */
     for _, lr := range self.ctxt.regs {
-        if rr := self.r(lr); R_memcpy[rr] || memcpyargs[rr] {
+        if rr := self.r(lr); R_memcpy[rr] {
             p.MOVQ(rr, self.ctxt.slot(lr))
         }
     }
 
-    /* enumerate different register cases */
-    switch {
-        case rs == RBX && rl == RCX : p.MOVQ(rd, RAX)
-        case rs == RBX && rl != RCX : p.MOVQ(rd, RAX); p.MOVQ  (rl, RCX)
-        case rs != RBX && rl == RCX : p.MOVQ(rd, RAX); p.MOVQ  (rs, RBX)
-        case rs == RCX && rl == RBX : p.MOVQ(rd, RAX); p.XCHGQ (RBX, RCX)
-        case rs == RCX && rl != RBX : p.MOVQ(rd, RAX); p.MOVQ  (RCX, RBX); p.MOVQ(rl, RCX)
-        case rs != RCX && rl == RBX : p.MOVQ(rd, RAX); p.MOVQ  (RBX, RCX); p.MOVQ(rs, RBX)
-        default                     : p.MOVQ(rd, RAX); p.MOVQ  (rs, RBX);  p.MOVQ(rl, RCX)
-    }
-
-    /* call the function */
+    /* load the args and call the function */
+    p.MOVQ(rd, Ptr(RSP, 0))
+    p.MOVQ(rs, Ptr(RSP, 8))
+    p.MOVQ(rl, Ptr(RSP, 16))
     p.MOVQ(F_memmove, RDI)
     p.CALLQ(RDI)
 
     /* restore all the registers, if they were clobbered */
     for _, lr := range self.ctxt.regs {
-        if rr := self.r(lr); R_memcpy[rr] || memcpyargs[rr] {
+        if rr := self.r(lr); R_memcpy[rr] {
             p.MOVQ(self.ctxt.slot(lr), rr)
         }
     }

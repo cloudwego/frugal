@@ -27,6 +27,7 @@ import (
     `github.com/cloudwego/frugal/internal/loader`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/davecgh/go-spew/spew`
+    `github.com/stretchr/testify/require`
     `golang.org/x/arch/x86/x86asm`
 )
 
@@ -196,4 +197,7 @@ func TestPGen_FunctionCall(t *testing.T) {
     f := *(*func(int) (int, int, int))(unsafe.Pointer(&v))
     x, y, z := f(123)
     println("f(123) is", x, y, z)
+    require.Equal(t, 546, x)
+    require.Equal(t, 746, y)
+    require.Equal(t, 20211206, z)
 }

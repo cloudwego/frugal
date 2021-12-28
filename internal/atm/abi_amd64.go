@@ -21,6 +21,7 @@ import (
     `reflect`
     `sort`
     `strings`
+    `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
@@ -37,6 +38,11 @@ type Parameter struct {
     Type       reflect.Type
     InRegister bool
 }
+
+var (
+    intType = reflect.TypeOf(0)
+    ptrType = reflect.TypeOf(unsafe.Pointer(nil))
+)
 
 func mkReg(vt reflect.Type, reg x86_64.Register64) (p Parameter) {
     p.Reg = reg

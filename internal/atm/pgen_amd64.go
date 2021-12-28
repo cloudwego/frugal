@@ -259,6 +259,7 @@ func (self *CodeGen) Generate(s Program, sp uintptr) []byte {
         switch v.Op {
             case OP_gcall: fallthrough
             case OP_icall: self.ctxt.require(ABI.FnTab[invokeTab[v.Iv].Id].Sp)
+            case OP_bcopy: self.ctxt.require(_M_memcpyargs)
         }
     }
 

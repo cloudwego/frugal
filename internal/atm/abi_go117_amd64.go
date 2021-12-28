@@ -26,7 +26,6 @@ package atm
 
 import (
     `reflect`
-    `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
 )
@@ -35,11 +34,17 @@ const (
     _NI = 9 // number of integer registers
 )
 
-var (
-    intType  = reflect.TypeOf(0)
-    ptrType  = reflect.TypeOf(unsafe.Pointer(nil))
-    regOrder = [_NI]x86_64.Register64{RAX, RBX, RCX, RDI, RSI, R8, R9, R10, R11}
-)
+var regOrder = [_NI]x86_64.Register64 {
+    RAX,
+    RBX,
+    RCX,
+    RDI,
+    RSI,
+    R8,
+    R9,
+    R10,
+    R11,
+}
 
 type _StackAlloc struct {
     i int

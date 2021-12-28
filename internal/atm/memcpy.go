@@ -33,5 +33,6 @@ func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 func memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr)
 
 var (
+    R_memcpy  = resolveClobberSet(memmove)
     F_memmove = uintptr(rt.FuncAddr(memmove))
 )

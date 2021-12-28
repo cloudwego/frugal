@@ -23,5 +23,5 @@ import (
 )
 
 func TestClobber_ClobberSet(t *testing.T) {
-    spew.Dump(memcpyClobberSet)
+    spew.Dump(R_memcpy)
 }
