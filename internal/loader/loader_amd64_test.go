@@ -18,6 +18,7 @@ package loader
 
 import (
     `fmt`
+    `reflect`
     `runtime`
     `testing`
     `unsafe`
@@ -130,8 +131,18 @@ func step(p []byte, pc *uintptr, val *int32, first bool) (newp []byte, ok bool)
 func dumpfunction(f interface{}) {
     fp := rt.FuncAddr(f)
     fn := findfunc(uintptr(fp))
-    datap := fn.datap
-    p := datap.pctab[fn.pcsp:]
+    var name string
+    if runtime.Version() >= "go1.16" {
+        name = "pctab"
+    } else {
+        name = "pclntable"
+    }
+    datap := reflect.ValueOf(fn.datap)
+    ff, ok := datap.Type().Elem().FieldByName(name)
+    if !ok {
+        panic("no such field: pctab")
+    }
+    p := (*(*[]byte)(unsafe.Pointer(uintptr(unsafe.Pointer(fn.datap)) + ff.Offset)))[fn.pcsp:]
     pc := fn.entry
     val := int32(-1)
     for {

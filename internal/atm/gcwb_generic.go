@@ -1,3 +1,5 @@
+// +build !amd64 !go1.15 go1.16
+
 /*
  * Copyright 2021 ByteDance Inc.
  *
@@ -17,16 +19,12 @@
 package atm
 
 import (
-    _ `unsafe`
-
-    `github.com/cloudwego/frugal/internal/rt`
+    `unsafe`
 )
 
-//go:nosplit
-//go:linkname gcWriteBarrier runtime.gcWriteBarrier
-func gcWriteBarrier()
+//go:linkname writeBarrier runtime.writeBarrier
+var writeBarrier uintptr
 
-var (
-    V_pWriteBarrier  = gcwbaddr()
-    F_gcWriteBarrier = uintptr(rt.FuncAddr(gcWriteBarrier))
-)
+func gcwbaddr() uintptr {
+    return uintptr(unsafe.Pointer(&writeBarrier))
+}
