@@ -18,17 +18,11 @@ package atm
 
 import (
     `testing`
-    `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
 
 func TestGCWB_FuncAddr(t *testing.T) {
     fp := rt.FuncAddr(gcWriteBarrier)
-    disasm(uintptr(fp), *(*[]byte)(unsafe.Pointer(&rt.GoSlice {
-        Ptr: fp,
-        Len: 64,
-        Cap: 64,
-    })))
+    disasm(uintptr(fp), rt.BytesFrom(fp, 245, 245))
 }
-
