@@ -112,7 +112,10 @@ func TestLoader_StackMap(t *testing.T) {
         ret`
     require.NoError(t, asm.Assemble(src))
     smb.AddField(true)
-    fp := Loader(asm.Code()).Load("test_with_stackmap", rt.Frame {
+    cc := asm.Code()
+    fp := Loader(cc).Load("test_with_stackmap", rt.Frame {
+        Head      : 4,              // sizeof(subq $24, %rsp)
+        Tail      : len(cc) - 1,    // len(cc) - sizeof(ret)
         Size      : 24,
         ArgSize   : 0,
         ArgPtrs   : new(rt.StackMapBuilder).Build(),
