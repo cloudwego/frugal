@@ -375,6 +375,19 @@ _WireTags:
 	QUAD $0x0000000000000000; QUAD $0x0000000000000000 // .space 16, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 	QUAD $0x0000000000000000; QUAD $0x0000000000000000 // .space 16, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
-TEXT ·__do_skip(SB), NOSPLIT, $48 - 0
+TEXT ·__do_skip(SB), NOSPLIT | NOFRAME, $0 - 0
+	NO_LOCAL_POINTERS
+
+_entry:
+	MOVQ (TLS), R14
+	LEAQ -48(SP), R12
+	CMPQ R12, 16(R14)
+	JBE  _stack_grow
+
+_do_skip:
 	LEAQ ·__native_entry__+13(SB), AX // _do_skip
 	JMP  AX
+
+_stack_grow:
+	CALL runtime·morestack_noctxt<>(SB)
+	JMP  _entry
