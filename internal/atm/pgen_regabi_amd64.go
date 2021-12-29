@@ -44,7 +44,7 @@ var memcpyargs = [256]bool {
 }
 
 func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd PointerRegister, ps PointerRegister, nb GenericRegister) {
-    rd := self.r(ps)
+    rd := self.r(pd)
     rs := self.r(ps)
     rl := self.r(nb)
 
