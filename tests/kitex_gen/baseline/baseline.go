@@ -10,12 +10,12 @@ import (
 )
 
 type Simple struct {
-	ByteField   int8    `thrift:"ByteField,1" json:"ByteField"`
-	I64Field    int64   `thrift:"I64Field,2" json:"I64Field"`
-	DoubleField float64 `thrift:"DoubleField,3" json:"DoubleField"`
-	I32Field    int32   `thrift:"I32Field,4" json:"I32Field"`
-	StringField string  `thrift:"StringField,5" json:"StringField"`
-	BinaryField []byte  `thrift:"BinaryField,6" json:"BinaryField"`
+	ByteField   int8    `thrift:"ByteField,1" frugal:"1,default,byte" json:"ByteField"`
+	I64Field    int64   `thrift:"I64Field,2" frugal:"2,default,i64" json:"I64Field"`
+	DoubleField float64 `thrift:"DoubleField,3" frugal:"3,default,double" json:"DoubleField"`
+	I32Field    int32   `thrift:"I32Field,4" frugal:"4,default,i32" json:"I32Field"`
+	StringField string  `thrift:"StringField,5" frugal:"5,default,string" json:"StringField"`
+	BinaryField []byte  `thrift:"BinaryField,6" frugal:"6,default,binary" json:"BinaryField"`
 }
 
 func NewSimple() *Simple {
@@ -465,21 +465,21 @@ func (p *Simple) Field6DeepEqual(src []byte) bool {
 }
 
 type Nesting struct {
-	String_         string             `thrift:"String,1" json:"String"`
-	ListSimple      []*Simple          `thrift:"ListSimple,2" json:"ListSimple"`
-	Double          float64            `thrift:"Double,3" json:"Double"`
-	I32             int32              `thrift:"I32,4" json:"I32"`
-	ListI32         []int32            `thrift:"ListI32,5" json:"ListI32"`
-	I64             int64              `thrift:"I64,6" json:"I64"`
-	MapStringString map[string]string  `thrift:"MapStringString,7" json:"MapStringString"`
-	SimpleStruct    *Simple            `thrift:"SimpleStruct,8" json:"SimpleStruct"`
-	MapI32I64       map[int32]int64    `thrift:"MapI32I64,9" json:"MapI32I64"`
-	ListString      []string           `thrift:"ListString,10" json:"ListString"`
-	Binary          []byte             `thrift:"Binary,11" json:"Binary"`
-	MapI64String    map[int64]string   `thrift:"MapI64String,12" json:"MapI64String"`
-	ListI64         []int64            `thrift:"ListI64,13" json:"ListI64"`
-	Byte            int8               `thrift:"Byte,14" json:"Byte"`
-	MapStringSimple map[string]*Simple `thrift:"MapStringSimple,15" json:"MapStringSimple"`
+	String_         string             `thrift:"String,1" frugal:"1,default,string" json:"String"`
+	ListSimple      []*Simple          `thrift:"ListSimple,2" frugal:"2,default,list<Simple>" json:"ListSimple"`
+	Double          float64            `thrift:"Double,3" frugal:"3,default,double" json:"Double"`
+	I32             int32              `thrift:"I32,4" frugal:"4,default,i32" json:"I32"`
+	ListI32         []int32            `thrift:"ListI32,5" frugal:"5,default,list<i32>" json:"ListI32"`
+	I64             int64              `thrift:"I64,6" frugal:"6,default,i64" json:"I64"`
+	MapStringString map[string]string  `thrift:"MapStringString,7" frugal:"7,default,map<string:string>" json:"MapStringString"`
+	SimpleStruct    *Simple            `thrift:"SimpleStruct,8" frugal:"8,default,Simple" json:"SimpleStruct"`
+	MapI32I64       map[int32]int64    `thrift:"MapI32I64,9" frugal:"9,default,map<i32:i64>" json:"MapI32I64"`
+	ListString      []string           `thrift:"ListString,10" frugal:"10,default,list<string>" json:"ListString"`
+	Binary          []byte             `thrift:"Binary,11" frugal:"11,default,binary" json:"Binary"`
+	MapI64String    map[int64]string   `thrift:"MapI64String,12" frugal:"12,default,map<i64:string>" json:"MapI64String"`
+	ListI64         []int64            `thrift:"ListI64,13" frugal:"13,default,list<i64>" json:"ListI64"`
+	Byte            int8               `thrift:"Byte,14" frugal:"14,default,byte" json:"Byte"`
+	MapStringSimple map[string]*Simple `thrift:"MapStringSimple,15" frugal:"15,default,map<string:Simple>" json:"MapStringSimple"`
 }
 
 func NewNesting() *Nesting {
@@ -1718,17 +1718,17 @@ func (p *Nesting) Field15DeepEqual(src map[string]*Simple) bool {
 }
 
 type Nesting2 struct {
-	MapSimpleNesting map[*Simple]*Nesting `thrift:"MapSimpleNesting,1" json:"MapSimpleNesting"`
-	SimpleStruct     *Simple              `thrift:"SimpleStruct,2" json:"SimpleStruct"`
-	Byte             int8                 `thrift:"Byte,3" json:"Byte"`
-	Double           float64              `thrift:"Double,4" json:"Double"`
-	ListNesting      []*Nesting           `thrift:"ListNesting,5" json:"ListNesting"`
-	I64              int64                `thrift:"I64,6" json:"I64"`
-	NestingStruct    *Nesting             `thrift:"NestingStruct,7" json:"NestingStruct"`
-	Binary           []byte               `thrift:"Binary,8" json:"Binary"`
-	String_          string               `thrift:"String,9" json:"String"`
-	SetNesting       []*Nesting           `thrift:"SetNesting,10" json:"SetNesting"`
-	I32              int32                `thrift:"I32,11" json:"I32"`
+	MapSimpleNesting map[*Simple]*Nesting `thrift:"MapSimpleNesting,1" frugal:"1,default,map<Simple:Nesting>" json:"MapSimpleNesting"`
+	SimpleStruct     *Simple              `thrift:"SimpleStruct,2" frugal:"2,default,Simple" json:"SimpleStruct"`
+	Byte             int8                 `thrift:"Byte,3" frugal:"3,default,byte" json:"Byte"`
+	Double           float64              `thrift:"Double,4" frugal:"4,default,double" json:"Double"`
+	ListNesting      []*Nesting           `thrift:"ListNesting,5" frugal:"5,default,list<Nesting>" json:"ListNesting"`
+	I64              int64                `thrift:"I64,6" frugal:"6,default,i64" json:"I64"`
+	NestingStruct    *Nesting             `thrift:"NestingStruct,7" frugal:"7,default,Nesting" json:"NestingStruct"`
+	Binary           []byte               `thrift:"Binary,8" frugal:"8,default,binary" json:"Binary"`
+	String_          string               `thrift:"String,9" frugal:"9,default,string" json:"String"`
+	SetNesting       []*Nesting           `thrift:"SetNesting,10" frugal:"10,default,set<Nesting>" json:"SetNesting"`
+	I32              int32                `thrift:"I32,11" frugal:"11,default,i32" json:"I32"`
 }
 
 func NewNesting2() *Nesting2 {

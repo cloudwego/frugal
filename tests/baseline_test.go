@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//go:generate thriftgo -g go:support_frugal -o . baseline.thrift
+//go:generate kitex -thrift frugal_tag baseline.thrift
 package tests
 
 import (
@@ -30,8 +30,7 @@ import (
     `github.com/apache/thrift/lib/go/thrift`
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/binary/defs`
-    vanilla_baseline `github.com/cloudwego/frugal/testdata/baseline`
-    kitex_baseline `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
+    `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/assert`
     `github.com/stretchr/testify/require`
@@ -149,7 +148,7 @@ func comparestruct(t require.TestingT, a []byte, b []byte) {
 }
 
 func TestMarshalCompare(t *testing.T) {
-    var v vanilla_baseline.Nesting2
+    var v baseline.Nesting2
     loaddata(t, &v)
     mm := thrift.NewTMemoryBuffer()
     err := v.Write(thrift.NewTBinaryProtocolTransport(mm))
@@ -168,9 +167,9 @@ func TestMarshalCompare(t *testing.T) {
 }
 
 func TestUnmarshalCompare(t *testing.T) {
-    var v vanilla_baseline.Nesting2
-    var v1 vanilla_baseline.Nesting2
-    var v2 vanilla_baseline.Nesting2
+    var v baseline.Nesting2
+    var v1 baseline.Nesting2
+    var v2 baseline.Nesting2
     loaddata(t, &v)
     nb := frugal.EncodedSize(v)
     println("Estimated Size:", nb)
@@ -186,7 +185,7 @@ func TestUnmarshalCompare(t *testing.T) {
 }
 
 func BenchmarkMarshalVanilla(b *testing.B) {
-    var v vanilla_baseline.Nesting2
+    var v baseline.Nesting2
     mm := thrift.NewTMemoryBuffer()
     b.SetBytes(int64(len(loaddata(b, &v))))
     b.ResetTimer()
@@ -197,7 +196,7 @@ func BenchmarkMarshalVanilla(b *testing.B) {
 }
 
 func BenchmarkMarshalKitexFast(b *testing.B) {
-    var v kitex_baseline.Nesting2
+    var v baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
     buf := make([]byte, v.BLength())
     b.ResetTimer()
@@ -208,7 +207,7 @@ func BenchmarkMarshalKitexFast(b *testing.B) {
 }
 
 func BenchmarkMarshalFrugal(b *testing.B) {
-    var v vanilla_baseline.Nesting2
+    var v baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
     buf := make([]byte, frugal.EncodedSize(&v))
     _, _ = frugal.EncodeObject(buf, nil, &v)
@@ -220,7 +219,7 @@ func BenchmarkMarshalFrugal(b *testing.B) {
 }
 
 func BenchmarkLengthKitexFast(b *testing.B) {
-    var v kitex_baseline.Nesting2
+    var v baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
@@ -229,7 +228,7 @@ func BenchmarkLengthKitexFast(b *testing.B) {
 }
 
 func BenchmarkLengthFrugal(b *testing.B) {
-    var v vanilla_baseline.Nesting2
+    var v baseline.Nesting2
     b.SetBytes(int64(len(loaddata(b, &v))))
     frugal.EncodedSize(&v)
     b.ResetTimer()
@@ -244,7 +243,7 @@ func BenchmarkUnmarshalVanilla(b *testing.B) {
     b.SetBytes(int64(len(buf)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        var v vanilla_baseline.Nesting2
+        var v baseline.Nesting2
         mm.Reset()
         _, _ = mm.Write(buf)
         _ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
@@ -256,19 +255,19 @@ func BenchmarkUnmarshalKitexFast(b *testing.B) {
     b.SetBytes(int64(len(buf)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        var v kitex_baseline.Nesting2
+        var v baseline.Nesting2
         _, _ = v.FastRead(buf)
     }
 }
 
 func BenchmarkUnmarshalFrugal(b *testing.B) {
-    var r vanilla_baseline.Nesting2
+    var r baseline.Nesting2
     buf := loaddata(b, nil)
     _, _ = frugal.DecodeObject(buf, &r)
     b.SetBytes(int64(len(buf)))
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
-        var v vanilla_baseline.Nesting2
+        var v baseline.Nesting2
         _, _ = frugal.DecodeObject(buf, &v)
     }
 }
