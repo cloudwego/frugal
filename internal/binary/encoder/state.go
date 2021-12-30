@@ -17,6 +17,7 @@
 package encoder
 
 import (
+    `math`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
@@ -39,6 +40,11 @@ const (
 const (
     StateMax  = (defs.MaxStack - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
+)
+
+const (
+    RangeUint8  = math.MaxUint8 + 1
+    RangeUint16 = math.MaxUint16 + 1
 )
 
 type StateItem struct {

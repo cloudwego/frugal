@@ -18,7 +18,6 @@ package encoder
 
 import (
     `fmt`
-    `math`
     `os`
     `reflect`
 
@@ -486,15 +485,15 @@ func translate_OP_unique_b(p *atm.Builder) {
 }
 
 func translate_OP_unique_i8(p *atm.Builder) {
-    p.IQ    (256, UR)
+    p.IQ    (RangeUint8, UR)
     p.BLTU  (UR, TR, LB_duplicated)
-    translate_OP_unique_small(p, (math.MaxUint8 + 1) / 8, 1, p.LB)
+    translate_OP_unique_small(p, RangeUint8 / 8, 1, p.LB)
 }
 
 func translate_OP_unique_i16(p *atm.Builder) {
-    p.IQ    (65536, UR)
+    p.IQ    (RangeUint16, UR)
     p.BLTU  (UR, TR, LB_duplicated)
-    translate_OP_unique_small(p, (math.MaxUint16 + 1) / 8, 2, p.LW)
+    translate_OP_unique_small(p, RangeUint16 / 8, 2, p.LW)
 }
 
 func translate_OP_unique_int(p *atm.Builder) {
