@@ -8,14 +8,14 @@ import (
     `reflect`
     `runtime`
     `runtime/debug`
-    `testing`
     `sync`
+    `testing`
 
     _ `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
 )
 
-func init() {
+func pluginInit() {
     bin, err := exec.LookPath("go")
     if err != nil {
         panic(err)
@@ -32,20 +32,20 @@ func init() {
     }
 }
 
-func TestMain(m *testing.M) {
+func pluginTestMain() {
     go func ()  {
         println("Begin GC looping...")
         for {
             runtime.GC()
             debug.FreeOSMemory() 
         }
-        println("stop GC looping!")
 	}()
 	runtime.Gosched()
-    m.Run()
 }
 
 func TestPlugin(t *testing.T) {
+    pluginInit()
+    pluginTestMain()
     p, err := plugin.Open("plugin/plugin."+runtime.Version()+".so")
     if err != nil {
         t.Fatal(err)
@@ -71,16 +71,19 @@ func TestPlugin(t *testing.T) {
             defer wg.Done()
             d, err := p.Lookup("Marshal")
             if err != nil {
-                t.Fatal(err)
+                t.Error(err)
+                return
             }
             enc := d.(func(val interface{}) ([]byte, error))
             var exp baseline.Simple
-            out, err := enc(&exp); 
+            out, err := enc(&exp)
             if err != nil {
-                t.Fatal(err)
+                t.Error(err)
+                return
             }
             if !reflect.DeepEqual(m, out) {
-                t.Fatal(m, out)
+                t.Error(m, out)
+                return
             }
         }()
     }
