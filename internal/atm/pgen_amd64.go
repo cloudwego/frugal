@@ -286,6 +286,13 @@ func (self *CodeGen) Generate(s Program, sp uintptr) []byte {
     self.abiSaveReserved(p)
     self.abiPrologue(p)
 
+    /* clear all the pointer registers */
+    for lr := range self.regs {
+        if lr.A() & ArgPointer != 0 {
+            self.clr(p, lr)
+        }
+    }
+
     /* clear all the spill slots, if any */
     if i, n := 0, self.ctxt.regc(); n != 0 {
         if  n >= 2 { p.PXOR   (XMM15, XMM15) }
