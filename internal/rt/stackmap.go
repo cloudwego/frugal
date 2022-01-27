@@ -17,6 +17,8 @@
 package rt
 
 import (
+    `fmt`
+    `strings`
     `sync`
     `unsafe`
 )
@@ -65,21 +67,68 @@ var (
     _stackMapCache = make(map[*StackMap]struct{})
 )
 
+type BitVec struct {
+    N uintptr
+    B unsafe.Pointer
+}
+
+func (self BitVec) Bit(i uintptr) byte {
+    return (*(*byte)(unsafe.Pointer(uintptr(self.B) + i / 8)) >> (i % 8)) & 1
+}
+
+func (self BitVec) String() string {
+    var i uintptr
+    var v []string
+
+    /* add each bit */
+    for i = 0; i < self.N; i++ {
+        v = append(v, fmt.Sprintf("%d", self.Bit(i)))
+    }
+
+    /* join them together */
+    return fmt.Sprintf(
+        "BitVec { %s }",
+        strings.Join(v, ", "),
+    )
+}
+
 type StackMap struct {
     N int32
     L int32
     B [1]byte
 }
 
-func (self *StackMap) Pin() uintptr {
-    self.freeze()
-    return uintptr(unsafe.Pointer(self))
-}
-
-func (self *StackMap) freeze() {
+func (self *StackMap) add() {
     _stackMapLock.Lock()
     _stackMapCache[self] = struct{}{}
     _stackMapLock.Unlock()
+}
+
+func (self *StackMap) Pin() uintptr {
+    self.add()
+    return uintptr(unsafe.Pointer(self))
+}
+
+func (self *StackMap) Get(i int32) BitVec {
+    return BitVec {
+        N: uintptr(self.L),
+        B: unsafe.Pointer(uintptr(unsafe.Pointer(&self.B)) + uintptr(i * ((self.L + 7) >> 3))),
+    }
+}
+
+func (self *StackMap) String() string {
+    sb := strings.Builder{}
+    sb.WriteString("StackMap {")
+
+    /* dump every stack map */
+    for i := int32(0); i < self.N; i++ {
+        sb.WriteRune('\n')
+        sb.WriteString("    " + self.Get(i).String())
+    }
+
+    /* close the stackmap */
+    sb.WriteString("\n}")
+    return sb.String()
 }
 
 var (
