@@ -42,6 +42,12 @@ func TestEncoder_Encode(t *testing.T) {
                 B: -1,
             },
         },
+        L: &(&struct{ x bool }{true}).x,
+        M: &(&struct{ x int8 }{0x1}).x,
+        N: &(&struct{ x float64 }{0x12345678}).x,
+        O: &(&struct{ x int16 }{0x1234}).x,
+        P: &(&struct{ x int32 }{0x123456}).x,
+        Q: &(&struct{ x int64 }{0x12345678}).x,
     }
     nb := EncodedSize(v)
     println("Estimated Size:", nb)

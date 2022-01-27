@@ -35,6 +35,12 @@ type TranslatorTestStruct struct {
     I []int32                          `frugal:"8,default,list<i32>"`
     J map[string]string                `frugal:"9,default,map<string:string>"`
     K map[string]*TranslatorTestStruct `frugal:"65,default,map<string:TranslatorTestStruct>"`
+    L *bool                            `frugal:"11,optional,bool"`
+    M *int8                            `frugal:"12,optional,i8"`
+    N *float64                         `frugal:"13,optional,double"`
+    O *int16                           `frugal:"14,optional,i16"`
+    P *int32                           `frugal:"15,optional,i32"`
+    Q *int64                           `frugal:"16,optional,i64"`
 }
 
 func TestTranslator_Translate(t *testing.T) {

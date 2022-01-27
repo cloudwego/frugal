@@ -66,7 +66,7 @@ func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, req defs.Requ
 
     /* element is trivially measuable */
     if n > 0 {
-        p.i64(OP_size_const, int64(n))
+        p.i64(OP_size_const, int64(n) + nilv)
         p.pin(i)
         return
     }
