@@ -18,6 +18,8 @@ package decoder
 
 import (
     `sync`
+
+    `github.com/cloudwego/frugal/internal/atm`
 )
 
 const (
@@ -27,6 +29,11 @@ const (
 
 var (
     bitmapPool sync.Pool
+)
+
+var (
+    F_newFiedBitmap    = atm.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
+    F_FieldBitmap_Free = atm.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
 )
 
 type (

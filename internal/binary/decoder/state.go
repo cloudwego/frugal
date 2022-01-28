@@ -52,7 +52,7 @@ type StateItem struct {
     Nb uint64
     Mp *rt.GoMap
     Wp unsafe.Pointer
-    Fm FieldBitmap
+    Fm *FieldBitmap
 }
 
 type RuntimeState struct {

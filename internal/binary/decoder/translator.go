@@ -585,11 +585,15 @@ func translate_OP_struct_bitmap(p *atm.Builder, v Instr) {
         buf.Append(i)
     }
 
+    /* allocate a new bitmap */
+    p.GCALL (F_newFiedBitmap).R0(TP)
+    p.ADDP  (RS, ST, EP)
+    p.SP    (TP, EP, FmOffset)
+
     /* clear bits of required fields if any */
     for i := int64(0); i < MaxBitmap; i++ {
         if buf[i] != 0 {
-            p.ADDP  (RS, ST, TP)
-            p.SQ    (atm.Rz, TP, FmOffset + i * 8)
+            p.SQ(atm.Rz, TP, i * 8)
         }
     }
 
@@ -626,11 +630,14 @@ func translate_OP_struct_require(p *atm.Builder, v Instr) {
         buf.Append(i)
     }
 
+    /* load the bitmap */
+    p.ADDP  (RS, ST, EP)
+    p.LP    (EP, FmOffset, TP)
+
     /* test mask for each word if any */
     for i := int64(0); i < MaxBitmap; i++ {
         if buf[i] != 0 {
-            p.ADDP  (RS, ST, TP)
-            p.LQ    (TP, FmOffset + i * 8, TR)
+            p.LQ    (TP, i * 8, TR)
             p.ANDI  (TR, buf[i], TR)
             p.XORI  (TR, buf[i], TR)
             p.IQ    (i, UR)
@@ -638,6 +645,10 @@ func translate_OP_struct_require(p *atm.Builder, v Instr) {
             p.BNE   (TR, atm.Rz, LB_missing)
         }
     }
+
+    /* free the bitmap */
+    p.SP    (atm.Pn, EP, FmOffset)
+    p.GCALL (F_FieldBitmap_Free).A0(TP)
 
     /* release the buffer */
     buf.Clear()
@@ -650,9 +661,10 @@ func translate_OP_struct_is_stop(p *atm.Builder, v Instr) {
 
 func translate_OP_struct_mark_tag(p *atm.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
-    p.LQ    (TP, FmOffset + v.Iv / 64 * 8, TR)
+    p.LP    (TP, FmOffset, TP)
+    p.LQ    (TP, v.Iv / 64 * 8, TR)
     p.SBITI (TR, v.Iv % 64, TR)
-    p.SQ    (TR, TP, FmOffset + v.Iv / 64 * 8)
+    p.SQ    (TR, TP, v.Iv / 64 * 8)
 }
 
 func translate_OP_struct_read_type(p *atm.Builder, _ Instr) {
