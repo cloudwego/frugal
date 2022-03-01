@@ -94,7 +94,12 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
 
         /* only optional fields or structs can be pointers */
         if rt = ParseType(sf.Type, strings.TrimSpace(ft[2])); rx != Optional && rt.T == T_pointer && rt.V.T != T_struct {
-            return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s", sf.Type)
+            return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
+        }
+
+        /* check for nested pointers */
+        if rt.T == T_pointer && rt.V.T == T_pointer {
+            return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
         }
 
         /* add to result */

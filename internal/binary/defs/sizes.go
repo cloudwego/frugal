@@ -61,7 +61,7 @@ func measureStruct(vt reflect.Type) int {
         if fs = GetSize(vt.Field(i).Type); fs > 0 {
             rs += fs + 3
         } else {
-            return 0
+            return -1
         }
     }
 
