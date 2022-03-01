@@ -201,3 +201,8 @@ func TestPGen_FunctionCall(t *testing.T) {
     require.Equal(t, 746, y)
     require.Equal(t, 20211206, z)
 }
+
+func TestPGen_GCWB(t *testing.T) {
+    fp := rt.FuncAddr(gcWriteBarrier)
+    disasm(uintptr(fp), rt.BytesFrom(fp, 245, 245))
+}
