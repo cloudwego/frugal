@@ -29,10 +29,6 @@ const (
     _G_stackguard0 = 0x10
 )
 
-var _S_getg = []byte {
-    0x65, 0x48, 0x8b, 0x0c, 0x25, 0x30, 0x00, 0x00, 0x00,   // MOVQ %gs:0x30, %rcx
-}
-
 func (self *CodeGen) abiStackCheck(p *x86_64.Program, to *x86_64.Label, sp uintptr) {
     p.Data (_S_getg)
     p.LEAQ (Ptr(RSP, -self.ctxt.size() - int32(sp)), RAX)
