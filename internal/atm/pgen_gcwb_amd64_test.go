@@ -22,7 +22,7 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func TestGCWB_FuncAddr(t *testing.T) {
+func TestPGen_GCWB(t *testing.T) {
     fp := rt.FuncAddr(gcWriteBarrier)
     disasm(uintptr(fp), rt.BytesFrom(fp, 245, 245))
 }
