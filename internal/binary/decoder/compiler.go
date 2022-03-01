@@ -229,6 +229,7 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
         case defs.T_double : p.i64(OP_size, 8); p.i64(OP_int, 8)
         case defs.T_string : p.i64(OP_size, 4); p.add(OP_str)
         case defs.T_binary : p.i64(OP_size, 4); p.add(OP_bin)
+        case defs.T_enum   : p.i64(OP_size, 4); p.add(OP_enum)
         case defs.T_struct : self.compileStruct  (p, sp, vt)
         case defs.T_map    : self.compileMap     (p, sp, vt)
         case defs.T_set    : self.compileSetList (p, sp, vt.V)

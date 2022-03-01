@@ -172,6 +172,7 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_int               : translate_OP_int,
     OP_str               : translate_OP_str,
     OP_bin               : translate_OP_bin,
+    OP_enum              : translate_OP_enum,
     OP_size              : translate_OP_size,
     OP_type              : translate_OP_type,
     OP_seek              : translate_OP_seek,
@@ -240,6 +241,14 @@ func translate_OP_binstr(p *atm.Builder) {
     p.SP    (EP, WP, 0)
     p.Label ("_empty_{n}")
     p.SQ    (TR, WP, 8)
+}
+
+func translate_OP_enum(p *atm.Builder, _ Instr) {
+    p.ADDP  (IP, IC, EP)
+    p.LL    (EP, 0, TR)
+    p.SWAPL (TR, TR)
+    p.SQ    (TR, WP, 0)
+    p.ADDI  (IC, 4, IC)
 }
 
 func translate_OP_size(p *atm.Builder, v Instr) {

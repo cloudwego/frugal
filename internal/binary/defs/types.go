@@ -39,8 +39,9 @@ const (
     T_map     Tag = 13
     T_set     Tag = 14
     T_list    Tag = 15
-    T_binary  Tag = 0x80
-    T_pointer Tag = 0x81
+    T_enum    Tag = 0x80
+    T_binary  Tag = 0x81
+    T_pointer Tag = 0x82
 )
 
 var wireTags = [256]bool {
@@ -70,6 +71,10 @@ var keywordTab = [256]string {
     T_map    : "map",
 }
 
+var (
+    i64type = reflect.TypeOf(int64(0))
+)
+
 func T_int() Tag {
     switch IntSize {
         case 4  : return T_i32
@@ -91,6 +96,7 @@ type Type struct {
 
 func (self *Type) Tag() Tag {
     switch self.T {
+        case T_enum    : return T_i32
         case T_binary  : return T_string
         case T_pointer : return self.V.T
         default        : return self.T
@@ -114,6 +120,7 @@ func (self *Type) String() string {
         case T_map     : return fmt.Sprintf("map<%s:%s>", self.K.String(), self.V.String())
         case T_set     : return fmt.Sprintf("set<%s>", self.V.String())
         case T_list    : return fmt.Sprintf("list<%s>", self.V.String())
+        case T_enum    : return "enum"
         case T_binary  : return "binary"
         case T_pointer : return "*" + self.V.String()
         default        : return fmt.Sprintf("Type(Tag(%d))", self.T)
@@ -129,6 +136,7 @@ func (self *Type) isKeyType() bool {
         case T_i32     : return true
         case T_i64     : return true
         case T_string  : return true
+        case T_enum    : return true
         case T_pointer : return self.V.T == T_struct
         default        : return false
     }
@@ -244,6 +252,8 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
         if tv := nextToken(def, i); !strings.Contains(keywordTab[tag], tv) {
             if !isident0(tv[0]) || !doMatchStruct(vt, def, i, &tv) {
                 panic(mkMistyped(*i - len(tv), def, tv, tag, vt))
+            } else if tag == T_i64 && vt != i64type {
+                tag = T_enum
             }
         }
     }

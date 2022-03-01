@@ -129,6 +129,20 @@ func (p *Simple) FastRead(buf []byte) (int, error) {
 					goto SkipFieldError
 				}
 			}
+		case 7:
+			if fieldTypeId == thrift.I32 {
+				l, err = p.FastReadField7(buf[offset:])
+				offset += l
+				if err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				l, err = bthrift.Binary.Skip(buf[offset:], fieldTypeId)
+				offset += l
+				if err != nil {
+					goto SkipFieldError
+				}
+			}
 		default:
 			l, err = bthrift.Binary.Skip(buf[offset:], fieldTypeId)
 			offset += l
@@ -248,6 +262,20 @@ func (p *Simple) FastReadField6(buf []byte) (int, error) {
 	return offset, nil
 }
 
+func (p *Simple) FastReadField7(buf []byte) (int, error) {
+	offset := 0
+
+	if v, l, err := bthrift.Binary.ReadI32(buf[offset:]); err != nil {
+		return offset, err
+	} else {
+		offset += l
+
+		p.EnumField = Enums(v)
+
+	}
+	return offset, nil
+}
+
 // for compatibility
 func (p *Simple) FastWrite(buf []byte) int {
 	return 0
@@ -263,6 +291,7 @@ func (p *Simple) FastWriteNocopy(buf []byte, binaryWriter bthrift.BinaryWriter) 
 		offset += p.fastWriteField4(buf[offset:], binaryWriter)
 		offset += p.fastWriteField5(buf[offset:], binaryWriter)
 		offset += p.fastWriteField6(buf[offset:], binaryWriter)
+		offset += p.fastWriteField7(buf[offset:], binaryWriter)
 	}
 	offset += bthrift.Binary.WriteFieldStop(buf[offset:])
 	offset += bthrift.Binary.WriteStructEnd(buf[offset:])
@@ -279,6 +308,7 @@ func (p *Simple) BLength() int {
 		l += p.field4Length()
 		l += p.field5Length()
 		l += p.field6Length()
+		l += p.field7Length()
 	}
 	l += bthrift.Binary.FieldStopLength()
 	l += bthrift.Binary.StructEndLength()
@@ -339,6 +369,15 @@ func (p *Simple) fastWriteField6(buf []byte, binaryWriter bthrift.BinaryWriter) 
 	return offset
 }
 
+func (p *Simple) fastWriteField7(buf []byte, binaryWriter bthrift.BinaryWriter) int {
+	offset := 0
+	offset += bthrift.Binary.WriteFieldBegin(buf[offset:], "enumField", thrift.I32, 7)
+	offset += bthrift.Binary.WriteI32(buf[offset:], int32(p.EnumField))
+
+	offset += bthrift.Binary.WriteFieldEnd(buf[offset:])
+	return offset
+}
+
 func (p *Simple) field1Length() int {
 	l := 0
 	l += bthrift.Binary.FieldBeginLength("ByteField", thrift.BYTE, 1)
@@ -388,6 +427,15 @@ func (p *Simple) field6Length() int {
 	l := 0
 	l += bthrift.Binary.FieldBeginLength("BinaryField", thrift.STRING, 6)
 	l += bthrift.Binary.BinaryLengthNocopy([]byte(p.BinaryField))
+
+	l += bthrift.Binary.FieldEndLength()
+	return l
+}
+
+func (p *Simple) field7Length() int {
+	l := 0
+	l += bthrift.Binary.FieldBeginLength("enumField", thrift.I32, 7)
+	l += bthrift.Binary.I32Length(int32(p.EnumField))
 
 	l += bthrift.Binary.FieldEndLength()
 	return l

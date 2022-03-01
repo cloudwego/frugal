@@ -43,6 +43,7 @@ func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
         case defs.T_i16     : p.i64(OP_size_check, 2); p.i64(OP_sint, 2)
         case defs.T_i32     : p.i64(OP_size_check, 4); p.i64(OP_sint, 4)
         case defs.T_i64     : p.i64(OP_size_check, 8); p.i64(OP_sint, 8)
+        case defs.T_enum    : p.i64(OP_size_check, 4); p.i64(OP_sint, 4)
         case defs.T_double  : p.i64(OP_size_check, 8); p.i64(OP_sint, 8)
         case defs.T_string  : p.i64(OP_size_check, 4); p.i64(OP_length, atm.PtrSize); p.dyn(OP_memcpy_be, atm.PtrSize, 1)
         case defs.T_binary  : p.i64(OP_size_check, 4); p.i64(OP_length, atm.PtrSize); p.dyn(OP_memcpy_be, atm.PtrSize, 1)
@@ -197,6 +198,7 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field) {
         case defs.T_i64    : fallthrough
         case defs.T_string : fallthrough
         case defs.T_struct : fallthrough
+        case defs.T_enum   : fallthrough
         case defs.T_binary : self.compileStructRequired(p, sp, fv)
 
         /* sequencial types */

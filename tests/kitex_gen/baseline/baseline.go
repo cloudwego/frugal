@@ -4,10 +4,60 @@ package baseline
 
 import (
 	"bytes"
+	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
 	"strings"
 )
+
+type Enums int64
+
+const (
+	Enums_ValueA Enums = 0
+	Enums_ValueB Enums = 1
+	Enums_ValueC Enums = 2
+)
+
+func (p Enums) String() string {
+	switch p {
+	case Enums_ValueA:
+		return "ValueA"
+	case Enums_ValueB:
+		return "ValueB"
+	case Enums_ValueC:
+		return "ValueC"
+	}
+	return "<UNSET>"
+}
+
+func EnumsFromString(s string) (Enums, error) {
+	switch s {
+	case "ValueA":
+		return Enums_ValueA, nil
+	case "ValueB":
+		return Enums_ValueB, nil
+	case "ValueC":
+		return Enums_ValueC, nil
+	}
+	return Enums(0), fmt.Errorf("not a valid Enums string")
+}
+
+func EnumsPtr(v Enums) *Enums { return &v }
+
+func (p *Enums) Scan(value interface{}) (err error) {
+	var result sql.NullInt64
+	err = result.Scan(value)
+	*p = Enums(result.Int64)
+	return
+}
+
+func (p *Enums) Value() (driver.Value, error) {
+	if p == nil {
+		return nil, nil
+	}
+	return int64(*p), nil
+}
 
 type Simple struct {
 	ByteField   int8    `thrift:"ByteField,1" frugal:"1,default,byte" json:"ByteField"`
@@ -16,6 +66,7 @@ type Simple struct {
 	I32Field    int32   `thrift:"I32Field,4" frugal:"4,default,i32" json:"I32Field"`
 	StringField string  `thrift:"StringField,5" frugal:"5,default,string" json:"StringField"`
 	BinaryField []byte  `thrift:"BinaryField,6" frugal:"6,default,binary" json:"BinaryField"`
+	EnumField   Enums   `thrift:"enumField,7" frugal:"7,default,Enums" json:"enumField"`
 }
 
 func NewSimple() *Simple {
@@ -45,6 +96,10 @@ func (p *Simple) GetStringField() (v string) {
 func (p *Simple) GetBinaryField() (v []byte) {
 	return p.BinaryField
 }
+
+func (p *Simple) GetEnumField() (v Enums) {
+	return p.EnumField
+}
 func (p *Simple) SetByteField(val int8) {
 	p.ByteField = val
 }
@@ -63,6 +118,9 @@ func (p *Simple) SetStringField(val string) {
 func (p *Simple) SetBinaryField(val []byte) {
 	p.BinaryField = val
 }
+func (p *Simple) SetEnumField(val Enums) {
+	p.EnumField = val
+}
 
 var fieldIDToName_Simple = map[int16]string{
 	1: "ByteField",
@@ -71,6 +129,7 @@ var fieldIDToName_Simple = map[int16]string{
 	4: "I32Field",
 	5: "StringField",
 	6: "BinaryField",
+	7: "enumField",
 }
 
 func (p *Simple) Read(iprot thrift.TProtocol) (err error) {
@@ -145,6 +204,16 @@ func (p *Simple) Read(iprot thrift.TProtocol) (err error) {
 		case 6:
 			if fieldTypeId == thrift.STRING {
 				if err = p.ReadField6(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 7:
+			if fieldTypeId == thrift.I32 {
+				if err = p.ReadField7(iprot); err != nil {
 					goto ReadFieldError
 				}
 			} else {
@@ -236,6 +305,15 @@ func (p *Simple) ReadField6(iprot thrift.TProtocol) error {
 	return nil
 }
 
+func (p *Simple) ReadField7(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI32(); err != nil {
+		return err
+	} else {
+		p.EnumField = Enums(v)
+	}
+	return nil
+}
+
 func (p *Simple) Write(oprot thrift.TProtocol) (err error) {
 	var fieldId int16
 	if err = oprot.WriteStructBegin("Simple"); err != nil {
@@ -264,6 +342,10 @@ func (p *Simple) Write(oprot thrift.TProtocol) (err error) {
 		}
 		if err = p.writeField6(oprot); err != nil {
 			fieldId = 6
+			goto WriteFieldError
+		}
+		if err = p.writeField7(oprot); err != nil {
+			fieldId = 7
 			goto WriteFieldError
 		}
 
@@ -387,6 +469,23 @@ WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 6 end error: ", p), err)
 }
 
+func (p *Simple) writeField7(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("enumField", thrift.I32, 7); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteI32(int32(p.EnumField)); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 end error: ", p), err)
+}
+
 func (p *Simple) String() string {
 	if p == nil {
 		return "<nil>"
@@ -416,6 +515,9 @@ func (p *Simple) DeepEqual(ano *Simple) bool {
 		return false
 	}
 	if !p.Field6DeepEqual(ano.BinaryField) {
+		return false
+	}
+	if !p.Field7DeepEqual(ano.EnumField) {
 		return false
 	}
 	return true
@@ -459,6 +561,13 @@ func (p *Simple) Field5DeepEqual(src string) bool {
 func (p *Simple) Field6DeepEqual(src []byte) bool {
 
 	if bytes.Compare(p.BinaryField, src) != 0 {
+		return false
+	}
+	return true
+}
+func (p *Simple) Field7DeepEqual(src Enums) bool {
+
+	if p.EnumField != src {
 		return false
 	}
 	return true

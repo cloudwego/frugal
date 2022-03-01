@@ -147,6 +147,22 @@ func comparestruct(t require.TestingT, a []byte, b []byte) {
     require.True(t, reflect.DeepEqual(x, y))
 }
 
+type EnumTestStruct struct {
+    X baseline.Enums `frugal:"1,default,Enums"`
+}
+
+func TestMarshalEnum(t *testing.T) {
+    v := EnumTestStruct{X: baseline.Enums_ValueC}
+    nb := frugal.EncodedSize(v)
+    buf := make([]byte, nb)
+    ret, err := frugal.EncodeObject(buf, nil, v)
+    require.NoError(t, err)
+    println("Encoded Size:", ret)
+    require.Equal(t, nb, ret)
+    require.Equal(t, []byte{0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00}, buf)
+    spew.Dump(buf)
+}
+
 func TestMarshalCompare(t *testing.T) {
     var v baseline.Nesting2
     loaddata(t, &v)
@@ -164,6 +180,18 @@ func TestMarshalCompare(t *testing.T) {
     require.Equal(t, nb, ret)
     buf = buf[:ret]
     comparestruct(t, mm.Bytes(), buf)
+}
+
+func TestUnmarshalEnum(t *testing.T) {
+    var v EnumTestStruct
+    v.X = baseline.Enums(1 << 32)
+    buf := []byte{0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00}
+    ret, err := frugal.DecodeObject(buf, &v)
+    require.NoError(t, err)
+    println("Decoded Size :", ret)
+    require.Equal(t, len(buf), ret)
+    require.Equal(t, EnumTestStruct{X: baseline.Enums_ValueC}, v)
+    spew.Dump(v)
 }
 
 func TestUnmarshalCompare(t *testing.T) {

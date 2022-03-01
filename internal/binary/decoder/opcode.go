@@ -26,6 +26,7 @@ const (
     OP_int OpCode = iota
     OP_str
     OP_bin
+    OP_enum
     OP_size
     OP_type
     OP_seek
@@ -63,6 +64,7 @@ var _OpNames = [256]string {
     OP_int               : "int",
     OP_str               : "str",
     OP_bin               : "bin",
+    OP_enum              : "enum",
     OP_size              : "size",
     OP_type              : "type",
     OP_seek              : "seek",

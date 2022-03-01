@@ -44,6 +44,7 @@ func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type) {
         case defs.T_i16     : p.i64(OP_size_const, 2)
         case defs.T_i32     : p.i64(OP_size_const, 4)
         case defs.T_i64     : p.i64(OP_size_const, 8)
+        case defs.T_enum    : p.i64(OP_size_const, 4)
         case defs.T_double  : p.i64(OP_size_const, 8)
         case defs.T_string  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
         case defs.T_binary  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
@@ -203,6 +204,7 @@ func (self Compiler) measureField(p *Program, sp int, fv defs.Field) {
         case defs.T_i64    : fallthrough
         case defs.T_string : fallthrough
         case defs.T_struct : fallthrough
+        case defs.T_enum   : fallthrough
         case defs.T_binary : self.measureStructRequired(p, sp, fv)
 
         /* sequencial types */

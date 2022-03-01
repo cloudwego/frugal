@@ -1,3 +1,9 @@
+enum Enums {
+    ValueA,
+    ValueB,
+    ValueC,
+}
+
 struct Simple {
     1: byte ByteField
     2: i64 I64Field
@@ -5,6 +11,7 @@ struct Simple {
     4: i32 I32Field
     5: string StringField
     6: binary BinaryField
+    7: Enums enumField
 }
 
 struct Nesting {

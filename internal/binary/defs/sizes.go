@@ -34,7 +34,7 @@ func GetSize(vt reflect.Type) int {
         case reflect.Int8    : return 1
         case reflect.Int16   : return 2
         case reflect.Int32   : return 4
-        case reflect.Int64   : return 8
+        case reflect.Int64   : return measureInt64(vt)
         case reflect.Uint    : panic(utils.ENotSupp(vt, "int"))
         case reflect.Uint8   : panic(utils.ENotSupp(vt, "int8"))
         case reflect.Uint16  : panic(utils.ENotSupp(vt, "int16"))
@@ -49,6 +49,14 @@ func GetSize(vt reflect.Type) int {
         case reflect.String  : return -1
         case reflect.Struct  : return measureStruct(vt)
         default              : panic("invalid type tag")
+    }
+}
+
+func measureInt64(vt reflect.Type) int {
+    if vt == i64type {
+        return 8
+    } else {
+        return 4
     }
 }
 
