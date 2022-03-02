@@ -19,11 +19,11 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_makemap(ctx ir.CallContext) {
+func emu_gcall_makemap(ctx hir.CallContext) {
     if !ctx.Verify("*i*", "*") {
         panic("invalid makemap call")
     } else {
@@ -31,7 +31,7 @@ func emu_gcall_makemap(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mallocgc(ctx ir.CallContext) {
+func emu_gcall_mallocgc(ctx hir.CallContext) {
     if !ctx.Verify("i*i", "*") {
         panic("invalid mallocgc call")
     } else {

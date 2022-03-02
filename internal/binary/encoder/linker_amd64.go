@@ -19,7 +19,7 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/pgen`
     `github.com/cloudwego/frugal/internal/loader`
 )
@@ -32,7 +32,7 @@ func init() {
     SetLinker(new(LinkerAMD64))
 }
 
-func (LinkerAMD64) Link(p ir.Program) Encoder {
+func (LinkerAMD64) Link(p hir.Program) Encoder {
     cc := pgen.CreateCodeGen((Encoder)(nil))
     fp := loader.Loader(cc.Generate(p, 0)).Load("encoder", cc.Frame())
     return *(*Encoder)(unsafe.Pointer(&fp))

@@ -20,7 +20,7 @@ package pgen
 
 import (
     `github.com/chenzhuoyu/iasm/x86_64`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
 )
 
@@ -45,7 +45,7 @@ var memcpyargs = [256]bool {
     RCX: true,
 }
 
-func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd ir.PointerRegister, ps ir.PointerRegister, nb ir.GenericRegister) {
+func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd hir.PointerRegister, ps hir.PointerRegister, nb hir.GenericRegister) {
     rd := self.r(pd)
     rs := self.r(ps)
     rl := self.r(nb)

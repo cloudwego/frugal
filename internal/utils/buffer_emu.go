@@ -19,28 +19,28 @@ package utils
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-func emu_wbuf(ctx ir.CallContext) (v iov.BufferWriter) {
+func emu_wbuf(ctx hir.CallContext) (v iov.BufferWriter) {
     (*rt.GoIface)(unsafe.Pointer(&v)).Itab = ctx.Itab()
     (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Data()
     return
 }
 
-func emu_bytes(ctx ir.CallContext, i int) (v []byte) {
+func emu_bytes(ctx hir.CallContext, i int) (v []byte) {
     return rt.BytesFrom(ctx.Ap(i), int(ctx.Au(i + 1)), int(ctx.Au(i + 2)))
 }
 
-func emu_seterr(ctx ir.CallContext, err error) {
+func emu_seterr(ctx hir.CallContext, err error) {
     vv := (*rt.GoIface)(unsafe.Pointer(&err))
     ctx.Rp(0, unsafe.Pointer(vv.Itab))
     ctx.Rp(1, vv.Value)
 }
 
-func emu_icall_ZeroCopyWriter_WriteDirect(ctx ir.CallContext) {
+func emu_icall_ZeroCopyWriter_WriteDirect(ctx hir.CallContext) {
     if !ctx.Verify("*iii", "**") {
         panic("invalid ZeroCopyWriter.WriteDirect call")
     } else {

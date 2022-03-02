@@ -20,12 +20,12 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/emu`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-func link_emu(prog ir.Program) Encoder {
+func link_emu(prog hir.Program) Encoder {
     return func(buf unsafe.Pointer, len int, mem iov.BufferWriter, p unsafe.Pointer, rs *RuntimeState, st int) (ret int, err error) {
         ctx := emu.LoadProgram(prog)
         exc := (*rt.GoIface)(unsafe.Pointer(&err))
@@ -46,13 +46,13 @@ func link_emu(prog ir.Program) Encoder {
     }
 }
 
-func emu_wbuf(ctx ir.CallContext, i int) (v iov.BufferWriter) {
+func emu_wbuf(ctx hir.CallContext, i int) (v iov.BufferWriter) {
     (*rt.GoIface)(unsafe.Pointer(&v)).Itab = (*rt.GoItab)(ctx.Ap(i))
     (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Ap(i + 1)
     return
 }
 
-func emu_setret(ctx ir.CallContext) func(int, error) {
+func emu_setret(ctx hir.CallContext) func(int, error) {
     return func(ret int, err error) {
         vv := (*rt.GoIface)(unsafe.Pointer(&err))
         ctx.Ru(0, uint64(ret))
@@ -61,7 +61,7 @@ func emu_setret(ctx ir.CallContext) func(int, error) {
     }
 }
 
-func emu_encode(ctx ir.CallContext) (int, error) {
+func emu_encode(ctx hir.CallContext) (int, error) {
     return encode(
         (*rt.GoType)(ctx.Ap(0)),
         ctx.Ap(1),
@@ -73,7 +73,7 @@ func emu_encode(ctx ir.CallContext) (int, error) {
     )
 }
 
-func emu_gcall_encode(ctx ir.CallContext) {
+func emu_gcall_encode(ctx hir.CallContext) {
     if !ctx.Verify("**i****i", "i**") {
         panic("invalid encode call")
     } else {

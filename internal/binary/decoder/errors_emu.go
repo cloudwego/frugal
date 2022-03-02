@@ -19,17 +19,17 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_seterr(ctx ir.CallContext, i int, err error) {
+func emu_seterr(ctx hir.CallContext, i int, err error) {
     vv := (*rt.GoIface)(unsafe.Pointer(&err))
     ctx.Rp(i, unsafe.Pointer(vv.Itab))
     ctx.Rp(i + 1, vv.Value)
 }
 
-func emu_gcall_error_eof(ctx ir.CallContext) {
+func emu_gcall_error_eof(ctx hir.CallContext) {
     if !ctx.Verify("i", "**") {
         panic("invalid error_eof call")
     } else {
@@ -37,7 +37,7 @@ func emu_gcall_error_eof(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_error_skip(ctx ir.CallContext) {
+func emu_gcall_error_skip(ctx hir.CallContext) {
     if !ctx.Verify("i", "**") {
         panic("invalid error_skip call")
     } else {
@@ -45,7 +45,7 @@ func emu_gcall_error_skip(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_error_type(ctx ir.CallContext) {
+func emu_gcall_error_type(ctx hir.CallContext) {
     if !ctx.Verify("ii", "**") {
         panic("invalid error_type call")
     } else {
@@ -53,7 +53,7 @@ func emu_gcall_error_type(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_error_missing(ctx ir.CallContext) {
+func emu_gcall_error_missing(ctx hir.CallContext) {
     if !ctx.Verify("*ii", "**") {
         panic("invalid error_skip call")
     } else {

@@ -20,7 +20,7 @@ import (
     `math/bits`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
@@ -260,7 +260,7 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
     return
 }
 
-func emu_ccall_skip(ctx ir.CallContext) {
+func emu_ccall_skip(ctx hir.CallContext) {
     if !ctx.Verify("**ii", "i") {
         panic("invalid skip call")
     } else {

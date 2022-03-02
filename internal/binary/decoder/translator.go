@@ -19,7 +19,7 @@ package decoder
 import (
     `fmt`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/rt`
 )
@@ -58,23 +58,23 @@ const (
  */
 
 const (
-    WP = ir.P1
-    IP = ir.P2
-    RS = ir.P3
-    ET = ir.P4      // may also be used as a temporary pointer register
-    EP = ir.P5      // may also be used as a temporary pointer register
+    WP = hir.P1
+    IP = hir.P2
+    RS = hir.P3
+    ET = hir.P4 // may also be used as a temporary pointer register
+    EP = hir.P5 // may also be used as a temporary pointer register
 )
 
 const (
-    IC = ir.R2
-    ST = ir.R3
-    TG = ir.R4
+    IC = hir.R2
+    ST = hir.R3
+    TG = hir.R4
 )
 
 const (
-    TP = ir.P0
-    TR = ir.R0
-    UR = ir.R1
+    TP = hir.P0
+    TR = hir.R0
+    UR = hir.R1
 )
 
 const (
@@ -96,8 +96,8 @@ func init() {
     _E_overflow = fmt.Errorf("frugal: decoder stack overflow")
 }
 
-func Translate(s Program) ir.Program {
-    p := ir.CreateBuilder()
+func Translate(s Program) hir.Program {
+    p := hir.CreateBuilder()
     prologue (p)
     program  (p, s)
     epilogue (p)
@@ -105,7 +105,7 @@ func Translate(s Program) ir.Program {
     return p.Build()
 }
 
-func errors(p *ir.Builder) {
+func errors(p *hir.Builder) {
     p.Label (LB_eof)
     p.LDAQ  (ARG_nb, UR)
     p.SUB   (TR, UR, TR)
@@ -113,20 +113,20 @@ func errors(p *ir.Builder) {
       A0    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, ir.Pn)
+    p.JAL   (LB_error, hir.Pn)
     p.Label (LB_type)
     p.GCALL (F_error_type).
       A0    (UR).
       A1    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, ir.Pn)
+    p.JAL   (LB_error, hir.Pn)
     p.Label (LB_skip)
     p.GCALL (F_error_skip).
       A0    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, ir.Pn)
+    p.JAL   (LB_error, hir.Pn)
     p.Label (LB_missing)
     p.GCALL (F_error_missing).
       A0    (ET).
@@ -134,22 +134,22 @@ func errors(p *ir.Builder) {
       A2    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, ir.Pn)
+    p.JAL   (LB_error, hir.Pn)
     p.Label (LB_overflow)
     p.IP    (&_E_overflow, TP)
     p.LP    (TP, 0, ET)
     p.LP    (TP, 8, EP)
-    p.JAL   (LB_error, ir.Pn)
+    p.JAL   (LB_error, hir.Pn)
 }
 
-func program(p *ir.Builder, s Program) {
+func program(p *hir.Builder, s Program) {
     for i, v := range s {
         p.Mark(i)
         translators[v.Op](p, v)
     }
 }
 
-func prologue(p *ir.Builder) {
+func prologue(p *hir.Builder) {
     p.LDAP  (ARG_buf, IP)
     p.LDAQ  (ARG_i, IC)
     p.LDAP  (ARG_p, WP)
@@ -157,10 +157,10 @@ func prologue(p *ir.Builder) {
     p.LDAQ  (ARG_st, ST)
 }
 
-func epilogue(p *ir.Builder) {
+func epilogue(p *hir.Builder) {
     p.Label (LB_halt)
-    p.MOVP  (ir.Pn, ET)
-    p.MOVP  (ir.Pn, EP)
+    p.MOVP  (hir.Pn, ET)
+    p.MOVP  (hir.Pn, EP)
     p.Label (LB_error)
     p.STRQ  (IC, RET_pos)
     p.STRP  (ET, RET_err_itab)
@@ -168,7 +168,7 @@ func epilogue(p *ir.Builder) {
     p.HALT  ()
 }
 
-var translators = [256]func(*ir.Builder, Instr) {
+var translators = [256]func(*hir.Builder, Instr) {
     OP_int               : translate_OP_int,
     OP_str               : translate_OP_str,
     OP_bin               : translate_OP_bin,
@@ -206,7 +206,7 @@ var translators = [256]func(*ir.Builder, Instr) {
     OP_halt              : translate_OP_halt,
 }
 
-func translate_OP_int(p *ir.Builder, v Instr) {
+func translate_OP_int(p *hir.Builder, v Instr) {
     switch v.Iv {
         case 1  : p.ADDP(IP, IC, EP); p.LB(EP, 0, TR);                  p.SB(TR, WP, 0); p.ADDI(IC, 1, IC)
         case 2  : p.ADDP(IP, IC, EP); p.LW(EP, 0, TR); p.SWAPW(TR, TR); p.SW(TR, WP, 0); p.ADDI(IC, 2, IC)
@@ -216,26 +216,26 @@ func translate_OP_int(p *ir.Builder, v Instr) {
     }
 }
 
-func translate_OP_str(p *ir.Builder, _ Instr) {
-    p.SP    (ir.Pn, WP, 0)
+func translate_OP_str(p *hir.Builder, _ Instr) {
+    p.SP    (hir.Pn, WP, 0)
     translate_OP_binstr(p)
 }
 
-func translate_OP_bin(p *ir.Builder, _ Instr) {
+func translate_OP_bin(p *hir.Builder, _ Instr) {
     p.IP    (&_V_zerovalue, TP)
     p.SP    (TP, WP, 0)
     translate_OP_binstr(p)
     p.SQ    (TR, WP, 16)
 }
 
-func translate_OP_binstr(p *ir.Builder) {
+func translate_OP_binstr(p *hir.Builder) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.LL    (EP, 0, TR)
     p.SWAPL (TR, TR)
     p.LDAQ  (ARG_nb, UR)
     p.BLTU  (UR, TR, LB_eof)
-    p.BEQ   (TR, ir.Rz, "_empty_{n}")
+    p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDPI (EP, 4, EP)
     p.ADD   (IC, TR, IC)
     p.SP    (EP, WP, 0)
@@ -243,7 +243,7 @@ func translate_OP_binstr(p *ir.Builder) {
     p.SQ    (TR, WP, 8)
 }
 
-func translate_OP_enum(p *ir.Builder, _ Instr) {
+func translate_OP_enum(p *hir.Builder, _ Instr) {
     p.ADDP  (IP, IC, EP)
     p.LL    (EP, 0, TR)
     p.SWAPL (TR, TR)
@@ -251,13 +251,13 @@ func translate_OP_enum(p *ir.Builder, _ Instr) {
     p.ADDI  (IC, 4, IC)
 }
 
-func translate_OP_size(p *ir.Builder, v Instr) {
+func translate_OP_size(p *hir.Builder, v Instr) {
     p.IQ    (v.Iv, TR)
     p.LDAQ  (ARG_nb, UR)
     p.BLTU  (UR, TR, LB_eof)
 }
 
-func translate_OP_type(p *ir.Builder, v Instr) {
+func translate_OP_type(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, TP)
     p.LB    (TP, 0, TR)
     p.IB    (int8(v.Tx), UR)
@@ -265,13 +265,13 @@ func translate_OP_type(p *ir.Builder, v Instr) {
     p.ADDI  (IC, 1, IC)
 }
 
-func translate_OP_seek(p *ir.Builder, v Instr) {
+func translate_OP_seek(p *hir.Builder, v Instr) {
     p.ADDPI (WP, v.Iv, WP)
 }
 
-func translate_OP_deref(p *ir.Builder, v Instr) {
+func translate_OP_deref(p *hir.Builder, v Instr) {
     p.LQ    (WP, 0, TR)
-    p.BNE   (TR, ir.Rz, "_skip_{n}")
+    p.BNE   (TR, hir.Rz, "_skip_{n}")
     p.IB    (1, UR)
     p.IP    (v.Vt, TP)
     p.IQ    (int64(v.Vt.Size), TR)
@@ -285,7 +285,7 @@ func translate_OP_deref(p *ir.Builder, v Instr) {
     p.LP    (WP, 0, WP)
 }
 
-func translate_OP_ctr_load(p *ir.Builder, _ Instr) {
+func translate_OP_ctr_load(p *hir.Builder, _ Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.LL    (EP, 0, TR)
@@ -294,20 +294,20 @@ func translate_OP_ctr_load(p *ir.Builder, _ Instr) {
     p.SQ    (TR, TP, NbOffset)
 }
 
-func translate_OP_ctr_decr(p *ir.Builder, _ Instr) {
+func translate_OP_ctr_decr(p *hir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, NbOffset, TR)
     p.SUBI  (TR, 1, TR)
     p.SQ    (TR, TP, NbOffset)
 }
 
-func translate_OP_ctr_is_zero(p *ir.Builder, v Instr) {
+func translate_OP_ctr_is_zero(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, NbOffset, TR)
-    p.BEQ   (TR, ir.Rz, p.At(v.To))
+    p.BEQ   (TR, hir.Rz, p.At(v.To))
 }
 
-func translate_OP_map_alloc(p *ir.Builder, v Instr) {
+func translate_OP_map_alloc(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, NbOffset, TR)
     p.LP    (WP, 0, TP)
@@ -322,12 +322,12 @@ func translate_OP_map_alloc(p *ir.Builder, v Instr) {
     p.SP    (TP, EP, MpOffset)
 }
 
-func translate_OP_map_close(p *ir.Builder, _ Instr) {
+func translate_OP_map_close(p *hir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
-    p.SP    (ir.Pn, TP, MpOffset)
+    p.SP    (hir.Pn, TP, MpOffset)
 }
 
-func translate_OP_map_set_i8(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i8(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MpOffset, TP)
@@ -340,7 +340,7 @@ func translate_OP_map_set_i8(p *ir.Builder, v Instr) {
     p.ADDI  (IC, 1, IC)
 }
 
-func translate_OP_map_set_i16(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i16(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, ET)
     p.ADDI  (IC, 2, IC)
     p.ADDP  (RS, ST, TP)
@@ -357,7 +357,7 @@ func translate_OP_map_set_i16(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_i32(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i32(p *hir.Builder, v Instr) {
     if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_i32_fast(p, v)
     } else {
@@ -365,7 +365,7 @@ func translate_OP_map_set_i32(p *ir.Builder, v Instr) {
     }
 }
 
-func translate_OP_map_set_i32_fast(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i32_fast(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.ADDP  (RS, ST, TP)
@@ -380,7 +380,7 @@ func translate_OP_map_set_i32_fast(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_i32_safe(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i32_safe(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, ET)
     p.ADDI  (IC, 4, IC)
     p.ADDP  (RS, ST, TP)
@@ -397,7 +397,7 @@ func translate_OP_map_set_i32_safe(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_i64(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i64(p *hir.Builder, v Instr) {
     if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_i64_fast(p, v)
     } else {
@@ -405,7 +405,7 @@ func translate_OP_map_set_i64(p *ir.Builder, v Instr) {
     }
 }
 
-func translate_OP_map_set_i64_fast(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i64_fast(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 8, IC)
     p.ADDP  (RS, ST, TP)
@@ -420,7 +420,7 @@ func translate_OP_map_set_i64_fast(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_i64_safe(p *ir.Builder, v Instr) {
+func translate_OP_map_set_i64_safe(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, ET)
     p.ADDI  (IC, 2, IC)
     p.ADDP  (RS, ST, TP)
@@ -437,7 +437,7 @@ func translate_OP_map_set_i64_safe(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_str(p *ir.Builder, v Instr) {
+func translate_OP_map_set_str(p *hir.Builder, v Instr) {
     if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_str_fast(p, v)
     } else {
@@ -445,15 +445,15 @@ func translate_OP_map_set_str(p *ir.Builder, v Instr) {
     }
 }
 
-func translate_OP_map_set_str_fast(p *ir.Builder, v Instr) {
+func translate_OP_map_set_str_fast(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.LL    (EP, 0, TR)
     p.SWAPL (TR, TR)
     p.LDAQ  (ARG_nb, UR)
     p.BLTU  (UR, TR, LB_eof)
-    p.MOVP  (ir.Pn, EP)
-    p.BEQ   (TR, ir.Rz, "_empty_{n}")
+    p.MOVP  (hir.Pn, EP)
+    p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDP  (IP, IC, EP)
     p.ADD   (IC, TR, IC)
     p.Label ("_empty_{n}")
@@ -468,7 +468,7 @@ func translate_OP_map_set_str_fast(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_str_safe(p *ir.Builder, v Instr) {
+func translate_OP_map_set_str_safe(p *hir.Builder, v Instr) {
     p.ADDP  (IP, IC, ET)
     p.ADDI  (IC, 4, IC)
     p.LL    (ET, 0, TR)
@@ -476,8 +476,8 @@ func translate_OP_map_set_str_safe(p *ir.Builder, v Instr) {
     p.LDAQ  (ARG_nb, UR)
     p.BLTU  (UR, TR, LB_eof)
     p.SQ    (TR, RS, IvOffset)
-    p.SP    (ir.Pn, RS, PrOffset)
-    p.BEQ   (TR, ir.Rz, "_empty_{n}")
+    p.SP    (hir.Pn, RS, PrOffset)
+    p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDPI (ET, 4, ET)
     p.ADD   (IC, TR, IC)
     p.SP    (ET, RS, PrOffset)
@@ -491,10 +491,10 @@ func translate_OP_map_set_str_safe(p *ir.Builder, v Instr) {
       A1    (EP).
       A2    (TP).
       R0    (WP)
-    p.SP    (ir.Pn, RS, PrOffset)
+    p.SP    (hir.Pn, RS, PrOffset)
 }
 
-func translate_OP_map_set_pointer(p *ir.Builder, v Instr) {
+func translate_OP_map_set_pointer(p *hir.Builder, v Instr) {
     if rt.MapType(v.Vt).IsFastMap() {
         translate_OP_map_set_pointer_fast(p, v)
     } else {
@@ -502,7 +502,7 @@ func translate_OP_map_set_pointer(p *ir.Builder, v Instr) {
     }
 }
 
-func translate_OP_map_set_pointer_fast(p *ir.Builder, v Instr) {
+func translate_OP_map_set_pointer_fast(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MpOffset, TP)
     p.IP    (v.Vt, ET)
@@ -513,7 +513,7 @@ func translate_OP_map_set_pointer_fast(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_map_set_pointer_safe(p *ir.Builder, v Instr) {
+func translate_OP_map_set_pointer_safe(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MpOffset, EP)
     p.SP    (WP, RS, PrOffset)
@@ -524,20 +524,20 @@ func translate_OP_map_set_pointer_safe(p *ir.Builder, v Instr) {
       A1    (EP).
       A2    (TP).
       R0    (WP)
-    p.SP    (ir.Pn, RS, PrOffset)
+    p.SP    (hir.Pn, RS, PrOffset)
 }
 
-func translate_OP_list_alloc(p *ir.Builder, v Instr) {
+func translate_OP_list_alloc(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, NbOffset, TR)
     p.SQ    (TR, WP, 8)
     p.LQ    (WP, 16, UR)
-    p.BNE   (TR, ir.Rz, "_alloc_{n}")
-    p.BNE   (UR, ir.Rz, "_done_{n}")
+    p.BNE   (TR, hir.Rz, "_alloc_{n}")
+    p.BNE   (UR, hir.Rz, "_done_{n}")
     p.IP    (&_V_zerovalue, TP)
     p.SP    (TP, WP, 0)
-    p.SQ    (ir.Rz, WP, 16)
-    p.JAL   ("_done_{n}", ir.Pn)
+    p.SQ    (hir.Rz, WP, 16)
+    p.JAL   ("_done_{n}", hir.Pn)
     p.Label ("_alloc_{n}")
     p.BGEU  (UR, TR, "_done_{n}")
     p.SQ    (TR, WP, 16)
@@ -554,7 +554,7 @@ func translate_OP_list_alloc(p *ir.Builder, v Instr) {
     p.LP    (WP, 0, WP)
 }
 
-func translate_OP_struct_skip(p *ir.Builder, _ Instr) {
+func translate_OP_struct_skip(p *hir.Builder, _ Instr) {
     p.ADDPI (RS, SkOffset, TP)
     p.LDAQ  (ARG_nb, TR)
     p.SUB   (TR, IC, TR)
@@ -565,11 +565,11 @@ func translate_OP_struct_skip(p *ir.Builder, _ Instr) {
       A2    (TR).
       A3    (TG).
       R0    (TR)
-    p.BLT   (TR, ir.Rz, LB_skip)
+    p.BLT   (TR, hir.Rz, LB_skip)
     p.ADD   (IC, TR, IC)
 }
 
-func translate_OP_struct_ignore(p *ir.Builder, _ Instr) {
+func translate_OP_struct_ignore(p *hir.Builder, _ Instr) {
     p.ADDPI (RS, SkOffset, TP)
     p.LDAQ  (ARG_nb, TR)
     p.SUB   (TR, IC, TR)
@@ -581,11 +581,11 @@ func translate_OP_struct_ignore(p *ir.Builder, _ Instr) {
       A2    (TR).
       A3    (TG).
       R0    (TR)
-    p.BLT   (TR, ir.Rz, LB_skip)
+    p.BLT   (TR, hir.Rz, LB_skip)
     p.ADD   (IC, TR, IC)
 }
 
-func translate_OP_struct_bitmap(p *ir.Builder, v Instr) {
+func translate_OP_struct_bitmap(p *hir.Builder, v Instr) {
     buf := newFieldBitmap()
     tab := mkstab(v.Sw, v.Iv)
 
@@ -602,7 +602,7 @@ func translate_OP_struct_bitmap(p *ir.Builder, v Instr) {
     /* clear bits of required fields if any */
     for i := int64(0); i < MaxBitmap; i++ {
         if buf[i] != 0 {
-            p.SQ(ir.Rz, TP, i * 8)
+            p.SQ(hir.Rz, TP, i * 8)
         }
     }
 
@@ -611,7 +611,7 @@ func translate_OP_struct_bitmap(p *ir.Builder, v Instr) {
     buf.Free()
 }
 
-func translate_OP_struct_switch(p *ir.Builder, v Instr) {
+func translate_OP_struct_switch(p *hir.Builder, v Instr) {
     stab := mkstab(v.Sw, v.Iv)
     ptab := make([]string, v.Iv)
 
@@ -630,7 +630,7 @@ func translate_OP_struct_switch(p *ir.Builder, v Instr) {
     p.BSW   (TR, ptab)
 }
 
-func translate_OP_struct_require(p *ir.Builder, v Instr) {
+func translate_OP_struct_require(p *hir.Builder, v Instr) {
     buf := newFieldBitmap()
     tab := mkstab(v.Sw, v.Iv)
 
@@ -651,12 +651,12 @@ func translate_OP_struct_require(p *ir.Builder, v Instr) {
             p.XORI  (TR, buf[i], TR)
             p.IQ    (i, UR)
             p.IP    (v.Vt, ET)
-            p.BNE   (TR, ir.Rz, LB_missing)
+            p.BNE   (TR, hir.Rz, LB_missing)
         }
     }
 
     /* free the bitmap */
-    p.SP    (ir.Pn, EP, FmOffset)
+    p.SP    (hir.Pn, EP, FmOffset)
     p.GCALL (F_FieldBitmap_Free).A0(TP)
 
     /* release the buffer */
@@ -664,30 +664,30 @@ func translate_OP_struct_require(p *ir.Builder, v Instr) {
     buf.Free()
 }
 
-func translate_OP_struct_is_stop(p *ir.Builder, v Instr) {
-    p.BEQ   (TG, ir.Rz, p.At(v.To))
+func translate_OP_struct_is_stop(p *hir.Builder, v Instr) {
+    p.BEQ   (TG, hir.Rz, p.At(v.To))
 }
 
-func translate_OP_struct_mark_tag(p *ir.Builder, v Instr) {
+func translate_OP_struct_mark_tag(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, FmOffset, TP)
     p.LQ    (TP, v.Iv / 64 * 8, TR)
-    p.SBITI (TR, v.Iv % 64, TR)
+    p.BSI   (TR, v.Iv % 64, TR)
     p.SQ    (TR, TP, v.Iv / 64 * 8)
 }
 
-func translate_OP_struct_read_type(p *ir.Builder, _ Instr) {
+func translate_OP_struct_read_type(p *hir.Builder, _ Instr) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 1, IC)
     p.LB    (EP, 0, TG)
 }
 
-func translate_OP_struct_check_type(p *ir.Builder, v Instr) {
+func translate_OP_struct_check_type(p *hir.Builder, v Instr) {
     p.IB    (int8(v.Tx), TR)
     p.BNE   (TG, TR, p.At(v.To))
 }
 
-func translate_OP_make_state(p *ir.Builder, _ Instr) {
+func translate_OP_make_state(p *hir.Builder, _ Instr) {
     p.IQ    (StateMax, TR)
     p.BGEU  (ST, TR, LB_overflow)
     p.ADDP  (RS, ST, TP)
@@ -695,14 +695,14 @@ func translate_OP_make_state(p *ir.Builder, _ Instr) {
     p.ADDI  (ST, StateSize, ST)
 }
 
-func translate_OP_drop_state(p *ir.Builder, _ Instr) {
+func translate_OP_drop_state(p *hir.Builder, _ Instr) {
     p.SUBI  (ST, StateSize, ST)
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, WpOffset, WP)
-    p.SP    (ir.Pn, TP, WpOffset)
+    p.SP    (hir.Pn, TP, WpOffset)
 }
 
-func translate_OP_construct(p *ir.Builder, v Instr) {
+func translate_OP_construct(p *hir.Builder, v Instr) {
     p.IB    (1, UR)
     p.IP    (v.Vt, TP)
     p.IQ    (int64(v.Vt.Size), TR)
@@ -713,7 +713,7 @@ func translate_OP_construct(p *ir.Builder, v Instr) {
       R0    (WP)
 }
 
-func translate_OP_defer(p *ir.Builder, v Instr) {
+func translate_OP_defer(p *hir.Builder, v Instr) {
     p.IP    (v.Vt, TP)
     p.LDAQ  (ARG_nb, TR)
     p.GCALL (F_decode).
@@ -730,10 +730,10 @@ func translate_OP_defer(p *ir.Builder, v Instr) {
     p.BNEN  (ET, LB_error)
 }
 
-func translate_OP_goto(p *ir.Builder, v Instr) {
-    p.JAL   (p.At(v.To), ir.Pn)
+func translate_OP_goto(p *hir.Builder, v Instr) {
+    p.JAL   (p.At(v.To), hir.Pn)
 }
 
-func translate_OP_halt(p *ir.Builder, _ Instr) {
-    p.JAL   (LB_halt, ir.Pn)
+func translate_OP_halt(p *hir.Builder, _ Instr) {
+    p.JAL   (LB_halt, hir.Pn)
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ir
+package hir
 
 import (
     `strconv`
@@ -141,7 +141,7 @@ func (self *Builder) Build() (r Program) {
 
     /* adjust jumps to point at actual instructions */
     for p = self.head; p != nil; p = p.Ln {
-        if p.isBranch() {
+        if p.IsBranch() {
             if p.Op != OP_bsw {
                 self.rejmp(&p.Br)
             } else {
@@ -168,7 +168,7 @@ func (self *Builder) Build() (r Program) {
         for p.Ln != nil && p.Ln.Op == OP_nop {
             q = p.Ln
             p.Ln = q.Ln
-            freeInstr(q)
+            q.Free()
         }
     }
 
@@ -294,8 +294,12 @@ func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegis
     return self.add(newInstr(OP_sub).rx(rx).ry(ry).rz(rz))
 }
 
-func (self *Builder) BTS(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
-    return self.add(newInstr(OP_bts).rx(rx).ry(ry).rz(rz))
+func (self *Builder) BS(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
+    return self.add(newInstr(OP_bs).rx(rx).ry(ry).rz(rz))
+}
+
+func (self *Builder) BT(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
+    return self.add(newInstr(OP_bt).rx(rx).ry(ry).rz(rz))
 }
 
 func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Ir {
@@ -322,8 +326,8 @@ func (self *Builder) SHRI(rx GenericRegister, im int64, ry GenericRegister) *Ir 
     return self.add(newInstr(OP_shri).rx(rx).iv(im).ry(ry))
 }
 
-func (self *Builder) SBITI(rx GenericRegister, im int64, ry GenericRegister) *Ir {
-    return self.add(newInstr(OP_sbiti).rx(rx).iv(im).ry(ry))
+func (self *Builder) BSI(rx GenericRegister, im int64, ry GenericRegister) *Ir {
+    return self.add(newInstr(OP_bsi).rx(rx).iv(im).ry(ry))
 }
 
 func (self *Builder) SWAPW(rx GenericRegister, ry GenericRegister) *Ir {

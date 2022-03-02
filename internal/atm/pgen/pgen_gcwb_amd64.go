@@ -18,11 +18,11 @@ package pgen
 
 import (
     `github.com/chenzhuoyu/iasm/x86_64`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
 )
 
-func (self *CodeGen) wbStorePointer(p *x86_64.Program, s ir.PointerRegister, d *x86_64.MemoryOperand) {
+func (self *CodeGen) wbStorePointer(p *x86_64.Program, s hir.PointerRegister, d *x86_64.MemoryOperand) {
     wb := x86_64.CreateLabel("_wb_store")
     rt := x86_64.CreateLabel("_wb_return")
 
@@ -32,7 +32,7 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s ir.PointerRegister, d *
     p.JNE  (wb)
 
     /* check for storing nil */
-    if s == ir.Pn {
+    if s == hir.Pn {
         p.MOVQ(0, d)
     } else {
         p.MOVQ(self.r(s), d)
@@ -40,7 +40,7 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s ir.PointerRegister, d *
 
     /* set source pointer */
     wbSetSrc := func() {
-        if s == ir.Pn {
+        if s == hir.Pn {
             p.XORL(EAX, EAX)
         } else {
             p.MOVQ(self.r(s), RAX)

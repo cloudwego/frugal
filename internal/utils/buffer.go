@@ -17,12 +17,12 @@
 package utils
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-var FnWrite = ir.RegisterICall(
+var FnWrite = hir.RegisterICall(
     rt.GetMethod((*iov.BufferWriter)(nil), "WriteDirect"),
     emu_icall_ZeroCopyWriter_WriteDirect,
 )

@@ -17,24 +17,24 @@
 package decoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
 type Linker interface {
-    Link(p ir.Program) Decoder
+    Link(p hir.Program) Decoder
 }
 
 var (
     linker   Linker
-    F_decode ir.CallHandle
+    F_decode hir.CallHandle
 )
 
 func init() {
-    F_decode = ir.RegisterGCall(decode, emu_gcall_decode)
+    F_decode = hir.RegisterGCall(decode, emu_gcall_decode)
 }
 
-func Link(p ir.Program) Decoder {
+func Link(p hir.Program) Decoder {
     if linker == nil || utils.ForceEmulator {
         return link_emu(p)
     } else {

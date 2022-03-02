@@ -19,7 +19,7 @@ package decoder
 import (
     `sync`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
 const (
@@ -32,8 +32,8 @@ var (
 )
 
 var (
-    F_newFiedBitmap    = ir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
-    F_FieldBitmap_Free = ir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
+    F_newFiedBitmap    = hir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
+    F_FieldBitmap_Free = hir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
 )
 
 type (

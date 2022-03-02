@@ -19,17 +19,17 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_string(ctx ir.CallContext, i int) (v string) {
+func emu_string(ctx hir.CallContext, i int) (v string) {
     (*rt.GoString)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
     (*rt.GoString)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
     return
 }
 
-func emu_gcall_mapassign(ctx ir.CallContext) {
+func emu_gcall_mapassign(ctx hir.CallContext) {
     if !ctx.Verify("***", "*") {
         panic("invalid mapassign call")
     } else {
@@ -37,7 +37,7 @@ func emu_gcall_mapassign(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast32(ctx ir.CallContext) {
+func emu_gcall_mapassign_fast32(ctx hir.CallContext) {
     if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast32 call")
     } else {
@@ -45,7 +45,7 @@ func emu_gcall_mapassign_fast32(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast64(ctx ir.CallContext) {
+func emu_gcall_mapassign_fast64(ctx hir.CallContext) {
     if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast64 call")
     } else {
@@ -53,7 +53,7 @@ func emu_gcall_mapassign_fast64(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_faststr(ctx ir.CallContext) {
+func emu_gcall_mapassign_faststr(ctx hir.CallContext) {
     if !ctx.Verify("***i", "*") {
         panic("invalid mapassign_faststr call")
     } else {
@@ -61,7 +61,7 @@ func emu_gcall_mapassign_faststr(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast64ptr(ctx ir.CallContext) {
+func emu_gcall_mapassign_fast64ptr(ctx hir.CallContext) {
     if !ctx.Verify("***", "*") {
         panic("invalid mapassign_fast64 call")
     } else {

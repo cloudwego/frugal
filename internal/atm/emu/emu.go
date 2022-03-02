@@ -23,7 +23,7 @@ import (
     `sync`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
 type Value struct {
@@ -32,7 +32,7 @@ type Value struct {
 }
 
 type Emulator struct {
-    pc *ir.Ir
+    pc *hir.Ir
     uv [6]uint64
     pv [7]unsafe.Pointer
     ar [8]Value
@@ -43,11 +43,19 @@ var (
     emulatorPool sync.Pool
 )
 
-func LoadProgram(p ir.Program) (e *Emulator) {
+func LoadProgram(p hir.Program) (e *Emulator) {
     if v := emulatorPool.Get(); v == nil {
         return &Emulator{pc: p.Head}
     } else {
         return v.(*Emulator).Reset(p)
+    }
+}
+
+func bool2u64(val bool) uint64 {
+    if val {
+        return 1
+    } else {
+        return 0
     }
 }
 
@@ -56,6 +64,7 @@ func (self *Emulator) trap() {
     println("Current State:", self.String())
     runtime.Breakpoint()
 }
+
 func (self *Emulator) Ru(i int) uint64         { return self.rv[i].U }
 func (self *Emulator) Rp(i int) unsafe.Pointer { return self.rv[i].P }
 
@@ -64,82 +73,71 @@ func (self *Emulator) Ap(i int, v unsafe.Pointer) *Emulator { self.ar[i].P = v; 
 
 func (self *Emulator) Run() {
     var v uint64
-    var p *ir.Ir
-    var q *ir.Ir
+    var p *hir.Ir
+    var q *hir.Ir
 
     /* run until end */
     for self.pc != nil {
         p, self.pc = self.pc, self.pc.Ln
-        self.uv[ir.Rz], self.pv[ir.Pn] = 0, nil
+        self.uv[hir.Rz], self.pv[hir.Pn] = 0, nil
 
         /* main switch on OpCode */
         switch p.Op {
             default          : return
-            case ir.OP_nop   : break
-            case ir.OP_ip    : self.pv[p.Pd] = p.Pr
-            case ir.OP_lb    : self.uv[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case ir.OP_lw    : self.uv[p.Rx] = uint64(*(*int16)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case ir.OP_ll    : self.uv[p.Rx] = uint64(*(*int32)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case ir.OP_lq    : self.uv[p.Rx] = uint64(*(*int64)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case ir.OP_lp    : self.pv[p.Pd] = *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv)))
-            case ir.OP_sb    : *(*int8)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int8(self.uv[p.Rx])
-            case ir.OP_sw    : *(*int16)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int16(self.uv[p.Rx])
-            case ir.OP_sl    : *(*int32)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int32(self.uv[p.Rx])
-            case ir.OP_sq    : *(*int64)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int64(self.uv[p.Rx])
-            case ir.OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.pv[p.Ps]
-            case ir.OP_ldaq  : self.uv[p.Rx] = self.ar[p.Iv].U
-            case ir.OP_ldap  : self.pv[p.Pd] = self.ar[p.Iv].P
-            case ir.OP_strq  : self.rv[p.Iv].U = self.uv[p.Rx]
-            case ir.OP_strp  : self.rv[p.Iv].P = self.pv[p.Ps]
-            case ir.OP_addp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(self.uv[p.Rx]))
-            case ir.OP_subp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) - uintptr(self.uv[p.Rx]))
-            case ir.OP_addpi : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))
-            case ir.OP_add   : self.uv[p.Rz] = self.uv[p.Rx] + self.uv[p.Ry]
-            case ir.OP_sub   : self.uv[p.Rz] = self.uv[p.Rx] - self.uv[p.Ry]
-            case ir.OP_addi  : self.uv[p.Ry] = self.uv[p.Rx] + uint64(p.Iv)
-            case ir.OP_muli  : self.uv[p.Ry] = self.uv[p.Rx] * uint64(p.Iv)
-            case ir.OP_andi  : self.uv[p.Ry] = self.uv[p.Rx] & uint64(p.Iv)
-            case ir.OP_xori  : self.uv[p.Ry] = self.uv[p.Rx] ^ uint64(p.Iv)
-            case ir.OP_shri  : self.uv[p.Ry] = self.uv[p.Rx] >> p.Iv
-            case ir.OP_sbiti : self.uv[p.Ry] = self.uv[p.Rx] | (1 << p.Iv)
-            case ir.OP_swapw : self.uv[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.uv[p.Rx])))
-            case ir.OP_swapl : self.uv[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.uv[p.Rx])))
-            case ir.OP_swapq : self.uv[p.Ry] = bits.ReverseBytes64(self.uv[p.Rx])
-            case ir.OP_beq   : if       self.uv[p.Rx]  ==       self.uv[p.Ry]  { self.pc = p.Br }
-            case ir.OP_bne   : if       self.uv[p.Rx]  !=       self.uv[p.Ry]  { self.pc = p.Br }
-            case ir.OP_blt   : if int64(self.uv[p.Rx]) <  int64(self.uv[p.Ry]) { self.pc = p.Br }
-            case ir.OP_bltu  : if       self.uv[p.Rx]  <        self.uv[p.Ry]  { self.pc = p.Br }
-            case ir.OP_bgeu  : if       self.uv[p.Rx]  >=       self.uv[p.Ry]  { self.pc = p.Br }
-            case ir.OP_beqn  : if       self.pv[p.Ps]  ==                 nil  { self.pc = p.Br }
-            case ir.OP_bnen  : if       self.pv[p.Ps]  !=                 nil  { self.pc = p.Br }
-            case ir.OP_jal   : self.pv[p.Pd], self.pc = unsafe.Pointer(self.pc), p.Br
-            case ir.OP_bzero : memclrNoHeapPointers(self.pv[p.Pd], uintptr(p.Iv))
-            case ir.OP_bcopy : memmove(self.pv[p.Pd], self.pv[p.Ps], uintptr(self.uv[p.Rx]))
-            case ir.OP_halt  : self.pc = nil
-            case ir.OP_break : self.trap()
+            case hir.OP_nop   : break
+            case hir.OP_ip    : self.pv[p.Pd] = p.Pr
+            case hir.OP_lb    : self.uv[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lw    : self.uv[p.Rx] = uint64(*(*int16)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_ll    : self.uv[p.Rx] = uint64(*(*int32)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lq    : self.uv[p.Rx] = uint64(*(*int64)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lp    : self.pv[p.Pd] = *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv)))
+            case hir.OP_sb    : *(*int8)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int8(self.uv[p.Rx])
+            case hir.OP_sw    : *(*int16)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int16(self.uv[p.Rx])
+            case hir.OP_sl    : *(*int32)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int32(self.uv[p.Rx])
+            case hir.OP_sq    : *(*int64)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int64(self.uv[p.Rx])
+            case hir.OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.pv[p.Ps]
+            case hir.OP_ldaq  : self.uv[p.Rx] = self.ar[p.Iv].U
+            case hir.OP_ldap  : self.pv[p.Pd] = self.ar[p.Iv].P
+            case hir.OP_strq  : self.rv[p.Iv].U = self.uv[p.Rx]
+            case hir.OP_strp  : self.rv[p.Iv].P = self.pv[p.Ps]
+            case hir.OP_addp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(self.uv[p.Rx]))
+            case hir.OP_subp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) - uintptr(self.uv[p.Rx]))
+            case hir.OP_addpi : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))
+            case hir.OP_add   : self.uv[p.Rz] = self.uv[p.Rx] + self.uv[p.Ry]
+            case hir.OP_sub   : self.uv[p.Rz] = self.uv[p.Rx] - self.uv[p.Ry]
+            case hir.OP_bs    : self.uv[p.Ry] = self.uv[p.Rx] | (1 << self.uv[p.Ry])
+            case hir.OP_bt    : self.uv[p.Ry] = bool2u64(self.uv[p.Rx] & (1 << self.uv[p.Ry]) != 0)
+            case hir.OP_addi  : self.uv[p.Ry] = self.uv[p.Rx] + uint64(p.Iv)
+            case hir.OP_muli  : self.uv[p.Ry] = self.uv[p.Rx] * uint64(p.Iv)
+            case hir.OP_andi  : self.uv[p.Ry] = self.uv[p.Rx] & uint64(p.Iv)
+            case hir.OP_xori  : self.uv[p.Ry] = self.uv[p.Rx] ^ uint64(p.Iv)
+            case hir.OP_shri  : self.uv[p.Ry] = self.uv[p.Rx] >> p.Iv
+            case hir.OP_bsi   : self.uv[p.Ry] = self.uv[p.Rx] | (1 << p.Iv)
+            case hir.OP_swapw : self.uv[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.uv[p.Rx])))
+            case hir.OP_swapl : self.uv[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.uv[p.Rx])))
+            case hir.OP_swapq : self.uv[p.Ry] = bits.ReverseBytes64(self.uv[p.Rx])
+            case hir.OP_beq   : if       self.uv[p.Rx]  ==       self.uv[p.Ry]  { self.pc = p.Br }
+            case hir.OP_bne   : if       self.uv[p.Rx]  !=       self.uv[p.Ry]  { self.pc = p.Br }
+            case hir.OP_blt   : if int64(self.uv[p.Rx]) <  int64(self.uv[p.Ry]) { self.pc = p.Br }
+            case hir.OP_bltu  : if       self.uv[p.Rx]  <        self.uv[p.Ry]  { self.pc = p.Br }
+            case hir.OP_bgeu  : if       self.uv[p.Rx]  >=       self.uv[p.Ry]  { self.pc = p.Br }
+            case hir.OP_beqn  : if       self.pv[p.Ps]  ==                 nil  { self.pc = p.Br }
+            case hir.OP_bnen  : if       self.pv[p.Ps]  !=                 nil  { self.pc = p.Br }
+            case hir.OP_jal   : self.pv[p.Pd], self.pc = unsafe.Pointer(self.pc), p.Br
+            case hir.OP_bzero : memclrNoHeapPointers(self.pv[p.Pd], uintptr(p.Iv))
+            case hir.OP_bcopy : memmove(self.pv[p.Pd], self.pv[p.Ps], uintptr(self.uv[p.Rx]))
+            case hir.OP_halt  : self.pc = nil
+            case hir.OP_break : self.trap()
 
             /* call to C / Go / Go interface functions */
-            case ir.OP_ccall: fallthrough
-            case ir.OP_gcall: fallthrough
-            case ir.OP_icall: ir.LookupCall(p.Iv).Call(self, p)
-
-            /* bit test and set */
-            case ir.OP_bts: {
-                x := self.uv[p.Rx]
-                y := self.uv[p.Ry]
-
-                /* test and set the bit */
-                if self.uv[p.Ry] |= 1 << x; y & (1 << x) == 0 {
-                    self.uv[p.Rz] = 0
-                } else {
-                    self.uv[p.Rz] = 1
-                }
-            }
+            case hir.OP_ccall: fallthrough
+            case hir.OP_gcall: fallthrough
+            case hir.OP_icall: hir.LookupCall(p.Iv).Call(self, p)
 
             /* table switch */
-            case ir.OP_bsw: {
+            case hir.OP_bsw: {
                 if v = self.uv[p.Rx]; v < uint64(p.Iv) {
-                    if q = *(**ir.Ir)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); q != nil {
+                    if q = *(**hir.Ir)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); q != nil {
                         self.pc = q
                     }
                 }
@@ -158,26 +156,26 @@ func (self *Emulator) Free() {
     emulatorPool.Put(self)
 }
 
-func (self *Emulator) Reset(p ir.Program) *Emulator {
+func (self *Emulator) Reset(p hir.Program) *Emulator {
     *self = Emulator{pc: p.Head}
     return self
 }
 
 /** Implementation of ir.CallState **/
 
-func (self *Emulator) Gr(id ir.GenericRegister) uint64 {
+func (self *Emulator) Gr(id hir.GenericRegister) uint64 {
     return self.uv[id]
 }
 
-func (self *Emulator) Pr(id ir.PointerRegister) unsafe.Pointer {
+func (self *Emulator) Pr(id hir.PointerRegister) unsafe.Pointer {
     return self.pv[id]
 }
 
-func (self *Emulator) SetGr(id ir.GenericRegister, val uint64) {
+func (self *Emulator) SetGr(id hir.GenericRegister, val uint64) {
     self.uv[id] = val
 }
 
-func (self *Emulator) SetPr(id ir.PointerRegister, val unsafe.Pointer) {
+func (self *Emulator) SetPr(id hir.PointerRegister, val unsafe.Pointer) {
     self.pv[id] = val
 }
 

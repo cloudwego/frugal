@@ -19,7 +19,7 @@ package encoder
 import (
     _ `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -34,6 +34,6 @@ func mapiternext(it *rt.GoMapIterator)
 func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
 var (
-    F_mapiternext = ir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
-    F_mapiterinit = ir.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
+    F_mapiternext = hir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+    F_mapiterinit = hir.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
 )

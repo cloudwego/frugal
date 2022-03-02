@@ -20,11 +20,11 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/emu`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func link_emu(prog ir.Program) Decoder {
+func link_emu(prog hir.Program) Decoder {
     return func(buf unsafe.Pointer, nb int, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
         ctx := emu.LoadProgram(prog)
         ret := (*rt.GoIface)(unsafe.Pointer(&err))
@@ -43,7 +43,7 @@ func link_emu(prog ir.Program) Decoder {
     }
 }
 
-func emu_decode(ctx ir.CallContext) (int, error) {
+func emu_decode(ctx hir.CallContext) (int, error) {
     return decode(
         (*rt.GoType)(ctx.Ap(0)),
         ctx.Ap(1),
@@ -55,14 +55,14 @@ func emu_decode(ctx ir.CallContext) (int, error) {
     )
 }
 
-func emu_mkreturn(ctx ir.CallContext) func(int, error) {
+func emu_mkreturn(ctx hir.CallContext) func(int, error) {
     return func(ret int, err error) {
         ctx.Ru(0, uint64(ret))
         emu_seterr(ctx, 1, err)
     }
 }
 
-func emu_gcall_decode(ctx ir.CallContext) {
+func emu_gcall_decode(ctx hir.CallContext) {
     if !ctx.Verify("**ii**i", "i**") {
         panic("invalid decode call")
     } else {

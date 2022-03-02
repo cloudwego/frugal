@@ -17,7 +17,7 @@
 package decoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
 const (
@@ -27,5 +27,5 @@ const (
 )
 
 var (
-    C_skip = ir.RegisterCCall(archSkippingFn(), emu_ccall_skip)
+    C_skip = hir.RegisterCCall(archSkippingFn(), emu_ccall_skip)
 )

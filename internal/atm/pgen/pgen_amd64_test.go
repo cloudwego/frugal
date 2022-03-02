@@ -24,7 +24,7 @@ import (
     `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
     `github.com/cloudwego/frugal/internal/loader`
     `github.com/cloudwego/frugal/internal/rt`
@@ -84,13 +84,13 @@ type TestIface interface {
 }
 
 var (
-    hfunc ir.CallHandle
-    hmeth ir.CallHandle
+    hfunc hir.CallHandle
+    hmeth hir.CallHandle
     cfunc uintptr
 )
 
 var (
-    testfn = ir.RegisterGCall(testemu_pfunc, func(ctx ir.CallContext) {
+    testfn = hir.RegisterGCall(testemu_pfunc, func(ctx hir.CallContext) {
         var v0 struct {P unsafe.Pointer; L uint64}
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
@@ -117,8 +117,8 @@ var (
 
 func init() {
     cfunc = uintptr(unsafe.Pointer(&cfunc))
-    hfunc = ir.RegisterCCall(cfunc, nil)
-    hmeth = ir.RegisterICall(rt.GetMethod((*TestIface)(nil), "Foo"), nil)
+    hfunc = hir.RegisterCCall(cfunc, nil)
+    hmeth = hir.RegisterICall(rt.GetMethod((*TestIface)(nil), "Foo"), nil)
 }
 
 func testemu_pfunc(a string, b string, c string) (d string, e string) {
@@ -128,37 +128,37 @@ func testemu_pfunc(a string, b string, c string) (d string, e string) {
 }
 
 func TestPGen_Generate(t *testing.T) {
-    p := ir.CreateBuilder()
-    p.IQ(0, ir.R0)
-    p.IQ(1, ir.R1)
-    p.IQ(2, ir.R2)
-    p.MOVP(ir.Pn, ir.P0)
-    p.MOVP(ir.Pn, ir.P1)
-    p.MOVP(ir.Pn, ir.P2)
+    p := hir.CreateBuilder()
+    p.IQ(0, hir.R0)
+    p.IQ(1, hir.R1)
+    p.IQ(2, hir.R2)
+    p.MOVP(hir.Pn, hir.P0)
+    p.MOVP(hir.Pn, hir.P1)
+    p.MOVP(hir.Pn, hir.P2)
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.CCALL(hfunc).A0(ir.R0).A1(ir.R1).A2(ir.R2).R0(ir.R0)
+    p.CCALL(hfunc).A0(hir.R0).A1(hir.R1).A2(hir.R2).R0(hir.R0)
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.GCALL(testfn).A0(ir.P0).A1(ir.R0).A2(ir.P1).A3(ir.R1).A4(ir.P2).A5(ir.R2).R0(ir.P0).R1(ir.R0).R2(ir.P1).R3(ir.R1)
+    p.GCALL(testfn).A0(hir.P0).A1(hir.R0).A2(hir.P1).A3(hir.R1).A4(hir.P2).A5(hir.R2).R0(hir.P0).R1(hir.R0).R2(hir.P1).R3(hir.R1)
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.ICALL(ir.P0, ir.P1, hmeth).A0(ir.R0).A1(ir.R1).R0(ir.R2)
+    p.ICALL(hir.P0, hir.P1, hmeth).A0(hir.R0).A1(hir.R1).R0(hir.R2)
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.BCOPY(ir.P1, ir.R1, ir.P0)
+    p.BCOPY(hir.P1, hir.R1, hir.P0)
     p.BREAK()
     p.BREAK()
     p.BREAK()
@@ -205,23 +205,23 @@ func TestPGen_FunctionCall(t *testing.T) {
     var s ifacetest
     var i ifacetesttype = 123456
     s = i
-    m := ir.RegisterICall(rt.GetMethod((*ifacetest)(nil), "Foo"), nil)
-    c := ir.RegisterCCall(mkccalltestfn(), nil)
-    h := ir.RegisterGCall(gcalltestfn, nil)
-    p := ir.CreateBuilder()
+    m := hir.RegisterICall(rt.GetMethod((*ifacetest)(nil), "Foo"), nil)
+    c := hir.RegisterCCall(mkccalltestfn(), nil)
+    h := hir.RegisterGCall(gcalltestfn, nil)
+    p := hir.CreateBuilder()
     e := *(*rt.GoIface)(unsafe.Pointer(&s))
-    p.IP(e.Itab, ir.P0)
-    p.IP(e.Value, ir.P1)
-    p.LDAQ(0, ir.R0)
-    p.GCALL(h).A0(ir.R0).R0(ir.R1).R1(ir.R2).R2(ir.R3)
-    p.ADD(ir.R1, ir.R2, ir.R1)
-    p.ADD(ir.R2, ir.R3, ir.R2)
-    p.ICALL(ir.P0, ir.P1, m).A0(ir.R3).R0(ir.R4)
-    p.ADDI(ir.R4, 10000000, ir.R3)
-    p.CCALL(c).A0(ir.R3).R0(ir.R4)
-    p.STRQ(ir.R1, 0)
-    p.STRQ(ir.R2, 1)
-    p.STRQ(ir.R4, 2)
+    p.IP(e.Itab, hir.P0)
+    p.IP(e.Value, hir.P1)
+    p.LDAQ(0, hir.R0)
+    p.GCALL(h).A0(hir.R0).R0(hir.R1).R1(hir.R2).R2(hir.R3)
+    p.ADD(hir.R1, hir.R2, hir.R1)
+    p.ADD(hir.R2, hir.R3, hir.R2)
+    p.ICALL(hir.P0, hir.P1, m).A0(hir.R3).R0(hir.R4)
+    p.ADDI(hir.R4, 10000000, hir.R3)
+    p.CCALL(c).A0(hir.R3).R0(hir.R4)
+    p.STRQ(hir.R1, 0)
+    p.STRQ(hir.R2, 1)
+    p.STRQ(hir.R4, 2)
     p.HALT()
     g := CreateCodeGen((func(int) (int, int, int))(nil))
     r := g.Generate(p.Build(), 0)

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ir
+package hir
 
 import (
     `fmt`
@@ -28,7 +28,7 @@ type Program struct {
 func (self Program) Free() {
     for p, q := self.Head, self.Head; p != nil; p = q {
         q = p.Ln
-        freeInstr(p)
+        p.Free()
     }
 }
 
@@ -38,7 +38,7 @@ func (self Program) Disassemble() string {
 
     /* scan all the branch target */
     for p := self.Head; p != nil; p = p.Ln {
-        if p.isBranch() {
+        if p.IsBranch() {
             if p.Op != OP_bsw {
                 if _, ok := ref[p.Br]; !ok {
                     ref[p.Br] = fmt.Sprintf("L_%d", len(ref))

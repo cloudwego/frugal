@@ -20,7 +20,7 @@ import (
     `fmt`
     `math/bits`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -50,8 +50,8 @@ func error_missing(t *rt.GoType, i int, m uint64) error {
 }
 
 var (
-    F_error_eof     = ir.RegisterGCall(error_eof, emu_gcall_error_eof)
-    F_error_skip    = ir.RegisterGCall(error_skip, emu_gcall_error_skip)
-    F_error_type    = ir.RegisterGCall(error_type, emu_gcall_error_type)
-    F_error_missing = ir.RegisterGCall(error_missing, emu_gcall_error_missing)
+    F_error_eof     = hir.RegisterGCall(error_eof, emu_gcall_error_eof)
+    F_error_skip    = hir.RegisterGCall(error_skip, emu_gcall_error_skip)
+    F_error_type    = hir.RegisterGCall(error_type, emu_gcall_error_type)
+    F_error_missing = hir.RegisterGCall(error_missing, emu_gcall_error_missing)
 )

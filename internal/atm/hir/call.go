@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ir
+package hir
 
 import (
     `unsafe`

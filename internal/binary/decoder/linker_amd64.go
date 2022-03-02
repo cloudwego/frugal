@@ -19,7 +19,7 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/pgen`
     `github.com/cloudwego/frugal/internal/loader`
 )
@@ -36,7 +36,7 @@ func init() {
     SetLinker(new(LinkerAMD64))
 }
 
-func (LinkerAMD64) Link(p ir.Program) Decoder {
+func (LinkerAMD64) Link(p hir.Program) Decoder {
     cc := pgen.CreateCodeGen((Decoder)(nil))
     fp := loader.Loader(cc.Generate(p, _NativeStackSize)).Load("decoder", cc.Frame())
     return *(*Decoder)(unsafe.Pointer(&fp))

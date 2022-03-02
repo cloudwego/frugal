@@ -27,7 +27,7 @@ import (
     `github.com/chenzhuoyu/iasm/expr`
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/abi`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -71,7 +71,7 @@ type _DeferBlock struct {
     def func(p *x86_64.Program)
 }
 
-type _RegSeq []ir.Register
+type _RegSeq []hir.Register
 func (self _RegSeq) Len() int               { return len(self) }
 func (self _RegSeq) Swap(i int, j int)      { self[i], self[j] = self[j], self[i] }
 func (self _RegSeq) Less(i int, j int) bool { return self[i].A() < self[j].A() }
@@ -96,7 +96,7 @@ type _FrameInfo struct {
     alen int
     regs _RegSeq
     desc *abi.FunctionLayout
-    regi map[ir.Register]int32
+    regi map[hir.Register]int32
     regr map[x86_64.Register64]int32
 }
 
@@ -140,7 +140,7 @@ func (self *_FrameInfo) retv(i int) *x86_64.MemoryOperand {
     return Ptr(RSP, self.prev() + int32(self.desc.Rets[i].Mem))
 }
 
-func (self *_FrameInfo) slot(r ir.Register) *x86_64.MemoryOperand {
+func (self *_FrameInfo) slot(r hir.Register) *x86_64.MemoryOperand {
     return Ptr(RSP, self.save() + self.regi[r] *abi.PtrSize)
 }
 
@@ -148,7 +148,7 @@ func (self *_FrameInfo) rslot(r x86_64.Register64) *x86_64.MemoryOperand {
     return Ptr(RSP, self.rsvd() + self.regr[r] *abi.PtrSize)
 }
 
-func (self *_FrameInfo) ralloc(r ir.Register) {
+func (self *_FrameInfo) ralloc(r hir.Register) {
     self.regs = append(self.regs, r)
     sort.Sort(self.regs)
 
@@ -169,12 +169,12 @@ func (self *_FrameInfo) ArgPtrs() *rt.StackMap {
 }
 
 func (self *_FrameInfo) LocalPtrs() *rt.StackMap {
-    var v ir.Register
+    var v hir.Register
     var m rt.StackMapBuilder
 
     /* register spill slots */
     for _, v = range self.regs {
-        m.AddField(v.A() & ir.ArgPointer != 0)
+        m.AddField(v.A() & hir.ArgPointer != 0)
     }
 
     /* reserved registers */
@@ -194,7 +194,7 @@ func newContext(proto interface{}) (ret _FrameInfo) {
     /* layout the function */
     ret.regr = abi.ABI.Reserved()
     ret.desc = abi.ABI.LayoutFunc(-1, vt)
-    ret.regi = make(map[ir.Register]int32)
+    ret.regi = make(map[hir.Register]int32)
     return
 }
 
@@ -215,53 +215,54 @@ const (
 )
 
 var _OperandMask = [256]Operands {
-    ir.OP_nop   : Octrl,
-    ir.OP_ip    : Opd,
-    ir.OP_lb    : Owx | Ops,
-    ir.OP_lw    : Owx | Ops,
-    ir.OP_ll    : Owx | Ops,
-    ir.OP_lq    : Owx | Ops,
-    ir.OP_lp    : Ops | Opd,
-    ir.OP_sb    : Orx | Opd,
-    ir.OP_sw    : Orx | Opd,
-    ir.OP_sl    : Orx | Opd,
-    ir.OP_sq    : Orx | Opd,
-    ir.OP_sp    : Ops | Opd,
-    ir.OP_ldaq  : Owx,
-    ir.OP_ldap  : Opd,
-    ir.OP_strq  : Orx,
-    ir.OP_strp  : Ops,
-    ir.OP_addp  : Orx | Ops | Opd,
-    ir.OP_subp  : Orx | Ops | Opd,
-    ir.OP_addpi : Ops | Opd,
-    ir.OP_add   : Orx | Ory | Owz,
-    ir.OP_sub   : Orx | Ory | Owz,
-    ir.OP_bts   : Orx | Ory | Owy | Owz,
-    ir.OP_addi  : Orx | Owy,
-    ir.OP_muli  : Orx | Owy,
-    ir.OP_andi  : Orx | Owy,
-    ir.OP_xori  : Orx | Owy,
-    ir.OP_shri  : Orx | Owy,
-    ir.OP_sbiti : Orx | Owy,
-    ir.OP_swapw : Orx | Owy,
-    ir.OP_swapl : Orx | Owy,
-    ir.OP_swapq : Orx | Owy,
-    ir.OP_beq   : Orx | Ory,
-    ir.OP_bne   : Orx | Ory,
-    ir.OP_blt   : Orx | Ory,
-    ir.OP_bltu  : Orx | Ory,
-    ir.OP_bgeu  : Orx | Ory,
-    ir.OP_bsw   : Orx,
-    ir.OP_beqn  : Ops,
-    ir.OP_bnen  : Ops,
-    ir.OP_jal   : Opd,
-    ir.OP_bzero : Opd,
-    ir.OP_bcopy : Orx | Ops | Opd,
-    ir.OP_ccall : Ocall,
-    ir.OP_gcall : Ocall,
-    ir.OP_icall : Ocall,
-    ir.OP_halt  : Octrl,
-    ir.OP_break : Octrl,
+    hir.OP_nop   : Octrl,
+    hir.OP_ip    : Opd,
+    hir.OP_lb    : Owx | Ops,
+    hir.OP_lw    : Owx | Ops,
+    hir.OP_ll    : Owx | Ops,
+    hir.OP_lq    : Owx | Ops,
+    hir.OP_lp    : Ops | Opd,
+    hir.OP_sb    : Orx | Opd,
+    hir.OP_sw    : Orx | Opd,
+    hir.OP_sl    : Orx | Opd,
+    hir.OP_sq    : Orx | Opd,
+    hir.OP_sp    : Ops | Opd,
+    hir.OP_ldaq  : Owx,
+    hir.OP_ldap  : Opd,
+    hir.OP_strq  : Orx,
+    hir.OP_strp  : Ops,
+    hir.OP_addp  : Orx | Ops | Opd,
+    hir.OP_subp  : Orx | Ops | Opd,
+    hir.OP_addpi : Ops | Opd,
+    hir.OP_add   : Orx | Ory | Owz,
+    hir.OP_sub   : Orx | Ory | Owz,
+    hir.OP_bs    : Orx | Ory | Owz,
+    hir.OP_bt    : Orx | Ory | Owz,
+    hir.OP_addi  : Orx | Owy,
+    hir.OP_muli  : Orx | Owy,
+    hir.OP_andi  : Orx | Owy,
+    hir.OP_xori  : Orx | Owy,
+    hir.OP_shri  : Orx | Owy,
+    hir.OP_bsi   : Orx | Owy,
+    hir.OP_swapw : Orx | Owy,
+    hir.OP_swapl : Orx | Owy,
+    hir.OP_swapq : Orx | Owy,
+    hir.OP_beq   : Orx | Ory,
+    hir.OP_bne   : Orx | Ory,
+    hir.OP_blt   : Orx | Ory,
+    hir.OP_bltu  : Orx | Ory,
+    hir.OP_bgeu  : Orx | Ory,
+    hir.OP_bsw   : Orx,
+    hir.OP_beqn  : Ops,
+    hir.OP_bnen  : Ops,
+    hir.OP_jal   : Opd,
+    hir.OP_bzero : Opd,
+    hir.OP_bcopy : Orx | Ops | Opd,
+    hir.OP_ccall : Ocall,
+    hir.OP_gcall : Ocall,
+    hir.OP_icall : Ocall,
+    hir.OP_halt  : Octrl,
+    hir.OP_break : Octrl,
 }
 
 type CodeGen struct {
@@ -275,7 +276,7 @@ type CodeGen struct {
     stab []_SwitchTable
     abix _CodeGenExtension
     jmps map[string]*x86_64.Label
-    regs map[ir.Register]x86_64.Register64
+    regs map[hir.Register]x86_64.Register64
 }
 
 func CreateCodeGen(proto interface{}) *CodeGen {
@@ -283,7 +284,7 @@ func CreateCodeGen(proto interface{}) *CodeGen {
         ctxt: newContext(proto),
         arch: x86_64.DefaultArch,
         jmps: make(map[string]*x86_64.Label),
-        regs: make(map[ir.Register]x86_64.Register64),
+        regs: make(map[hir.Register]x86_64.Register64),
     }
 }
 
@@ -298,13 +299,13 @@ func (self *CodeGen) Frame() rt.Frame {
     }
 }
 
-func (self *CodeGen) Generate(s ir.Program, sp uintptr) []byte {
+func (self *CodeGen) Generate(s hir.Program, sp uintptr) []byte {
     h := 0
     p := self.arch.CreateProgram()
 
     /* find the halting points */
     for v := s.Head; h < 2 && v != nil; v = v.Ln {
-        if v.Op == ir.OP_halt {
+        if v.Op == hir.OP_halt {
             h++
         }
     }
@@ -325,9 +326,9 @@ func (self *CodeGen) Generate(s ir.Program, sp uintptr) []byte {
     /* argument space calculation */
     for v := s.Head; v != nil; v = v.Ln {
         switch v.Op {
-            case ir.OP_gcall: fallthrough
-            case ir.OP_icall: self.ctxt.require(abi.ABI.FnTab[ir.LookupCall(v.Iv).Id].Sp)
-            case ir.OP_bcopy: self.ctxt.require(_M_memcpyargs)
+            case hir.OP_gcall: fallthrough
+            case hir.OP_icall: self.ctxt.require(abi.ABI.FnTab[hir.LookupCall(v.Iv).Id].Sp)
+            case hir.OP_bcopy: self.ctxt.require(_M_memcpyargs)
         }
     }
 
@@ -356,7 +357,7 @@ func (self *CodeGen) Generate(s ir.Program, sp uintptr) []byte {
 
     /* clear all the pointer registers */
     for lr := range self.regs {
-        if lr.A() & ir.ArgPointer != 0 {
+        if lr.A() & hir.ArgPointer != 0 {
             self.clr(p, lr)
         }
     }
@@ -413,8 +414,8 @@ func (self *CodeGen) tables(p *x86_64.Program) {
     }
 }
 
-func (self *CodeGen) translate(p *x86_64.Program, v *ir.Ir) {
-    if p.Link(self.to(v)); v.Op != ir.OP_nop {
+func (self *CodeGen) translate(p *x86_64.Program, v *hir.Ir) {
+    if p.Link(self.to(v)); v.Op != hir.OP_nop {
         if fp := translators[v.Op]; fp != nil {
             fp(self, p, v)
         } else {
@@ -427,29 +428,29 @@ func (self *CodeGen) translate(p *x86_64.Program, v *ir.Ir) {
 
 type _Check struct {
     bv Operands
-    fn func(*ir.Ir)ir.Register
+    fn func(*hir.Ir) hir.Register
 }
 
 var _readChecks = [...]_Check {
-    { bv: Orx, fn: func(p *ir.Ir) ir.Register { return p.Rx } },
-    { bv: Ory, fn: func(p *ir.Ir) ir.Register { return p.Ry } },
-    { bv: Ops, fn: func(p *ir.Ir) ir.Register { return p.Ps } },
+    { bv: Orx, fn: func(p *hir.Ir) hir.Register { return p.Rx } },
+    { bv: Ory, fn: func(p *hir.Ir) hir.Register { return p.Ry } },
+    { bv: Ops, fn: func(p *hir.Ir) hir.Register { return p.Ps } },
 }
 
 var _writeAllocs = [...]_Check {
-    { bv: Owx, fn: func(p *ir.Ir) ir.Register { return p.Rx } },
-    { bv: Owy, fn: func(p *ir.Ir) ir.Register { return p.Ry } },
-    { bv: Owz, fn: func(p *ir.Ir) ir.Register { return p.Rz } },
-    { bv: Opd, fn: func(p *ir.Ir) ir.Register { return p.Pd } },
+    { bv: Owx, fn: func(p *hir.Ir) hir.Register { return p.Rx } },
+    { bv: Owy, fn: func(p *hir.Ir) hir.Register { return p.Ry } },
+    { bv: Owz, fn: func(p *hir.Ir) hir.Register { return p.Rz } },
+    { bv: Opd, fn: func(p *hir.Ir) hir.Register { return p.Pd } },
 }
 
-func (self *CodeGen) rload(v *ir.Ir, r ir.Register) {
+func (self *CodeGen) rload(v *hir.Ir, r hir.Register) {
     if _, ok := self.regs[r]; !ok && !r.Z() {
         panic(fmt.Sprintf("pgen: access to unallocated register %s: %s", r.String(), v.Disassemble(nil)))
     }
 }
 
-func (self *CodeGen) rstore(v *ir.Ir, r ir.Register) {
+func (self *CodeGen) rstore(v *hir.Ir, r hir.Register) {
     if _, ok := self.regs[r]; !ok && !r.Z() {
         if self.ctxt.ralloc(r); self.regi < len(allocationOrder) {
             self.regi, self.regs[r] = self.regi + 1, allocationOrder[self.regi]
@@ -459,48 +460,48 @@ func (self *CodeGen) rstore(v *ir.Ir, r ir.Register) {
     }
 }
 
-func (self *CodeGen) ldcall(v *ir.Ir) {
+func (self *CodeGen) ldcall(v *hir.Ir) {
     for i := 0; i < int(v.An); i++ {
-        if r := v.Ar[i]; r & ir.ArgPointer == 0 {
-            self.rload(v, ir.GenericRegister(r))
+        if r := v.Ar[i]; r & hir.ArgPointer == 0 {
+            self.rload(v, hir.GenericRegister(r))
         } else {
-            self.rload(v, ir.PointerRegister(r & ir.ArgMask))
+            self.rload(v, hir.PointerRegister(r & hir.ArgMask))
         }
     }
 }
 
-func (self *CodeGen) stcall(v *ir.Ir) {
+func (self *CodeGen) stcall(v *hir.Ir) {
     for i := 0; i < int(v.Rn); i++ {
-        if r := v.Rr[i]; r & ir.ArgPointer == 0 {
-            self.rstore(v, ir.GenericRegister(r))
+        if r := v.Rr[i]; r & hir.ArgPointer == 0 {
+            self.rstore(v, hir.GenericRegister(r))
         } else {
-            self.rstore(v, ir.PointerRegister(r & ir.ArgMask))
+            self.rstore(v, hir.PointerRegister(r & hir.ArgMask))
         }
     }
 }
 
-func (self *CodeGen) rcheck(v *ir.Ir, p Operands) {
+func (self *CodeGen) rcheck(v *hir.Ir, p Operands) {
     for _, cc := range _readChecks {
         if p & Ocall != 0 { self.ldcall(v) }
         if p & cc.bv != 0 { self.rload(v, cc.fn(v)) }
     }
 }
 
-func (self *CodeGen) walloc(v *ir.Ir, p Operands) {
+func (self *CodeGen) walloc(v *hir.Ir, p Operands) {
     for _, cc := range _writeAllocs {
         if p & Ocall != 0 { self.stcall(v) }
         if p & cc.bv != 0 { self.rstore(v, cc.fn(v)) }
     }
 }
 
-func (self *CodeGen) rindex(r x86_64.Register64) ir.Register {
+func (self *CodeGen) rindex(r x86_64.Register64) hir.Register {
     for k, v := range self.regs { if v == r { return k } }
     return nil
 }
 
 /** Generator Helpers **/
 
-func (self *CodeGen) r(reg ir.Register) x86_64.Register64 {
+func (self *CodeGen) r(reg hir.Register) x86_64.Register64 {
     if rr, ok := self.regs[reg]; !ok {
         panic("pgen: access to unallocated register: " + reg.String())
     } else {
@@ -508,7 +509,7 @@ func (self *CodeGen) r(reg ir.Register) x86_64.Register64 {
     }
 }
 
-func (self *CodeGen) to(v *ir.Ir) *x86_64.Label {
+func (self *CodeGen) to(v *hir.Ir) *x86_64.Label {
     return self.ref(fmt.Sprintf("_PC_%p", v))
 }
 
@@ -533,7 +534,7 @@ func (self *CodeGen) ref(s string) *x86_64.Label {
     return p
 }
 
-func (self *CodeGen) i32(p *x86_64.Program, v *ir.Ir) interface{} {
+func (self *CodeGen) i32(p *x86_64.Program, v *hir.Ir) interface{} {
     if isInt32(v.Iv) {
         return v.Iv
     } else {
@@ -542,7 +543,7 @@ func (self *CodeGen) i32(p *x86_64.Program, v *ir.Ir) interface{} {
     }
 }
 
-func (self *CodeGen) ptr(p *x86_64.Program, r ir.PointerRegister, d int64) *x86_64.MemoryOperand {
+func (self *CodeGen) ptr(p *x86_64.Program, r hir.PointerRegister, d int64) *x86_64.MemoryOperand {
     if isInt32(d) {
         return Ptr(self.r(r), int32(d))
     } else {
@@ -551,12 +552,12 @@ func (self *CodeGen) ptr(p *x86_64.Program, r ir.PointerRegister, d int64) *x86_
     }
 }
 
-func (self *CodeGen) clr(p *x86_64.Program, r ir.Register) {
+func (self *CodeGen) clr(p *x86_64.Program, r hir.Register) {
     rx := self.r(r)
     p.XORL(x86_64.Register32(rx), x86_64.Register32(rx))
 }
 
-func (self *CodeGen) set(p *x86_64.Program, r ir.Register, i int64) {
+func (self *CodeGen) set(p *x86_64.Program, r hir.Register, i int64) {
     if i == 0 {
         self.clr(p, r)
     } else {
@@ -564,7 +565,7 @@ func (self *CodeGen) set(p *x86_64.Program, r ir.Register, i int64) {
     }
 }
 
-func (self *CodeGen) dup(p *x86_64.Program, r ir.Register, d ir.Register) {
+func (self *CodeGen) dup(p *x86_64.Program, r hir.Register, d hir.Register) {
     if r != d {
         p.MOVQ(self.r(r), self.r(d))
     }
@@ -572,57 +573,58 @@ func (self *CodeGen) dup(p *x86_64.Program, r ir.Register, d ir.Register) {
 
 /** OpCode Generators **/
 
-var translators = [256]func(*CodeGen, *x86_64.Program, *ir.Ir) {
-    ir.OP_ip    : (*CodeGen).translate_OP_ip,
-    ir.OP_lb    : (*CodeGen).translate_OP_lb,
-    ir.OP_lw    : (*CodeGen).translate_OP_lw,
-    ir.OP_ll    : (*CodeGen).translate_OP_ll,
-    ir.OP_lq    : (*CodeGen).translate_OP_lq,
-    ir.OP_lp    : (*CodeGen).translate_OP_lp,
-    ir.OP_sb    : (*CodeGen).translate_OP_sb,
-    ir.OP_sw    : (*CodeGen).translate_OP_sw,
-    ir.OP_sl    : (*CodeGen).translate_OP_sl,
-    ir.OP_sq    : (*CodeGen).translate_OP_sq,
-    ir.OP_sp    : (*CodeGen).translate_OP_sp,
-    ir.OP_ldaq  : (*CodeGen).translate_OP_ldaq,
-    ir.OP_ldap  : (*CodeGen).translate_OP_ldap,
-    ir.OP_strq  : (*CodeGen).translate_OP_strq,
-    ir.OP_strp  : (*CodeGen).translate_OP_strp,
-    ir.OP_addp  : (*CodeGen).translate_OP_addp,
-    ir.OP_subp  : (*CodeGen).translate_OP_subp,
-    ir.OP_addpi : (*CodeGen).translate_OP_addpi,
-    ir.OP_add   : (*CodeGen).translate_OP_add,
-    ir.OP_sub   : (*CodeGen).translate_OP_sub,
-    ir.OP_bts   : (*CodeGen).translate_OP_bts,
-    ir.OP_addi  : (*CodeGen).translate_OP_addi,
-    ir.OP_muli  : (*CodeGen).translate_OP_muli,
-    ir.OP_andi  : (*CodeGen).translate_OP_andi,
-    ir.OP_xori  : (*CodeGen).translate_OP_xori,
-    ir.OP_shri  : (*CodeGen).translate_OP_shri,
-    ir.OP_sbiti : (*CodeGen).translate_OP_sbiti,
-    ir.OP_swapw : (*CodeGen).translate_OP_swapw,
-    ir.OP_swapl : (*CodeGen).translate_OP_swapl,
-    ir.OP_swapq : (*CodeGen).translate_OP_swapq,
-    ir.OP_beq   : (*CodeGen).translate_OP_beq,
-    ir.OP_bne   : (*CodeGen).translate_OP_bne,
-    ir.OP_blt   : (*CodeGen).translate_OP_blt,
-    ir.OP_bltu  : (*CodeGen).translate_OP_bltu,
-    ir.OP_bgeu  : (*CodeGen).translate_OP_bgeu,
-    ir.OP_bsw   : (*CodeGen).translate_OP_bsw,
-    ir.OP_beqn  : (*CodeGen).translate_OP_beqn,
-    ir.OP_bnen  : (*CodeGen).translate_OP_bnen,
-    ir.OP_jal   : (*CodeGen).translate_OP_jal,
-    ir.OP_bzero : (*CodeGen).translate_OP_bzero,
-    ir.OP_bcopy : (*CodeGen).translate_OP_bcopy,
-    ir.OP_ccall : (*CodeGen).translate_OP_ccall,
-    ir.OP_gcall : (*CodeGen).translate_OP_gcall,
-    ir.OP_icall : (*CodeGen).translate_OP_icall,
-    ir.OP_halt  : (*CodeGen).translate_OP_halt,
-    ir.OP_break : (*CodeGen).translate_OP_break,
+var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
+    hir.OP_ip    : (*CodeGen).translate_OP_ip,
+    hir.OP_lb    : (*CodeGen).translate_OP_lb,
+    hir.OP_lw    : (*CodeGen).translate_OP_lw,
+    hir.OP_ll    : (*CodeGen).translate_OP_ll,
+    hir.OP_lq    : (*CodeGen).translate_OP_lq,
+    hir.OP_lp    : (*CodeGen).translate_OP_lp,
+    hir.OP_sb    : (*CodeGen).translate_OP_sb,
+    hir.OP_sw    : (*CodeGen).translate_OP_sw,
+    hir.OP_sl    : (*CodeGen).translate_OP_sl,
+    hir.OP_sq    : (*CodeGen).translate_OP_sq,
+    hir.OP_sp    : (*CodeGen).translate_OP_sp,
+    hir.OP_ldaq  : (*CodeGen).translate_OP_ldaq,
+    hir.OP_ldap  : (*CodeGen).translate_OP_ldap,
+    hir.OP_strq  : (*CodeGen).translate_OP_strq,
+    hir.OP_strp  : (*CodeGen).translate_OP_strp,
+    hir.OP_addp  : (*CodeGen).translate_OP_addp,
+    hir.OP_subp  : (*CodeGen).translate_OP_subp,
+    hir.OP_addpi : (*CodeGen).translate_OP_addpi,
+    hir.OP_add   : (*CodeGen).translate_OP_add,
+    hir.OP_sub   : (*CodeGen).translate_OP_sub,
+    hir.OP_bs    : (*CodeGen).translate_OP_bs,
+    hir.OP_bt    : (*CodeGen).translate_OP_bt,
+    hir.OP_addi  : (*CodeGen).translate_OP_addi,
+    hir.OP_muli  : (*CodeGen).translate_OP_muli,
+    hir.OP_andi  : (*CodeGen).translate_OP_andi,
+    hir.OP_xori  : (*CodeGen).translate_OP_xori,
+    hir.OP_shri  : (*CodeGen).translate_OP_shri,
+    hir.OP_bsi   : (*CodeGen).translate_OP_bsi,
+    hir.OP_swapw : (*CodeGen).translate_OP_swapw,
+    hir.OP_swapl : (*CodeGen).translate_OP_swapl,
+    hir.OP_swapq : (*CodeGen).translate_OP_swapq,
+    hir.OP_beq   : (*CodeGen).translate_OP_beq,
+    hir.OP_bne   : (*CodeGen).translate_OP_bne,
+    hir.OP_blt   : (*CodeGen).translate_OP_blt,
+    hir.OP_bltu  : (*CodeGen).translate_OP_bltu,
+    hir.OP_bgeu  : (*CodeGen).translate_OP_bgeu,
+    hir.OP_bsw   : (*CodeGen).translate_OP_bsw,
+    hir.OP_beqn  : (*CodeGen).translate_OP_beqn,
+    hir.OP_bnen  : (*CodeGen).translate_OP_bnen,
+    hir.OP_jal   : (*CodeGen).translate_OP_jal,
+    hir.OP_bzero : (*CodeGen).translate_OP_bzero,
+    hir.OP_bcopy : (*CodeGen).translate_OP_bcopy,
+    hir.OP_ccall : (*CodeGen).translate_OP_ccall,
+    hir.OP_gcall : (*CodeGen).translate_OP_gcall,
+    hir.OP_icall : (*CodeGen).translate_OP_icall,
+    hir.OP_halt  : (*CodeGen).translate_OP_halt,
+    hir.OP_break : (*CodeGen).translate_OP_break,
 }
 
-func (self *CodeGen) translate_OP_ip(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
+func (self *CodeGen) translate_OP_ip(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
         if addr := uintptr(v.Pr); addr > math.MaxUint32 {
             p.MOVQ(addr, self.r(v.Pd))
         } else {
@@ -631,9 +633,9 @@ func (self *CodeGen) translate_OP_ip(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_lb(p *x86_64.Program, v *ir.Ir) {
-    if v.Rx != ir.Rz {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_lb(p *x86_64.Program, v *hir.Ir) {
+    if v.Rx != hir.Rz {
+        if v.Ps == hir.Pn {
             panic("lb: load from nil pointer")
         } else {
             p.MOVZBQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
@@ -641,9 +643,9 @@ func (self *CodeGen) translate_OP_lb(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_lw(p *x86_64.Program, v *ir.Ir) {
-    if v.Rx != ir.Rz {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_lw(p *x86_64.Program, v *hir.Ir) {
+    if v.Rx != hir.Rz {
+        if v.Ps == hir.Pn {
             panic("lw: load from nil pointer")
         } else {
             p.MOVZWQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
@@ -651,9 +653,9 @@ func (self *CodeGen) translate_OP_lw(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_ll(p *x86_64.Program, v *ir.Ir) {
-    if v.Rx != ir.Rz {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_ll(p *x86_64.Program, v *hir.Ir) {
+    if v.Rx != hir.Rz {
+        if v.Ps == hir.Pn {
             panic("ll: load from nil pointer")
         } else {
             p.MOVL(self.ptr(p, v.Ps, v.Iv), x86_64.Register32(self.r(v.Rx)))
@@ -661,9 +663,9 @@ func (self *CodeGen) translate_OP_ll(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_lq(p *x86_64.Program, v *ir.Ir) {
-    if v.Rx != ir.Rz {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_lq(p *x86_64.Program, v *hir.Ir) {
+    if v.Rx != hir.Rz {
+        if v.Ps == hir.Pn {
             panic("lq: load from nil pointer")
         } else {
             p.MOVQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Rx))
@@ -671,9 +673,9 @@ func (self *CodeGen) translate_OP_lq(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_lp(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_lp(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
+        if v.Ps == hir.Pn {
             panic("lp: load from nil pointer")
         } else {
             p.MOVQ(self.ptr(p, v.Ps, v.Iv), self.r(v.Pd))
@@ -681,56 +683,56 @@ func (self *CodeGen) translate_OP_lp(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_sb(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_sb(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("sb: store to nil pointer")
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.MOVB(0, self.ptr(p, v.Pd, v.Iv))
     } else {
         p.MOVB(x86_64.Register8(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
-func (self *CodeGen) translate_OP_sw(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_sw(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("sw: store to nil pointer")
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.MOVW(0, self.ptr(p, v.Pd, v.Iv))
     } else {
         p.MOVW(x86_64.Register16(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
-func (self *CodeGen) translate_OP_sl(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_sl(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("sl: store to nil pointer")
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.MOVL(0, self.ptr(p, v.Pd, v.Iv))
     } else {
         p.MOVL(x86_64.Register32(self.r(v.Rx)), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
-func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_sq(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("sq: store to nil pointer")
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.MOVQ(0, self.ptr(p, v.Pd, v.Iv))
     } else {
         p.MOVQ(self.r(v.Rx), self.ptr(p, v.Pd, v.Iv))
     }
 }
 
-func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_sp(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("sp: store to nil pointer")
     } else {
         self.wbStorePointer(p, v.Ps, self.ptr(p, v.Pd, v.Iv))
     }
 }
 
-func (self *CodeGen) translate_OP_ldaq(p *x86_64.Program, v *ir.Ir) {
-    if v.Rx != ir.Rz {
+func (self *CodeGen) translate_OP_ldaq(p *x86_64.Program, v *hir.Ir) {
+    if v.Rx != hir.Rz {
         if i := int(v.Iv); i < self.ctxt.argc() {
             self.abiLoadInt(p, i, v.Rx)
         } else {
@@ -739,8 +741,8 @@ func (self *CodeGen) translate_OP_ldaq(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
+func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
         if i := int(v.Iv); i < self.ctxt.argc() {
             self.abiLoadPtr(p, i, v.Pd)
         } else {
@@ -749,7 +751,7 @@ func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *hir.Ir) {
     if i := int(v.Iv); i < self.ctxt.retc() {
         self.abiStoreInt(p, v.Rx, i)
     } else {
@@ -757,7 +759,7 @@ func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *hir.Ir) {
     if i := int(v.Iv); i < self.ctxt.retc() {
         self.abiStorePtr(p, v.Ps, i)
     } else {
@@ -765,11 +767,11 @@ func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
+        if v.Ps == hir.Pn {
             panic("addp: direct conversion of integer to pointer")
-        } else if v.Rx == ir.Rz {
+        } else if v.Rx == hir.Rz {
             self.dup(p, v.Ps, v.Pd)
         } else {
             p.LEAQ(Sib(self.r(v.Ps), self.r(v.Rx), 1, 0), self.r(v.Pd))
@@ -777,19 +779,19 @@ func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_subp(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_subp(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
+        if v.Ps == hir.Pn {
             panic("subp: direct conversion of integer to pointer")
-        } else if self.dup(p, v.Ps, v.Pd); v.Rx != ir.Rz {
+        } else if self.dup(p, v.Ps, v.Pd); v.Rx != hir.Rz {
             p.SUBQ(self.r(v.Rx), self.r(v.Pd))
         }
     }
 }
 
-func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd != ir.Pn {
-        if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd != hir.Pn {
+        if v.Ps == hir.Pn {
             if v.Iv != 0 {
                 panic("addpi: direct conversion of integer to pointer")
             } else {
@@ -805,16 +807,16 @@ func (self *CodeGen) translate_OP_addpi(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *ir.Ir) {
-    if v.Rz != ir.Rz {
-        if v.Rx == ir.Rz {
-            if v.Ry == ir.Rz {
+func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *hir.Ir) {
+    if v.Rz != hir.Rz {
+        if v.Rx == hir.Rz {
+            if v.Ry == hir.Rz {
                 self.clr(p, v.Rz)
             } else {
                 self.dup(p, v.Ry, v.Rz)
             }
         } else {
-            if v.Ry == ir.Rz {
+            if v.Ry == hir.Rz {
                 self.dup(p, v.Rx, v.Rz)
             } else if v.Ry == v.Rz {
                 p.ADDQ(self.r(v.Rx), self.r(v.Rz))
@@ -826,16 +828,16 @@ func (self *CodeGen) translate_OP_add(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *ir.Ir) {
-    if v.Rz != ir.Rz {
-        if v.Rx == ir.Rz {
-            if v.Ry == ir.Rz {
+func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *hir.Ir) {
+    if v.Rz != hir.Rz {
+        if v.Rx == hir.Rz {
+            if v.Ry == hir.Rz {
                 self.clr(p, v.Rz)
             } else {
                 self.dup(p, v.Ry, v.Rz)
             }
         } else {
-            if v.Ry == ir.Rz {
+            if v.Ry == hir.Rz {
                 self.dup(p, v.Rx, v.Rz)
             } else if v.Ry == v.Rz {
                 p.SUBQ(self.r(v.Rx), self.r(v.Rz))
@@ -848,33 +850,53 @@ func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bts(p *x86_64.Program, v *ir.Ir) {
-    x := v.Rx
-    y := v.Ry
-    z := v.Rz
-
-    /* special case: y is zero */
-    if y == ir.Rz {
-        return
-    }
-
-    /* testing and setting the bits at the same time */
-    if x == ir.Rz {
-        p.BTSQ(0, self.r(y))
-    } else {
-        p.BTSQ(self.r(x), self.r(y))
-    }
-
-    /* set the result if expected */
-    if z != ir.Rz {
-        p.SETC(x86_64.Register8(self.r(z)))
-        p.ANDL(1, x86_64.Register32(self.r(z)))
+func (self *CodeGen) translate_OP_bs(p *x86_64.Program, v *hir.Ir) {
+    if v.Rz != hir.Rz {
+        if v.Rx == hir.Rz {
+            if v.Ry == hir.Rz {
+                p.MOVL(1, x86_64.Register32(self.r(v.Rz)))
+            } else if v.Ry != v.Rz {
+                p.MOVL(1, x86_64.Register32(self.r(v.Rz)))
+                p.SHLQ(self.r(v.Ry), self.r(v.Rz))
+            } else {
+                p.MOVL(1, EAX)
+                p.SHLQ(self.r(v.Ry), EAX)
+                p.MOVQ(RAX, self.r(v.Rz))
+            }
+        } else {
+            if v.Ry == hir.Rz {
+                self.dup(p, v.Rx, v.Rz)
+                p.ORQ(1, x86_64.Register32(self.r(v.Rz)))
+            } else if v.Ry != v.Rz {
+                self.dup(p, v.Rx, v.Rz)
+                p.BTSQ(self.r(v.Ry), self.r(v.Rz))
+            } else {
+                p.MOVQ(self.r(v.Ry), RAX)
+                self.dup(p, v.Rx, v.Rz)
+                p.BTSQ(RAX, self.r(v.Rz))
+            }
+        }
     }
 }
 
-func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
-        if v.Rx != ir.Rz {
+func (self *CodeGen) translate_OP_bt(p *x86_64.Program, v *hir.Ir) {
+    if v.Rz != hir.Rz {
+        if v.Rx == hir.Rz {
+            self.clr(p, v.Rz)
+        } else if v.Ry == hir.Rz {
+            self.dup(p, v.Rx, v.Rz)
+            p.ANDL(1, self.r(v.Rz))
+        } else {
+            p.BTQ(self.r(v.Ry), self.r(v.Rx))
+            p.SETC(self.r(v.Rz))
+            p.ANDL(1, self.r(v.Rz))
+        }
+    }
+}
+
+func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
+        if v.Rx != hir.Rz {
             if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
                 p.ADDQ(self.i32(p, v), self.r(v.Ry))
             }
@@ -890,18 +912,18 @@ func (self *CodeGen) translate_OP_addi(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *hir.Ir) {
     var z x86_64.Register
     var x x86_64.Register64
     var y x86_64.Register64
 
     /* no need to calculate if the result was to be discarded */
-    if v.Ry == ir.Rz {
+    if v.Ry == hir.Rz {
         return
     }
 
     /* multiply anything by zero is zero */
-    if v.Rx == ir.Rz {
+    if v.Rx == hir.Rz {
         self.clr(p, v.Ry)
         return
     }
@@ -961,9 +983,9 @@ func (self *CodeGen) translate_OP_muli(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_andi(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
-        if v.Iv == 0 || v.Rx == ir.Rz {
+func (self *CodeGen) translate_OP_andi(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
+        if v.Iv == 0 || v.Rx == hir.Rz {
             self.clr(p, v.Ry)
         } else {
             self.dup(p, v.Rx, v.Ry)
@@ -972,9 +994,9 @@ func (self *CodeGen) translate_OP_andi(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
-        if v.Rx != ir.Rz {
+func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
+        if v.Rx != hir.Rz {
             if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
                 p.XORQ(self.i32(p, v), self.r(v.Ry))
             }
@@ -990,11 +1012,11 @@ func (self *CodeGen) translate_OP_xori(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_shri(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
+func (self *CodeGen) translate_OP_shri(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
         if v.Iv < 0 {
             panic("shri: negative bit count")
-        } else if v.Iv >= 64 || v.Rx == ir.Rz {
+        } else if v.Iv >= 64 || v.Rx == hir.Rz {
             p.XORL(self.r(v.Ry), self.r(v.Ry))
         } else if self.dup(p, v.Rx, v.Ry); v.Iv != 0 {
             p.SHRQ(v.Iv, self.r(v.Ry))
@@ -1002,11 +1024,11 @@ func (self *CodeGen) translate_OP_shri(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_sbiti(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
+func (self *CodeGen) translate_OP_bsi(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
         if v.Iv < 0 {
             panic("sbiti: negative bit index")
-        } else if v.Rx == ir.Rz {
+        } else if v.Rx == hir.Rz {
             self.set(p, v.Ry, 1 << v.Iv)
         } else if self.dup(p, v.Rx, v.Ry); v.Iv < 32 {
             p.ORQ(1 << v.Iv, self.r(v.Ry))
@@ -1016,34 +1038,34 @@ func (self *CodeGen) translate_OP_sbiti(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_swapw(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
+func (self *CodeGen) translate_OP_swapw(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
         self.dup(p, v.Rx, v.Ry)
         p.ROLW(8, x86_64.Register16(self.r(v.Ry)))
     }
 }
 
-func (self *CodeGen) translate_OP_swapl(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
+func (self *CodeGen) translate_OP_swapl(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
         self.dup(p, v.Rx, v.Ry)
         p.BSWAPL(x86_64.Register32(self.r(v.Ry)))
     }
 }
 
-func (self *CodeGen) translate_OP_swapq(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry != ir.Rz {
+func (self *CodeGen) translate_OP_swapq(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
         self.dup(p, v.Rx, v.Ry)
         p.BSWAPQ(self.r(v.Ry))
     }
 }
 
-func (self *CodeGen) translate_OP_beq(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_beq(p *x86_64.Program, v *hir.Ir) {
     if v.Rx == v.Ry {
         p.JMP(self.to(v.Br))
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.TESTQ(self.r(v.Ry), self.r(v.Ry))
         p.JZ(self.to(v.Br))
-    } else if v.Ry == ir.Rz {
+    } else if v.Ry == hir.Rz {
         p.TESTQ(self.r(v.Rx), self.r(v.Rx))
         p.JZ(self.to(v.Br))
     } else {
@@ -1052,12 +1074,12 @@ func (self *CodeGen) translate_OP_beq(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bne(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_bne(p *x86_64.Program, v *hir.Ir) {
     if v.Rx != v.Ry {
-        if v.Rx == ir.Rz {
+        if v.Rx == hir.Rz {
             p.TESTQ(self.r(v.Ry), self.r(v.Ry))
             p.JNZ(self.to(v.Br))
-        } else if v.Ry == ir.Rz {
+        } else if v.Ry == hir.Rz {
             p.TESTQ(self.r(v.Rx), self.r(v.Rx))
             p.JNZ(self.to(v.Br))
         } else {
@@ -1067,12 +1089,12 @@ func (self *CodeGen) translate_OP_bne(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_blt(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_blt(p *x86_64.Program, v *hir.Ir) {
     if v.Rx != v.Ry {
-        if v.Rx == ir.Rz {
+        if v.Rx == hir.Rz {
             p.TESTQ(self.r(v.Ry), self.r(v.Ry))
             p.JNS(self.to(v.Br))
-        } else if v.Ry == ir.Rz {
+        } else if v.Ry == hir.Rz {
             p.TESTQ(self.r(v.Rx), self.r(v.Rx))
             p.JS(self.to(v.Br))
         } else {
@@ -1082,22 +1104,22 @@ func (self *CodeGen) translate_OP_blt(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bltu(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_bltu(p *x86_64.Program, v *hir.Ir) {
     if v.Rx != v.Ry {
-        if v.Rx == ir.Rz {
+        if v.Rx == hir.Rz {
             p.TESTQ(self.r(v.Ry), self.r(v.Ry))
             p.JNZ(self.to(v.Br))
-        } else if v.Ry != ir.Rz {
+        } else if v.Ry != hir.Rz {
             p.CMPQ(self.r(v.Ry), self.r(v.Rx))
             p.JB(self.to(v.Br))
         }
     }
 }
 
-func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *ir.Ir) {
-    if v.Ry == ir.Rz || v.Rx == v.Ry {
+func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry == hir.Rz || v.Rx == v.Ry {
         p.JMP(self.to(v.Br))
-    } else if v.Rx == ir.Rz {
+    } else if v.Rx == hir.Rz {
         p.TESTQ(self.r(v.Ry), self.r(v.Ry))
         p.JZ(self.to(v.Br))
     } else {
@@ -1106,7 +1128,7 @@ func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *hir.Ir) {
     nsw := v.Iv
     tab := v.Sw()
 
@@ -1141,8 +1163,8 @@ func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *ir.Ir) {
     p.Link   (def)
 }
 
-func (self *CodeGen) translate_OP_beqn(p *x86_64.Program, v *ir.Ir) {
-    if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_beqn(p *x86_64.Program, v *hir.Ir) {
+    if v.Ps == hir.Pn {
         p.JMP(self.to(v.Br))
     } else {
         p.TESTQ(self.r(v.Ps), self.r(v.Ps))
@@ -1150,55 +1172,55 @@ func (self *CodeGen) translate_OP_beqn(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bnen(p *x86_64.Program, v *ir.Ir) {
-    if v.Ps != ir.Pn {
+func (self *CodeGen) translate_OP_bnen(p *x86_64.Program, v *hir.Ir) {
+    if v.Ps != hir.Pn {
         p.TESTQ(self.r(v.Ps), self.r(v.Ps))
         p.JNZ(self.to(v.Br))
     }
 }
 
-func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         p.JMP(self.to(v.Br))
     } else {
         panic("jal: link-based sub-routine call is not implemented for x86_64")
     }
 }
 
-func (self *CodeGen) translate_OP_bzero(p *x86_64.Program, v *ir.Ir) {
-    if v.Pd == ir.Pn {
+func (self *CodeGen) translate_OP_bzero(p *x86_64.Program, v *hir.Ir) {
+    if v.Pd == hir.Pn {
         panic("bzero: zeroing nil pointer")
     } else if v.Iv != 0 {
         self.abiBlockZero(p, v.Pd, v.Iv)
     }
 }
 
-func (self *CodeGen) translate_OP_bcopy(p *x86_64.Program, v *ir.Ir) {
-    if v.Ps == ir.Pn {
+func (self *CodeGen) translate_OP_bcopy(p *x86_64.Program, v *hir.Ir) {
+    if v.Ps == hir.Pn {
         panic("bcopy: copy from nil pointer")
-    } else if v.Pd == ir.Pn {
+    } else if v.Pd == hir.Pn {
         panic("bcopy: copy into nil pointer")
-    } else if v.Rx != ir.Rz && v.Ps != v.Pd {
+    } else if v.Rx != hir.Rz && v.Ps != v.Pd {
         self.abiBlockCopy(p, v.Pd, v.Ps, v.Rx)
     }
 }
 
-func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_ccall(p *x86_64.Program, v *hir.Ir) {
     self.abiCallNative(p, v)
 }
 
-func (self *CodeGen) translate_OP_gcall(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_gcall(p *x86_64.Program, v *hir.Ir) {
     self.abiCallGo(p, v)
 }
 
-func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *ir.Ir) {
+func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *hir.Ir) {
     self.abiCallMethod(p, v)
 }
 
-func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *ir.Ir) {
+func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *hir.Ir) {
     p.JMP(self.halt)
 }
 
-func (self *CodeGen) translate_OP_break(p *x86_64.Program, _ *ir.Ir) {
+func (self *CodeGen) translate_OP_break(p *x86_64.Program, _ *hir.Ir) {
     p.INT(3)
 }

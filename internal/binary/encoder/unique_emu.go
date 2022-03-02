@@ -17,7 +17,7 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
 func bool2u64(v bool) uint64 {
@@ -28,7 +28,7 @@ func bool2u64(v bool) uint64 {
     }
 }
 
-func emu_gcall_unique32(ctx ir.CallContext) {
+func emu_gcall_unique32(ctx hir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid unique32 call")
     } else {
@@ -36,7 +36,7 @@ func emu_gcall_unique32(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_unique64(ctx ir.CallContext) {
+func emu_gcall_unique64(ctx hir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid unique64 call")
     } else {
@@ -44,7 +44,7 @@ func emu_gcall_unique64(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_uniquestr(ctx ir.CallContext) {
+func emu_gcall_uniquestr(ctx hir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid uniquestr call")
     } else {

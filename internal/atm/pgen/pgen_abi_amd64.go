@@ -22,14 +22,14 @@ import (
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/abi`
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
 type _SwapPair struct {
-    rs ir.Register
-    rd ir.Register
+    rs hir.Register
+    rd hir.Register
     rr x86_64.Register64
 }
 
@@ -111,19 +111,19 @@ func (self *CodeGen) abiRestoreReserved(p *x86_64.Program) {
 
 /** Argument & Return Value Management **/
 
-func (self *CodeGen) abiLoadInt(p *x86_64.Program, i int, d ir.GenericRegister) {
+func (self *CodeGen) abiLoadInt(p *x86_64.Program, i int, d hir.GenericRegister) {
     p.MOVQ(self.ctxt.argv(i), self.r(d))
 }
 
-func (self *CodeGen) abiLoadPtr(p *x86_64.Program, i int, d ir.PointerRegister) {
+func (self *CodeGen) abiLoadPtr(p *x86_64.Program, i int, d hir.PointerRegister) {
     p.MOVQ(self.ctxt.argv(i), self.r(d))
 }
 
-func (self *CodeGen) abiStoreInt(p *x86_64.Program, s ir.GenericRegister, i int) {
+func (self *CodeGen) abiStoreInt(p *x86_64.Program, s hir.GenericRegister, i int) {
     self.internalStoreRet(p, s, i)
 }
 
-func (self *CodeGen) abiStorePtr(p *x86_64.Program, s ir.PointerRegister, i int) {
+func (self *CodeGen) abiStorePtr(p *x86_64.Program, s hir.PointerRegister, i int) {
     self.internalStoreRet(p, s, i)
 }
 
@@ -134,8 +134,8 @@ func (self *CodeGen) abiStorePtr(p *x86_64.Program, s ir.PointerRegister, i int)
 //        generated code (guaranteed by `{encoder,decoder}/translator.go`),
 //        everything generated after this is under our control, so it should be
 //        fine. This should be fixed once SSA backend is ready.
-func (self *CodeGen) internalStoreRet(p *x86_64.Program, s ir.Register, i int) {
-    var r ir.Register
+func (self *CodeGen) internalStoreRet(p *x86_64.Program, s hir.Register, i int) {
+    var r hir.Register
     var m abi.Parameter
 
     /* if return with stack, store directly */
@@ -165,7 +165,7 @@ func (self *CodeGen) internalStoreRet(p *x86_64.Program, s ir.Register, i int) {
 
 /** Memory Zeroing **/
 
-func (self *CodeGen) abiBlockZero(p *x86_64.Program, pd ir.PointerRegister, nb int64) {
+func (self *CodeGen) abiBlockZero(p *x86_64.Program, pd hir.PointerRegister, nb int64) {
     var dp int32
     var rd x86_64.Register64
 
@@ -279,11 +279,11 @@ var reservedRegisters = map[x86_64.Register64]bool {
     R15: true,
 }
 
-func ri2reg(ri uint8) ir.Register {
-    if ri & ir.ArgPointer == 0 {
-        return ir.GenericRegister(ri & ir.ArgMask)
+func ri2reg(ri uint8) hir.Register {
+    if ri & hir.ArgPointer == 0 {
+        return hir.GenericRegister(ri & hir.ArgMask)
     } else {
-        return ir.PointerRegister(ri & ir.ArgMask)
+        return hir.PointerRegister(ri & hir.ArgMask)
     }
 }
 
@@ -296,19 +296,19 @@ func checkfp(fp uintptr) uintptr {
 }
 
 func checkptr(ri uint8, arg abi.Parameter) bool {
-    return arg.IsPointer() == ((ri & ir.ArgPointer) != 0)
+    return arg.IsPointer() == ((ri & hir.ArgPointer) != 0)
 }
 
-func (self *CodeGen) abiCallGo(p *x86_64.Program, v *ir.Ir) {
-    self.internalCallFunction(p, v, nil, func(fp ir.CallHandle) {
+func (self *CodeGen) abiCallGo(p *x86_64.Program, v *hir.Ir) {
+    self.internalCallFunction(p, v, nil, func(fp hir.CallHandle) {
         p.MOVQ(checkfp(fp.Func), R12)
         p.CALLQ(R12)
     })
 }
 
-func (self *CodeGen) abiCallNative(p *x86_64.Program, v *ir.Ir) {
-    rv := ir.Register(nil)
-    fp := ir.LookupCall(v.Iv)
+func (self *CodeGen) abiCallNative(p *x86_64.Program, v *hir.Ir) {
+    rv := hir.Register(nil)
+    fp := hir.LookupCall(v.Iv)
 
     /* native function can have at most 1 return value */
     if v.Rn > 1 {
@@ -361,8 +361,8 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *ir.Ir) {
     }
 }
 
-func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *ir.Ir) {
-    self.internalCallFunction(p, v, v.Pd, func(fp ir.CallHandle) {
+func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *hir.Ir) {
+    self.internalCallFunction(p, v, v.Pd, func(fp hir.CallHandle) {
         p.MOVQ(self.ctxt.slot(v.Ps), R12)
         p.CALLQ(Ptr(R12, int32(rt.GoItabFuncBase) + int32(fp.Slot) *abi.PtrSize))
     })
@@ -378,7 +378,7 @@ func (self *CodeGen) internalSetArg(p *x86_64.Program, ri uint8, arg abi.Paramet
     }
 }
 
-func (self *CodeGen) internalSetStack(p *x86_64.Program, rr ir.Register, arg abi.Parameter) {
+func (self *CodeGen) internalSetStack(p *x86_64.Program, rr hir.Register, arg abi.Parameter) {
     if rr.Z() {
         p.MOVQ(0, Ptr(RSP, int32(arg.Mem)))
     } else {
@@ -386,7 +386,7 @@ func (self *CodeGen) internalSetStack(p *x86_64.Program, rr ir.Register, arg abi
     }
 }
 
-func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr ir.Register, arg abi.Parameter, clobberSet map[x86_64.Register64]bool) {
+func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr hir.Register, arg abi.Parameter, clobberSet map[x86_64.Register64]bool) {
     if rr.Z() {
         p.XORL(x86_64.Register32(arg.Reg), x86_64.Register32(arg.Reg))
     } else if lr := self.r(rr); clobberSet[lr] {
@@ -398,11 +398,11 @@ func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr ir.Register, arg 
     }
 }
 
-func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *ir.Ir, this ir.Register, makeFuncCall func(fp ir.CallHandle)) {
+func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *hir.Ir, this hir.Register, makeFuncCall func(fp hir.CallHandle)) {
     ac := 0
-    fp := ir.LookupCall(v.Iv)
+    fp := hir.LookupCall(v.Iv)
     fv := abi.ABI.FnTab[fp.Id]
-    rm := make(map[ir.Register]int32)
+    rm := make(map[hir.Register]int32)
     cs := make(map[x86_64.Register64]bool)
 
     /* find the function */

@@ -19,7 +19,7 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -84,7 +84,7 @@ func uniquestr(p unsafe.Pointer, nb int) bool {
 }
 
 var (
-    F_unique32  = ir.RegisterGCall(unique32, emu_gcall_unique32)
-    F_unique64  = ir.RegisterGCall(unique64, emu_gcall_unique64)
-    F_uniquestr = ir.RegisterGCall(uniquestr, emu_gcall_uniquestr)
+    F_unique32  = hir.RegisterGCall(unique32, emu_gcall_unique32)
+    F_unique64  = hir.RegisterGCall(unique64, emu_gcall_unique64)
+    F_uniquestr = hir.RegisterGCall(uniquestr, emu_gcall_uniquestr)
 )

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package ir
+package hir
 
 import (
     `fmt`
@@ -49,13 +49,14 @@ const (
     OP_addpi                // Ps + Iv -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
-    OP_bts                  // Ry & (1 << (Rx % PTR_BITS)) != 0, Ry | (1 << (Rx % PTR_BITS)) -> Rz, Ry
+    OP_bs                   // Rx | (1 << (Ry % PTR_BITS)) -> Rz
+    OP_bt                   // Rx & (1 << (Ry % PTR_BITS)) ? 1 : 0 -> Rz
     OP_addi                 // Rx + Iv -> Ry
     OP_muli                 // Rx * Iv -> Ry
     OP_andi                 // Rx & Iv -> Ry
     OP_xori                 // Rx ^ Iv -> Ry
     OP_shri                 // Rx >> Iv -> Ry
-    OP_sbiti                // Rx | (1 << Iv) -> Ry
+    OP_bsi                  // Rx | (1 << Iv) -> Ry
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
     OP_swapq                // bswap64(Rx) -> Ry
@@ -127,7 +128,11 @@ func (self *Ir) Sw() (p []*Ir) {
     return
 }
 
-func (self *Ir) isBranch() bool {
+func (self *Ir) Free() {
+    freeInstr(self)
+}
+
+func (self *Ir) IsBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
 }
 
@@ -220,13 +225,14 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_bts   : return fmt.Sprintf("bts     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_bs    : return fmt.Sprintf("bs      %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_bt    : return fmt.Sprintf("bt      %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_shri  : return fmt.Sprintf("shr     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_sbiti : return fmt.Sprintf("sbit    %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_bsi   : return fmt.Sprintf("bs      %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)

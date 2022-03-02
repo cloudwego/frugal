@@ -17,11 +17,11 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_mapiternext(ctx ir.CallContext) {
+func emu_gcall_mapiternext(ctx hir.CallContext) {
     if !ctx.Verify("*", "") {
         panic("invalid mapiternext call")
     } else {
@@ -29,7 +29,7 @@ func emu_gcall_mapiternext(ctx ir.CallContext) {
     }
 }
 
-func emu_gcall_mapiterinit(ctx ir.CallContext) {
+func emu_gcall_mapiterinit(ctx hir.CallContext) {
     if !ctx.Verify("***", "") {
         panic("invalid MapBeginIterator call")
     } else {

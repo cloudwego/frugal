@@ -20,12 +20,12 @@ import (
     `testing`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/davecgh/go-spew/spew`
 )
 
 var (
-    testfn = ir.RegisterGCall(testemu_pfunc, func(ctx ir.CallContext) {
+    testfn = hir.RegisterGCall(testemu_pfunc, func(ctx hir.CallContext) {
         var v0 struct {P unsafe.Pointer; L uint64}
         var v1 struct {P unsafe.Pointer; L uint64}
         var v2 struct {P unsafe.Pointer; L uint64}
@@ -56,8 +56,8 @@ func testemu_pfunc(a string, b string, c string) (d string, e string) {
     return
 }
 
-func runEmulator(init func(emu *Emulator), prog func(p *ir.Builder)) *Emulator {
-    pb := ir.CreateBuilder()
+func runEmulator(init func(emu *Emulator), prog func(p *hir.Builder)) *Emulator {
+    pb := hir.CreateBuilder()
     prog(pb)
     emu := LoadProgram(pb.Build())
     if init != nil {
@@ -71,21 +71,21 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
     a := "aaa"
     b := "bbb"
     c := "ccc"
-    emu := runEmulator(nil, func(p *ir.Builder) {
-        p.IP(&a, ir.P0)
-        p.IP(&b, ir.P1)
-        p.IP(&c, ir.P2)
-        p.LQ(ir.P0, 8, ir.R0)
-        p.LP(ir.P0, 0, ir.P0)
-        p.LQ(ir.P1, 8, ir.R1)
-        p.LP(ir.P1, 0, ir.P1)
-        p.LQ(ir.P2, 8, ir.R2)
-        p.LP(ir.P2, 0, ir.P2)
-        p.GCALL(testfn).A0(ir.P0).A1(ir.R0).A2(ir.P1).A3(ir.R1).A4(ir.P2).A5(ir.R2).R0(ir.P0).R1(ir.R0).R2(ir.P1).R3(ir.R1)
-        p.STRP(ir.P0, 0)
-        p.STRQ(ir.R0, 1)
-        p.STRP(ir.P1, 2)
-        p.STRQ(ir.R1, 3)
+    emu := runEmulator(nil, func(p *hir.Builder) {
+        p.IP(&a, hir.P0)
+        p.IP(&b, hir.P1)
+        p.IP(&c, hir.P2)
+        p.LQ(hir.P0, 8, hir.R0)
+        p.LP(hir.P0, 0, hir.P0)
+        p.LQ(hir.P1, 8, hir.R1)
+        p.LP(hir.P1, 0, hir.P1)
+        p.LQ(hir.P2, 8, hir.R2)
+        p.LP(hir.P2, 0, hir.P2)
+        p.GCALL(testfn).A0(hir.P0).A1(hir.R0).A2(hir.P1).A3(hir.R1).A4(hir.P2).A5(hir.R2).R0(hir.P0).R1(hir.R0).R2(hir.P1).R3(hir.R1)
+        p.STRP(hir.P0, 0)
+        p.STRQ(hir.R0, 1)
+        p.STRP(hir.P1, 2)
+        p.STRQ(hir.R1, 3)
     })
     val := [2]struct{P unsafe.Pointer; L uint64} {
         {P: emu.Rp(0), L: emu.Ru(1)},
