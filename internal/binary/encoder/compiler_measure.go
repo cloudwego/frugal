@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
@@ -46,8 +46,8 @@ func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type) {
         case defs.T_i64     : p.i64(OP_size_const, 8)
         case defs.T_enum    : p.i64(OP_size_const, 4)
         case defs.T_double  : p.i64(OP_size_const, 8)
-        case defs.T_string  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
-        case defs.T_binary  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, atm.PtrSize, 1)
+        case defs.T_string  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, abi.PtrSize, 1)
+        case defs.T_binary  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, abi.PtrSize, 1)
         case defs.T_map     : self.measureMap(p, sp, vt)
         case defs.T_set     : self.measureSeq(p, sp, vt)
         case defs.T_list    : self.measureSeq(p, sp, vt)
@@ -132,7 +132,7 @@ func (self Compiler) measureSeq(p *Program, sp int, vt *defs.Type) {
 
     /* element is trivially measuable */
     if nb > 0 {
-        p.dyn(OP_size_dyn, atm.PtrSize, int64(nb))
+        p.dyn(OP_size_dyn, abi.PtrSize, int64(nb))
         p.pin(i)
         return
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,39 +19,40 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/emu`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-func link_emu(prog atm.Program) Encoder {
+func link_emu(prog ir.Program) Encoder {
     return func(buf unsafe.Pointer, len int, mem iov.BufferWriter, p unsafe.Pointer, rs *RuntimeState, st int) (ret int, err error) {
-        emu := atm.LoadProgram(prog)
+        ctx := emu.LoadProgram(prog)
         exc := (*rt.GoIface)(unsafe.Pointer(&err))
         iop := (*rt.GoIface)(unsafe.Pointer(&mem))
-        emu.Ap(0,buf)
-        emu.Au(1, uint64(len))
-        emu.Ap(2, unsafe.Pointer(iop.Itab))
-        emu.Ap(3, iop.Value)
-        emu.Ap(4, p)
-        emu.Ap(5, unsafe.Pointer(rs))
-        emu.Au(6, uint64(st))
-        emu.Run()
-        ret = int(emu.Ru(0))
-        exc.Itab = (*rt.GoItab)(emu.Rp(1))
-        exc.Value = emu.Rp(2)
-        emu.Free()
+        ctx.Ap(0,buf)
+        ctx.Au(1, uint64(len))
+        ctx.Ap(2, unsafe.Pointer(iop.Itab))
+        ctx.Ap(3, iop.Value)
+        ctx.Ap(4, p)
+        ctx.Ap(5, unsafe.Pointer(rs))
+        ctx.Au(6, uint64(st))
+        ctx.Run()
+        ret = int(ctx.Ru(0))
+        exc.Itab = (*rt.GoItab)(ctx.Rp(1))
+        exc.Value = ctx.Rp(2)
+        ctx.Free()
         return
     }
 }
 
-func emu_wbuf(ctx atm.CallContext, i int) (v iov.BufferWriter) {
+func emu_wbuf(ctx ir.CallContext, i int) (v iov.BufferWriter) {
     (*rt.GoIface)(unsafe.Pointer(&v)).Itab = (*rt.GoItab)(ctx.Ap(i))
     (*rt.GoIface)(unsafe.Pointer(&v)).Value = ctx.Ap(i + 1)
     return
 }
 
-func emu_setret(ctx atm.CallContext) func(int, error) {
+func emu_setret(ctx ir.CallContext) func(int, error) {
     return func(ret int, err error) {
         vv := (*rt.GoIface)(unsafe.Pointer(&err))
         ctx.Ru(0, uint64(ret))
@@ -60,7 +61,7 @@ func emu_setret(ctx atm.CallContext) func(int, error) {
     }
 }
 
-func emu_encode(ctx atm.CallContext) (int, error) {
+func emu_encode(ctx ir.CallContext) (int, error) {
     return encode(
         (*rt.GoType)(ctx.Ap(0)),
         ctx.Ap(1),
@@ -72,7 +73,7 @@ func emu_encode(ctx atm.CallContext) (int, error) {
     )
 }
 
-func emu_gcall_encode(ctx atm.CallContext) {
+func emu_gcall_encode(ctx ir.CallContext) {
     if !ctx.Verify("**i****i", "i**") {
         panic("invalid encode call")
     } else {

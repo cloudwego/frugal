@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,30 +19,31 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/emu`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func link_emu(prog atm.Program) Decoder {
+func link_emu(prog ir.Program) Decoder {
     return func(buf unsafe.Pointer, nb int, i int, p unsafe.Pointer, rs *RuntimeState, st int) (pos int, err error) {
-        emu := atm.LoadProgram(prog)
+        ctx := emu.LoadProgram(prog)
         ret := (*rt.GoIface)(unsafe.Pointer(&err))
-        emu.Ap(0, buf)
-        emu.Au(1, uint64(nb))
-        emu.Au(2, uint64(i))
-        emu.Ap(3, p)
-        emu.Ap(4, unsafe.Pointer(rs))
-        emu.Au(5, uint64(st))
-        emu.Run()
-        pos = int(emu.Ru(0))
-        ret.Itab = (*rt.GoItab)(emu.Rp(1))
-        ret.Value = emu.Rp(2)
-        emu.Free()
+        ctx.Ap(0, buf)
+        ctx.Au(1, uint64(nb))
+        ctx.Au(2, uint64(i))
+        ctx.Ap(3, p)
+        ctx.Ap(4, unsafe.Pointer(rs))
+        ctx.Au(5, uint64(st))
+        ctx.Run()
+        pos = int(ctx.Ru(0))
+        ret.Itab = (*rt.GoItab)(ctx.Rp(1))
+        ret.Value = ctx.Rp(2)
+        ctx.Free()
         return
     }
 }
 
-func emu_decode(ctx atm.CallContext) (int, error) {
+func emu_decode(ctx ir.CallContext) (int, error) {
     return decode(
         (*rt.GoType)(ctx.Ap(0)),
         ctx.Ap(1),
@@ -54,14 +55,14 @@ func emu_decode(ctx atm.CallContext) (int, error) {
     )
 }
 
-func emu_mkreturn(ctx atm.CallContext) func(int, error) {
+func emu_mkreturn(ctx ir.CallContext) func(int, error) {
     return func(ret int, err error) {
         ctx.Ru(0, uint64(ret))
         emu_seterr(ctx, 1, err)
     }
 }
 
-func emu_gcall_decode(ctx atm.CallContext) {
+func emu_gcall_decode(ctx ir.CallContext) {
     if !ctx.Verify("**ii**i", "i**") {
         panic("invalid decode call")
     } else {

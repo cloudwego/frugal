@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,17 +19,17 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_string(ctx atm.CallContext, i int) (v string) {
+func emu_string(ctx ir.CallContext, i int) (v string) {
     (*rt.GoString)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
     (*rt.GoString)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
     return
 }
 
-func emu_gcall_mapassign(ctx atm.CallContext) {
+func emu_gcall_mapassign(ctx ir.CallContext) {
     if !ctx.Verify("***", "*") {
         panic("invalid mapassign call")
     } else {
@@ -37,7 +37,7 @@ func emu_gcall_mapassign(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast32(ctx atm.CallContext) {
+func emu_gcall_mapassign_fast32(ctx ir.CallContext) {
     if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast32 call")
     } else {
@@ -45,7 +45,7 @@ func emu_gcall_mapassign_fast32(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast64(ctx atm.CallContext) {
+func emu_gcall_mapassign_fast64(ctx ir.CallContext) {
     if !ctx.Verify("**i", "*") {
         panic("invalid mapassign_fast64 call")
     } else {
@@ -53,7 +53,7 @@ func emu_gcall_mapassign_fast64(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_faststr(ctx atm.CallContext) {
+func emu_gcall_mapassign_faststr(ctx ir.CallContext) {
     if !ctx.Verify("***i", "*") {
         panic("invalid mapassign_faststr call")
     } else {
@@ -61,7 +61,7 @@ func emu_gcall_mapassign_faststr(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_mapassign_fast64ptr(ctx atm.CallContext) {
+func emu_gcall_mapassign_fast64ptr(ctx ir.CallContext) {
     if !ctx.Verify("***", "*") {
         panic("invalid mapassign_fast64 call")
     } else {

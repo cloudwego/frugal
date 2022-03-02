@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import (
     `os`
     `reflect`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/abi`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
@@ -72,23 +73,23 @@ const (
  */
 
 const (
-    WP = atm.P1
-    RP = atm.P2
-    RS = atm.P3
-    ET = atm.P4     // may also be used as a temporary pointer register
-    EP = atm.P5     // may also be used as a temporary pointer register
+    WP = ir.P1
+    RP = ir.P2
+    RS = ir.P3
+    ET = ir.P4      // may also be used as a temporary pointer register
+    EP = ir.P5      // may also be used as a temporary pointer register
 )
 
 const (
-    RL = atm.R2
-    RC = atm.R3
-    ST = atm.R4
+    RL = ir.R2
+    RC = ir.R3
+    ST = ir.R4
 )
 
 const (
-    TP = atm.P0
-    TR = atm.R0
-    UR = atm.R1
+    TP = ir.P0
+    TR = ir.R0
+    UR = ir.R1
 )
 
 const (
@@ -106,8 +107,8 @@ var (
     _E_duplicated = fmt.Errorf("frugal: duplicated element within sets")
 )
 
-func Translate(s Program) atm.Program {
-    p := atm.CreateBuilder()
+func Translate(s Program) ir.Program {
+    p := ir.CreateBuilder()
     prologue (p)
     program  (p, s)
     epilogue (p)
@@ -115,42 +116,42 @@ func Translate(s Program) atm.Program {
     return p.Build()
 }
 
-func errors(p *atm.Builder) {
+func errors(p *ir.Builder) {
     p.Label (LB_nomem)
     p.MOV   (UR, RL)
     p.IP    (&_E_nomem, TP)
-    p.JAL   ("_basic_error", atm.Pn)
+    p.JAL   ("_basic_error", ir.Pn)
     p.Label (LB_overflow)
     p.IP    (&_E_overflow, TP)
-    p.JAL   ("_basic_error", atm.Pn)
+    p.JAL   ("_basic_error", ir.Pn)
     p.Label (LB_duplicated)
     p.IP    (&_E_duplicated, TP)
     p.Label ("_basic_error")
     p.LP    (TP, 0, ET)
     p.LP    (TP, 8, EP)
-    p.JAL   (LB_error, atm.Pn)
+    p.JAL   (LB_error, ir.Pn)
 }
 
-func program(p *atm.Builder, s Program) {
+func program(p *ir.Builder, s Program) {
     for i, v := range s {
         p.Mark(i)
         translators[v.Op](p, v)
     }
 }
 
-func prologue(p *atm.Builder) {
+func prologue(p *ir.Builder) {
     p.LDAP  (ARG_buf, RP)
     p.LDAQ  (ARG_len, RC)
     p.LDAP  (ARG_p, WP)
     p.LDAP  (ARG_rs, RS)
     p.LDAQ  (ARG_st, ST)
-    p.MOV   (atm.Rz, RL)
+    p.MOV   (ir.Rz, RL)
 }
 
-func epilogue(p *atm.Builder) {
+func epilogue(p *ir.Builder) {
     p.Label (LB_halt)
-    p.MOVP  (atm.Pn, ET)
-    p.MOVP  (atm.Pn, EP)
+    p.MOVP  (ir.Pn, ET)
+    p.MOVP  (ir.Pn, EP)
     p.Label (LB_error)
     p.STRQ  (RL, RET_pos)
     p.STRP  (ET, RET_err_itab)
@@ -158,7 +159,7 @@ func epilogue(p *atm.Builder) {
     p.HALT  ()
 }
 
-var translators = [256]func(*atm.Builder, Instr) {
+var translators = [256]func(*ir.Builder, Instr) {
     OP_size_check    : translate_OP_size_check,
     OP_size_const    : translate_OP_size_const,
     OP_size_dyn      : translate_OP_size_dyn,
@@ -194,36 +195,36 @@ var translators = [256]func(*atm.Builder, Instr) {
     OP_halt          : translate_OP_halt,
 }
 
-func translate_OP_size_check(p *atm.Builder, v Instr) {
+func translate_OP_size_check(p *ir.Builder, v Instr) {
     p.ADDI  (RL, v.Iv, UR)
     p.BLTU  (RC, UR, LB_nomem)
 }
 
-func translate_OP_size_const(p *atm.Builder, v Instr) {
+func translate_OP_size_const(p *ir.Builder, v Instr) {
     p.ADDI  (RL, v.Iv, RL)
 }
 
-func translate_OP_size_dyn(p *atm.Builder, v Instr) {
+func translate_OP_size_dyn(p *ir.Builder, v Instr) {
     p.LQ    (WP, int64(v.Uv), TR)
     p.MULI  (TR, v.Iv, TR)
     p.ADD   (RL, TR, RL)
 }
 
-func translate_OP_size_map(p *atm.Builder, v Instr) {
+func translate_OP_size_map(p *ir.Builder, v Instr) {
     p.LP    (WP, 0, TP)
     p.LQ    (TP, 0, TR)
     p.MULI  (TR, v.Iv, TR)
     p.ADD   (RL, TR, RL)
 }
 
-func translate_OP_size_defer(p *atm.Builder, v Instr) {
+func translate_OP_size_defer(p *ir.Builder, v Instr) {
     p.IP    (v.Vt, TP)
     p.GCALL (F_encode).
       A0    (TP).
-      A1    (atm.Pn).
-      A2    (atm.Rz).
-      A3    (atm.Pn).
-      A4    (atm.Pn).
+      A1    (ir.Pn).
+      A2    (ir.Rz).
+      A3    (ir.Pn).
+      A4    (ir.Pn).
       A5    (WP).
       A6    (RS).
       A7    (ST).
@@ -234,35 +235,35 @@ func translate_OP_size_defer(p *atm.Builder, v Instr) {
     p.ADD   (RL, TR, RL)
 }
 
-func translate_OP_byte(p *atm.Builder, v Instr) {
+func translate_OP_byte(p *ir.Builder, v Instr) {
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, 1, RL)
     p.IB    (int8(v.Iv), TR)
     p.SB    (TR, TP, 0)
 }
 
-func translate_OP_word(p *atm.Builder, v Instr) {
+func translate_OP_word(p *ir.Builder, v Instr) {
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, 2, RL)
     p.IW    (bswap16(v.Iv), TR)
     p.SW    (TR, TP, 0)
 }
 
-func translate_OP_long(p *atm.Builder, v Instr) {
+func translate_OP_long(p *ir.Builder, v Instr) {
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, 4, RL)
     p.IL    (bswap32(v.Iv), TR)
     p.SL    (TR, TP, 0)
 }
 
-func translate_OP_quad(p *atm.Builder, v Instr) {
+func translate_OP_quad(p *ir.Builder, v Instr) {
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, 8, RL)
     p.IQ    (bswap64(v.Iv), TR)
     p.SQ    (TR, TP, 0)
 }
 
-func translate_OP_sint(p *atm.Builder, v Instr) {
+func translate_OP_sint(p *ir.Builder, v Instr) {
     p.ADDP  (RP, RL, TP)
     p.ADDI  (RL, v.Iv, RL)
 
@@ -276,7 +277,7 @@ func translate_OP_sint(p *atm.Builder, v Instr) {
     }
 }
 
-func translate_OP_length(p *atm.Builder, v Instr) {
+func translate_OP_length(p *ir.Builder, v Instr) {
     p.LL    (WP, v.Iv, TR)
     p.SWAPL (TR, TR)
     p.ADDP  (RP, RL, TP)
@@ -284,7 +285,7 @@ func translate_OP_length(p *atm.Builder, v Instr) {
     p.SL    (TR, TP, 0)
 }
 
-func translate_OP_memcpy_1(p *atm.Builder) {
+func translate_OP_memcpy_1(p *ir.Builder) {
     p.IQ    (_N_page, UR)
     p.BGEU  (UR, TR, "_do_copy_{n}")
     p.LDAP  (ARG_mem_itab, ET)
@@ -299,7 +300,7 @@ func translate_OP_memcpy_1(p *atm.Builder) {
       R0    (ET).
       R1    (EP)
     p.BNEN  (ET, LB_error)
-    p.JAL   ("_done_{n}", atm.Pn)
+    p.JAL   ("_done_{n}", ir.Pn)
     p.Label ("_do_copy_{n}")
     p.ADD   (RL, TR, UR)
     p.BLTU  (RC, UR, LB_nomem)
@@ -309,9 +310,9 @@ func translate_OP_memcpy_1(p *atm.Builder) {
     p.Label ("_done_{n}")
 }
 
-func translate_OP_memcpy_be(p *atm.Builder, v Instr) {
+func translate_OP_memcpy_be(p *ir.Builder, v Instr) {
     p.LQ    (WP, int64(v.Uv), TR)
-    p.BEQ   (TR, atm.Rz, "_done_{n}")
+    p.BEQ   (TR, ir.Rz, "_done_{n}")
     p.LP    (WP, 0, TP)
 
     /* special case: unit of a single byte */
@@ -327,7 +328,7 @@ func translate_OP_memcpy_be(p *atm.Builder, v Instr) {
     p.ADDP  (RP, RL, EP)
     p.MOV   (UR, RL)
     p.Label ("_loop_{n}")
-    p.BEQ   (TR, atm.Rz, "_done_{n}")
+    p.BEQ   (TR, ir.Rz, "_done_{n}")
 
     /* load-swap-store sequence */
     switch v.Iv {
@@ -341,19 +342,19 @@ func translate_OP_memcpy_be(p *atm.Builder, v Instr) {
     p.SUBI  (TR, 1, TR)
     p.ADDPI (TP, v.Iv, TP)
     p.ADDPI (EP, v.Iv, EP)
-    p.JAL   ("_loop_{n}", atm.Pn)
+    p.JAL   ("_loop_{n}", ir.Pn)
     p.Label ("_done_{n}")
 }
 
-func translate_OP_seek(p *atm.Builder, v Instr) {
+func translate_OP_seek(p *ir.Builder, v Instr) {
     p.ADDPI (WP, v.Iv, WP)
 }
 
-func translate_OP_deref(p *atm.Builder, _ Instr) {
+func translate_OP_deref(p *ir.Builder, _ Instr) {
     p.LP    (WP, 0, WP)
 }
 
-func translate_OP_defer(p *atm.Builder, v Instr) {
+func translate_OP_defer(p *ir.Builder, v Instr) {
     p.IP    (v.Vt, TP)
     p.LDAP  (ARG_mem_itab, ET)
     p.LDAP  (ARG_mem_data, EP)
@@ -376,7 +377,7 @@ func translate_OP_defer(p *atm.Builder, v Instr) {
     p.ADD   (RL, TR, RL)
 }
 
-func translate_OP_map_len(p *atm.Builder, _ Instr) {
+func translate_OP_map_len(p *ir.Builder, _ Instr) {
     p.LP    (WP, 0, TP)
     p.LQ    (TP, 0, TR)
     p.SWAPL (TR, TR)
@@ -385,23 +386,23 @@ func translate_OP_map_len(p *atm.Builder, _ Instr) {
     p.SL    (TR, TP, 0)
 }
 
-func translate_OP_map_key(p *atm.Builder, _ Instr) {
+func translate_OP_map_key(p *ir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MiOffset + MiKeyOffset, WP)
 }
 
-func translate_OP_map_next(p *atm.Builder, _ Instr) {
+func translate_OP_map_next(p *ir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
     p.ADDPI (TP, MiOffset, TP)
     p.GCALL (F_mapiternext).A0(TP)
 }
 
-func translate_OP_map_value(p *atm.Builder, _ Instr) {
+func translate_OP_map_value(p *ir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MiOffset + MiValueOffset, WP)
 }
 
-func translate_OP_map_begin(p *atm.Builder, v Instr) {
+func translate_OP_map_begin(p *ir.Builder, v Instr) {
     p.IP    (v.Vt, ET)
     p.LP    (WP, 0, EP)
     p.ADDP  (RS, ST, TP)
@@ -413,52 +414,52 @@ func translate_OP_map_begin(p *atm.Builder, v Instr) {
       A2    (TP)
 }
 
-func translate_OP_map_if_next(p *atm.Builder, v Instr) {
+func translate_OP_map_if_next(p *ir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MiOffset + MiKeyOffset, TP)
     p.BNEN  (TP, p.At(v.To))
 }
 
-func translate_OP_map_if_empty(p *atm.Builder, v Instr) {
+func translate_OP_map_if_empty(p *ir.Builder, v Instr) {
     p.LP    (WP, 0, TP)
     p.LQ    (TP, 0, TR)
-    p.BEQ   (TR, atm.Rz, p.At(v.To))
+    p.BEQ   (TR, ir.Rz, p.At(v.To))
 }
 
-func translate_OP_list_decr(p *atm.Builder, _ Instr) {
+func translate_OP_list_decr(p *ir.Builder, _ Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, LnOffset, TR)
     p.SUBI  (TR, 1, TR)
     p.SQ    (TR, TP, LnOffset)
 }
 
-func translate_OP_list_begin(p *atm.Builder, _ Instr) {
-    p.LQ    (WP, atm.PtrSize, TR)
+func translate_OP_list_begin(p *ir.Builder, _ Instr) {
+    p.LQ    (WP, abi.PtrSize, TR)
     p.LP    (WP, 0, WP)
     p.ADDP  (RS, ST, TP)
     p.SQ    (TR, TP, LnOffset)
 }
 
-func translate_OP_list_if_next(p *atm.Builder, v Instr) {
+func translate_OP_list_if_next(p *ir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, LnOffset, TR)
-    p.BNE   (TR, atm.Rz, p.At(v.To))
+    p.BNE   (TR, ir.Rz, p.At(v.To))
 }
 
-func translate_OP_list_if_empty(p *atm.Builder, v Instr) {
-    p.LQ    (WP, atm.PtrSize, TR)
-    p.BEQ   (TR, atm.Rz, p.At(v.To))
+func translate_OP_list_if_empty(p *ir.Builder, v Instr) {
+    p.LQ    (WP, abi.PtrSize, TR)
+    p.BEQ   (TR, ir.Rz, p.At(v.To))
 }
 
-func translate_OP_unique(p *atm.Builder, v Instr) {
+func translate_OP_unique(p *ir.Builder, v Instr) {
     p.IB    (2, UR)
-    p.LQ    (WP, atm.PtrSize, TR)
+    p.LQ    (WP, abi.PtrSize, TR)
     p.BLTU  (TR, UR, "_ok_{n}")
     translate_OP_unique_type(p, v.Vt)
     p.Label ("_ok_{n}")
 }
 
-func translate_OP_unique_type(p *atm.Builder, vt *rt.GoType) {
+func translate_OP_unique_type(p *ir.Builder, vt *rt.GoType) {
     switch vt.Kind() {
         case reflect.Bool    : translate_OP_unique_b(p)
         case reflect.Int     : translate_OP_unique_int(p)
@@ -476,7 +477,7 @@ func translate_OP_unique_type(p *atm.Builder, vt *rt.GoType) {
     }
 }
 
-func translate_OP_unique_b(p *atm.Builder) {
+func translate_OP_unique_b(p *ir.Builder) {
     p.BLTU  (UR, TR, LB_duplicated)
     p.LP    (WP, 0, TP)
     p.LB    (TP, 0, TR)
@@ -484,19 +485,19 @@ func translate_OP_unique_b(p *atm.Builder) {
     p.BEQ   (TR, UR, LB_duplicated)
 }
 
-func translate_OP_unique_i8(p *atm.Builder) {
+func translate_OP_unique_i8(p *ir.Builder) {
     p.IQ    (RangeUint8, UR)
     p.BLTU  (UR, TR, LB_duplicated)
     translate_OP_unique_small(p, RangeUint8 / 8, 1, p.LB)
 }
 
-func translate_OP_unique_i16(p *atm.Builder) {
+func translate_OP_unique_i16(p *ir.Builder) {
     p.IQ    (RangeUint16, UR)
     p.BLTU  (UR, TR, LB_duplicated)
     translate_OP_unique_small(p, RangeUint16 / 8, 2, p.LW)
 }
 
-func translate_OP_unique_int(p *atm.Builder) {
+func translate_OP_unique_int(p *ir.Builder) {
     switch defs.IntSize {
         case 4  : translate_OP_unique_i32(p)
         case 8  : translate_OP_unique_i64(p)
@@ -504,11 +505,11 @@ func translate_OP_unique_int(p *atm.Builder) {
     }
 }
 
-func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.PointerRegister, int64, atm.GenericRegister) *atm.Instr) {
+func translate_OP_unique_small(p *ir.Builder, nb int64, dv int64, ld func(ir.PointerRegister, int64, ir.GenericRegister) *ir.Ir) {
     p.ADDPI (RS, BmOffset, ET)
     p.BZERO (nb, ET)
     p.LP    (WP, 0, EP)
-    p.JAL   ("_first_{n}", atm.Pn)
+    p.JAL   ("_first_{n}", ir.Pn)
     p.Label ("_loop_{n}")
     p.ADDPI (EP, dv, EP)
     p.Label ("_first_{n}")
@@ -520,53 +521,53 @@ func translate_OP_unique_small(p *atm.Builder, nb int64, dv int64, ld func(atm.P
     p.LQ    (TP, 0, UR)
     p.BTS   (RC, UR, RC)
     p.SQ    (UR, TP, 0)
-    p.BNE   (RC, atm.Rz, LB_duplicated)
+    p.BNE   (RC, ir.Rz, LB_duplicated)
     p.SUBI  (TR, 1, TR)
-    p.BNE   (TR, atm.Rz, "_loop_{n}")
+    p.BNE   (TR, ir.Rz, "_loop_{n}")
     p.LDAQ  (ARG_len, RC)
 }
 
-func translate_OP_unique_i32(p *atm.Builder) {
+func translate_OP_unique_i32(p *ir.Builder) {
     p.LP    (WP, 0, TP)
     p.GCALL (F_unique32).
       A0    (TP).
       A1    (TR).
       R0    (TR)
-    p.BNE   (TR, atm.Rz, LB_duplicated)
+    p.BNE   (TR, ir.Rz, LB_duplicated)
 }
 
-func translate_OP_unique_i64(p *atm.Builder) {
+func translate_OP_unique_i64(p *ir.Builder) {
     p.LP    (WP, 0, TP)
     p.GCALL (F_unique64).
       A0    (TP).
       A1    (TR).
       R0    (TR)
-    p.BNE   (TR, atm.Rz, LB_duplicated)
+    p.BNE   (TR, ir.Rz, LB_duplicated)
 }
 
-func translate_OP_unique_str(p *atm.Builder) {
+func translate_OP_unique_str(p *ir.Builder) {
     p.LP    (WP, 0, TP)
     p.GCALL (F_uniquestr).
       A0    (TP).
       A1    (TR).
       R0    (TR)
-    p.BNE   (TR, atm.Rz, LB_duplicated)
+    p.BNE   (TR, ir.Rz, LB_duplicated)
 }
 
-func translate_OP_goto(p *atm.Builder, v Instr) {
-    p.JAL   (p.At(v.To), atm.Pn)
+func translate_OP_goto(p *ir.Builder, v Instr) {
+    p.JAL   (p.At(v.To), ir.Pn)
 }
 
-func translate_OP_if_nil(p *atm.Builder, v Instr) {
+func translate_OP_if_nil(p *ir.Builder, v Instr) {
     p.LP    (WP, 0, TP)
     p.BEQN  (TP, p.At(v.To))
 }
 
-func translate_OP_if_hasbuf(p *atm.Builder, v Instr) {
+func translate_OP_if_hasbuf(p *ir.Builder, v Instr) {
     p.BNEN  (RP, p.At(v.To))
 }
 
-func translate_OP_make_state(p *atm.Builder, _ Instr) {
+func translate_OP_make_state(p *ir.Builder, _ Instr) {
     p.IQ    (StateMax, TR)
     p.BGEU  (ST, TR, LB_overflow)
     p.ADDP  (RS, ST, TP)
@@ -574,13 +575,13 @@ func translate_OP_make_state(p *atm.Builder, _ Instr) {
     p.ADDI  (ST, StateSize, ST)
 }
 
-func translate_OP_drop_state(p *atm.Builder, _ Instr) {
+func translate_OP_drop_state(p *ir.Builder, _ Instr) {
     p.SUBI  (ST, StateSize, ST)
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, WpOffset, WP)
-    p.SP    (atm.Pn, TP, WpOffset)
+    p.SP    (ir.Pn, TP, WpOffset)
 }
 
-func translate_OP_halt(p *atm.Builder, _ Instr) {
-    p.JAL   (LB_halt, atm.Pn)
+func translate_OP_halt(p *ir.Builder, _ Instr) {
+    p.JAL   (LB_halt, ir.Pn)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
     `math/bits`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
@@ -260,7 +260,7 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
     return
 }
 
-func emu_ccall_skip(ctx atm.CallContext) {
+func emu_ccall_skip(ctx ir.CallContext) {
     if !ctx.Verify("**ii", "i") {
         panic("invalid skip call")
     } else {

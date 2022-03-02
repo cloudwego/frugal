@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package decoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
 )
 
 const (
@@ -27,5 +27,5 @@ const (
 )
 
 var (
-    C_skip = atm.RegisterCCall(archSkippingFn(), emu_ccall_skip)
+    C_skip = ir.RegisterCCall(archSkippingFn(), emu_ccall_skip)
 )

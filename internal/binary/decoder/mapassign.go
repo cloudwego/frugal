@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -49,9 +49,9 @@ func mapassign_faststr(t *rt.GoMapType, h *rt.GoMap, s string) unsafe.Pointer
 func mapassign_fast64ptr(t *rt.GoMapType, h *rt.GoMap, key unsafe.Pointer) unsafe.Pointer
 
 var (
-    F_mapassign           = atm.RegisterGCall(mapassign, emu_gcall_mapassign)
-    F_mapassign_fast32    = atm.RegisterGCall(mapassign_fast32, emu_gcall_mapassign_fast32)
-    F_mapassign_fast64    = atm.RegisterGCall(mapassign_fast64, emu_gcall_mapassign_fast64)
-    F_mapassign_faststr   = atm.RegisterGCall(mapassign_faststr, emu_gcall_mapassign_faststr)
-    F_mapassign_fast64ptr = atm.RegisterGCall(mapassign_fast64ptr, emu_gcall_mapassign_fast64ptr)
+    F_mapassign           = ir.RegisterGCall(mapassign, emu_gcall_mapassign)
+    F_mapassign_fast32    = ir.RegisterGCall(mapassign_fast32, emu_gcall_mapassign_fast32)
+    F_mapassign_fast64    = ir.RegisterGCall(mapassign_fast64, emu_gcall_mapassign_fast64)
+    F_mapassign_faststr   = ir.RegisterGCall(mapassign_faststr, emu_gcall_mapassign_faststr)
+    F_mapassign_fast64ptr = ir.RegisterGCall(mapassign_fast64ptr, emu_gcall_mapassign_fast64ptr)
 )

@@ -19,10 +19,10 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
 )
 
-func emu_gcall_newFieldBitmap(ctx atm.CallContext) {
+func emu_gcall_newFieldBitmap(ctx ir.CallContext) {
     if !ctx.Verify("", "*") {
         panic("invalid newFieldBitmap call")
     } else {
@@ -30,7 +30,7 @@ func emu_gcall_newFieldBitmap(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_FieldBitmap_Free(ctx atm.CallContext) {
+func emu_gcall_FieldBitmap_Free(ctx ir.CallContext) {
     if !ctx.Verify("*", "") {
         panic("invalid (*FieldBitmap).Free call")
     } else {

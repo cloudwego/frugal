@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package decoder
 import (
     `sync`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
 )
 
 const (
@@ -32,8 +32,8 @@ var (
 )
 
 var (
-    F_newFiedBitmap    = atm.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
-    F_FieldBitmap_Free = atm.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
+    F_newFiedBitmap    = ir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
+    F_FieldBitmap_Free = ir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
 )
 
 type (

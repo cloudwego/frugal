@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
 )
 
 func bool2u64(v bool) uint64 {
@@ -28,7 +28,7 @@ func bool2u64(v bool) uint64 {
     }
 }
 
-func emu_gcall_unique32(ctx atm.CallContext) {
+func emu_gcall_unique32(ctx ir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid unique32 call")
     } else {
@@ -36,7 +36,7 @@ func emu_gcall_unique32(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_unique64(ctx atm.CallContext) {
+func emu_gcall_unique64(ctx ir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid unique64 call")
     } else {
@@ -44,7 +44,7 @@ func emu_gcall_unique64(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_uniquestr(ctx atm.CallContext) {
+func emu_gcall_uniquestr(ctx ir.CallContext) {
     if !ctx.Verify("*i", "i") {
         panic("invalid uniquestr call")
     } else {

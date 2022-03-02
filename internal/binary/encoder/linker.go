@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/utils`
 )
 
 type Linker interface {
-    Link(p atm.Program) Encoder
+    Link(p ir.Program) Encoder
 }
 
 var (
     linker   Linker
-    F_encode atm.CallHandle
+    F_encode ir.CallHandle
 )
 
 func init() {
-    F_encode = atm.RegisterGCall(encode, emu_gcall_encode)
+    F_encode = ir.RegisterGCall(encode, emu_gcall_encode)
 }
 
-func Link(p atm.Program) Encoder {
+func Link(p ir.Program) Encoder {
     if linker == nil || utils.ForceEmulator {
         return link_emu(p)
     } else {

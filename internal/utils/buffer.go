@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package utils
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/iov`
 )
 
-var FnWrite = atm.RegisterICall(
+var FnWrite = ir.RegisterICall(
     rt.GetMethod((*iov.BufferWriter)(nil), "WriteDirect"),
     emu_icall_ZeroCopyWriter_WriteDirect,
 )

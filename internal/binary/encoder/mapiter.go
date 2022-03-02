@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package encoder
 import (
     _ `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -34,6 +34,6 @@ func mapiternext(it *rt.GoMapIterator)
 func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
 var (
-    F_mapiternext = atm.RegisterGCall(mapiternext, emu_gcall_mapiternext)
-    F_mapiterinit = atm.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
+    F_mapiternext = ir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+    F_mapiterinit = ir.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
 )

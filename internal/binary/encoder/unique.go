@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -84,7 +84,7 @@ func uniquestr(p unsafe.Pointer, nb int) bool {
 }
 
 var (
-    F_unique32  = atm.RegisterGCall(unique32, emu_gcall_unique32)
-    F_unique64  = atm.RegisterGCall(unique64, emu_gcall_unique64)
-    F_uniquestr = atm.RegisterGCall(uniquestr, emu_gcall_uniquestr)
+    F_unique32  = ir.RegisterGCall(unique32, emu_gcall_unique32)
+    F_unique64  = ir.RegisterGCall(unique64, emu_gcall_unique64)
+    F_uniquestr = ir.RegisterGCall(uniquestr, emu_gcall_uniquestr)
 )

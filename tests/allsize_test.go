@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,10 +77,10 @@ type Sample struct {
 var samples []Sample
 
 var (
-	bytesCount  int = 16
-	stringCount int = 16
-	listCount   int = 8
-	mapCount    int = 8
+	bytesCount  = 16
+	stringCount = 16
+	listCount       = 8
+	mapCount        = 8
 )
 
 func getSamples() []Sample {

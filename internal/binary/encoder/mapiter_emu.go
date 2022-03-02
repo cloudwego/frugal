@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-func emu_gcall_mapiternext(ctx atm.CallContext) {
+func emu_gcall_mapiternext(ctx ir.CallContext) {
     if !ctx.Verify("*", "") {
         panic("invalid mapiternext call")
     } else {
@@ -29,7 +29,7 @@ func emu_gcall_mapiternext(ctx atm.CallContext) {
     }
 }
 
-func emu_gcall_mapiterinit(ctx atm.CallContext) {
+func emu_gcall_mapiterinit(ctx ir.CallContext) {
     if !ctx.Verify("***", "") {
         panic("invalid MapBeginIterator call")
     } else {

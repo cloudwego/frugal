@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
@@ -45,8 +45,8 @@ func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
         case defs.T_i64     : p.i64(OP_size_check, 8); p.i64(OP_sint, 8)
         case defs.T_enum    : p.i64(OP_size_check, 4); p.i64(OP_sint, 4)
         case defs.T_double  : p.i64(OP_size_check, 8); p.i64(OP_sint, 8)
-        case defs.T_string  : p.i64(OP_size_check, 4); p.i64(OP_length, atm.PtrSize); p.dyn(OP_memcpy_be, atm.PtrSize, 1)
-        case defs.T_binary  : p.i64(OP_size_check, 4); p.i64(OP_length, atm.PtrSize); p.dyn(OP_memcpy_be, atm.PtrSize, 1)
+        case defs.T_string  : p.i64(OP_size_check, 4); p.i64(OP_length, abi.PtrSize); p.dyn(OP_memcpy_be, abi.PtrSize, 1)
+        case defs.T_binary  : p.i64(OP_size_check, 4); p.i64(OP_length, abi.PtrSize); p.dyn(OP_memcpy_be, abi.PtrSize, 1)
         case defs.T_map     : self.compileMap(p, sp, vt)
         case defs.T_set     : self.compileSeq(p, sp, vt, true)
         case defs.T_list    : self.compileSeq(p, sp, vt, false)
@@ -114,7 +114,7 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, verifyUnique 
     p.tag(sp)
     p.i64(OP_size_check, 5)
     p.i64(OP_byte, int64(tt))
-    p.i64(OP_length, atm.PtrSize)
+    p.i64(OP_length, abi.PtrSize)
 
     /* check for nil slice */
     i := p.pc()
@@ -137,7 +137,7 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, verifyUnique 
 
     /* check if this is the special case */
     if nb != -1 {
-        p.dyn(OP_memcpy_be, atm.PtrSize, int64(nb))
+        p.dyn(OP_memcpy_be, abi.PtrSize, int64(nb))
         p.pin(i)
         return
     }

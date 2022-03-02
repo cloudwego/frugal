@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ package decoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/pgen`
     `github.com/cloudwego/frugal/internal/loader`
 )
 
@@ -35,8 +36,8 @@ func init() {
     SetLinker(new(LinkerAMD64))
 }
 
-func (LinkerAMD64) Link(p atm.Program) Decoder {
-    cc := atm.CreateCodeGen((Decoder)(nil))
+func (LinkerAMD64) Link(p ir.Program) Decoder {
+    cc := pgen.CreateCodeGen((Decoder)(nil))
     fp := loader.Loader(cc.Generate(p, _NativeStackSize)).Load("decoder", cc.Frame())
     return *(*Decoder)(unsafe.Pointer(&fp))
 }

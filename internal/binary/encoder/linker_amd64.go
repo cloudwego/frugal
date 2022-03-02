@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ package encoder
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
+    `github.com/cloudwego/frugal/internal/atm/pgen`
     `github.com/cloudwego/frugal/internal/loader`
 )
 
@@ -31,8 +32,8 @@ func init() {
     SetLinker(new(LinkerAMD64))
 }
 
-func (LinkerAMD64) Link(p atm.Program) Encoder {
-    cc := atm.CreateCodeGen((Encoder)(nil))
+func (LinkerAMD64) Link(p ir.Program) Encoder {
+    cc := pgen.CreateCodeGen((Encoder)(nil))
     fp := loader.Loader(cc.Generate(p, 0)).Load("encoder", cc.Frame())
     return *(*Encoder)(unsafe.Pointer(&fp))
 }

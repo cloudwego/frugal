@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 ByteDance Inc.
+ * Copyright 2022 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
     `fmt`
     `math/bits`
 
-    `github.com/cloudwego/frugal/internal/atm`
+    `github.com/cloudwego/frugal/internal/atm/ir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -50,8 +50,8 @@ func error_missing(t *rt.GoType, i int, m uint64) error {
 }
 
 var (
-    F_error_eof     = atm.RegisterGCall(error_eof, emu_gcall_error_eof)
-    F_error_skip    = atm.RegisterGCall(error_skip, emu_gcall_error_skip)
-    F_error_type    = atm.RegisterGCall(error_type, emu_gcall_error_type)
-    F_error_missing = atm.RegisterGCall(error_missing, emu_gcall_error_missing)
+    F_error_eof     = ir.RegisterGCall(error_eof, emu_gcall_error_eof)
+    F_error_skip    = ir.RegisterGCall(error_skip, emu_gcall_error_skip)
+    F_error_type    = ir.RegisterGCall(error_type, emu_gcall_error_type)
+    F_error_missing = ir.RegisterGCall(error_missing, emu_gcall_error_missing)
 )
