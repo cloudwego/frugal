@@ -30,15 +30,15 @@ type OpCode byte
 const (
     OP_nop OpCode = iota    // no operation
     OP_ip                   // ptr(Pr) -> Pd
-    OP_lb                   // i64(*(* i8)(Ps + Iv)) -> Rx
-    OP_lw                   // i64(*(*i16)(Ps + Iv)) -> Rx
-    OP_ll                   // i64(*(*i32)(Ps + Iv)) -> Rx
-    OP_lq                   //     *(*i64)(Ps + Iv)  -> Rx
+    OP_lb                   // u64(*(* u8)(Ps + Iv)) -> Rx
+    OP_lw                   // u64(*(*u16)(Ps + Iv)) -> Rx
+    OP_ll                   // u64(*(*u32)(Ps + Iv)) -> Rx
+    OP_lq                   //     *(*u64)(Ps + Iv)  -> Rx
     OP_lp                   //     *(*ptr)(Ps + Iv)  -> Pd
-    OP_sb                   //  i8(Rx) -> *(*i8)(Pd + Iv)
-    OP_sw                   // i16(Rx) -> *(*i16)(Pd + Iv)
-    OP_sl                   // i32(Rx) -> *(*i32)(Pd + Iv)
-    OP_sq                   //     Rx  -> *(*i64)(Pd + Iv)
+    OP_sb                   //  u8(Rx) -> *(*u8)(Pd + Iv)
+    OP_sw                   // u16(Rx) -> *(*u16)(Pd + Iv)
+    OP_sl                   // u32(Rx) -> *(*u32)(Pd + Iv)
+    OP_sq                   //     Rx  -> *(*u64)(Pd + Iv)
     OP_sp                   //     Ps  -> *(*ptr)(Pd + Iv)
     OP_ldaq                 // arg[Iv] -> Rx
     OP_ldap                 // arg[Iv] -> Pd
