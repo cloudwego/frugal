@@ -17,6 +17,8 @@
 package hir
 
 import (
+    `fmt`
+    `runtime`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/abi`
@@ -59,6 +61,10 @@ func (self CallHandle) Call(r CallState, p *Ir) {
         itab: p.Ps,
         data: p.Pd,
     })
+}
+
+func (self CallHandle) String() string {
+    return fmt.Sprintf("%s[*%#x]", runtime.FuncForPC(self.Func).Name(), self.Func)
 }
 
 type CallContext struct {

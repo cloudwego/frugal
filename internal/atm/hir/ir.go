@@ -18,7 +18,6 @@ package hir
 
 import (
     `fmt`
-    `runtime`
     `strings`
     `unsafe`
 
@@ -135,11 +134,6 @@ func (self *Ir) IsBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jal
 }
 
-func (self *Ir) formatFunc() string {
-    fp := LookupCall(self.Iv)
-    return fmt.Sprintf("%s[*%#x]", runtime.FuncForPC(fp.Func).Name(), fp.Func)
-}
-
 func (self *Ir) formatCall() string {
     args := make([]string, self.An)
     rets := make([]string, self.Rn)
@@ -245,8 +239,8 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", self.formatRefs(refs, self.Br), self.Pd)
         case OP_bzero : return fmt.Sprintf("bzero   $%d, %s", self.Iv, self.Pd)
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
-        case OP_ccall : return fmt.Sprintf("ccall   %s, %s", self.formatFunc(), self.formatCall())
-        case OP_gcall : return fmt.Sprintf("gcall   %s, %s", self.formatFunc(), self.formatCall())
+        case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
+        case OP_gcall : return fmt.Sprintf("gcall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCall())
         case OP_halt  : return "halt"
         case OP_break : return "break"

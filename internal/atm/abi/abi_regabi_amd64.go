@@ -30,11 +30,7 @@ import (
     `github.com/chenzhuoyu/iasm/x86_64`
 )
 
-const (
-    _NI = 9 // number of integer registers
-)
-
-var regOrder = [_NI]x86_64.Register64 {
+var regOrder = [...]x86_64.Register64 {
     x86_64.RAX,
     x86_64.RBX,
     x86_64.RCX,
@@ -120,7 +116,7 @@ func (self *_StackAlloc) salloc(p []Parameter, vts ...reflect.Type) []Parameter 
 }
 
 func (self *_StackAlloc) valloc(p []Parameter, vts ...reflect.Type) []Parameter {
-    if self.i + len(vts) <= _NI {
+    if self.i + len(vts) <= len(regOrder) {
         return self.ralloc(p, vts...)
     } else {
         return self.salloc(p, vts...)
