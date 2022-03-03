@@ -236,8 +236,7 @@ var _OperandMask = [256]Operands {
     hir.OP_addpi : Ops | Opd,
     hir.OP_add   : Orx | Ory | Owz,
     hir.OP_sub   : Orx | Ory | Owz,
-    hir.OP_bs    : Orx | Ory | Owz,
-    hir.OP_bt    : Orx | Ory | Owz,
+    hir.OP_bts   : Orx | Ory | Owy | Owz,
     hir.OP_addi  : Orx | Owy,
     hir.OP_muli  : Orx | Owy,
     hir.OP_andi  : Orx | Owy,
@@ -594,8 +593,7 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_addpi : (*CodeGen).translate_OP_addpi,
     hir.OP_add   : (*CodeGen).translate_OP_add,
     hir.OP_sub   : (*CodeGen).translate_OP_sub,
-    hir.OP_bs    : (*CodeGen).translate_OP_bs,
-    hir.OP_bt    : (*CodeGen).translate_OP_bt,
+    hir.OP_bts   : (*CodeGen).translate_OP_bts,
     hir.OP_addi  : (*CodeGen).translate_OP_addi,
     hir.OP_muli  : (*CodeGen).translate_OP_muli,
     hir.OP_andi  : (*CodeGen).translate_OP_andi,
@@ -850,47 +848,27 @@ func (self *CodeGen) translate_OP_sub(p *x86_64.Program, v *hir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_bs(p *x86_64.Program, v *hir.Ir) {
-    if v.Rz != hir.Rz {
-        if v.Rx == hir.Rz {
-            if v.Ry == hir.Rz {
-                p.MOVL(1, x86_64.Register32(self.r(v.Rz)))
-            } else if v.Ry != v.Rz {
-                p.MOVL(1, x86_64.Register32(self.r(v.Rz)))
-                p.SHLQ(self.r(v.Ry), self.r(v.Rz))
-            } else {
-                p.MOVL(1, EAX)
-                p.SHLQ(self.r(v.Ry), EAX)
-                p.MOVQ(RAX, self.r(v.Rz))
-            }
-        } else {
-            if v.Ry == hir.Rz {
-                self.dup(p, v.Rx, v.Rz)
-                p.ORQ(1, x86_64.Register32(self.r(v.Rz)))
-            } else if v.Ry != v.Rz {
-                self.dup(p, v.Rx, v.Rz)
-                p.BTSQ(self.r(v.Ry), self.r(v.Rz))
-            } else {
-                p.MOVQ(self.r(v.Ry), RAX)
-                self.dup(p, v.Rx, v.Rz)
-                p.BTSQ(RAX, self.r(v.Rz))
-            }
-        }
-    }
-}
+func (self *CodeGen) translate_OP_bts(p *x86_64.Program, v *hir.Ir) {
+    x := v.Rx
+    y := v.Ry
+    z := v.Rz
 
-func (self *CodeGen) translate_OP_bt(p *x86_64.Program, v *hir.Ir) {
-    if v.Rz != hir.Rz {
-        if v.Rx == hir.Rz {
-            self.clr(p, v.Rz)
-        } else if v.Ry == hir.Rz {
-            self.dup(p, v.Rx, v.Rz)
-            p.ANDL(1, self.r(v.Rz))
-        } else {
-            p.BTQ(self.r(v.Ry), self.r(v.Rx))
-            p.SETC(self.r(v.Rz))
-            p.ANDL(1, self.r(v.Rz))
-        }
+    /* special case: y is zero */
+    if y == hir.Rz {
+        return
+    }
+
+    /* testing and setting the bits at the same time */
+    if x == hir.Rz {
+        p.BTSQ(0, self.r(y))
+    } else {
+        p.BTSQ(self.r(x), self.r(y))
+    }
+
+    /* set the result if expected */
+    if z != hir.Rz {
+        p.SETC(x86_64.Register8(self.r(z)))
+        p.ANDL(1, x86_64.Register32(self.r(z)))
     }
 }
 

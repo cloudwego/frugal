@@ -105,8 +105,6 @@ func (self *Emulator) Run() {
             case hir.OP_addpi : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))
             case hir.OP_add   : self.uv[p.Rz] = self.uv[p.Rx] + self.uv[p.Ry]
             case hir.OP_sub   : self.uv[p.Rz] = self.uv[p.Rx] - self.uv[p.Ry]
-            case hir.OP_bs    : self.uv[p.Ry] = self.uv[p.Rx] | (1 << self.uv[p.Ry])
-            case hir.OP_bt    : self.uv[p.Ry] = bool2u64(self.uv[p.Rx] & (1 << self.uv[p.Ry]) != 0)
             case hir.OP_addi  : self.uv[p.Ry] = self.uv[p.Rx] + uint64(p.Iv)
             case hir.OP_muli  : self.uv[p.Ry] = self.uv[p.Rx] * uint64(p.Iv)
             case hir.OP_andi  : self.uv[p.Ry] = self.uv[p.Rx] & uint64(p.Iv)
@@ -133,6 +131,12 @@ func (self *Emulator) Run() {
             case hir.OP_ccall: fallthrough
             case hir.OP_gcall: fallthrough
             case hir.OP_icall: hir.LookupCall(p.Iv).Call(self, p)
+
+            /* bit test and set */
+            case hir.OP_bts: {
+                self.uv[p.Rz] = bool2u64(self.uv[p.Ry] & (1 << self.uv[p.Rx]) != 0)
+                self.uv[p.Ry] |= 1 << self.uv[p.Rx]
+            }
 
             /* table switch */
             case hir.OP_bsw: {

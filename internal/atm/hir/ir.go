@@ -49,8 +49,7 @@ const (
     OP_addpi                // Ps + Iv -> Pd
     OP_add                  // Rx + Ry -> Rz
     OP_sub                  // Rx - Ry -> Rz
-    OP_bs                   // Rx | (1 << (Ry % PTR_BITS)) -> Rz
-    OP_bt                   // Rx & (1 << (Ry % PTR_BITS)) ? 1 : 0 -> Rz
+    OP_bts                  // Ry & (1 << (Rx % PTR_BITS)) != 0 -> Rz, Ry |= 1 << (Rx % PTR_BITS)
     OP_addi                 // Rx + Iv -> Ry
     OP_muli                 // Rx * Iv -> Ry
     OP_andi                 // Rx & Iv -> Ry
@@ -225,8 +224,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_bs    : return fmt.Sprintf("bs      %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_bt    : return fmt.Sprintf("bt      %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
+        case OP_bts   : return fmt.Sprintf("bts     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)

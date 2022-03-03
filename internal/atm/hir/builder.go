@@ -294,12 +294,8 @@ func (self *Builder) SUB(rx GenericRegister, ry GenericRegister, rz GenericRegis
     return self.add(newInstr(OP_sub).rx(rx).ry(ry).rz(rz))
 }
 
-func (self *Builder) BS(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
-    return self.add(newInstr(OP_bs).rx(rx).ry(ry).rz(rz))
-}
-
-func (self *Builder) BT(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
-    return self.add(newInstr(OP_bt).rx(rx).ry(ry).rz(rz))
+func (self *Builder) BTS(rx GenericRegister, ry GenericRegister, rz GenericRegister) *Ir {
+    return self.add(newInstr(OP_bts).rx(rx).ry(ry).rz(rz))
 }
 
 func (self *Builder) ADDI(rx GenericRegister, im int64, ry GenericRegister) *Ir {
