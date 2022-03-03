@@ -127,13 +127,6 @@ func (self *CodeGen) abiStorePtr(p *x86_64.Program, s hir.PointerRegister, i int
     self.internalStoreRet(p, s, i)
 }
 
-// internalStoreRet stores return value s into return value slot i.
-//
-// FIXME: This implementation assumes no modification after storing the result.
-//        Currently all the STRP / STRQ instructions appear at the end of the
-//        generated code (guaranteed by `{encoder,decoder}/translator.go`),
-//        everything generated after this is under our control, so it should be
-//        fine. This should be fixed once SSA backend is ready.
 func (self *CodeGen) internalStoreRet(p *x86_64.Program, s hir.Register, i int) {
     var r hir.Register
     var m abi.Parameter

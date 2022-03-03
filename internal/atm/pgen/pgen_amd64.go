@@ -210,6 +210,7 @@ const (
     Owz                         // write ir.Rz register
     Ops                         // read Ps register
     Opd                         // write Pd register
+    Oretn                       // function returns
     Ocall                       // function calls
     Octrl                       // control OpCodes
 )
@@ -229,8 +230,6 @@ var _OperandMask = [256]Operands {
     hir.OP_sp    : Ops | Opd,
     hir.OP_ldaq  : Owx,
     hir.OP_ldap  : Opd,
-    hir.OP_strq  : Orx,
-    hir.OP_strp  : Ops,
     hir.OP_addp  : Orx | Ops | Opd,
     hir.OP_subp  : Orx | Ops | Opd,
     hir.OP_addpi : Ops | Opd,
@@ -260,7 +259,7 @@ var _OperandMask = [256]Operands {
     hir.OP_ccall : Ocall,
     hir.OP_gcall : Ocall,
     hir.OP_icall : Ocall,
-    hir.OP_halt  : Octrl,
+    hir.OP_ret   : Oretn,
     hir.OP_break : Octrl,
 }
 
@@ -304,7 +303,7 @@ func (self *CodeGen) Generate(s hir.Program, sp uintptr) []byte {
 
     /* find the halting points */
     for v := s.Head; h < 2 && v != nil; v = v.Ln {
-        if v.Op == hir.OP_halt {
+        if v.Op == hir.OP_ret {
             h++
         }
     }
@@ -459,6 +458,16 @@ func (self *CodeGen) rstore(v *hir.Ir, r hir.Register) {
     }
 }
 
+func (self *CodeGen) ldret(v *hir.Ir) {
+    for i := 0; i < int(v.Rn); i++ {
+        if r := v.Rr[i]; r & hir.ArgPointer == 0 {
+            self.rload(v, hir.GenericRegister(r))
+        } else {
+            self.rload(v, hir.PointerRegister(r & hir.ArgMask))
+        }
+    }
+}
+
 func (self *CodeGen) ldcall(v *hir.Ir) {
     for i := 0; i < int(v.An); i++ {
         if r := v.Ar[i]; r & hir.ArgPointer == 0 {
@@ -481,6 +490,7 @@ func (self *CodeGen) stcall(v *hir.Ir) {
 
 func (self *CodeGen) rcheck(v *hir.Ir, p Operands) {
     for _, cc := range _readChecks {
+        if p & Oretn != 0 { self.ldret(v) }
         if p & Ocall != 0 { self.ldcall(v) }
         if p & cc.bv != 0 { self.rload(v, cc.fn(v)) }
     }
@@ -586,8 +596,6 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_sp    : (*CodeGen).translate_OP_sp,
     hir.OP_ldaq  : (*CodeGen).translate_OP_ldaq,
     hir.OP_ldap  : (*CodeGen).translate_OP_ldap,
-    hir.OP_strq  : (*CodeGen).translate_OP_strq,
-    hir.OP_strp  : (*CodeGen).translate_OP_strp,
     hir.OP_addp  : (*CodeGen).translate_OP_addp,
     hir.OP_subp  : (*CodeGen).translate_OP_subp,
     hir.OP_addpi : (*CodeGen).translate_OP_addpi,
@@ -617,7 +625,7 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_ccall : (*CodeGen).translate_OP_ccall,
     hir.OP_gcall : (*CodeGen).translate_OP_gcall,
     hir.OP_icall : (*CodeGen).translate_OP_icall,
-    hir.OP_halt  : (*CodeGen).translate_OP_halt,
+    hir.OP_ret   : (*CodeGen).translate_OP_ret,
     hir.OP_break : (*CodeGen).translate_OP_break,
 }
 
@@ -746,22 +754,6 @@ func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *hir.Ir) {
         } else {
             panic(fmt.Sprintf("ldap: argument index out of range: %d", v.Iv))
         }
-    }
-}
-
-func (self *CodeGen) translate_OP_strq(p *x86_64.Program, v *hir.Ir) {
-    if i := int(v.Iv); i < self.ctxt.retc() {
-        self.abiStoreInt(p, v.Rx, i)
-    } else {
-        panic(fmt.Sprintf("strq: return value index out of range: %d", v.Iv))
-    }
-}
-
-func (self *CodeGen) translate_OP_strp(p *x86_64.Program, v *hir.Ir) {
-    if i := int(v.Iv); i < self.ctxt.retc() {
-        self.abiStorePtr(p, v.Ps, i)
-    } else {
-        panic(fmt.Sprintf("strp: return value index out of range: %d", v.Iv))
     }
 }
 
@@ -1195,7 +1187,20 @@ func (self *CodeGen) translate_OP_icall(p *x86_64.Program, v *hir.Ir) {
     self.abiCallMethod(p, v)
 }
 
-func (self *CodeGen) translate_OP_halt(p *x86_64.Program, _ *hir.Ir) {
+func (self *CodeGen) translate_OP_ret(p *x86_64.Program, v *hir.Ir) {
+    var i uint8
+    var r uint8
+
+    /* store each return values */
+    for i = 0; i < v.Rn; i++ {
+        if r = v.Rr[i]; r & hir.ArgPointer == 0 {
+            self.abiStoreInt(p, hir.GenericRegister(r & hir.ArgMask), int(i))
+        } else {
+            self.abiStorePtr(p, hir.PointerRegister(r & hir.ArgMask), int(i))
+        }
+    }
+
+    /* return by jumping to the epilogue */
     p.JMP(self.halt)
 }
 

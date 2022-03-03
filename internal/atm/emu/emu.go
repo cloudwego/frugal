@@ -72,6 +72,7 @@ func (self *Emulator) Au(i int, v uint64)         *Emulator { self.ar[i].U = v; 
 func (self *Emulator) Ap(i int, v unsafe.Pointer) *Emulator { self.ar[i].P = v; return self }
 
 func (self *Emulator) Run() {
+    var i uint8
     var v uint64
     var p *hir.Ir
     var q *hir.Ir
@@ -98,8 +99,6 @@ func (self *Emulator) Run() {
             case hir.OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.pv[p.Ps]
             case hir.OP_ldaq  : self.uv[p.Rx] = self.ar[p.Iv].U
             case hir.OP_ldap  : self.pv[p.Pd] = self.ar[p.Iv].P
-            case hir.OP_strq  : self.rv[p.Iv].U = self.uv[p.Rx]
-            case hir.OP_strp  : self.rv[p.Iv].P = self.pv[p.Ps]
             case hir.OP_addp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(self.uv[p.Rx]))
             case hir.OP_subp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) - uintptr(self.uv[p.Rx]))
             case hir.OP_addpi : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))
@@ -124,7 +123,6 @@ func (self *Emulator) Run() {
             case hir.OP_jal   : self.pv[p.Pd], self.pc = unsafe.Pointer(self.pc), p.Br
             case hir.OP_bzero : memclrNoHeapPointers(self.pv[p.Pd], uintptr(p.Iv))
             case hir.OP_bcopy : memmove(self.pv[p.Pd], self.pv[p.Ps], uintptr(self.uv[p.Rx]))
-            case hir.OP_halt  : self.pc = nil
             case hir.OP_break : self.trap()
 
             /* call to C / Go / Go interface functions */
@@ -143,6 +141,17 @@ func (self *Emulator) Run() {
                 if v = self.uv[p.Rx]; v < uint64(p.Iv) {
                     if q = *(**hir.Ir)(unsafe.Pointer(uintptr(p.Pr) + uintptr(v) * 8)); q != nil {
                         self.pc = q
+                    }
+                }
+            }
+
+            /* return from function */
+            case hir.OP_ret: {
+                for i, self.pc = 0, nil; i < p.Rn; i++ {
+                    if r := p.Rr[i]; r & hir.ArgPointer == 0 {
+                        self.rv[i].U = self.uv[r & hir.ArgMask]
+                    } else {
+                        self.rv[i].P = self.pv[r & hir.ArgMask]
                     }
                 }
             }

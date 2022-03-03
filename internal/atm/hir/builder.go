@@ -262,14 +262,6 @@ func (self *Builder) LDAP(id int, pd PointerRegister) *Ir {
     return self.add(newInstr(OP_ldap).iv(int64(id)).pd(pd))
 }
 
-func (self *Builder) STRQ(rx GenericRegister, id int) *Ir {
-    return self.add(newInstr(OP_strq).rx(rx).iv(int64(id)))
-}
-
-func (self *Builder) STRP(ps PointerRegister, id int) *Ir {
-    return self.add(newInstr(OP_strp).ps(ps).iv(int64(id)))
-}
-
 func (self *Builder) ADDP(ps PointerRegister, rx GenericRegister, pd PointerRegister) *Ir {
     return self.add(newInstr(OP_addp).ps(ps).rx(rx).pd(pd))
 }
@@ -394,8 +386,8 @@ func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt CallHandle
     return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)))
 }
 
-func (self *Builder) HALT() *Ir {
-    return self.add(newInstr(OP_halt))
+func (self *Builder) RET() *Ir {
+    return self.add(newInstr(OP_ret))
 }
 
 func (self *Builder) BREAK() *Ir {

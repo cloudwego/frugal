@@ -38,12 +38,6 @@ const (
     ARG_st  = 5
 )
 
-const (
-    RET_pos      = 0
-    RET_err_itab = 1
-    RET_err_data = 2
-)
-
 /** Register Allocations
  *
  *      P1      Current Working Pointer
@@ -162,10 +156,10 @@ func epilogue(p *hir.Builder) {
     p.MOVP  (hir.Pn, ET)
     p.MOVP  (hir.Pn, EP)
     p.Label (LB_error)
-    p.STRQ  (IC, RET_pos)
-    p.STRP  (ET, RET_err_itab)
-    p.STRP  (EP, RET_err_data)
-    p.HALT  ()
+    p.RET   ().
+      R0    (IC).
+      R1    (ET).
+      R2    (EP)
 }
 
 var translators = [256]func(*hir.Builder, Instr) {

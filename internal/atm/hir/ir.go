@@ -41,8 +41,6 @@ const (
     OP_sp                   //     Ps  -> *(*ptr)(Pd + Iv)
     OP_ldaq                 // arg[Iv] -> Rx
     OP_ldap                 // arg[Iv] -> Pd
-    OP_strq                 // Rx -> ret[Iv]
-    OP_strp                 // Ps -> ret[Iv]
     OP_addp                 // Ps + Rx -> Pd
     OP_subp                 // Ps - Rx -> Pd
     OP_addpi                // Ps + Iv -> Pd
@@ -72,7 +70,7 @@ const (
     OP_ccall                // call external C functions
     OP_gcall                // call external Go functions
     OP_icall                // call external Go iface methods
-    OP_halt                 // halt the emulator
+    OP_ret                  // return from function
     OP_break                // trigger a debugger breakpoint
 )
 
@@ -135,32 +133,30 @@ func (self *Ir) IsBranch() bool {
 }
 
 func (self *Ir) formatCall() string {
-    args := make([]string, self.An)
-    rets := make([]string, self.Rn)
+    return fmt.Sprintf(
+        "%s, %s",
+        self.formatArgs(&self.Ar, self.An),
+        self.formatArgs(&self.Rr, self.Rn),
+    )
+}
 
-    /* add arguments */
-    for i := uint8(0); i < self.An; i++ {
-        if v := self.Ar[i]; (v & ArgPointer) == 0 {
-            args[i] = "%" + GenericRegister(v & ArgMask).String()
-        } else {
-            args[i] = "%" + PointerRegister(v & ArgMask).String()
-        }
-    }
+func (self *Ir) formatArgs(vv *[8]uint8, nb uint8) string {
+    i := uint8(0)
+    ret := make([]string, nb)
 
-    /* add return values */
-    for i := uint8(0); i < self.Rn; i++ {
-        if v := self.Rr[i]; (v & ArgPointer) == 0 {
-            rets[i] = "%" + GenericRegister(v & ArgMask).String()
+    /* add each register */
+    for i = 0; i < nb; i++ {
+        if v := vv[i]; (v & ArgPointer) == 0 {
+            ret[i] = "%" + GenericRegister(v & ArgMask).String()
         } else {
-            rets[i] = "%" + PointerRegister(v & ArgMask).String()
+            ret[i] = "%" + PointerRegister(v & ArgMask).String()
         }
     }
 
     /* compose the result */
     return fmt.Sprintf(
-        "{%s}, {%s}",
-        strings.Join(args, ", "),
-        strings.Join(rets, ", "),
+        "{%s}",
+        strings.Join(ret, ", "),
     )
 }
 
@@ -211,8 +207,6 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_sp    : return fmt.Sprintf("sp      %%%s, %d(%%%s)", self.Ps, self.Iv, self.Pd)
         case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Rx)
         case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Pd)
-        case OP_strq  : return fmt.Sprintf("str     %%%s, $%d", self.Rx, self.Iv)
-        case OP_strp  : return fmt.Sprintf("str     %%%s, $%d", self.Ps, self.Iv)
         case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
@@ -242,7 +236,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCall())
-        case OP_halt  : return "halt"
+        case OP_ret   : return fmt.Sprintf("ret     %s", self.formatArgs(&self.Rr, self.Rn))
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))
     }
