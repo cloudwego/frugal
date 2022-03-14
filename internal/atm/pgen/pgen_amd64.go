@@ -210,7 +210,8 @@ const (
     Owz                         // write ir.Rz register
     Ops                         // read Ps register
     Opd                         // write Pd register
-    Oretn                       // function returns
+    Ojmp                        // unconditional jumps
+    Oret                        // function returns
     Ocall                       // function calls
     Octrl                       // control OpCodes
 )
@@ -253,13 +254,13 @@ var _OperandMask = [256]Operands {
     hir.OP_bsw   : Orx,
     hir.OP_beqn  : Ops,
     hir.OP_bnen  : Ops,
-    hir.OP_jal   : Opd,
+    hir.OP_jmp   : Ojmp,
     hir.OP_bzero : Opd,
     hir.OP_bcopy : Orx | Ops | Opd,
     hir.OP_ccall : Ocall,
     hir.OP_gcall : Ocall,
     hir.OP_icall : Ocall,
-    hir.OP_ret   : Oretn,
+    hir.OP_ret   : Oret,
     hir.OP_break : Octrl,
 }
 
@@ -490,7 +491,7 @@ func (self *CodeGen) stcall(v *hir.Ir) {
 
 func (self *CodeGen) rcheck(v *hir.Ir, p Operands) {
     for _, cc := range _readChecks {
-        if p & Oretn != 0 { self.ldret(v) }
+        if p & Oret  != 0 { self.ldret(v) }
         if p & Ocall != 0 { self.ldcall(v) }
         if p & cc.bv != 0 { self.rload(v, cc.fn(v)) }
     }
@@ -619,7 +620,7 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_bsw   : (*CodeGen).translate_OP_bsw,
     hir.OP_beqn  : (*CodeGen).translate_OP_beqn,
     hir.OP_bnen  : (*CodeGen).translate_OP_bnen,
-    hir.OP_jal   : (*CodeGen).translate_OP_jal,
+    hir.OP_jmp   : (*CodeGen).translate_OP_jmp,
     hir.OP_bzero : (*CodeGen).translate_OP_bzero,
     hir.OP_bcopy : (*CodeGen).translate_OP_bcopy,
     hir.OP_ccall : (*CodeGen).translate_OP_ccall,
@@ -1149,12 +1150,8 @@ func (self *CodeGen) translate_OP_bnen(p *x86_64.Program, v *hir.Ir) {
     }
 }
 
-func (self *CodeGen) translate_OP_jal(p *x86_64.Program, v *hir.Ir) {
-    if v.Pd == hir.Pn {
-        p.JMP(self.to(v.Br))
-    } else {
-        panic("jal: link-based sub-routine call is not implemented for x86_64")
-    }
+func (self *CodeGen) translate_OP_jmp(p *x86_64.Program, v *hir.Ir) {
+    p.JMP(self.to(v.Br))
 }
 
 func (self *CodeGen) translate_OP_bzero(p *x86_64.Program, v *hir.Ir) {

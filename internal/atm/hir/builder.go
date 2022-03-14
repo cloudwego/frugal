@@ -362,8 +362,8 @@ func (self *Builder) BNEN(ps PointerRegister, to string) *Ir {
     return self.jmp(newInstr(OP_bnen).ps(ps), to)
 }
 
-func (self *Builder) JAL(to string, pd PointerRegister) *Ir {
-    return self.jmp(newInstr(OP_jal).pd(pd), to)
+func (self *Builder) JMP(to string) *Ir {
+    return self.jmp(newInstr(OP_jmp), to)
 }
 
 func (self *Builder) BZERO(nb int64, pd PointerRegister) *Ir {

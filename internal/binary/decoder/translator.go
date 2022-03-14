@@ -107,20 +107,20 @@ func errors(p *hir.Builder) {
       A0    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
     p.Label (LB_type)
     p.GCALL (F_error_type).
       A0    (UR).
       A1    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
     p.Label (LB_skip)
     p.GCALL (F_error_skip).
       A0    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
     p.Label (LB_missing)
     p.GCALL (F_error_missing).
       A0    (ET).
@@ -128,12 +128,12 @@ func errors(p *hir.Builder) {
       A2    (TR).
       R0    (ET).
       R1    (EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
     p.Label (LB_overflow)
     p.IP    (&_E_overflow, TP)
     p.LP    (TP, 0, ET)
     p.LP    (TP, 8, EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
 }
 
 func program(p *hir.Builder, s Program) {
@@ -531,7 +531,7 @@ func translate_OP_list_alloc(p *hir.Builder, v Instr) {
     p.IP    (&_V_zerovalue, TP)
     p.SP    (TP, WP, 0)
     p.SQ    (hir.Rz, WP, 16)
-    p.JAL   ("_done_{n}", hir.Pn)
+    p.JMP   ("_done_{n}")
     p.Label ("_alloc_{n}")
     p.BGEU  (UR, TR, "_done_{n}")
     p.SQ    (TR, WP, 16)
@@ -725,9 +725,9 @@ func translate_OP_defer(p *hir.Builder, v Instr) {
 }
 
 func translate_OP_goto(p *hir.Builder, v Instr) {
-    p.JAL   (p.At(v.To), hir.Pn)
+    p.JMP   (p.At(v.To))
 }
 
 func translate_OP_halt(p *hir.Builder, _ Instr) {
-    p.JAL   (LB_halt, hir.Pn)
+    p.JMP   (LB_halt)
 }

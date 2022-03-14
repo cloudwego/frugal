@@ -120,7 +120,7 @@ func (self *Emulator) Run() {
             case hir.OP_bgeu  : if       self.uv[p.Rx]  >=       self.uv[p.Ry]  { self.pc = p.Br }
             case hir.OP_beqn  : if       self.pv[p.Ps]  ==                 nil  { self.pc = p.Br }
             case hir.OP_bnen  : if       self.pv[p.Ps]  !=                 nil  { self.pc = p.Br }
-            case hir.OP_jal   : self.pv[p.Pd], self.pc = unsafe.Pointer(self.pc), p.Br
+            case hir.OP_jmp   : self.pc = p.Br
             case hir.OP_bzero : memclrNoHeapPointers(self.pv[p.Pd], uintptr(p.Iv))
             case hir.OP_bcopy : memmove(self.pv[p.Pd], self.pv[p.Ps], uintptr(self.uv[p.Rx]))
             case hir.OP_break : self.trap()

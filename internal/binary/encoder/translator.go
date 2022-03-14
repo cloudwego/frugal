@@ -114,16 +114,16 @@ func errors(p *hir.Builder) {
     p.Label (LB_nomem)
     p.MOV   (UR, RL)
     p.IP    (&_E_nomem, TP)
-    p.JAL   ("_basic_error", hir.Pn)
+    p.JMP   ("_basic_error")
     p.Label (LB_overflow)
     p.IP    (&_E_overflow, TP)
-    p.JAL   ("_basic_error", hir.Pn)
+    p.JMP   ("_basic_error")
     p.Label (LB_duplicated)
     p.IP    (&_E_duplicated, TP)
     p.Label ("_basic_error")
     p.LP    (TP, 0, ET)
     p.LP    (TP, 8, EP)
-    p.JAL   (LB_error, hir.Pn)
+    p.JMP   (LB_error)
 }
 
 func program(p *hir.Builder, s Program) {
@@ -294,7 +294,7 @@ func translate_OP_memcpy_1(p *hir.Builder) {
       R0    (ET).
       R1    (EP)
     p.BNEN  (ET, LB_error)
-    p.JAL   ("_done_{n}", hir.Pn)
+    p.JMP   ("_done_{n}")
     p.Label ("_do_copy_{n}")
     p.ADD   (RL, TR, UR)
     p.BLTU  (RC, UR, LB_nomem)
@@ -336,7 +336,7 @@ func translate_OP_memcpy_be(p *hir.Builder, v Instr) {
     p.SUBI  (TR, 1, TR)
     p.ADDPI (TP, v.Iv, TP)
     p.ADDPI (EP, v.Iv, EP)
-    p.JAL   ("_loop_{n}", hir.Pn)
+    p.JMP   ("_loop_{n}")
     p.Label ("_done_{n}")
 }
 
@@ -503,7 +503,7 @@ func translate_OP_unique_small(p *hir.Builder, nb int64, dv int64, ld func(hir.P
     p.ADDPI (RS, BmOffset, ET)
     p.BZERO (nb, ET)
     p.LP    (WP, 0, EP)
-    p.JAL   ("_first_{n}", hir.Pn)
+    p.JMP   ("_first_{n}")
     p.Label ("_loop_{n}")
     p.ADDPI (EP, dv, EP)
     p.Label ("_first_{n}")
@@ -549,7 +549,7 @@ func translate_OP_unique_str(p *hir.Builder) {
 }
 
 func translate_OP_goto(p *hir.Builder, v Instr) {
-    p.JAL   (p.At(v.To), hir.Pn)
+    p.JMP   (p.At(v.To))
 }
 
 func translate_OP_if_nil(p *hir.Builder, v Instr) {
@@ -577,5 +577,5 @@ func translate_OP_drop_state(p *hir.Builder, _ Instr) {
 }
 
 func translate_OP_halt(p *hir.Builder, _ Instr) {
-    p.JAL   (LB_halt, hir.Pn)
+    p.JMP   (LB_halt)
 }

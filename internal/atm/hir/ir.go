@@ -64,7 +64,7 @@ const (
     OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
     OP_beqn                 // if (Ps == nil) Br.PC -> PC
     OP_bnen                 // if (Ps != nil) Br.PC -> PC
-    OP_jal                  // PC -> Pd; Br.PC -> PC
+    OP_jmp                  // Br.PC -> PC
     OP_bzero                // memset(Pd, 0, Iv)
     OP_bcopy                // memcpy(Pd, Ps, Rx)
     OP_ccall                // call external C functions
@@ -129,7 +129,7 @@ func (self *Ir) Free() {
 }
 
 func (self *Ir) IsBranch() bool {
-    return self.Op >= OP_beq && self.Op <= OP_jal
+    return self.Op >= OP_beq && self.Op <= OP_jmp
 }
 
 func (self *Ir) formatCall() string {
@@ -230,7 +230,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
         case OP_beqn  : return fmt.Sprintf("beq     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
         case OP_bnen  : return fmt.Sprintf("bne     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
-        case OP_jal   : return fmt.Sprintf("jal     %s, %%%s", self.formatRefs(refs, self.Br), self.Pd)
+        case OP_jmp   : return fmt.Sprintf("jmp     %s", self.formatRefs(refs, self.Br))
         case OP_bzero : return fmt.Sprintf("bzero   $%d, %s", self.Iv, self.Pd)
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
