@@ -348,8 +348,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     p.jmp(OP_goto, i)
 
     /* assemble every field */
-    for id, fv := range fvs {
-        off := fv.F
+    for _, fv := range fvs {
         s[fv.ID] = p.pc()
         p.jcc(OP_struct_check_type, fv.Type.Tag(), k)
 
@@ -358,14 +357,10 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
             p.i64(OP_struct_mark_tag, int64(fv.ID))
         }
 
-        /* calculate distance to the previous field */
-        if id != 0 {
-            off -= fvs[id - 1].F
-        }
-
         /* seek and parse the field */
-        p.i64(OP_seek, int64(off))
+        p.i64(OP_seek, int64(fv.F))
         self.compileOne(p, sp + 1, fv.Type)
+        p.i64(OP_seek, -int64(fv.F))
         p.jmp(OP_goto, i)
     }
 
