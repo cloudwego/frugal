@@ -92,10 +92,16 @@ func (self *_LengauerTarjan) link(p *_LtNode, q *_LtNode) {
     q.ancestor = p
 }
 
+func (self *_LengauerTarjan) relable(p *_LtNode) {
+    if p.label.semi > p.ancestor.label.semi {
+        p.label = p.ancestor.label
+    }
+}
+
 func (self *_LengauerTarjan) compress(p *_LtNode) {
     if p.ancestor.ancestor != nil {
         self.compress(p.ancestor)
-        if p.label.semi > p.ancestor.label.semi { p.label = p.ancestor.label }
+        self.relable(p)
         p.ancestor = p.ancestor.ancestor
     }
 }
@@ -163,7 +169,7 @@ func BuildDominatorTree(bb *BasicBlock) DominatorTree {
         }
     }
 
-    /* map the dominator relations */
+    /* map the dominator relationship */
     for _, p := range lt.nodes[1:] {
         domby[p.node.Id] = p.dom.node
         domof[p.dom.node.Id] = append(domof[p.dom.node.Id], p.node)
