@@ -30,6 +30,24 @@ func mapclear(t *GoType, h unsafe.Pointer)
 //goland:noinspection GoUnusedParameter
 func growslice(et *GoType, old GoSlice, cap int) GoSlice
 
+//go:noescape
+//go:linkname mapiternext runtime.mapiternext
+//goland:noinspection GoUnusedParameter
+func mapiternext(it *GoMapIterator)
+
+//go:noescape
+//go:linkname mapiterinit runtime.mapiterinit
+//goland:noinspection GoUnusedParameter
+func mapiterinit(t *GoType, h unsafe.Pointer, it *GoMapIterator)
+
+//go:nosplit
+func MapIter(m interface{}) *GoMapIterator {
+    v := UnpackEface(m)
+    r := new(GoMapIterator)
+    mapiterinit(v.Type, v.Value, r)
+    return r
+}
+
 //go:nosplit
 func MapClear(m interface{}) {
     v := UnpackEface(m)

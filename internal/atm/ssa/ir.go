@@ -22,6 +22,7 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Reg uint64
@@ -133,13 +134,55 @@ func (self *IrPhi) String() string {
     )
 }
 
+type IrSuccessors interface {
+    Next() bool
+    Block() *BasicBlock
+    Value() (int64, bool)
+}
+
 type IrTerminator interface {
     fmt.Stringer
+    Successors() IrSuccessors
     irterminator()
 }
 
 func (*IrSwitch) irterminator() {}
 func (*IrReturn) irterminator() {}
+
+type _SwitchSuccessors struct {
+    k *int64
+    v *BasicBlock
+    r *BasicBlock
+    p *rt.GoMapIterator
+}
+
+func (self *_SwitchSuccessors) Next() bool {
+    if self.p.K != nil {
+        self.k = (*int64)(self.p.K)
+        self.v = *(**BasicBlock)(self.p.V)
+        self.p.Next()
+        return true
+    } else if self.r != nil {
+        self.k = nil
+        self.v = self.r
+        self.r = nil
+        return true
+    } else {
+        return false
+    }
+}
+
+func (self *_SwitchSuccessors) Block() *BasicBlock {
+    return self.v
+}
+
+func (self *_SwitchSuccessors) Value() (int64, bool) {
+    if self.k == nil {
+        return 0, false
+    } else {
+        return *self.k, true
+    }
+}
 
 type IrSwitch struct {
     V  Reg
@@ -175,6 +218,19 @@ func (self *IrSwitch) String() string {
     )
 }
 
+func (self *IrSwitch) Successors() IrSuccessors {
+    return &_SwitchSuccessors {
+        v: nil,
+        r: self.Ln,
+        p: rt.MapIter(self.Br),
+    }
+}
+
+type _EmptySuccessor struct{}
+func (_EmptySuccessor) Next()  bool          { return false }
+func (_EmptySuccessor) Block() *BasicBlock   { return nil }
+func (_EmptySuccessor) Value() (int64, bool) { return 0, false }
+
 type IrReturn struct {
     R []Reg
 }
@@ -193,6 +249,10 @@ func (self *IrReturn) String() string {
         "ret {%s}",
         strings.Join(ret, ", "),
     )
+}
+
+func (self *IrReturn) Successors() IrSuccessors {
+    return _EmptySuccessor{}
 }
 
 type IrNode interface {

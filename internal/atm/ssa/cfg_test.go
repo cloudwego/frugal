@@ -27,7 +27,7 @@ import (
     `github.com/oleiade/lane`
 )
 
-func dumpbb(bb *BasicBlock) string {
+func dumpbb(bb *BasicBlock, dom DominatorTree) string {
     var w int
     var phi []string
     var ins []string
@@ -57,9 +57,31 @@ func dumpbb(bb *BasicBlock) string {
             w = len(ss)
         }
     }
+    idomby := "∅"
+    if d := dom.DominatedBy[bb.Id]; d != nil {
+        idomby = fmt.Sprintf("bb_%d", d.Id)
+    }
+    var idomof []string
+    for _, d := range dom.DominatorOf[bb.Id] {
+        idomof = append(idomof, fmt.Sprintf("bb_%d", d.Id))
+    }
+    meta := []string {
+        fmt.Sprintf("# idom_by = %s", idomby),
+        fmt.Sprintf("# idom_of = {%s}", strings.Join(idomof, ", ")),
+    }
+    for i, ss := range meta {
+        meta[i] = fmt.Sprintf("<tr><td align=\"left\">%s</td></tr>\n", ss)
+        if len(ss) > w {
+            w = len(ss)
+        }
+    }
     buf := []string {
         "<table border=\"1\" cellborder=\"0\" cellspacing=\"0\">\n",
         fmt.Sprintf("<tr><td width=\"%d\">bb_%d</td></tr>\n", w * 10 + 5, bb.Id),
+    }
+    if len(meta) != 0 {
+        buf = append(buf, "<hr/>\n")
+        buf = append(buf, meta...)
     }
     if len(bb.Phi) != 0 {
         buf = append(buf, "<hr/>\n")
@@ -78,6 +100,7 @@ func dumpbb(bb *BasicBlock) string {
 func cfgdot(bb *BasicBlock, fn string) {
     q := lane.NewQueue()
     m := make(map[*BasicBlock]struct{})
+    dom := BuildDominatorTree(bb)
     buf := []string {
         "digraph CFG {",
         `    xdotversion = "15"`,
@@ -85,31 +108,26 @@ func cfgdot(bb *BasicBlock, fn string) {
         `    node [ fontname = "monospace" fontsize="16" shape = "plaintext" ]`,
         `    edge [ fontname = "monospace" ]`,
         `    START [ shape = "circle" ]`,
-        fmt.Sprintf(`    bb_%d [ label = < %s > ]`, bb.Id, dumpbb(bb)),
+        fmt.Sprintf(`    bb_%d [ label = < %s > ]`, bb.Id, dumpbb(bb, dom)),
         fmt.Sprintf(`    START -> bb_%d`, bb.Id),
     }
     for q.Enqueue(bb); !q.Empty(); {
+        f := true
         p := q.Dequeue().(*BasicBlock)
-        if sw, ok := p.Term.(*IrSwitch); ok {
-            var vvs []int64
-            var lns []*BasicBlock
-            for v, ln := range sw.Br {
-                vvs = append(vvs, v)
-                lns = append(lns, ln)
+        it := p.Term.Successors()
+        for it.Next() {
+            ln := it.Block()
+            if _, ok := m[ln]; !ok {
+                buf = append(buf, fmt.Sprintf(`    bb_%d [ label = < %s > ]`, ln.Id, dumpbb(ln, dom)))
+                q.Enqueue(ln)
             }
-            lns = append(lns, sw.Ln)
-            for i, ln := range lns {
-                if _, ok := m[ln]; !ok {
-                    buf = append(buf, fmt.Sprintf(`    bb_%d [ label = < %s > ]`, ln.Id, dumpbb(ln)))
-                    q.Enqueue(ln)
-                }
-                if i < len(vvs) {
-                    buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "%d" ]`, p.Id, ln.Id, vvs[i]))
-                } else if len(sw.Br) == 0 {
-                    buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "goto" ]`, p.Id, ln.Id))
-                } else {
-                    buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "otherwise" ]`, p.Id, ln.Id))
-                }
+            if v, ok := it.Value(); ok {
+                f = false
+                buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "%d" ]`, p.Id, ln.Id, v))
+            } else if f {
+                buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "goto" ]`, p.Id, ln.Id))
+            } else {
+                buf = append(buf, fmt.Sprintf(`    bb_%d -> bb_%d [ label = "otherwise" ]`, p.Id, ln.Id))
             }
         }
         m[p] = struct{}{}

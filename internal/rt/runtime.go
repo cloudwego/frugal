@@ -159,6 +159,11 @@ type GoMapIterator struct {
     CheckBucket uintptr
 }
 
+func (self *GoMapIterator) Next() bool {
+    mapiternext(self)
+    return self.K != nil
+}
+
 func IsPtr(t *GoType) bool {
     return t.Kind() == reflect.Ptr || t.Kind() == reflect.UnsafePointer
 }
