@@ -20,6 +20,7 @@ import (
     `testing`
 
     `github.com/brianvoe/gofakeit`
+    gofakeit_v6 `github.com/brianvoe/gofakeit/v6`
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/davecgh/go-spew/spew`
@@ -82,4 +83,26 @@ func TestTypeSerdes(t *testing.T) {
     spew.Dump(s)
     println("--------- DECODED VALUE ---------")
     spew.Dump(gotS)
+}
+
+type MyNumberZ int64
+
+type FakerTestType struct {
+    Enum1 *MyNumberZ `frugal:"0,optional,MyNumberZ"`
+}
+
+func TestFakerV6(t *testing.T) {
+    var got []byte
+    var length int
+    s := &FakerTestType{}
+    _ = gofakeit_v6.Struct(s)
+    spew.Dump(s)
+    length = frugal.EncodedSize(s)
+    got = make([]byte, length)
+    _, err := frugal.EncodeObject(got, nil, s)
+    require.NoError(t, err)
+    spew.Dump(got)
+    gotS := &FakerTestType{}
+    _, err = frugal.DecodeObject(got, gotS)
+    require.NoError(t, err)
 }

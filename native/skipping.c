@@ -72,13 +72,13 @@ static inline char stadd(skipbuf_t *s, int *p, uint8_t t) {
     }
 }
 
-static inline void mvbuf(const char **s, int *n, int *r, int nb) {
+static inline void mvbuf(const char **s, int64_t *n, int *r, int nb) {
     *n -= nb;
     *r += nb;
     *s += nb;
 }
 
-int do_skip(skipbuf_t *st, const char *s, int n, uint8_t t) {
+int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
     int nb;
     int rv = 0;
     int sp = 0;
@@ -91,7 +91,7 @@ int do_skip(skipbuf_t *st, const char *s, int n, uint8_t t) {
     while (sp >= 0) {
         switch (st[sp].t) {
             default: {
-                return ETAG;
+                return ETAG - st[sp].t;
             }
 
             /* simple fixed types */
