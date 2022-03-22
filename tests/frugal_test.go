@@ -106,3 +106,20 @@ func TestFakerV6(t *testing.T) {
     _, err = frugal.DecodeObject(got, gotS)
     require.NoError(t, err)
 }
+
+type SignExtTest struct {
+    X MyNumberZ `frugal:"0,default,MyNumberZ"`
+}
+
+func TestSignExtension(t *testing.T) {
+    v := SignExtTest{X: MyNumberZ(-3948394)}
+    n := frugal.EncodedSize(v)
+    m := make([]byte, n)
+    _, err := frugal.EncodeObject(m, nil, &v)
+    require.NoError(t, err)
+    spew.Dump(m)
+    v = SignExtTest{}
+    _, err = frugal.DecodeObject(m, &v)
+    require.NoError(t, err)
+    require.Equal(t, MyNumberZ(-3948394), v.X)
+}

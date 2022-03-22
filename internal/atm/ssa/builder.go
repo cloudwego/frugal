@@ -85,9 +85,10 @@ var _MemSize = [...]uint8 {
 }
 
 var _UnaryOps = [...]IrUnaryOp {
-    hir.OP_swapw: IrOpSwap16,
-    hir.OP_swapl: IrOpSwap32,
-    hir.OP_swapq: IrOpSwap64,
+    hir.OP_swapw : IrOpSwap16,
+    hir.OP_swapl : IrOpSwap32,
+    hir.OP_swapq : IrOpSwap64,
+    hir.OP_sxlq  : IrOpSx32to64,
 }
 
 var _BinaryOps = [...]IrBinaryOp {
@@ -235,8 +236,8 @@ func buildInstr(p *hir.Ir) []IrNode {
             }
         }
 
-        /* bswap{16/32/64}(Rx) -> Ry */
-        case hir.OP_swapw, hir.OP_swapl, hir.OP_swapq: {
+        /* {bswap{16/32/64}/sign_extend_32_to_64}(Rx) -> Ry */
+        case hir.OP_swapw, hir.OP_swapl, hir.OP_swapq, hir.OP_sxlq: {
             return []IrNode {
                 &IrUnaryExpr {
                     R: Rv(p.Ry),

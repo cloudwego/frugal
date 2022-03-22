@@ -341,6 +341,7 @@ const (
     IrOpSwap16
     IrOpSwap32
     IrOpSwap64
+    IrOpSx32to64
 )
 
 const (
@@ -360,10 +361,11 @@ const (
 
 func (self IrUnaryOp) String() string {
     switch self {
-        case IrOpSwap16 : return "bswap16"
-        case IrOpSwap32 : return "bswap32"
-        case IrOpSwap64 : return "bswap64"
-        default         : panic("unreachable")
+        case IrOpSwap16   : return "bswap16"
+        case IrOpSwap32   : return "bswap32"
+        case IrOpSwap64   : return "bswap64"
+        case IrOpSx32to64 : return "sign_extend_32_to_64"
+        default           : panic("unreachable")
     }
 }
 

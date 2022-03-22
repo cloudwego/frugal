@@ -113,6 +113,7 @@ func (self *Emulator) Run() {
             case hir.OP_swapw : self.uv[p.Ry] = uint64(bits.ReverseBytes16(uint16(self.uv[p.Rx])))
             case hir.OP_swapl : self.uv[p.Ry] = uint64(bits.ReverseBytes32(uint32(self.uv[p.Rx])))
             case hir.OP_swapq : self.uv[p.Ry] = bits.ReverseBytes64(self.uv[p.Rx])
+            case hir.OP_sxlq  : self.uv[p.Ry] = uint64(int32(self.uv[p.Rx]))
             case hir.OP_beq   : if       self.uv[p.Rx]  ==       self.uv[p.Ry]  { self.pc = p.Br }
             case hir.OP_bne   : if       self.uv[p.Rx]  !=       self.uv[p.Ry]  { self.pc = p.Br }
             case hir.OP_blt   : if int64(self.uv[p.Rx]) <  int64(self.uv[p.Ry]) { self.pc = p.Br }

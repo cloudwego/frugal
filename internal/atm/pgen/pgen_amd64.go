@@ -246,6 +246,7 @@ var _OperandMask = [256]Operands {
     hir.OP_swapw : Orx | Owy,
     hir.OP_swapl : Orx | Owy,
     hir.OP_swapq : Orx | Owy,
+    hir.OP_sxlq  : Orx | Owy,
     hir.OP_beq   : Orx | Ory,
     hir.OP_bne   : Orx | Ory,
     hir.OP_blt   : Orx | Ory,
@@ -612,6 +613,7 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_swapw : (*CodeGen).translate_OP_swapw,
     hir.OP_swapl : (*CodeGen).translate_OP_swapl,
     hir.OP_swapq : (*CodeGen).translate_OP_swapq,
+    hir.OP_sxlq  : (*CodeGen).translate_OP_sxlq,
     hir.OP_beq   : (*CodeGen).translate_OP_beq,
     hir.OP_bne   : (*CodeGen).translate_OP_bne,
     hir.OP_blt   : (*CodeGen).translate_OP_blt,
@@ -1027,6 +1029,16 @@ func (self *CodeGen) translate_OP_swapq(p *x86_64.Program, v *hir.Ir) {
     if v.Ry != hir.Rz {
         self.dup(p, v.Rx, v.Ry)
         p.BSWAPQ(self.r(v.Ry))
+    }
+}
+
+func (self *CodeGen) translate_OP_sxlq(p *x86_64.Program, v *hir.Ir) {
+    if v.Ry != hir.Rz {
+        if v.Rx == hir.Rz {
+            self.clr(p, v.Ry)
+        } else {
+            p.MOVSLQ(x86_64.Register32(self.r(v.Rx)), self.r(v.Ry))
+        }
     }
 }
 

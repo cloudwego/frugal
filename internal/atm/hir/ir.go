@@ -56,6 +56,7 @@ const (
     OP_swapw                // bswap16(Rx) -> Ry
     OP_swapl                // bswap32(Rx) -> Ry
     OP_swapq                // bswap64(Rx) -> Ry
+    OP_sxlq                 // sign_extend_32_to_64(Rx) -> Ry
     OP_beq                  // if (Rx == Ry) Br.PC -> PC
     OP_bne                  // if (Rx != Ry) Br.PC -> PC
     OP_blt                  // if (Rx <  Ry) Br.PC -> PC
@@ -222,6 +223,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
+        case OP_sxlq  : return fmt.Sprintf("sxlq    %%%s, %%%s", self.Rx, self.Ry)
         case OP_beq   : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bne   : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))

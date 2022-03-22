@@ -330,6 +330,10 @@ func (self *Builder) SWAPQ(rx GenericRegister, ry GenericRegister) *Ir {
     return self.add(newInstr(OP_swapq).rx(rx).ry(ry))
 }
 
+func (self *Builder) SXLQ(rx GenericRegister, ry GenericRegister) *Ir {
+    return self.add(newInstr(OP_sxlq).rx(rx).ry(ry))
+}
+
 func (self *Builder) BEQ(rx GenericRegister, ry GenericRegister, to string) *Ir {
     return self.jmp(newInstr(OP_beq).rx(rx).ry(ry), to)
 }

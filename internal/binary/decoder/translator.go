@@ -241,6 +241,7 @@ func translate_OP_enum(p *hir.Builder, _ Instr) {
     p.ADDP  (IP, IC, EP)
     p.LL    (EP, 0, TR)
     p.SWAPL (TR, TR)
+    p.SXLQ  (TR, TR)
     p.SQ    (TR, WP, 0)
     p.ADDI  (IC, 4, IC)
 }
