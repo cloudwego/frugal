@@ -305,12 +305,11 @@ func translate_OP_ctr_is_zero(p *hir.Builder, v Instr) {
 func translate_OP_map_alloc(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LQ    (TP, NbOffset, TR)
-    p.LP    (WP, 0, TP)
     p.IP    (v.Vt, ET)
     p.GCALL (F_makemap).
       A0    (ET).
       A1    (TR).
-      A2    (TP).
+      A2    (hir.Pn).
       R0    (TP)
     p.SP    (TP, WP, 0)
     p.ADDP  (RS, ST, EP)
