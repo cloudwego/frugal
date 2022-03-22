@@ -48,11 +48,11 @@ static const int8_t SkipSizeFixed[256] = {
     [T_i64   ] = 8,
 };
 
-static inline int u32be(const char *s) {
+static inline int64_t u32be(const char *s) {
     return __builtin_bswap32(*(const uint32_t *)s);
 }
 
-static inline char stpop(skipbuf_t *s, int *p) {
+static inline char stpop(skipbuf_t *s, int64_t *p) {
     if (s[*p].n == 0) {
         (*p)--;
         return 1;
@@ -62,7 +62,7 @@ static inline char stpop(skipbuf_t *s, int *p) {
     }
 }
 
-static inline char stadd(skipbuf_t *s, int *p, uint8_t t) {
+static inline char stadd(skipbuf_t *s, int64_t *p, uint8_t t) {
     if (++*p >= MAX_STACK) {
         return 0;
     } else {
@@ -72,16 +72,16 @@ static inline char stadd(skipbuf_t *s, int *p, uint8_t t) {
     }
 }
 
-static inline void mvbuf(const char **s, int64_t *n, int *r, int nb) {
+static inline void mvbuf(const char **s, int64_t *n, int64_t *r, int64_t nb) {
     *n -= nb;
     *r += nb;
     *s += nb;
 }
 
 int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
-    int nb;
-    int rv = 0;
-    int sp = 0;
+    int64_t nb;
+    int64_t rv = 0;
+    int64_t sp = 0;
 
     /* initialize the stack */
     st->n = 0;
@@ -91,7 +91,7 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
     while (sp >= 0) {
         switch (st[sp].t) {
             default: {
-                return ETAG - st[sp].t;
+                return ETAG;
             }
 
             /* simple fixed types */
@@ -125,7 +125,7 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
 
             /* structs */
             case T_struct: {
-                int nf;
+                int64_t nf;
                 uint8_t vt;
 
                 /* must have at least 1 byte */
@@ -168,7 +168,7 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
 
             /* maps */
             case T_map: {
-                int np;
+                int64_t np;
                 uint8_t kt;
                 uint8_t vt;
 
@@ -195,8 +195,8 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
                 }
 
                 /* check for fixed key and value */
-                int nk = SkipSizeFixed[kt];
-                int nv = SkipSizeFixed[vt];
+                int64_t nk = SkipSizeFixed[kt];
+                int64_t nv = SkipSizeFixed[vt];
 
                 /* fast path for fixed key and value */
                 if (nk != 0 && nv != 0) {
@@ -220,8 +220,8 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
 
             /* map pairs */
             case T_map_pair: {
-                uint8_t  kt = st[sp].k;
-                uint8_t  vt = st[sp].v;
+                uint8_t kt = st[sp].k;
+                uint8_t vt = st[sp].v;
 
                 /* there are keys pending */
                 if (!stpop(st, &sp) && (st[sp].n & 1) == 0) {
@@ -239,8 +239,8 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
             /* sets and lists */
             case T_set  :
             case T_list : {
-                int nv;
-                int nt;
+                int64_t nv;
+                int64_t nt;
                 uint8_t et;
 
                 /* must have at least 5 bytes */
