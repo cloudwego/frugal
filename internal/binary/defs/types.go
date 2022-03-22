@@ -98,7 +98,7 @@ func (self *Type) Tag() Tag {
     switch self.T {
         case T_enum    : return T_i32
         case T_binary  : return T_string
-        case T_pointer : return self.V.T
+        case T_pointer : return self.V.Tag()
         default        : return self.T
     }
 }
