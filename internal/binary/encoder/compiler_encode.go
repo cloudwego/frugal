@@ -108,12 +108,11 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
 func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, verifyUnique bool) {
     nb := -1
     et := vt.V
-    tt := et.Tag()
 
     /* 5-byte set or list header */
     p.tag(sp)
     p.i64(OP_size_check, 5)
-    p.i64(OP_byte, int64(tt))
+    p.i64(OP_byte, int64(et.Tag()))
     p.i64(OP_length, abi.PtrSize)
 
     /* check for nil slice */
@@ -121,7 +120,7 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, verifyUnique 
     p.add(OP_if_nil)
 
     /* special case of primitive sets or lists */
-    switch tt {
+    switch et.T {
         case defs.T_bool   : nb = 1
         case defs.T_i8     : nb = 1
         case defs.T_i16    : nb = 2

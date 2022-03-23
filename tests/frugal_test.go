@@ -142,3 +142,22 @@ func TestEnumKey(t *testing.T) {
     require.NoError(t, err)
     require.Equal(t, map[MyNumberZ]int64{MyNumberZ(-3948394): -123}, v.X)
 }
+
+type ListOfEnumTest struct {
+    X []MyNumberZ `frugal:"0,default,list<MyNumberZ>"`
+}
+
+func TestListOfEnum(t *testing.T) {
+    v := ListOfEnumTest{X: []MyNumberZ{-3948394, 0, 1, 2, 3, 4, 5}}
+    n := frugal.EncodedSize(v)
+    m := make([]byte, n)
+    _, err := frugal.EncodeObject(m, nil, &v)
+    require.NoError(t, err)
+    spew.Dump(m)
+    _, val := buildvalue(defs.T_struct, m, 0)
+    spew.Dump(val)
+    v = ListOfEnumTest{}
+    _, err = frugal.DecodeObject(m, &v)
+    require.NoError(t, err)
+    require.Equal(t, []MyNumberZ{-3948394, 0, 1, 2, 3, 4, 5}, v.X)
+}
