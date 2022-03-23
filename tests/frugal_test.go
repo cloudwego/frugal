@@ -123,3 +123,22 @@ func TestSignExtension(t *testing.T) {
     require.NoError(t, err)
     require.Equal(t, MyNumberZ(-3948394), v.X)
 }
+
+type EnumKeyTest struct {
+    X map[MyNumberZ]int64 `frugal:"0,default,map<MyNumberZ:i64>"`
+}
+
+func TestEnumKey(t *testing.T) {
+    v := EnumKeyTest{X: map[MyNumberZ]int64{MyNumberZ(-3948394): -123}}
+    n := frugal.EncodedSize(v)
+    m := make([]byte, n)
+    _, err := frugal.EncodeObject(m, nil, &v)
+    require.NoError(t, err)
+    spew.Dump(m)
+    _, val := buildvalue(defs.T_struct, m, 0)
+    spew.Dump(val)
+    v = EnumKeyTest{}
+    _, err = frugal.DecodeObject(m, &v)
+    require.NoError(t, err)
+    require.Equal(t, map[MyNumberZ]int64{MyNumberZ(-3948394): -123}, v.X)
+}

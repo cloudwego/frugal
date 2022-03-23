@@ -84,6 +84,7 @@ func (self Instr) Disassemble() string {
         case OP_map_set_i32       : fallthrough
         case OP_map_set_i64       : fallthrough
         case OP_map_set_str       : fallthrough
+        case OP_map_set_enum      : fallthrough
         case OP_map_set_pointer   : fallthrough
         case OP_list_alloc        : fallthrough
         case OP_construct         : fallthrough
@@ -274,6 +275,7 @@ func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
         case defs.T_i64     : p.i64(OP_size, 8); p.rtt(OP_map_set_i64, vt.S)
         case defs.T_binary  : p.i64(OP_size, 4); p.rtt(OP_map_set_str, vt.S)
         case defs.T_string  : p.i64(OP_size, 4); p.rtt(OP_map_set_str, vt.S)
+        case defs.T_enum    : p.i64(OP_size, 4); p.rtt(OP_map_set_enum, vt.S)
         case defs.T_pointer : self.compileKeyPtr(p, sp, vt)
         default             : panic("unreachable")
     }

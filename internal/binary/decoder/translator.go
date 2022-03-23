@@ -181,6 +181,7 @@ var translators = [256]func(*hir.Builder, Instr) {
     OP_map_set_i32       : translate_OP_map_set_i32,
     OP_map_set_i64       : translate_OP_map_set_i64,
     OP_map_set_str       : translate_OP_map_set_str,
+    OP_map_set_enum      : translate_OP_map_set_enum,
     OP_map_set_pointer   : translate_OP_map_set_pointer,
     OP_list_alloc        : translate_OP_list_alloc,
     OP_struct_skip       : translate_OP_struct_skip,
@@ -486,6 +487,48 @@ func translate_OP_map_set_str_safe(p *hir.Builder, v Instr) {
       A2    (TP).
       R0    (WP)
     p.SP    (hir.Pn, RS, PrOffset)
+}
+
+func translate_OP_map_set_enum(p *hir.Builder, v Instr) {
+    if rt.MapType(v.Vt).IsFastMap() {
+        translate_OP_map_set_enum_fast(p, v)
+    } else {
+        translate_OP_map_set_enum_safe(p, v)
+    }
+}
+
+func translate_OP_map_set_enum_fast(p *hir.Builder, v Instr) {
+    p.ADDP  (IP, IC, EP)
+    p.ADDI  (IC, 4, IC)
+    p.ADDP  (RS, ST, TP)
+    p.LP    (TP, MpOffset, TP)
+    p.LL    (EP, 0, TR)
+    p.SWAPL (TR, TR)
+    p.SXLQ  (TR, TR)
+    p.IP    (v.Vt, ET)
+    p.GCALL (F_mapassign_fast64).
+        A0    (ET).
+        A1    (TP).
+        A2    (TR).
+        R0    (WP)
+}
+
+func translate_OP_map_set_enum_safe(p *hir.Builder, v Instr) {
+    p.ADDP  (IP, IC, ET)
+    p.ADDI  (IC, 4, IC)
+    p.ADDP  (RS, ST, TP)
+    p.LP    (TP, MpOffset, EP)
+    p.LL    (ET, 0, TR)
+    p.SWAPL (TR, TR)
+    p.SXLQ  (TR, TR)
+    p.SQ    (TR, RS, IvOffset)
+    p.ADDPI (RS, IvOffset, TP)
+    p.IP    (v.Vt, ET)
+    p.GCALL (F_mapassign).
+        A0    (ET).
+        A1    (EP).
+        A2    (TP).
+        R0    (WP)
 }
 
 func translate_OP_map_set_pointer(p *hir.Builder, v Instr) {

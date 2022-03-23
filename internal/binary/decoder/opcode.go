@@ -41,6 +41,7 @@ const (
     OP_map_set_i32
     OP_map_set_i64
     OP_map_set_str
+    OP_map_set_enum
     OP_map_set_pointer
     OP_list_alloc
     OP_struct_skip
@@ -79,6 +80,7 @@ var _OpNames = [256]string {
     OP_map_set_i32       : "map_set_i32",
     OP_map_set_i64       : "map_set_i64",
     OP_map_set_str       : "map_set_str",
+    OP_map_set_enum      : "map_set_enum",
     OP_map_set_pointer   : "map_set_pointer",
     OP_list_alloc        : "list_alloc",
     OP_struct_skip       : "struct_skip",
