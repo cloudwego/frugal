@@ -1003,7 +1003,7 @@ func (self *CodeGen) translate_OP_bsi(p *x86_64.Program, v *hir.Ir) {
             panic("sbiti: negative bit index")
         } else if v.Rx == hir.Rz {
             self.set(p, v.Ry, 1 << v.Iv)
-        } else if self.dup(p, v.Rx, v.Ry); v.Iv < 32 {
+        } else if self.dup(p, v.Rx, v.Ry); v.Iv < 31 {
             p.ORQ(1 << v.Iv, self.r(v.Ry))
         } else if v.Iv < 64 {
             p.BTSQ(v.Iv, self.r(v.Ry))

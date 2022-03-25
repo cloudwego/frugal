@@ -65,7 +65,7 @@ func isPow2(v int64) bool {
 }
 
 func isInt32(v int64) bool {
-    return v >= math.MinInt32 && v <= math.MaxUint32
+    return v >= math.MinInt32 && v <= math.MaxInt32
 }
 
 func isReg64(v x86_64.Register) (ok bool) {
