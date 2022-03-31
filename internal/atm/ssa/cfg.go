@@ -17,26 +17,133 @@
 package ssa
 
 import (
+    `fmt`
+
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
-type BasicBlock struct {
-    Id   int
-    Phi  []*IrPhi
-    Ins  []IrNode
-    Term IrTerminator
+type _GraphBuilder struct {
+    p map[*hir.Ir]bool
+    g map[*hir.Ir]*BasicBlock
 }
 
-func (self *BasicBlock) addInstr(p *hir.Ir) {
-    self.Ins = append(self.Ins, buildInstr(p)...)
+func newGraphBuilder() *_GraphBuilder {
+    return &_GraphBuilder {
+        p: make(map[*hir.Ir]bool),
+        g: make(map[*hir.Ir]*BasicBlock),
+    }
 }
 
-func (self *BasicBlock) termBranch(to *BasicBlock) {
-    self.Term = &IrSwitch{Ln: to}
+func (self *_GraphBuilder) scan(p hir.Program) {
+    for v := p.Head; v != nil; v = v.Ln {
+        if v.IsBranch() {
+            if v.Op != hir.OP_bsw {
+                self.p[v.Br] = true
+            } else {
+                for _, lb := range v.Sw() {
+                    self.p[lb] = true
+                }
+            }
+        }
+    }
 }
 
-func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
-    v, c := buildBranchOp(p)
-    self.Ins = append(self.Ins, c)
-    self.Term = &IrSwitch{V: v, Ln: f, Br: map[int64]*BasicBlock{1: t}}
+func (self *_GraphBuilder) build(p hir.Program) *BasicBlock {
+    self.scan(p)
+    return self.branch(p.Head)
+}
+
+func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
+    bb.Phi = nil
+    bb.Ins = make([]IrNode, 0, 16)
+
+    /* traverse down until it hits a branch instruction */
+    for p != nil && !p.IsBranch() && p.Op != hir.OP_ret {
+        bb.addInstr(p)
+        p = p.Ln
+
+        /* hit a merge point, merge with existing block */
+        if self.p[p] {
+            bb.termBranch(self.branch(p))
+            return
+        }
+    }
+
+    /* basic block must terminate */
+    if p == nil {
+        panic(fmt.Sprintf("basic block %d does not terminate", bb.Id))
+    }
+
+    /* add terminators */
+    switch p.Op {
+        case hir.OP_bsw : self.termbsw(p, bb)
+        case hir.OP_ret : self.termret(p, bb)
+        case hir.OP_jmp : bb.termBranch(self.branch(p.Br))
+        default         : bb.termCondition(p, self.branch(p.Br), self.branch(p.Ln))
+    }
+}
+
+func (self *_GraphBuilder) branch(p *hir.Ir) *BasicBlock {
+    var ok bool
+    var bb *BasicBlock
+
+    /* check for existing basic blocks */
+    if bb, ok = self.g[p]; ok {
+        return bb
+    }
+
+    /* create a new block */
+    bb = new(BasicBlock)
+    bb.Id = len(self.g) + 1
+
+    /* process the new block */
+    self.g[p] = bb
+    self.block(p, bb)
+    return bb
+}
+
+func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
+    sw := new(IrSwitch)
+    sw.Br = make(map[int64]*BasicBlock, p.Iv)
+    bb.Term = sw
+
+    /* add every branch of the switch instruction */
+    for i, br := range p.Sw() {
+        if br != nil {
+            to := self.branch(br)
+            to.Pred = append(to.Pred, bb)
+            sw.Br[int64(i)] = to
+        }
+    }
+
+    /* add the default branch */
+    sw.Ln = self.branch(p.Ln)
+    sw.Ln.Pred = append(sw.Ln.Pred, bb)
+}
+
+func (self *_GraphBuilder) termret(p *hir.Ir, bb *BasicBlock) {
+    var i uint8
+    var ret []Reg
+
+    /* convert each register */
+    for i = 0; i < p.Rn; i++ {
+        ret = append(ret, Rv(ri2reg(p.Rr[i])))
+    }
+
+    /* build the "return" IR */
+    bb.Term = &IrReturn {
+        R: ret,
+    }
+}
+
+type CFG struct {
+    DominatorTree
+}
+
+func BuildCFG(p hir.Program) CFG {
+    cfg := newGraphBuilder().build(p)
+    dom := buildDominatorTree(cfg)
+    insertPhiNodes(cfg, dom)
+    renameRegisters(cfg, dom)
+    return CFG { dom }
 }

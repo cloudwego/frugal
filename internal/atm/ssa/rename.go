@@ -1,0 +1,160 @@
+/*
+ * Copyright 2022 ByteDance Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package ssa
+
+import (
+    `github.com/oleiade/lane`
+)
+
+type _Renamer struct {
+    count map[Reg]int
+    stack map[Reg][]int
+}
+
+func newRenamer() _Renamer {
+    return _Renamer {
+        count: make(map[Reg]int),
+        stack: make(map[Reg][]int),
+    }
+}
+
+func (self _Renamer) popr(r Reg) {
+    if n := len(self.stack[r]); n != 0 {
+        self.stack[r] = self.stack[r][:n - 1]
+    }
+}
+
+func (self _Renamer) topr(r Reg) int {
+    if n := len(self.stack[r]); n == 0 {
+        return 0
+    } else {
+        return self.stack[r][n - 1]
+    }
+}
+
+func (self _Renamer) pushr(r Reg) (i int) {
+    i = self.count[r]
+    self.count[r] = i + 1
+    self.stack[r] = append(self.stack[r], i)
+    return
+}
+
+func (self _Renamer) renameuses(ins IrNode) {
+    if u, ok := ins.(IrUsages); ok {
+        for _, a := range u.Usages() {
+            *a = a.WithIndex(self.topr(*a))
+        }
+    }
+}
+
+func (self _Renamer) renamedefs(ins IrNode, buf *[]Reg) {
+    if s, ok := ins.(IrDefinations); ok {
+        for _, def := range s.Definations() {
+            *buf = append(*buf, *def)
+            *def = def.WithIndex(self.pushr(*def))
+        }
+    }
+}
+
+func (self _Renamer) renameblock(bb *BasicBlock, dom DominatorTree) {
+    var r Reg
+    var d []Reg
+    var n IrNode
+
+    /* rename Phi nodes */
+    for _, n = range bb.Phi {
+        self.renamedefs(n, &d)
+    }
+
+    /* rename body */
+    for _, n = range bb.Ins {
+        self.renameuses(n)
+        self.renamedefs(n, &d)
+    }
+
+    /* get the successor iterator */
+    tr := bb.Term
+    it := tr.Successors()
+
+    /* rename terminators */
+    self.renameuses(tr)
+    self.renamedefs(tr, &d)
+
+    /* rename all the Phi node of it's successors */
+    for it.Next() {
+        for _, phi := range it.Block().Phi {
+            r = *phi.V[bb]
+            phi.V[bb] = regnewref(r.WithIndex(self.topr(r)))
+        }
+    }
+
+    /* rename all it's children in the dominator tree */
+    for _, p := range dom.DominatorOf[bb.Id] {
+        self.renameblock(p, dom)
+    }
+
+    /* pop the definations */
+    for _, s := range d {
+        self.popr(s)
+    }
+}
+
+func renameRegisters(bb *BasicBlock, dom DominatorTree) {
+    rr := newRenamer()
+    rr.renameblock(bb, dom)
+    normalizeRegisters(bb, dom)
+}
+
+func replaceRegisters(rr []*Reg, rm map[Reg]Reg) {
+    for _, r := range rr {
+        if *r != Rz && *r != Pn {
+            if v, ok := rm[*r]; ok {
+                *r = v
+            } else {
+                v = r.IntoNormalized(len(rm))
+                *r, rm[*r] = v, v
+            }
+        }
+    }
+}
+
+func normalizeRegisters(bb *BasicBlock, dom DominatorTree) {
+    q := lane.NewQueue()
+    r := make(map[Reg]Reg)
+
+    /* normalize each block */
+    for q.Enqueue(bb); !q.Empty(); {
+        p := q.Dequeue().(*BasicBlock)
+        addImmediateDominators(dom.DominatorOf, p, q)
+
+        /* replace Phi nodes */
+        for _, n := range p.Phi {
+            replaceRegisters(n.Usages(), r)
+            replaceRegisters(n.Definations(), r)
+        }
+
+        /* replace instructions */
+        for _, n := range p.Ins {
+            if u, ok := n.(IrUsages)      ; ok { replaceRegisters(u.Usages(), r) }
+            if d, ok := n.(IrDefinations) ; ok { replaceRegisters(d.Definations(), r) }
+        }
+
+        /* replace terminators */
+        if u, ok := p.Term.(IrUsages)      ; ok { replaceRegisters(u.Usages(), r) }
+        if d, ok := p.Term.(IrDefinations) ; ok { replaceRegisters(d.Definations(), r) }
+    }
+}

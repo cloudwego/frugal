@@ -20,6 +20,12 @@
 
 package ssa
 
+import (
+    `sort`
+
+    `github.com/oleiade/lane`
+)
+
 type _LtNode struct {
     semi     int
     node     *BasicBlock
@@ -107,22 +113,16 @@ func (self *_LengauerTarjan) compress(p *_LtNode) {
 }
 
 type DominatorTree struct {
-    Root        *BasicBlock
-    DominatedBy map[int]*BasicBlock
-    DominatorOf map[int][]*BasicBlock
+    Root              *BasicBlock
+    DominatedBy       map[int]*BasicBlock
+    DominatorOf       map[int][]*BasicBlock
+    DominanceFrontier map[int][]*BasicBlock
 }
 
-func minInt(a int, b int) int {
-    if a < b {
-        return a
-    } else {
-        return b
-    }
-}
-
-func BuildDominatorTree(bb *BasicBlock) DominatorTree {
+func buildDominatorTree(bb *BasicBlock) DominatorTree {
     domby := make(map[int]*BasicBlock)
     domof := make(map[int][]*BasicBlock)
+    domft := make(map[int][]*BasicBlock)
 
     /* Step 1: Carry out a depth-first search of the problem graph. Number the vertices
      * from 1 to n as they are reached during the search. Initialize the variables used
@@ -139,7 +139,7 @@ func BuildDominatorTree(bb *BasicBlock) DominatorTree {
          * Carry out the computation vertex by vertex in decreasing order by number. */
         for _, v := range p.pred {
             q = lt.eval(v)
-            p.semi = minInt(p.semi, q.semi)
+            p.semi = minint(p.semi, q.semi)
         }
 
         /* link the ancestor */
@@ -175,10 +175,85 @@ func BuildDominatorTree(bb *BasicBlock) DominatorTree {
         domof[p.dom.node.Id] = append(domof[p.dom.node.Id], p.node)
     }
 
+    /* add root node for BFS */
+    q := lane.NewQueue()
+    q.Enqueue(bb)
+
+    /* calculate dominance frontier for every block */
+    for !q.Empty() {
+        k := q.Dequeue().(*BasicBlock)
+        addImmediateDominators(domof, k, q)
+        computeDominanceFrontier(domof, k, domft)
+    }
+
     /* construct the dominator tree */
     return DominatorTree {
-        Root        : bb,
-        DominatorOf : domof,
-        DominatedBy : domby,
+        Root              : bb,
+        DominatorOf       : domof,
+        DominatedBy       : domby,
+        DominanceFrontier : domft,
     }
+}
+
+func isStrictlyDominates(dom map[int][]*BasicBlock, p *BasicBlock, q *BasicBlock) bool {
+    for _, node := range dom[p.Id] {
+        if node != p && (node == q || isStrictlyDominates(dom, node, q)) {
+            return true
+        }
+    }
+    return false
+}
+
+func addImmediateDominators(dom map[int][]*BasicBlock, node *BasicBlock, q *lane.Queue) {
+    for _, p := range dom[node.Id] {
+        q.Enqueue(p)
+    }
+}
+
+func computeDominanceFrontier(dom map[int][]*BasicBlock, node *BasicBlock, dfm map[int][]*BasicBlock) []*BasicBlock {
+    var it IrSuccessors
+    var df map[*BasicBlock]struct{}
+
+    /* check for cached values */
+    if v, ok := dfm[node.Id]; ok {
+        return v
+    }
+
+    /* get the successor iterator */
+    it = node.Term.Successors()
+    df = make(map[*BasicBlock]struct{})
+
+    /* local(X) = set of successors of X that X does not immediately dominate */
+    for it.Next() {
+        if y := it.Block(); !isStrictlyDominates(dom, node, y) {
+            df[y] = struct{}{}
+        }
+    }
+
+    /* df(X) = union of local(X) and ( union of up(K) for all K that are children of X ) */
+    for _, k := range dom[node.Id] {
+        for _, y := range computeDominanceFrontier(dom, k, dfm) {
+            if !isStrictlyDominates(dom, node, y) {
+                df[y] = struct{}{}
+            }
+        }
+    }
+
+    /* convert to slice */
+    nb := len(df)
+    ret := make([]*BasicBlock, 0, nb)
+
+    /* extract all the keys */
+    for bb := range df {
+        ret = append(ret, bb)
+    }
+
+    /* sort by ID */
+    sort.Slice(ret, func(i int, j int) bool {
+        return ret[i].Id < ret[j].Id
+    })
+
+    /* add to cache */
+    dfm[node.Id] = ret
+    return ret
 }

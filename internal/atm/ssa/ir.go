@@ -18,6 +18,7 @@ package ssa
 
 import (
     `fmt`
+    `sort`
     `strings`
     `unsafe`
 
@@ -28,38 +29,44 @@ import (
 type Reg uint64
 
 const (
-    _R_ptr   = 1 << 63
-    _R_kind  = 15 << 59
-    _R_index = (1 << 59) - 1
+    _B_ptr  = 63
+    _B_kind = 59
 )
 
 const (
+    _M_ptr  = 1
+    _M_kind = 0x0f
+)
+
+const (
+    _R_ptr   = _M_ptr << _B_ptr
+    _R_kind  = _M_kind << _B_kind
+    _R_index = (1 << _B_kind) - 1
+)
+
+const (
+    _K_max  = 12
+    _K_zero = 13
     _K_temp = 14
-    _K_zero = 15
-)
-
-var (
-    _tr = mkreg(0, _K_temp)
-    _tp = mkreg(1, _K_temp)
+    _K_norm = 15
 )
 
 const (
-    Rz Reg = (0 << 63) | (_K_zero << 59)
-    Pn Reg = (1 << 63) | (_K_zero << 59)
+    Rz Reg = (0 << _B_ptr) | (_K_zero << _B_kind)
+    Pn Reg = (1 << _B_ptr) | (_K_zero << _B_kind)
+)
+
+const (
+    Tr Reg = (0 << _B_ptr) | (_K_temp << _B_kind)
+    Pr Reg = (1 << _B_ptr) | (_K_temp << _B_kind)
 )
 
 func mkreg(ptr uint64, kind uint64) Reg {
-    return Reg(((ptr & 1) << 63) | ((kind & 15) << 59))
-}
-
-func Tr() (r Reg) {
-    r, _tr = _tr, _tr.Derive()
-    return
-}
-
-func Pr() (r Reg) {
-    r, _tp = _tp, _tp.Derive()
-    return
+    if kind > _K_max {
+        panic("mkreg: invalid register kind")
+    } else {
+        return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
+    }
 }
 
 func Rv(reg hir.Register) Reg {
@@ -75,11 +82,11 @@ func (self Reg) Ptr() bool {
 }
 
 func (self Reg) Kind() uint8 {
-    return uint8((self & _R_kind) >> 59)
+    return uint8((self & _R_kind) >> _B_kind)
 }
 
-func (self Reg) Index() uint64 {
-    return uint64(self & _R_index)
+func (self Reg) Index() int {
+    return int(self & _R_index)
 }
 
 func (self Reg) Derive() Reg {
@@ -87,43 +94,107 @@ func (self Reg) Derive() Reg {
 }
 
 func (self Reg) String() string {
-    if self.Kind() == _K_zero {
-        if self.Ptr() {
-            return "nil"
-        } else {
-            return "zero"
+    switch self.Kind() {
+        default: {
+            if self.Ptr() {
+                return fmt.Sprintf("%%p%d.%d", self.Kind(), self.Index())
+            } else {
+                return fmt.Sprintf("%%r%d.%d", self.Kind(), self.Index())
+            }
         }
-    } else if self.Kind() == _K_temp {
-        if self.Ptr() {
-            return fmt.Sprintf("%%tp%d", self.Index())
-        } else {
-            return fmt.Sprintf("%%tr%d", self.Index())
+
+        /* zero registers */
+        case _K_zero: {
+            if self.Ptr() {
+                return "nil"
+            } else {
+                return "$0"
+            }
         }
-    } else {
-        if self.Ptr() {
-            return fmt.Sprintf("%%p%d.%d", self.Kind(), self.Index())
-        } else {
-            return fmt.Sprintf("%%r%d.%d", self.Kind(), self.Index())
+
+        /* temp registers */
+        case _K_temp: {
+            if self.Ptr() {
+                return fmt.Sprintf("%%tp%d", self.Index())
+            } else {
+                return fmt.Sprintf("%%tr%d", self.Index())
+            }
+        }
+
+        /* SSA normalized registers */
+        case _K_norm: {
+            if self.Ptr() {
+                return fmt.Sprintf("%%p%d", self.Index())
+            } else {
+                return fmt.Sprintf("%%r%d", self.Index())
+            }
         }
     }
 }
 
-func (self Reg) WithIndex(i uint64) Reg {
+func (self Reg) WithIndex(i int) Reg {
     return (self & (_R_ptr | _R_kind)) | Reg(i & _R_index)
 }
 
+func (self Reg) IntoNormalized(i int) Reg {
+    return (self & _R_ptr) | (_K_norm << _B_kind) | Reg(i & _R_index)
+}
+
+type IrNode interface {
+    fmt.Stringer
+    irnode()
+}
+
+func (*IrPhi)        irnode() {}
+func (*IrSwitch)     irnode() {}
+func (*IrReturn)     irnode() {}
+func (*IrLoad)       irnode() {}
+func (*IrStore)      irnode() {}
+func (*IrLoadArg)    irnode() {}
+func (*IrConstInt)   irnode() {}
+func (*IrConstPtr)   irnode() {}
+func (*IrLEA)        irnode() {}
+func (*IrUnaryExpr)  irnode() {}
+func (*IrBinaryExpr) irnode() {}
+func (*IrBitTestSet) irnode() {}
+func (*IrCall)       irnode() {}
+func (*IrBlockZero)  irnode() {}
+func (*IrBlockCopy)  irnode() {}
+func (*IrBreakpoint) irnode() {}
+
+type IrUsages interface {
+    IrNode
+    Usages() []*Reg
+}
+
+type IrDefinations interface {
+    IrNode
+    Definations() []*Reg
+}
+
 type IrPhi struct {
-    R  Reg
-    Pr map[*BasicBlock]Reg
+    R Reg
+    V map[*BasicBlock]*Reg
 }
 
 func (self *IrPhi) String() string {
-    nb := len(self.Pr)
+    nb := len(self.V)
     ret := make([]string, 0, nb)
+    phi := make([]struct{b int; r Reg}, 0, nb)
 
     /* add each path */
-    for bb, reg := range self.Pr {
-        ret = append(ret, fmt.Sprintf("%s @ bb_%d", reg, bb.Id))
+    for bb, reg := range self.V {
+        phi = append(phi, struct{b int; r Reg}{b: bb.Id, r: *reg})
+    }
+
+    /* sort by basic block ID */
+    sort.Slice(phi, func(i int, j int) bool {
+        return phi[i].b < phi[j].b
+    })
+
+    /* dump as string */
+    for _, p := range phi {
+        ret = append(ret, fmt.Sprintf("bb_%d: %s", p.b, p.r))
     }
 
     /* join them together */
@@ -134,6 +205,16 @@ func (self *IrPhi) String() string {
     )
 }
 
+func (self *IrPhi) Usages() (r []*Reg) {
+    r = make([]*Reg, 0, len(self.V))
+    for _, v := range self.V { r = append(r, v) }
+    return
+}
+
+func (self *IrPhi) Definations() []*Reg {
+    return []*Reg { &self.R }
+}
+
 type IrSuccessors interface {
     Next() bool
     Block() *BasicBlock
@@ -141,7 +222,7 @@ type IrSuccessors interface {
 }
 
 type IrTerminator interface {
-    fmt.Stringer
+    IrNode
     Successors() IrSuccessors
     irterminator()
 }
@@ -218,6 +299,10 @@ func (self *IrSwitch) String() string {
     )
 }
 
+func (self *IrSwitch) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
 func (self *IrSwitch) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         v: nil,
@@ -251,28 +336,13 @@ func (self *IrReturn) String() string {
     )
 }
 
+func (self *IrReturn) Usages() []*Reg {
+    return regsliceref(self.R)
+}
+
 func (self *IrReturn) Successors() IrSuccessors {
     return _EmptySuccessor{}
 }
-
-type IrNode interface {
-    fmt.Stringer
-    irnode()
-}
-
-func (*IrLoad)       irnode() {}
-func (*IrStore)      irnode() {}
-func (*IrLoadArg)    irnode() {}
-func (*IrConstInt)   irnode() {}
-func (*IrConstPtr)   irnode() {}
-func (*IrLEA)        irnode() {}
-func (*IrUnaryExpr)  irnode() {}
-func (*IrBinaryExpr) irnode() {}
-func (*IrBitTestSet) irnode() {}
-func (*IrCall)       irnode() {}
-func (*IrBlockZero)  irnode() {}
-func (*IrBlockCopy)  irnode() {}
-func (*IrBreakpoint) irnode() {}
 
 type IrLoad struct {
     R    Reg
@@ -282,6 +352,14 @@ type IrLoad struct {
 
 func (self *IrLoad) String() string {
     return fmt.Sprintf("%s = load.u%d(%s)", self.R, self.Size * 8, self.Mem)
+}
+
+func (self *IrLoad) Usages() []*Reg {
+    return []*Reg { &self.Mem }
+}
+
+func (self *IrLoad) Definations() []*Reg {
+    return []*Reg { &self.R }
 }
 
 type IrStore struct {
@@ -294,6 +372,10 @@ func (self *IrStore) String() string {
     return fmt.Sprintf("store.u%d(%s -> *%s)", self.Size * 8, self.R, self.Mem)
 }
 
+func (self *IrStore) Usages() []*Reg {
+    return []*Reg { &self.R, &self.Mem }
+}
+
 type IrLoadArg struct {
     R  Reg
     Id uint64
@@ -301,6 +383,10 @@ type IrLoadArg struct {
 
 func (self *IrLoadArg) String() string {
     return fmt.Sprintf("%s = load.arg(#%d)", self.R, self.Id)
+}
+
+func (self *IrLoadArg) Definations() []*Reg {
+    return []*Reg { &self.R }
 }
 
 type IrConstInt struct {
@@ -312,6 +398,10 @@ func (self *IrConstInt) String() string {
     return fmt.Sprintf("%s = const.i64 %d", self.R, self.V)
 }
 
+func (self *IrConstInt) Definations() []*Reg {
+    return []*Reg { &self.R }
+}
+
 type IrConstPtr struct {
     R Reg
     P unsafe.Pointer
@@ -319,6 +409,10 @@ type IrConstPtr struct {
 
 func (self *IrConstPtr) String() string {
     return fmt.Sprintf("%s = const.ptr %p", self.R, self.P)
+}
+
+func (self *IrConstPtr) Definations() []*Reg {
+    return []*Reg { &self.R }
 }
 
 type IrLEA struct {
@@ -329,6 +423,14 @@ type IrLEA struct {
 
 func (self *IrLEA) String() string {
     return fmt.Sprintf("%s = &(%s)[%s]", self.R, self.Mem, self.Off)
+}
+
+func (self *IrLEA) Usages() []*Reg {
+    return []*Reg { &self.Mem, &self.Off }
+}
+
+func (self *IrLEA) Definations() []*Reg {
+    return []*Reg { &self.R }
 }
 
 type (
@@ -396,6 +498,14 @@ func (self *IrUnaryExpr) String() string {
     return fmt.Sprintf("%s = %s %s", self.R, self.Op, self.V)
 }
 
+func (self *IrUnaryExpr) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrUnaryExpr) Definations() []*Reg {
+    return []*Reg { &self.R }
+}
+
 type IrBinaryExpr struct {
     R  Reg
     X  Reg
@@ -407,6 +517,14 @@ func (self *IrBinaryExpr) String() string {
     return fmt.Sprintf("%s = %s %s %s", self.R, self.X, self.Op, self.Y)
 }
 
+func (self *IrBinaryExpr) Usages() []*Reg {
+    return []*Reg { &self.X, &self.Y }
+}
+
+func (self *IrBinaryExpr) Definations() []*Reg {
+    return []*Reg { &self.R }
+}
+
 type IrBitTestSet struct {
     T Reg
     S Reg
@@ -416,6 +534,14 @@ type IrBitTestSet struct {
 
 func (self *IrBitTestSet) String() string {
     return fmt.Sprintf("t.%s, s.%s = bts %s, %s", self.T, self.S, self.X, self.Y)
+}
+
+func (self *IrBitTestSet) Usages() []*Reg {
+    return []*Reg { &self.X, &self.Y }
+}
+
+func (self *IrBitTestSet) Definations() []*Reg {
+    return []*Reg { &self.T, &self.S }
 }
 
 type IrCall struct {
@@ -441,6 +567,14 @@ func (self *IrCall) String() string {
     )
 }
 
+func (self *IrCall) Usages() []*Reg {
+    return regsliceref(self.In)
+}
+
+func (self *IrCall) Definations() []*Reg {
+    return regsliceref(self.Out)
+}
+
 type IrBlockZero struct {
     Mem Reg
     Len uintptr
@@ -448,6 +582,10 @@ type IrBlockZero struct {
 
 func (self *IrBlockZero) String() string {
     return fmt.Sprintf("memset(%s, 0, %d)", self.Mem, self.Len)
+}
+
+func (self *IrBlockZero) Usages() []*Reg {
+    return []*Reg { &self.Mem }
 }
 
 type IrBlockCopy struct {
@@ -458,6 +596,10 @@ type IrBlockCopy struct {
 
 func (self *IrBlockCopy) String() string {
     return fmt.Sprintf("memmove(%s, %s, %s)", self.Mem, self.Src, self.Len)
+}
+
+func (self *IrBlockCopy) Usages() []*Reg {
+    return []*Reg { &self.Mem, &self.Src, &self.Len }
 }
 
 type (
