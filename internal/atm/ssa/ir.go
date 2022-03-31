@@ -347,7 +347,7 @@ type IrLoad struct {
 }
 
 func (self *IrLoad) String() string {
-    return fmt.Sprintf("%s = load.u%d(%s)", self.R, self.Size * 8, self.Mem)
+    return fmt.Sprintf("%s = load.u%d %s", self.R, self.Size * 8, self.Mem)
 }
 
 func (self *IrLoad) Usages() []*Reg {
@@ -540,15 +540,51 @@ func (self *IrBitTestSet) Definations() []*Reg {
     return []*Reg { &self.T, &self.S }
 }
 
+type IrReceiver struct {
+    T Reg
+    V Reg
+}
+
 type IrCall struct {
     Fn  hir.CallHandle
+    Rx  *IrReceiver
     In  []Reg
     Out []Reg
 }
 
 func (self *IrCall) String() string {
+    var desc string
+    var kind string
+    var recv string
+
+    /* check for receivers */
+    if (self.Rx == nil) == (self.Fn.Type == hir.ICall) {
+        panic("invalid receiver value")
+    }
+
+    /* argument buffer */
     in := make([]string, 0, len(self.In))
     out := make([]string, 0, len(self.Out))
+
+    /* convert call type */
+    switch self.Fn.Type {
+        case hir.CCall : kind = "ccall"
+        case hir.GCall : kind = "gcall"
+        case hir.ICall : kind = "icall"
+        default        : panic("invalid call type")
+    }
+
+    /* convert function descriptor */
+    if self.Fn.Type != hir.ICall {
+        desc = self.Fn.String()
+    } else {
+        desc = fmt.Sprintf("#%d", self.Fn.Slot)
+    }
+
+    /* add receiver type if any */
+    if self.Rx != nil {
+        recv = fmt.Sprintf(", {%s, %s}", self.Rx.T, self.Rx.V)
+    }
 
     /* dump args and rets */
     for _, r := range self.In  { in = append(in, r.String()) }
@@ -556,15 +592,21 @@ func (self *IrCall) String() string {
 
     /* join them together */
     return fmt.Sprintf(
-        "%s = call %s, {%s}",
+        "%s = %s %s%s, {%s}",
         strings.Join(out, ", "),
-        self.Fn,
+        kind,
+        desc,
+        recv,
         strings.Join(in, ", "),
     )
 }
 
 func (self *IrCall) Usages() []*Reg {
-    return regsliceref(self.In)
+    if in := regsliceref(self.In); self.Rx == nil {
+        return in
+    } else {
+        return append([]*Reg { &self.Rx.T, &self.Rx.V }, in...)
+    }
 }
 
 func (self *IrCall) Definations() []*Reg {

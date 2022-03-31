@@ -237,7 +237,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", LookupCall(self.Iv), self.formatCall())
-        case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", self.Iv, self.Ps, self.Pd, self.formatCall())
+        case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", LookupCall(self.Iv).Slot, self.Ps, self.Pd, self.formatCall())
         case OP_ret   : return fmt.Sprintf("ret     %s", self.formatArgs(&self.Rr, self.Rn))
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))

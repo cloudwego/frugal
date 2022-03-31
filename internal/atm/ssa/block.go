@@ -277,16 +277,26 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
         case hir.OP_ccall, hir.OP_gcall, hir.OP_icall: {
             var in []Reg
             var out []Reg
+            var recv *IrReceiver
 
             /* convert args and rets */
             for _, rr := range p.Ar[:p.An] { in = append(in, Rv(ri2reg(rr))) }
             for _, rr := range p.Rr[:p.Rn] { out = append(out, Rv(ri2reg(rr))) }
+
+            /* convert receiver if any */
+            if p.Op == hir.OP_icall {
+                recv = &IrReceiver {
+                    T: Rv(p.Ps),
+                    V: Rv(p.Pd),
+                }
+            }
 
             /* build the IR */
             self.Ins = append(
                 self.Ins,
                 &IrCall {
                     Fn  : hir.LookupCall(p.Iv),
+                    Rx  : recv,
                     In  : in,
                     Out : out,
                 },

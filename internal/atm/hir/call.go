@@ -188,7 +188,7 @@ func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
 }
 
 func RegisterGCall(fn interface{}, proxy func(CallContext)) (h CallHandle) {
-    h.Id = len(funcTab)
+    h.Id    = len(funcTab)
     h.Type  = GCall
     h.Func  = abi.ABI.RegisterFunction(h.Id, fn)
     h.proxy = proxy
