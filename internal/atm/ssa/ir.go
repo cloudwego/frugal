@@ -81,25 +81,17 @@ func (self Reg) Ptr() bool {
     return self & _R_ptr != 0
 }
 
-func (self Reg) Kind() uint8 {
-    return uint8((self & _R_kind) >> _B_kind)
-}
-
 func (self Reg) Index() int {
     return int(self & _R_index)
 }
 
-func (self Reg) Derive() Reg {
-    return self.WithIndex(self.Index() + 1)
-}
-
 func (self Reg) String() string {
-    switch self.Kind() {
+    switch self.kind() {
         default: {
             if self.Ptr() {
-                return fmt.Sprintf("%%p%d.%d", self.Kind(), self.Index())
+                return fmt.Sprintf("%%p%d.%d", self.kind(), self.Index())
             } else {
-                return fmt.Sprintf("%%r%d.%d", self.Kind(), self.Index())
+                return fmt.Sprintf("%%r%d.%d", self.kind(), self.Index())
             }
         }
 
@@ -132,11 +124,15 @@ func (self Reg) String() string {
     }
 }
 
-func (self Reg) WithIndex(i int) Reg {
+func (self Reg) kind() uint8 {
+    return uint8((self & _R_kind) >> _B_kind)
+}
+
+func (self Reg) rename(i int) Reg {
     return (self & (_R_ptr | _R_kind)) | Reg(i & _R_index)
 }
 
-func (self Reg) IntoNormalized(i int) Reg {
+func (self Reg) normalize(i int) Reg {
     return (self & _R_ptr) | (_K_norm << _B_kind) | Reg(i & _R_index)
 }
 
