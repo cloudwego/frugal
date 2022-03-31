@@ -243,9 +243,9 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrUnaryExpr {
-                    R: Rv(p.Ry),
-                    V: Rv(p.Rx),
-                    Op: _UnaryOps[p.Op],
+                    R  : Rv(p.Ry),
+                    V  : Rv(p.Rx),
+                    Op : _UnaryOps[p.Op],
                 },
             )
         }
