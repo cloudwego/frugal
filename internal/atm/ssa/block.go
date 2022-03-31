@@ -83,7 +83,7 @@ var _BinaryOps = [...]IrBinaryOp {
     hir.OP_add  : IrOpAdd,
     hir.OP_sub  : IrOpSub,
     hir.OP_addi : IrOpAdd,
-    hir.OP_muli : IrOpSub,
+    hir.OP_muli : IrOpMul,
     hir.OP_andi : IrOpAnd,
     hir.OP_xori : IrOpXor,
     hir.OP_shri : IrOpShr,
