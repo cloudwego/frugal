@@ -293,7 +293,7 @@ func checkptr(ri uint8, arg abi.Parameter) bool {
 }
 
 func (self *CodeGen) abiCallGo(p *x86_64.Program, v *hir.Ir) {
-    self.internalCallFunction(p, v, nil, func(fp hir.CallHandle) {
+    self.internalCallFunction(p, v, nil, func(fp *hir.CallHandle) {
         p.MOVQ(checkfp(fp.Func), R12)
         p.CALLQ(R12)
     })
@@ -355,7 +355,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *hir.Ir) {
 }
 
 func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *hir.Ir) {
-    self.internalCallFunction(p, v, v.Pd, func(fp hir.CallHandle) {
+    self.internalCallFunction(p, v, v.Pd, func(fp *hir.CallHandle) {
         p.MOVQ(self.ctxt.slot(v.Ps), R12)
         p.CALLQ(Ptr(R12, int32(rt.GoItabFuncBase) + int32(fp.Slot) *abi.PtrSize))
     })
@@ -391,7 +391,7 @@ func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr hir.Register, arg
     }
 }
 
-func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *hir.Ir, this hir.Register, makeFuncCall func(fp hir.CallHandle)) {
+func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *hir.Ir, this hir.Register, makeFuncCall func(fp *hir.CallHandle)) {
     ac := 0
     fp := hir.LookupCall(v.Iv)
     fv := abi.ABI.FnTab[fp.Id]

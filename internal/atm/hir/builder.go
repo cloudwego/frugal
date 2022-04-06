@@ -378,15 +378,15 @@ func (self *Builder) BCOPY(ps PointerRegister, rx GenericRegister, pd PointerReg
     return self.add(newInstr(OP_bcopy).ps(ps).rx(rx).pd(pd))
 }
 
-func (self *Builder) CCALL(fn CallHandle) *Ir {
+func (self *Builder) CCALL(fn *CallHandle) *Ir {
     return self.add(newInstr(OP_ccall).iv(int64(fn.Id)))
 }
 
-func (self *Builder) GCALL(fn CallHandle) *Ir {
+func (self *Builder) GCALL(fn *CallHandle) *Ir {
     return self.add(newInstr(OP_gcall).iv(int64(fn.Id)))
 }
 
-func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt CallHandle) *Ir {
+func (self *Builder) ICALL(vt PointerRegister, vp PointerRegister, mt *CallHandle) *Ir {
     return self.add(newInstr(OP_icall).ps(vt).pd(vp).iv(int64(mt.Id)))
 }
 

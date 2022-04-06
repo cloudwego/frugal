@@ -24,6 +24,7 @@ import (
     `testing`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/oleiade/lane`
 )
 
@@ -152,68 +153,121 @@ func cfgdot(cfg CFG, fn string) {
     }
 }
 
+func test_native_entry()                               {}
+func test_error_eof(_ int)                             {}
+func test_error_type(_ uint8, _ uint8)                 {}
+func test_error_skip(_ int)                            {}
+func test_error_missing(_ *rt.GoType, _ int, _ uint64) {}
+
+var (
+    f_test_native_entry  = hir.RegisterCCall(uintptr(rt.FuncAddr(test_native_entry)), nil)
+    f_test_error_eof     = hir.RegisterGCall(test_error_eof, nil)
+    f_test_error_type    = hir.RegisterGCall(test_error_type, nil)
+    f_test_error_skip    = hir.RegisterGCall(test_error_skip, nil)
+    f_test_error_missing = hir.RegisterGCall(test_error_missing, nil)
+)
+
 func TestCFG_Build(t *testing.T) {
-    const (
-        A = hir.R0
-        B = hir.R1
-        C = hir.R2
-        D = hir.R3
-        E = hir.R4
-    )
     p := hir.CreateBuilder()
-    // p.IQ(1, A)
-    // p.IQ(1, B)
-    // p.BSW(A, []string{"_5", "_9"})
-    // p.IQ(2, A)
-    // p.Label("_3")
-    // p.IQ(3, A)
-    // p.BNE(A, B, "_3")
-    // p.Label("_4")
-    // p.IQ(4, A)
-    // p.JMP("_13")
-    // p.Label("_5")
-    // p.IQ(5, A)
-    // p.BEQ(A, B, "_7")
-    // p.IQ(6, A)
-    // p.BGEU(A, B, "_4")
-    // p.JMP("_8")
-    // p.Label("_7")
-    // p.IQ(7, A)
-    // p.BLT(A, B, "_12")
-    // p.Label("_8")
-    // p.IQ(8, A)
-    // p.BNE(A, B, "_5")
-    // p.JMP("_13")
-    // p.Label("_9")
-    // p.IQ(9, A)
-    // p.BEQ(A, B, "_11")
-    // p.IQ(10, A)
-    // p.JMP("_12")
-    // p.Label("_11")
-    // p.IQ(11, A)
-    // p.Label("_12")
-    // p.IQ(12, A)
-    // p.Label("_13")
-    // p.IQ(13, A)
-    p.IQ(0, A)
-    p.IQ(1, B)
-    p.IQ(2, C)
-    p.IQ(3, D)
-    p.IQ(4, E)
-    p.ADD(B, C, A)
-    p.SUB(hir.Rz, A, D)
-    p.Label("r")
-    p.SUB(D, E, E)
-    p.BEQ(D, hir.Rz, "a")
-    p.MULI(B, 2, E)
-    p.JMP("b")
-    p.Label("a")
-    p.ADD(D, E, B)
-    p.SUBI(E, 1, E)
-    p.Label("b")
-    p.ADD(A, C, B)
-    p.BLT(B, hir.Rz, "r")
-    p.RET()
+    p.LDAP  (0, hir.P2)
+    p.LDAQ  (2, hir.R2)
+    p.LDAP  (3, hir.P1)
+    p.LDAP  (4, hir.P3)
+    p.LDAQ  (5, hir.R3)
+    p.ADDI  (hir.Rz, 2097120, hir.R0)
+    p.BGEU  (hir.R3, hir.R0, "L_0")
+    p.ADDP  (hir.P3, hir.R3, hir.P0)
+    p.SP    (hir.P1, hir.P0, 16)
+    p.ADDI  (hir.R3, 32, hir.R3)
+    p.Label ("L_5")
+    p.ADDI  (hir.Rz, 1, hir.R0)
+    p.LDAQ  (1, hir.R1)
+    p.BLTU  (hir.R1, hir.R0, "L_1")
+    p.ADDP  (hir.P2, hir.R2, hir.P5)
+    p.ADDI  (hir.R2, 1, hir.R2)
+    p.LB    (hir.P5, 0, hir.R4)
+    p.BEQ   (hir.R4, hir.Rz, "L_2")
+    p.ADDI  (hir.Rz, 2, hir.R0)
+    p.LDAQ  (1, hir.R1)
+    p.BLTU  (hir.R1, hir.R0, "L_1")
+    p.ADDP  (hir.P2, hir.R2, hir.P5)
+    p.ADDI  (hir.R2, 2, hir.R2)
+    p.LW    (hir.P5, 0, hir.R0)
+    p.SWAPW (hir.R0, hir.R0)
+    p.BSW   (hir.R0, []string { "L_3" })
+    p.Label ("L_6")
+    p.ADDPI (hir.P3, 2097152, hir.P0)
+    p.LDAQ  (1, hir.R0)
+    p.SUB   (hir.R0, hir.R2, hir.R0)
+    p.ADDP  (hir.P2, hir.R2, hir.P5)
+    p.CCALL (f_test_native_entry).
+      A0    (hir.P0).
+      A1    (hir.P5).
+      A2    (hir.R0).
+      A3    (hir.R4).
+      R0    (hir.R0)
+    p.BLT   (hir.R0, hir.Rz, "L_4")
+    p.ADD   (hir.R2, hir.R0, hir.R2)
+    p.JMP   ("L_5")
+    p.Label ("L_3")
+    p.ADDI  (hir.Rz, 2, hir.R0)
+    p.BNE   (hir.R4, hir.R0, "L_6")
+    p.ADDPI (hir.P1, 0, hir.P1)
+    p.ADDI  (hir.Rz, 1, hir.R0)
+    p.LDAQ  (1, hir.R1)
+    p.BLTU  (hir.R1, hir.R0, "L_1")
+    p.ADDP  (hir.P2, hir.R2, hir.P5)
+    p.LB    (hir.P5, 0, hir.R0)
+    p.SB    (hir.R0, hir.P1, 0)
+    p.ADDI  (hir.R2, 1, hir.R2)
+    p.ADDPI (hir.P1, 0, hir.P1)
+    p.JMP   ("L_5")
+    p.Label ("L_2")
+    p.ADDI  (hir.R3, -32, hir.R3)
+    p.ADDP  (hir.P3, hir.R3, hir.P0)
+    p.LP    (hir.P0, 16, hir.P1)
+    p.SP    (hir.Pn, hir.P0, 16)
+    p.JMP   ("L_7")
+    p.Label ("L_7")
+    p.ADDPI (hir.Pn, 0, hir.P4)
+    p.ADDPI (hir.Pn, 0, hir.P5)
+    p.Label ("L_8")
+    p.RET   ().
+      R0    (hir.R2).
+      R1    (hir.P4).
+      R2    (hir.P5)
+    p.Label ("L_1")
+    p.LDAQ  (1, hir.R1)
+    p.SUB   (hir.R0, hir.R1, hir.R0)
+    p.GCALL (f_test_error_eof).
+      A0    (hir.R0).
+      R0    (hir.P4).
+      R1    (hir.P5)
+    p.JMP   ("L_8")
+    p.GCALL (f_test_error_type).
+      A0    (hir.R1).
+      A1    (hir.R0).
+      R0    (hir.P4).
+      R1    (hir.P5)
+    p.JMP   ("L_8")
+    p.Label ("L_4")
+    p.GCALL (f_test_error_skip).
+      A0    (hir.R0).
+      R0    (hir.P4).
+      R1    (hir.P5)
+    p.JMP   ("L_8")
+    p.GCALL (f_test_error_missing).
+      A0    (hir.P4).
+      A1    (hir.R1).
+      A2    (hir.R0).
+      R0    (hir.P4).
+      R1    (hir.P5)
+    p.JMP   ("L_8")
+    p.Label ("L_0")
+    p.IP    (new(int), hir.P0)
+    p.LP    (hir.P0, 0, hir.P4)
+    p.LP    (hir.P0, 8, hir.P5)
+    p.JMP   ("L_8")
     t.Logf("Generating CFG ...")
     c := p.Build()
     g := BuildCFG(c)

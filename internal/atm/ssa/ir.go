@@ -546,7 +546,7 @@ type IrReceiver struct {
 }
 
 type IrCall struct {
-    Fn  hir.CallHandle
+    Fn  *hir.CallHandle
     Rx  *IrReceiver
     In  []Reg
     Out []Reg

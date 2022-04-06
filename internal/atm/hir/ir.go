@@ -181,7 +181,7 @@ func (self *Ir) formatTable(refs map[*Ir]string) string {
     /* format every label */
     for i, lb := range tab {
         if lb != nil {
-            ret = append(ret, fmt.Sprintf("%4ccase %d: %s\n", ' ', i, self.formatRefs(refs, lb)))
+            ret = append(ret, fmt.Sprintf("%4ccase $%d: %s,\n", ' ', i, self.formatRefs(refs, lb)))
         }
     }
 
@@ -206,20 +206,20 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_sl    : return fmt.Sprintf("sl      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
         case OP_sq    : return fmt.Sprintf("sq      %%%s, %d(%%%s)", self.Rx, self.Iv, self.Pd)
         case OP_sp    : return fmt.Sprintf("sp      %%%s, %d(%%%s)", self.Ps, self.Iv, self.Pd)
-        case OP_ldaq  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Rx)
-        case OP_ldap  : return fmt.Sprintf("lda     $%d, %%%s", self.Iv, self.Pd)
-        case OP_addp  : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
-        case OP_subp  : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
-        case OP_addpi : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Ps, self.Iv, self.Pd)
+        case OP_ldaq  : return fmt.Sprintf("ldaq    $%d, %%%s", self.Iv, self.Rx)
+        case OP_ldap  : return fmt.Sprintf("ldap    $%d, %%%s", self.Iv, self.Pd)
+        case OP_addp  : return fmt.Sprintf("addp    %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
+        case OP_subp  : return fmt.Sprintf("subp    %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
+        case OP_addpi : return fmt.Sprintf("addpi   %%%s, $%d, %%%s", self.Ps, self.Iv, self.Pd)
         case OP_add   : return fmt.Sprintf("add     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_sub   : return fmt.Sprintf("sub     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
         case OP_bts   : return fmt.Sprintf("bts     %%%s, %%%s, %%%s", self.Rx, self.Ry, self.Rz)
-        case OP_addi  : return fmt.Sprintf("add     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_muli  : return fmt.Sprintf("mul     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_andi  : return fmt.Sprintf("and     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_xori  : return fmt.Sprintf("xor     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_shri  : return fmt.Sprintf("shr     %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
-        case OP_bsi   : return fmt.Sprintf("bs      %%%s, %d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_addi  : return fmt.Sprintf("addi    %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_muli  : return fmt.Sprintf("muli    %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_andi  : return fmt.Sprintf("andi    %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_xori  : return fmt.Sprintf("xori    %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_shri  : return fmt.Sprintf("shri    %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
+        case OP_bsi   : return fmt.Sprintf("bsi     %%%s, $%d, %%%s", self.Rx, self.Iv, self.Ry)
         case OP_swapw : return fmt.Sprintf("swapw   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapl : return fmt.Sprintf("swapl   %%%s, %%%s", self.Rx, self.Ry)
         case OP_swapq : return fmt.Sprintf("swapq   %%%s, %%%s", self.Rx, self.Ry)
@@ -237,7 +237,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", LookupCall(self.Iv), self.formatCall())
-        case OP_icall : return fmt.Sprintf("icall   #%d, {%%%s, %%%s}, %s", LookupCall(self.Iv).Slot, self.Ps, self.Pd, self.formatCall())
+        case OP_icall : return fmt.Sprintf("icall   $%d, {%%%s, %%%s}, %s", LookupCall(self.Iv).Slot, self.Ps, self.Pd, self.formatCall())
         case OP_ret   : return fmt.Sprintf("ret     %s", self.formatArgs(&self.Rr, self.Rn))
         case OP_break : return "break"
         default       : panic(fmt.Sprintf("invalid OpCode: 0x%02x", self.Op))

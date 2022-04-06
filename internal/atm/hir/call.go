@@ -50,7 +50,11 @@ type CallHandle struct {
     proxy func(CallContext)
 }
 
-func (self CallHandle) Call(r CallState, p *Ir) {
+func (self *CallHandle) Name() string {
+    return runtime.FuncForPC(self.Func).Name()
+}
+
+func (self *CallHandle) Call(r CallState, p *Ir) {
     self.proxy(CallContext {
         repo: r,
         kind: self.Type,
@@ -63,8 +67,8 @@ func (self CallHandle) Call(r CallState, p *Ir) {
     })
 }
 
-func (self CallHandle) String() string {
-    return fmt.Sprintf("%s[*%#x]", runtime.FuncForPC(self.Func).Name(), self.Func)
+func (self *CallHandle) String() string {
+    return fmt.Sprintf("*%#x[%s]", self.Func, self.Name())
 }
 
 type CallContext struct {
@@ -158,10 +162,10 @@ func (self CallContext) verifySeq(s string, n uint8, v [8]uint8) bool {
 }
 
 var (
-    funcTab []CallHandle
+    funcTab []*CallHandle
 )
 
-func LookupCall(id int64) CallHandle {
+func LookupCall(id int64) *CallHandle {
     if id < 0 || id >= int64(len(funcTab)) {
         panic("invalid function ID")
     } else {
@@ -169,7 +173,8 @@ func LookupCall(id int64) CallHandle {
     }
 }
 
-func RegisterCCall(fn uintptr, proxy func(CallContext)) (h CallHandle) {
+func RegisterCCall(fn uintptr, proxy func(CallContext)) (h *CallHandle) {
+    h       = new(CallHandle)
     h.Id    = len(funcTab)
     h.Type  = CCall
     h.Func  = fn
@@ -178,7 +183,8 @@ func RegisterCCall(fn uintptr, proxy func(CallContext)) (h CallHandle) {
     return
 }
 
-func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
+func RegisterICall(mt rt.Method, proxy func(CallContext)) (h *CallHandle) {
+    h       = new(CallHandle)
     h.Id    = len(funcTab)
     h.Type  = ICall
     h.Slot  = abi.ABI.RegisterMethod(h.Id, mt)
@@ -187,7 +193,8 @@ func RegisterICall(mt rt.Method, proxy func(CallContext)) (h CallHandle) {
     return
 }
 
-func RegisterGCall(fn interface{}, proxy func(CallContext)) (h CallHandle) {
+func RegisterGCall(fn interface{}, proxy func(CallContext)) (h *CallHandle) {
+    h       = new(CallHandle)
     h.Id    = len(funcTab)
     h.Type  = GCall
     h.Func  = abi.ABI.RegisterFunction(h.Id, fn)

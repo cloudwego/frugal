@@ -27,7 +27,7 @@ type Linker interface {
 
 var (
     linker   Linker
-    F_encode hir.CallHandle
+    F_encode *hir.CallHandle
 )
 
 func init() {
