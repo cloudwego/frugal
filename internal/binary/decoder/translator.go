@@ -632,7 +632,7 @@ func translate_OP_struct_bitmap(p *hir.Builder, v Instr) {
     }
 
     /* allocate a new bitmap */
-    p.GCALL (F_newFiedBitmap).R0(TP)
+    p.GCALL (F_newFieldBitmap).R0(TP)
     p.ADDP  (RS, ST, EP)
     p.SP    (TP, EP, FmOffset)
 

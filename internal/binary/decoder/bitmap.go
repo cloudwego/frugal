@@ -32,7 +32,7 @@ var (
 )
 
 var (
-    F_newFiedBitmap    = hir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
+    F_newFieldBitmap   = hir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
     F_FieldBitmap_Free = hir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
 )
 
