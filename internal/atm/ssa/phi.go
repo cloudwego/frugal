@@ -38,14 +38,14 @@ func appendBlock(buf map[int]*BasicBlock, bb *BasicBlock) map[int]*BasicBlock {
     }
 }
 
-func insertPhiNodes(bb *BasicBlock, dt DominatorTree) {
+func insertPhiNodes(dt *DominatorTree) {
     q := lane.NewQueue()
     phi := make(map[Reg]map[int]bool)
     orig := make(map[int]map[Reg]bool)
     defs := make(map[Reg]map[int]*BasicBlock)
 
     /* find out all the variable origins */
-    for q.Enqueue(bb); !q.Empty(); {
+    for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
         addImmediateDominators(dt.DominatorOf, p, q)
 
@@ -62,7 +62,7 @@ func insertPhiNodes(bb *BasicBlock, dt DominatorTree) {
     }
 
     /* find out all the variable defination sites */
-    for q.Enqueue(bb); !q.Empty(); {
+    for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
         addImmediateDominators(dt.DominatorOf, p, q)
 

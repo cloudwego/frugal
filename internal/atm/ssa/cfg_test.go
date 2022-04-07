@@ -28,7 +28,7 @@ import (
     `github.com/oleiade/lane`
 )
 
-func dumpbb(bb *BasicBlock, cfg CFG) string {
+func dumpbb(bb *BasicBlock, cfg *CFG) string {
     var w int
     var phi []string
     var ins []string
@@ -108,7 +108,7 @@ func dumpbb(bb *BasicBlock, cfg CFG) string {
     return strings.Join(buf, "")
 }
 
-func cfgdot(cfg CFG, fn string) {
+func cfgdot(cfg *CFG, fn string) {
     q := lane.NewQueue()
     n := make(map[int]bool)
     e := make(map[struct{A, B int}]bool)

@@ -22,6 +22,10 @@ import (
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
+type CFG struct {
+    DominatorTree
+}
+
 type _GraphBuilder struct {
     p map[*hir.Ir]bool
     g map[*hir.Ir]*BasicBlock
@@ -34,23 +38,9 @@ func newGraphBuilder() *_GraphBuilder {
     }
 }
 
-func (self *_GraphBuilder) scan(p hir.Program) {
-    for v := p.Head; v != nil; v = v.Ln {
-        if v.IsBranch() {
-            if v.Op != hir.OP_bsw {
-                self.p[v.Br] = true
-            } else {
-                for _, lb := range v.Sw() {
-                    self.p[lb] = true
-                }
-            }
-        }
-    }
-}
-
-func (self *_GraphBuilder) build(p hir.Program) *BasicBlock {
-    self.scan(p)
-    return self.branch(p.Head)
+func (self *_GraphBuilder) build(p hir.Program) *CFG {
+    self.anchor(p)
+    return &CFG { buildDominatorTree(self.branch(p.Head)) }
 }
 
 func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
@@ -80,6 +70,20 @@ func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
         case hir.OP_ret : self.termret(p, bb)
         case hir.OP_jmp : bb.termBranch(self.branch(p.Br))
         default         : bb.termCondition(p, self.branch(p.Br), self.branch(p.Ln))
+    }
+}
+
+func (self *_GraphBuilder) anchor(p hir.Program) {
+    for v := p.Head; v != nil; v = v.Ln {
+        if v.IsBranch() {
+            if v.Op != hir.OP_bsw {
+                self.p[v.Br] = true
+            } else {
+                for _, lb := range v.Sw() {
+                    self.p[lb] = true
+                }
+            }
+        }
     }
 }
 
@@ -136,14 +140,10 @@ func (self *_GraphBuilder) termret(p *hir.Ir, bb *BasicBlock) {
     }
 }
 
-type CFG struct {
-    DominatorTree
-}
-
-func BuildCFG(p hir.Program) CFG {
-    cfg := newGraphBuilder().build(p)
-    dom := buildDominatorTree(cfg)
-    insertPhiNodes(cfg, dom)
-    renameRegisters(cfg, dom)
-    return CFG { dom }
+func BuildCFG(p hir.Program) (cfg *CFG) {
+    cfg = newGraphBuilder().build(p)
+    insertPhiNodes(&cfg.DominatorTree)
+    renameRegisters(&cfg.DominatorTree)
+    optimizeSSAGraph(cfg)
+    return
 }
