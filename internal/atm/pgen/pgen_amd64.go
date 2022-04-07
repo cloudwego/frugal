@@ -265,6 +265,11 @@ var _OperandMask = [256]Operands {
     hir.OP_break : Octrl,
 }
 
+type Func struct {
+    Code  []byte
+    Frame rt.Frame
+}
+
 type CodeGen struct {
     regi int
     ctxt _FrameInfo
@@ -288,18 +293,7 @@ func CreateCodeGen(proto interface{}) *CodeGen {
     }
 }
 
-func (self *CodeGen) Frame() rt.Frame {
-    return rt.Frame {
-        Head      : toAddress(self.head),
-        Tail      : toAddress(self.tail),
-        Size      : int(self.ctxt.size()),
-        ArgSize   : int(self.ctxt.save()),
-        ArgPtrs   : self.ctxt.ArgPtrs(),
-        LocalPtrs : self.ctxt.LocalPtrs(),
-    }
-}
-
-func (self *CodeGen) Generate(s hir.Program, sp uintptr) []byte {
+func (self *CodeGen) Generate(s hir.Program, sp uintptr) *Func {
     h := 0
     p := self.arch.CreateProgram()
 
@@ -396,9 +390,27 @@ func (self *CodeGen) Generate(s hir.Program, sp uintptr) []byte {
     self.abiStackGrow(p)
     p.JMP(entry)
 
-    /* generate all the lookup tables, and assemble the program */
-    self.tables(p)
-    return p.AssembleAndFree(0)
+    /* link all the lookup tables */
+    for _, v := range self.stab {
+        v.link(p)
+    }
+
+    /* assemble the function */
+    ret := &Func {
+        Code  : p.Assemble(0),
+        Frame : rt.Frame {
+            Head      : toAddress(self.head),
+            Tail      : toAddress(self.tail),
+            Size      : int(self.ctxt.size()),
+            ArgSize   : int(self.ctxt.save()),
+            ArgPtrs   : self.ctxt.ArgPtrs(),
+            LocalPtrs : self.ctxt.LocalPtrs(),
+        },
+    }
+
+    /* free the assembler */
+    p.Free()
+    return ret
 }
 
 func (self *CodeGen) later(ref *x86_64.Label, def func(*x86_64.Program)) {
@@ -406,12 +418,6 @@ func (self *CodeGen) later(ref *x86_64.Label, def func(*x86_64.Program)) {
         ref: ref,
         def: def,
     })
-}
-
-func (self *CodeGen) tables(p *x86_64.Program) {
-    for _, s := range self.stab {
-        s.link(p)
-    }
 }
 
 func (self *CodeGen) translate(p *x86_64.Program, v *hir.Ir) {

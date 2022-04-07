@@ -33,7 +33,7 @@ func init() {
 }
 
 func (LinkerAMD64) Link(p hir.Program) Encoder {
-    cc := pgen.CreateCodeGen((Encoder)(nil))
-    fp := loader.Loader(cc.Generate(p, 0)).Load("encoder", cc.Frame())
+    fn := pgen.CreateCodeGen((Encoder)(nil)).Generate(p, 0)
+    fp := loader.Loader(fn.Code).Load("encoder", fn.Frame)
     return *(*Encoder)(unsafe.Pointer(&fp))
 }

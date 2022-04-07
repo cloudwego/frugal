@@ -82,10 +82,7 @@ func TestEmu_OpCode_GCALL(t *testing.T) {
         p.LQ(hir.P2, 8, hir.R2)
         p.LP(hir.P2, 0, hir.P2)
         p.GCALL(testfn).A0(hir.P0).A1(hir.R0).A2(hir.P1).A3(hir.R1).A4(hir.P2).A5(hir.R2).R0(hir.P0).R1(hir.R0).R2(hir.P1).R3(hir.R1)
-        p.STRP(hir.P0, 0)
-        p.STRQ(hir.R0, 1)
-        p.STRP(hir.P1, 2)
-        p.STRQ(hir.R1, 3)
+        p.RET().R0(hir.P0).R1(hir.R0).R2(hir.P1).R3(hir.R1)
     })
     val := [2]struct{P unsafe.Pointer; L uint64} {
         {P: emu.Rp(0), L: emu.Ru(1)},

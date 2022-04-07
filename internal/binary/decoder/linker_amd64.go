@@ -37,7 +37,7 @@ func init() {
 }
 
 func (LinkerAMD64) Link(p hir.Program) Decoder {
-    cc := pgen.CreateCodeGen((Decoder)(nil))
-    fp := loader.Loader(cc.Generate(p, _NativeStackSize)).Load("decoder", cc.Frame())
+    fn := pgen.CreateCodeGen((Decoder)(nil)).Generate(p, _NativeStackSize)
+    fp := loader.Loader(fn.Code).Load("decoder", fn.Frame)
     return *(*Decoder)(unsafe.Pointer(&fp))
 }

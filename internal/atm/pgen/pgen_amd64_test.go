@@ -84,8 +84,8 @@ type TestIface interface {
 }
 
 var (
-    hfunc hir.CallHandle
-    hmeth hir.CallHandle
+    hfunc *hir.CallHandle
+    hmeth *hir.CallHandle
     cfunc uintptr
 )
 
@@ -164,10 +164,10 @@ func TestPGen_Generate(t *testing.T) {
     p.BREAK()
     p.BREAK()
     p.BREAK()
-    p.HALT()
+    p.RET()
     g := CreateCodeGen(func(){})
     c := g.Generate(p.Build(), 0)
-    disasm(0, c)
+    disasm(0, c.Code)
 }
 
 type ifacetest interface {
@@ -219,15 +219,12 @@ func TestPGen_FunctionCall(t *testing.T) {
     p.ICALL(hir.P0, hir.P1, m).A0(hir.R3).R0(hir.R4)
     p.ADDI(hir.R4, 10000000, hir.R3)
     p.CCALL(c).A0(hir.R3).R0(hir.R4)
-    p.STRQ(hir.R1, 0)
-    p.STRQ(hir.R2, 1)
-    p.STRQ(hir.R4, 2)
-    p.HALT()
+    p.RET().R0(hir.R1).R1(hir.R2).R2(hir.R4)
     g := CreateCodeGen((func(int) (int, int, int))(nil))
     r := g.Generate(p.Build(), 0)
-    spew.Dump(g.Frame())
-    v := loader.Loader(r).Load("_test_gcall", g.Frame())
-    disasm(*(*uintptr)(v), r)
+    spew.Dump(r.Frame)
+    v := loader.Loader(r.Code).Load("_test_gcall", r.Frame)
+    disasm(*(*uintptr)(v), r.Code)
     f := *(*func(int) (int, int, int))(unsafe.Pointer(&v))
     x, y, z := f(123)
     println("f(123) is", x, y, z)
