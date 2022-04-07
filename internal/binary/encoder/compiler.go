@@ -25,6 +25,11 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+const (
+    _MAX_STACK = 5          // cutoff at 5 levels of nesting types
+    _MAX_ILBUF = 50000      // cutoff at 50k of IL instructions
+)
+
 type Instr struct {
     Op OpCode
     Uv int32

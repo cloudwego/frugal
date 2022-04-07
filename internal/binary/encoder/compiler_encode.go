@@ -25,8 +25,8 @@ func (self Compiler) compile(p *Program, sp int, vt *defs.Type) {
     rt := vt.S
     tt := vt.T
 
-    /* check for loops, recursive only on structs */
-    if self[rt] && tt == defs.T_struct {
+    /* check for loops, recursive only on structs with inlining depth limit */
+    if tt == defs.T_struct && (self[rt] || sp >= _MAX_STACK || p.pc() >= _MAX_ILBUF) {
         p.rtt(OP_defer, rt)
         return
     }
