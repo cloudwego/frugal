@@ -38,7 +38,7 @@ const (
 )
 
 const (
-    StateMax  = (defs.MaxStack - 1) * StateSize
+    StateMax  = (defs.StackSize - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
@@ -54,6 +54,6 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem     // Must be the first field.
+    St [defs.StackSize]StateItem    // Must be the first field.
     Bm [1024]uint64                 // Bitmap, used for uniqueness check of set<i8> and set<i16>.
 }

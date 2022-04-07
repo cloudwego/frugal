@@ -20,6 +20,7 @@ import (
     `fmt`
     `reflect`
     `strings`
+    `sync`
     `unicode`
 
     `github.com/cloudwego/frugal/internal/utils`
@@ -94,6 +95,23 @@ type Type struct {
     S reflect.Type
 }
 
+var (
+    typePool sync.Pool
+)
+
+func newType() *Type {
+    if v := typePool.Get(); v == nil {
+        return new(Type)
+    } else {
+        return resetType(v.(*Type))
+    }
+}
+
+func resetType(p *Type) *Type {
+    *p = Type{}
+    return p
+}
+
 func (self *Type) Tag() Tag {
     switch self.T {
         case T_enum    : return T_i32
@@ -104,7 +122,7 @@ func (self *Type) Tag() Tag {
 }
 
 func (self *Type) Free() {
-    freeType(self)
+    typePool.Put(self)
 }
 
 func (self *Type) String() string {

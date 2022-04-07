@@ -23,8 +23,8 @@ import (
 )
 
 const (
-    IntSize  = 4 << (^uint(0) >> 63)
-    MaxStack = 65536
+    IntSize   = 4 << (^uint(0) >> 63)
+    StackSize = 65536
 )
 
 func GetSize(vt reflect.Type) int {

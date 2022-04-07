@@ -25,11 +25,6 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-const (
-    _MAX_STACK = 5          // cutoff at 5 levels of nesting types
-    _MAX_ILBUF = 50000      // cutoff at 50k of IL instructions
-)
-
 type Instr struct {
     Op OpCode
     Uv int32
@@ -76,7 +71,7 @@ func (self Program) pc() int   { return len(self) }
 func (self Program) pin(i int) { self[i].To = self.pc() }
 
 func (self Program) tag(n int) {
-    if n >= defs.MaxStack {
+    if n >= defs.StackSize {
         panic("type nesting too deep")
     }
 }

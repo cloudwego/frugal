@@ -26,7 +26,7 @@ func (self Compiler) measure(p *Program, sp int, vt *defs.Type) {
     tt := vt.T
 
     /* check for loops, recursive only on structs with inlining depth limit */
-    if tt == defs.T_struct && (self[rt] || sp >= _MAX_STACK || p.pc() >= _MAX_ILBUF) {
+    if tt == defs.T_struct && (self[rt] || sp >= defs.MaxNesting || p.pc() >= defs.MaxILBuffer) {
         p.rtt(OP_size_defer, rt)
         return
     }

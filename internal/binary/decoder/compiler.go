@@ -126,7 +126,7 @@ func (self Program) pin(i int) {
 }
 
 func (self Program) def(n int) {
-    if n >= defs.MaxStack {
+    if n >= defs.StackSize {
         panic("type nesting too deep")
     }
 }
@@ -190,11 +190,6 @@ func (self Program) Disassemble() string {
     return strings.Join(append(ret, "    end"), "\n")
 }
 
-const (
-    _MAX_STACK = 5          // cutoff at 5 levels of nesting types
-    _MAX_ILBUF = 50000      // cutoff at 50k of IL instructions
-)
-
 func CreateCompiler() Compiler {
     return newCompiler()
 }
@@ -212,7 +207,7 @@ func (self Compiler) rescue(ep *error) {
 func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
     if vt.T == defs.T_pointer {
         self.compilePtr(p, sp, vt)
-    } else if _, ok := self[vt.S]; vt.T != defs.T_struct || (!ok && sp < _MAX_STACK && p.pc() < _MAX_ILBUF) {
+    } else if _, ok := self[vt.S]; vt.T != defs.T_struct || (!ok && sp < defs.MaxNesting && p.pc() < defs.MaxILBuffer) {
         self.compileTag(p, sp, vt)
     } else {
         p.rtt(OP_defer, vt.S)

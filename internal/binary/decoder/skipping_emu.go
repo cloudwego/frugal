@@ -25,7 +25,7 @@ import (
 )
 
 type (
-    _skipbuf_t [defs.MaxStack]SkipItem
+    _skipbuf_t [defs.StackSize]SkipItem
 )
 
 var _SkipSizeFixed = [256]int {
@@ -56,7 +56,7 @@ func stpop(s *_skipbuf_t, p *int) bool {
 }
 
 func stadd(s *_skipbuf_t, p *int, t defs.Tag) bool {
-    if *p++; *p >= defs.MaxStack {
+    if *p++; *p >= defs.StackSize {
         return false
     } else {
         s[*p].T, s[*p].N = t, 0

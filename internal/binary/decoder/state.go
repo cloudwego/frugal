@@ -37,7 +37,7 @@ const (
 )
 
 const (
-    StateMax  = (defs.MaxStack - 1) * StateSize
+    StateMax  = (defs.StackSize - 1) * StateSize
     StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
@@ -56,8 +56,8 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.MaxStack]StateItem     // Must be the first field.
-    Sk [defs.MaxStack]SkipItem      // Skip buffer, used for non-recursive skipping
+    St [defs.StackSize]StateItem    // Must be the first field.
+    Sk [defs.StackSize]SkipItem     // Skip buffer, used for non-recursive skipping
     Pr unsafe.Pointer               // Pointer spill space, used for non-fast string or pointer map access.
     Iv uint64                       // Integer spill space, used for non-fast string map access.
 }

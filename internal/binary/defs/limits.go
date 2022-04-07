@@ -17,26 +17,28 @@
 package defs
 
 import (
-    `sync`
+    `os`
+    `strconv`
+)
+
+const (
+    _DefaultMaxNesting  = 5         // cutoff at 5 levels of nesting types
+    _DefaultMaxILBuffer = 50000     // cutoff at 50k of IL instructions
 )
 
 var (
-    typePool sync.Pool
+    MaxNesting  = parseOrDefault("FRUGAL_MAX_NESTING", _DefaultMaxNesting)
+    MaxILBuffer = parseOrDefault("FRUGAL_MAX_IL_BUFFER", _DefaultMaxILBuffer)
 )
 
-func newType() *Type {
-    if v := typePool.Get(); v == nil {
-        return new(Type)
+func parseOrDefault(key string, defv int) int {
+    if v := os.Getenv(key); v == "" {
+        return defv
+    } else if r, err := strconv.ParseUint(v, 0, 64); err != nil {
+        panic("frugal: invalid value for " + key)
+    } else if r <= 1 {
+        panic("frugal: value too small for " + key)
     } else {
-        return resetType(v.(*Type))
+        return int(r)
     }
-}
-
-func freeType(p *Type) {
-    typePool.Put(p)
-}
-
-func resetType(p *Type) *Type {
-    *p = Type{}
-    return p
 }
