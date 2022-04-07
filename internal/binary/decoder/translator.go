@@ -624,10 +624,10 @@ func translate_OP_struct_ignore(p *hir.Builder, _ Instr) {
 
 func translate_OP_struct_bitmap(p *hir.Builder, v Instr) {
     buf := newFieldBitmap()
-    tab := mkstab(v.Sw, v.Iv)
+    buf.Clear()
 
     /* add all the bits */
-    for _, i := range tab {
+    for _, i := range mkstab(v.Sw, v.Iv) {
         buf.Append(i)
     }
 
@@ -669,10 +669,10 @@ func translate_OP_struct_switch(p *hir.Builder, v Instr) {
 
 func translate_OP_struct_require(p *hir.Builder, v Instr) {
     buf := newFieldBitmap()
-    tab := mkstab(v.Sw, v.Iv)
+    buf.Clear()
 
     /* add all the bits */
-    for _, i := range tab {
+    for _, i := range mkstab(v.Sw, v.Iv) {
         buf.Append(i)
     }
 
