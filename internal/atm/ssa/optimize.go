@@ -16,17 +16,21 @@
 
 package ssa
 
-type _Pass struct {
-    name string
-    pass func(*CFG)
+type Pass interface {
+    Apply(*CFG)
 }
 
-var _passes = [...]_Pass {
+type _PassDescriptor struct {
+    pass Pass
+    desc string
+}
 
+var _passes = [...]_PassDescriptor {
+    { desc: "Constant Folding", pass: new(ConstFold) },
 }
 
 func optimizeSSAGraph(cfg *CFG) {
     for _, p := range _passes {
-        p.pass(cfg)
+        p.pass.Apply(cfg)
     }
 }

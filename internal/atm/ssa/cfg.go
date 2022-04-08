@@ -17,127 +17,12 @@
 package ssa
 
 import (
-    `fmt`
-
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/oleiade/lane`
 )
 
 type CFG struct {
     DominatorTree
-}
-
-type _GraphBuilder struct {
-    p map[*hir.Ir]bool
-    g map[*hir.Ir]*BasicBlock
-}
-
-func newGraphBuilder() *_GraphBuilder {
-    return &_GraphBuilder {
-        p: make(map[*hir.Ir]bool),
-        g: make(map[*hir.Ir]*BasicBlock),
-    }
-}
-
-func (self *_GraphBuilder) build(p hir.Program) *CFG {
-    self.anchor(p)
-    return &CFG { buildDominatorTree(self.branch(p.Head)) }
-}
-
-func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
-    bb.Phi = nil
-    bb.Ins = make([]IrNode, 0, 16)
-
-    /* traverse down until it hits a branch instruction */
-    for p != nil && !p.IsBranch() && p.Op != hir.OP_ret {
-        bb.addInstr(p)
-        p = p.Ln
-
-        /* hit a merge point, merge with existing block */
-        if self.p[p] {
-            bb.termBranch(self.branch(p))
-            return
-        }
-    }
-
-    /* basic block must terminate */
-    if p == nil {
-        panic(fmt.Sprintf("basic block %d does not terminate", bb.Id))
-    }
-
-    /* add terminators */
-    switch p.Op {
-        case hir.OP_bsw : self.termbsw(p, bb)
-        case hir.OP_ret : self.termret(p, bb)
-        case hir.OP_jmp : bb.termBranch(self.branch(p.Br))
-        default         : bb.termCondition(p, self.branch(p.Br), self.branch(p.Ln))
-    }
-}
-
-func (self *_GraphBuilder) anchor(p hir.Program) {
-    for v := p.Head; v != nil; v = v.Ln {
-        if v.IsBranch() {
-            if v.Op != hir.OP_bsw {
-                self.p[v.Br] = true
-            } else {
-                for _, lb := range v.Sw() {
-                    self.p[lb] = true
-                }
-            }
-        }
-    }
-}
-
-func (self *_GraphBuilder) branch(p *hir.Ir) *BasicBlock {
-    var ok bool
-    var bb *BasicBlock
-
-    /* check for existing basic blocks */
-    if bb, ok = self.g[p]; ok {
-        return bb
-    }
-
-    /* create a new block */
-    bb = new(BasicBlock)
-    bb.Id = len(self.g) + 1
-
-    /* process the new block */
-    self.g[p] = bb
-    self.block(p, bb)
-    return bb
-}
-
-func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
-    sw := new(IrSwitch)
-    sw.Br = make(map[int64]*BasicBlock, p.Iv)
-    bb.Term = sw
-
-    /* add every branch of the switch instruction */
-    for i, br := range p.Sw() {
-        if br != nil {
-            to := self.branch(br)
-            to.Pred = append(to.Pred, bb)
-            sw.Br[int64(i)] = to
-        }
-    }
-
-    /* add the default branch */
-    sw.Ln = self.branch(p.Ln)
-    sw.Ln.Pred = append(sw.Ln.Pred, bb)
-}
-
-func (self *_GraphBuilder) termret(p *hir.Ir, bb *BasicBlock) {
-    var i uint8
-    var ret []Reg
-
-    /* convert each register */
-    for i = 0; i < p.Rn; i++ {
-        ret = append(ret, Rv(ri2reg(p.Rr[i])))
-    }
-
-    /* build the "return" IR */
-    bb.Term = &IrReturn {
-        R: ret,
-    }
 }
 
 func BuildCFG(p hir.Program) (cfg *CFG) {
@@ -146,4 +31,49 @@ func BuildCFG(p hir.Program) (cfg *CFG) {
     renameRegisters(&cfg.DominatorTree)
     optimizeSSAGraph(cfg)
     return
+}
+
+func (self *CFG) PostOrder(action func(bb *BasicBlock)) {
+    stack := lane.NewStack()
+    visited := make(map[int]bool)
+
+    /* add root node */
+    visited[self.Root.Id] = true
+    stack.Push(self.Root)
+
+    /* traverse the graph */
+    for !stack.Empty() {
+        tail := true
+        this := stack.Head().(*BasicBlock)
+
+        /* add all the successors */
+        for _, p := range self.DominatorOf[this.Id] {
+            if !visited[p.Id] {
+                tail = false
+                visited[p.Id] = true
+                stack.Push(p)
+                break
+            }
+        }
+
+        /* all the successors are visited, pop the current node */
+        if tail {
+            action(stack.Pop().(*BasicBlock))
+        }
+    }
+}
+
+func (self *CFG) ReversePostOrder(action func(bb *BasicBlock)) {
+    var i int
+    var bb []*BasicBlock
+
+    /* traverse as post-order */
+    self.PostOrder(func(p *BasicBlock) {
+        bb = append(bb, p)
+    })
+
+    /* reverse post-order */
+    for i = len(bb) - 1; i >= 0; i-- {
+        action(bb[i])
+    }
 }

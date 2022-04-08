@@ -459,6 +459,7 @@ const (
 
 func (self IrUnaryOp) String() string {
     switch self {
+        case IrOpNegate   : return "negate"
         case IrOpSwap16   : return "bswap16"
         case IrOpSwap32   : return "bswap32"
         case IrOpSwap64   : return "bswap64"
@@ -469,18 +470,19 @@ func (self IrUnaryOp) String() string {
 
 func (self IrBinaryOp) String() string {
     switch self {
-        case IrOpAdd  : return "+"
-        case IrOpSub  : return "-"
-        case IrOpMul  : return "*"
-        case IrOpAnd  : return "&"
-        case IrOpXor  : return "^"
-        case IrOpShr  : return ">>"
-        case IrCmpEq  : return "=="
-        case IrCmpNe  : return "!="
-        case IrCmpLt  : return "<"
-        case IrCmpLtu : return "<#"
-        case IrCmpGeu : return ">=#"
-        default       : panic("unreachable")
+        case IrOpAdd    : return "+"
+        case IrOpSub    : return "-"
+        case IrOpMul    : return "*"
+        case IrOpAnd    : return "&"
+        case IrOpXor    : return "^"
+        case IrOpShr    : return ">>"
+        case IrOpBitSet : return "|=#"
+        case IrCmpEq    : return "=="
+        case IrCmpNe    : return "!="
+        case IrCmpLt    : return "<"
+        case IrCmpLtu   : return "<#"
+        case IrCmpGeu   : return ">=#"
+        default         : panic("unreachable")
     }
 }
 
