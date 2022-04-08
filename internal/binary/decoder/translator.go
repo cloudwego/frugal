@@ -149,6 +149,8 @@ func prologue(p *hir.Builder) {
     p.LDAP  (ARG_p, WP)
     p.LDAP  (ARG_rs, RS)
     p.LDAQ  (ARG_st, ST)
+    p.MOV   (hir.Rz, TR)
+    p.MOV   (hir.Rz, UR)
 }
 
 func epilogue(p *hir.Builder) {
