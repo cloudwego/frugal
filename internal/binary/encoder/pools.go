@@ -25,7 +25,6 @@ import (
 var (
     programPool        sync.Pool
     compilerPool       sync.Pool
-    iteratorPool       sync.Pool
     basicBlockPool     sync.Pool
     graphBuilderPool   sync.Pool
     runtimeStatePool   sync.Pool
@@ -58,23 +57,6 @@ func freeCompiler(p Compiler) {
 
 func resetCompiler(p Compiler) Compiler {
     rt.MapClear(p)
-    return p
-}
-
-func newIterator() *rt.GoMapIterator {
-    if v := iteratorPool.Get(); v == nil {
-        return new(rt.GoMapIterator)
-    } else {
-        return resetIterator(v.(*rt.GoMapIterator))
-    }
-}
-
-func freeIterator(p *rt.GoMapIterator) {
-    iteratorPool.Put(p)
-}
-
-func resetIterator(p *rt.GoMapIterator) *rt.GoMapIterator {
-    *p = rt.GoMapIterator{}
     return p
 }
 

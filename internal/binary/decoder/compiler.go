@@ -242,7 +242,7 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
 func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
     p.add(OP_make_state)
     p.rtt(OP_deref, vt.V.S)
-    self.compileOne(p, sp, vt.V)
+    self.compileOne(p, sp + 1, vt.V)
     p.add(OP_drop_state)
 }
 

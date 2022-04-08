@@ -27,18 +27,18 @@ const (
 )
 
 var (
-    MaxNesting  = parseOrDefault("FRUGAL_MAX_NESTING", _DefaultMaxNesting)
-    MaxILBuffer = parseOrDefault("FRUGAL_MAX_IL_BUFFER", _DefaultMaxILBuffer)
+    MaxNesting  = parseOrDefault("FRUGAL_MAX_NESTING", _DefaultMaxNesting, 1)
+    MaxILBuffer = parseOrDefault("FRUGAL_MAX_IL_BUFFER", _DefaultMaxILBuffer, 256)
 )
 
-func parseOrDefault(key string, defv int) int {
-    if v := os.Getenv(key); v == "" {
-        return defv
-    } else if r, err := strconv.ParseUint(v, 0, 64); err != nil {
+func parseOrDefault(key string, def int, min int) int {
+    if env := os.Getenv(key); env == "" {
+        return def
+    } else if val, err := strconv.ParseUint(env, 0, 64); err != nil {
         panic("frugal: invalid value for " + key)
-    } else if r <= 1 {
+    } else if ret := int(val); ret <= min {
         panic("frugal: value too small for " + key)
     } else {
-        return int(r)
+        return ret
     }
 }
