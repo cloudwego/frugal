@@ -26,7 +26,7 @@ type _PassDescriptor struct {
 }
 
 var _passes = [...]_PassDescriptor {
-    { desc: "Constant Folding"      , pass: new(ConstantFolding) },
+    { desc: "Constant Propagation"  , pass: new(ConstantPropagation) },
     { desc: "Dead Code Elimination" , pass: new(DeadCodeElimination) },
 }
 
