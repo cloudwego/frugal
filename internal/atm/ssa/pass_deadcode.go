@@ -20,7 +20,125 @@ package ssa
 type DeadCodeElimination struct{}
 
 func (DeadCodeElimination) unused(cfg *CFG) {
+    for {
+        done := true
+        decl := make(map[Reg]struct{})
 
+        /* Phase 1: Mark all the definations */
+        cfg.ReversePostOrder(func(bb *BasicBlock) {
+            var ok bool
+            var defs IrDefinations
+
+            /* mark all definations in Phi nodes */
+            for _, v := range bb.Phi {
+                for _, r := range v.Definations() {
+                    decl[*r] = struct{}{}
+                }
+            }
+
+            /* mark all definations in instructions if any */
+            for _, v := range bb.Ins {
+                if defs, ok = v.(IrDefinations); ok {
+                    for _, r := range defs.Definations() {
+                        decl[*r] = struct{}{}
+                    }
+                }
+            }
+        })
+
+        /* Phase 2: Find all register usages */
+        cfg.ReversePostOrder(func(bb *BasicBlock) {
+            var ok bool
+            var use IrUsages
+
+            /* mark all usages in Phi nodes */
+            for _, v := range bb.Phi {
+                for _, r := range v.Usages() {
+                    delete(decl, *r)
+                }
+            }
+
+            /* mark all usages in instructions if any */
+            for _, v := range bb.Ins {
+                if use, ok = v.(IrUsages); ok {
+                    for _, r := range use.Usages() {
+                        delete(decl, *r)
+                    }
+                }
+            }
+
+            /* mark usages in the terminator if any */
+            if use, ok = bb.Term.(IrUsages); ok {
+                for _, r := range use.Usages() {
+                    delete(decl, *r)
+                }
+            }
+        })
+
+        /* Phase 3: Remove all unused declarations */
+        cfg.ReversePostOrder(func(bb *BasicBlock) {
+            var ok bool
+            var defs IrDefinations
+
+            /* replace unused Phi assigments with zero registers */
+            for _, v := range bb.Phi {
+                for _, r := range v.Definations() {
+                    if _, ok = decl[*r]; ok && r.kind() != _K_zero {
+                        *r, done = r.zero(), false
+                    }
+                }
+            }
+
+            /* replace unused instruction assigments with zero registers */
+            for _, v := range bb.Ins {
+                if defs, ok = v.(IrDefinations); ok {
+                    for _, r := range defs.Definations() {
+                        if _, ok = decl[*r]; ok && r.kind() != _K_zero {
+                            *r, done = r.zero(), false
+                        }
+                    }
+                }
+            }
+        })
+
+        /* Phase 4: Remove the entire defination if it's all zeros */
+        cfg.ReversePostOrder(func(bb *BasicBlock) {
+            phi := bb.Phi[:0]
+            ins := bb.Ins[:0]
+
+            /* scan Phi nodes */
+            for _, v := range bb.Phi {
+                for _, r := range v.Definations() {
+                    if r.kind() != _K_zero {
+                        phi = append(phi, v)
+                        break
+                    }
+                }
+            }
+
+            /* scan instructions */
+            for _, v := range bb.Ins {
+                if defs, ok := v.(IrDefinations); ok {
+                    for _, r := range defs.Definations() {
+                        if r.kind() != _K_zero {
+                            ins = append(ins, v)
+                            break
+                        }
+                    }
+                }
+            }
+
+            /* rebuild the basic block */
+            bb.Phi = phi
+            bb.Ins = ins
+        })
+
+        /* no more modifications */
+        if done {
+            normalizeRegisters(&cfg.DominatorTree)
+            break
+        }
+    }
 }
 
 func (DeadCodeElimination) unreachable(cfg *CFG) {

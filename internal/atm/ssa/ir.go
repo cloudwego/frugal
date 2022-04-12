@@ -124,6 +124,14 @@ func (self Reg) String() string {
     }
 }
 
+func (self Reg) zero() Reg {
+    if self.Ptr() {
+        return Pn
+    } else {
+        return Rz
+    }
+}
+
 func (self Reg) kind() uint8 {
     return uint8((self & _R_kind) >> _B_kind)
 }
