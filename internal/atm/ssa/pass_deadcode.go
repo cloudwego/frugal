@@ -16,22 +16,18 @@
 
 package ssa
 
-type Pass interface {
-    Apply(*CFG)
+// DeadCodeElimination removes deadcode (unused registers, unreachable blocks, etc.) from CFG.
+type DeadCodeElimination struct{}
+
+func (DeadCodeElimination) unused(cfg *CFG) {
+
 }
 
-type _PassDescriptor struct {
-    pass Pass
-    desc string
+func (DeadCodeElimination) unreachable(cfg *CFG) {
+
 }
 
-var _passes = [...]_PassDescriptor {
-    { desc: "Constant Folding"      , pass: new(ConstantFolding) },
-    { desc: "Dead Code Elimination" , pass: new(DeadCodeElimination) },
-}
-
-func optimizeSSAGraph(cfg *CFG) {
-    for _, p := range _passes {
-        p.pass.Apply(cfg)
-    }
+func (self DeadCodeElimination) Apply(cfg *CFG) {
+    self.unused(cfg)
+    self.unreachable(cfg)
 }

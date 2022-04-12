@@ -50,9 +50,10 @@ func constptr(p unsafe.Pointer) _ConstData {
     }
 }
 
-type ConstFold struct{}
+// ConstantFolding folds constant expressions.
+type ConstantFolding struct{}
 
-func (ConstFold) unary(v int64, op IrUnaryOp) int64 {
+func (ConstantFolding) unary(v int64, op IrUnaryOp) int64 {
     switch op {
         case IrOpNegate   : return -v
         case IrOpSwap16   : return int64(bits.ReverseBytes16(uint16(v)))
@@ -63,7 +64,7 @@ func (ConstFold) unary(v int64, op IrUnaryOp) int64 {
     }
 }
 
-func (ConstFold) binary(x int64, y int64, op IrBinaryOp) int64 {
+func (ConstantFolding) binary(x int64, y int64, op IrBinaryOp) int64 {
     switch op {
         case IrOpAdd    : return x + y
         case IrOpSub    : return x - y
@@ -81,7 +82,7 @@ func (ConstFold) binary(x int64, y int64, op IrBinaryOp) int64 {
     }
 }
 
-func (ConstFold) testandset(x int64, y int64) (int64, int64) {
+func (ConstantFolding) testandset(x int64, y int64) (int64, int64) {
     if bv := int64(1 << y); x & bv == 0 {
         return 0, x | bv
     } else {
@@ -89,11 +90,11 @@ func (ConstFold) testandset(x int64, y int64) (int64, int64) {
     }
 }
 
-func (ConstFold) elementptr(p unsafe.Pointer, off int64) unsafe.Pointer {
+func (ConstantFolding) elementptr(p unsafe.Pointer, off int64) unsafe.Pointer {
     return unsafe.Pointer(uintptr(p) + uintptr(off))
 }
 
-func (self ConstFold) Apply(cfg *CFG) {
+func (self ConstantFolding) Apply(cfg *CFG) {
     done := false
     consts := make(map[Reg]_ConstData)
 
@@ -144,6 +145,11 @@ func (self ConstFold) Apply(cfg *CFG) {
                 if !isconst {
                     phi = append(phi, p)
                     continue
+                }
+
+                /* registers declared by Phi nodes can never be zero registers */
+                if p.R == Rz || p.R == Pn {
+                    panic("constfold: assignment to zero registers in Phi node: " + p.String())
                 }
 
                 /* replace the Phi node with a Const node */

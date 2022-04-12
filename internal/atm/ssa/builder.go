@@ -34,9 +34,9 @@ func newGraphBuilder() *_GraphBuilder {
     }
 }
 
-func (self *_GraphBuilder) build(p hir.Program) *BasicBlock {
+func (self *_GraphBuilder) build(p hir.Program) *CFG {
     self.anchor(p)
-    return self.branch(p.Head)
+    return &CFG { buildDominatorTree(self.branch(p.Head)) }
 }
 
 func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {

@@ -26,20 +26,11 @@ type CFG struct {
 }
 
 func BuildCFG(p hir.Program) (cfg *CFG) {
-    cfg = new(CFG)
-    buildSSAGraph(newGraphBuilder().build(p), &cfg.DominatorTree)
+    cfg = newGraphBuilder().build(p)
+    insertPhiNodes(&cfg.DominatorTree)
+    renameRegisters(&cfg.DominatorTree)
     optimizeSSAGraph(cfg)
     return
-}
-
-func buildSSAGraph(bb *BasicBlock, dt *DominatorTree) {
-    *dt = buildDominatorTree(bb)
-    insertPhiNodes(dt)
-    renameRegisters(dt)
-}
-
-func (self *CFG) Rebuild() {
-    buildSSAGraph(self.Root, &self.DominatorTree)
 }
 
 func (self *CFG) PostOrder(action func(bb *BasicBlock)) {
