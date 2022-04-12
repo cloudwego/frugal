@@ -60,7 +60,7 @@ func (ConstantPropagation) unary(v int64, op IrUnaryOp) int64 {
         case IrOpSwap32   : return int64(bits.ReverseBytes32(uint32(v)))
         case IrOpSwap64   : return int64(bits.ReverseBytes64(uint64(v)))
         case IrOpSx32to64 : return int64(int32(v))
-        default           : panic(fmt.Sprintf("constfold: invalid unary operator: %d", op))
+        default           : panic(fmt.Sprintf("constprop: invalid unary operator: %d", op))
     }
 }
 
@@ -78,7 +78,7 @@ func (ConstantPropagation) binary(x int64, y int64, op IrBinaryOp) int64 {
         case IrCmpLt    : if x <  y { return 1 } else { return 0 }
         case IrCmpLtu   : if uint64(x) <  uint64(y) { return 1 } else { return 0 }
         case IrCmpGeu   : if uint64(x) >= uint64(y) { return 1 } else { return 0 }
-        default         : panic(fmt.Sprintf("constfold: invalid binary operator: %d", op))
+        default         : panic(fmt.Sprintf("constprop: invalid binary operator: %d", op))
     }
 }
 
@@ -149,7 +149,7 @@ func (self ConstantPropagation) Apply(cfg *CFG) {
 
                 /* registers declared by Phi nodes can never be zero registers */
                 if p.R == Rz || p.R == Pn {
-                    panic("constfold: assignment to zero registers in Phi node: " + p.String())
+                    panic("constprop: assignment to zero registers in Phi node: " + p.String())
                 }
 
                 /* replace the Phi node with a Const node */
@@ -190,9 +190,9 @@ func (self ConstantPropagation) Apply(cfg *CFG) {
                         } else if off, ok := consts[p.Off]; !ok {
                             ins = append(ins, p)
                         } else if mem.i {
-                            panic(fmt.Sprintf("constfold: pointer operation on integer value %#x: %s", mem.v, p))
+                            panic(fmt.Sprintf("constprop: pointer operation on integer value %#x: %s", mem.v, p))
                         } else if !off.i {
-                            panic(fmt.Sprintf("constfold: pointer operation with pointer offset %p: %s", off.p, p))
+                            panic(fmt.Sprintf("constprop: pointer operation with pointer offset %p: %s", off.p, p))
                         } else {
                             r := self.elementptr(mem.p, off.v)
                             ins = append(ins, &IrConstPtr { R: p.R, P: r })
@@ -205,7 +205,7 @@ func (self ConstantPropagation) Apply(cfg *CFG) {
                         if cc, ok := consts[p.V]; !ok {
                             ins = append(ins, p)
                         } else if !cc.i {
-                            panic(fmt.Sprintf("constfold: integer operation on pointer value %p: %s", cc.p, p))
+                            panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", cc.p, p))
                         } else {
                             r := self.unary(cc.v, p.Op)
                             ins = append(ins, &IrConstInt { R: p.R, V: r})
@@ -220,9 +220,9 @@ func (self ConstantPropagation) Apply(cfg *CFG) {
                         } else if y, ok := consts[p.Y]; !ok {
                             ins = append(ins, p)
                         } else if !x.i {
-                            panic(fmt.Sprintf("constfold: integer operation on pointer value %p: %s", x.p, p))
+                            panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", x.p, p))
                         } else if !y.i {
-                            panic(fmt.Sprintf("constfold: integer operation on pointer value %p: %s", y.p, p))
+                            panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", y.p, p))
                         } else {
                             r := self.binary(x.v, y.v, p.Op)
                             ins = append(ins, &IrConstInt { R: p.R, V: r })
@@ -237,9 +237,9 @@ func (self ConstantPropagation) Apply(cfg *CFG) {
                         } else if y, ok := consts[p.Y]; !ok {
                             ins = append(ins, p)
                         } else if !x.i {
-                            panic(fmt.Sprintf("constfold: integer operation on pointer value %p: %s", x.p, p))
+                            panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", x.p, p))
                         } else if !y.i {
-                            panic(fmt.Sprintf("constfold: integer operation on pointer value %p: %s", y.p, p))
+                            panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", y.p, p))
                         } else {
                             t, s := self.testandset(x.v, y.v)
                             ins = append(ins, &IrConstInt { R: p.T, V: t }, &IrConstInt { R: p.S, V: s })
