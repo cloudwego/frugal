@@ -23,7 +23,6 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type Reg uint64
@@ -176,6 +175,24 @@ type IrDefinations interface {
     Definations() []*Reg
 }
 
+type _PhiSorter struct {
+    k []int
+    v []*Reg
+}
+
+func (self _PhiSorter) Len() int {
+    return len(self.k)
+}
+
+func (self _PhiSorter) Swap(i int, j int) {
+    self.k[i], self.k[j] = self.k[j], self.k[i]
+    self.v[i], self.v[j] = self.v[j], self.v[i]
+}
+
+func (self _PhiSorter) Less(i int, j int) bool {
+    return self.k[i] < self.k[j]
+}
+
 type IrPhi struct {
     R Reg
     V map[*BasicBlock]*Reg
@@ -209,10 +226,19 @@ func (self *IrPhi) String() string {
     )
 }
 
-func (self *IrPhi) Usages() (r []*Reg) {
-    r = make([]*Reg, 0, len(self.V))
-    for _, v := range self.V { r = append(r, v) }
-    return
+func (self *IrPhi) Usages() []*Reg {
+    k := make([]int, 0, len(self.V))
+    v := make([]*Reg, 0, len(self.V))
+
+    /* dump the registers */
+    for b, r := range self.V {
+        v = append(v, r)
+        k = append(k, b.Id)
+    }
+
+    /* sort by basic block ID */
+    sort.Sort(_PhiSorter { k, v })
+    return v
 }
 
 func (self *IrPhi) Definations() []*Reg {
@@ -234,38 +260,55 @@ type IrTerminator interface {
 func (*IrSwitch) irterminator() {}
 func (*IrReturn) irterminator() {}
 
-type _SwitchSuccessors struct {
-    k *int64
-    v *BasicBlock
-    r *BasicBlock
-    p *rt.GoMapIterator
+type _SwitchSorter struct {
+    k []int64
+    v []*BasicBlock
 }
 
-func (self *_SwitchSuccessors) Next() bool {
-    if self.p.K != nil {
-        self.k = (*int64)(self.p.K)
-        self.v = *(**BasicBlock)(self.p.V)
-        self.p.Next()
-        return true
-    } else if self.r != nil {
-        self.k = nil
-        self.v = self.r
-        self.r = nil
-        return true
-    } else {
-        return false
+func newSwitchSorter(k []int64, v []*BasicBlock) _SwitchSorter {
+    return _SwitchSorter {
+        k: k,
+        v: v,
     }
 }
 
+func (self _SwitchSorter) Len() int {
+    return len(self.k)
+}
+
+func (self _SwitchSorter) Swap(i int, j int) {
+    self.k[i], self.k[j] = self.k[j], self.k[i]
+    self.v[i], self.v[j] = self.v[j], self.v[i]
+}
+
+func (self _SwitchSorter) Less(i int, j int) bool {
+    return self.k[i] < self.k[j]
+}
+
+type _SwitchSuccessors struct {
+    i int
+    k []int64
+    v []*BasicBlock
+}
+
+func (self *_SwitchSuccessors) Next() bool {
+    self.i++
+    return self.i < len(self.v)
+}
+
 func (self *_SwitchSuccessors) Block() *BasicBlock {
-    return self.v
+    if self.i >= len(self.v) {
+        return nil
+    } else {
+        return self.v[self.i]
+    }
 }
 
 func (self *_SwitchSuccessors) Value() (int64, bool) {
-    if self.k == nil {
+    if self.i >= len(self.k) {
         return 0, false
     } else {
-        return *self.k, true
+        return self.k[self.i], true
     }
 }
 
@@ -308,10 +351,25 @@ func (self *IrSwitch) Usages() []*Reg {
 }
 
 func (self *IrSwitch) Successors() IrSuccessors {
+    n := len(self.Br)
+    k := make([]int64, 0, n)
+    v := make([]*BasicBlock, 0, n + 1)
+
+    /* add the key and values */
+    for i, b := range self.Br {
+        k = append(k, i)
+        v = append(v, b)
+    }
+
+    /* add the default branch, and sort by value */
+    v = append(v, self.Ln)
+    sort.Sort(newSwitchSorter(k, v))
+
+    /* construct the iterator */
     return &_SwitchSuccessors {
-        v: nil,
-        r: self.Ln,
-        p: rt.MapIter(self.Br),
+        k: k,
+        v: v,
+        i: -1,
     }
 }
 

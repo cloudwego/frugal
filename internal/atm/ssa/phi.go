@@ -17,8 +17,15 @@
 package ssa
 
 import (
+    `sort`
+
     `github.com/oleiade/lane`
 )
+
+type _PhiDesc struct {
+    r Reg
+    b []*BasicBlock
+}
 
 func appendReg(buf map[Reg]bool, r Reg) map[Reg]bool {
     if buf == nil {
@@ -72,48 +79,72 @@ func insertPhiNodes(dt *DominatorTree) {
         }
     }
 
-    /* insert Phi node for every variable */
-    for a, w := range defs {
-        for len(w) != 0 {
-            var k int
-            var n *BasicBlock
-            var y *BasicBlock
+    /* reserve buffer for Phi descriptors */
+    nb := len(defs)
+    pd := make([]_PhiDesc, nb)
 
-            /* remove some node from worklist */
-            for k, n = range w {
-                delete(w, k)
-                break
-            }
+    /* dump the descriptors */
+    for r, v := range defs {
+        n := len(v)
+        b := make([]*BasicBlock, 0, n)
+
+        /* dump the blocks */
+        for _, p := range v {
+            b = append(b, p)
+        }
+
+        /* sort blocks by ID */
+        sort.Slice(b, func(i int, j int) bool {
+            return b[i].Id < b[j].Id
+        })
+
+        /* add the descriptor */
+        pd = append(pd, _PhiDesc {
+            r: r,
+            b: b,
+        })
+    }
+
+    /* sort descriptors by register */
+    sort.Slice(pd, func(i int, j int) bool {
+        return pd[i].r < pd[j].r
+    })
+
+    /* insert Phi node for every variable */
+    for _, p := range pd {
+        for len(p.b) != 0 {
+            n := p.b[0]
+            p.b = p.b[1:]
 
             /* insert Phi nodes */
-            for _, y = range dt.DominanceFrontier[n.Id] {
-                if rem := phi[a]; !rem[y.Id] {
+            for _, y := range dt.DominanceFrontier[n.Id] {
+                if rem := phi[p.r]; !rem[y.Id] {
                     id := y.Id
                     src := make(map[*BasicBlock]*Reg)
 
                     /* mark as processed */
-                    if rem == nil {
-                        phi[a] = map[int]bool { id: true }
-                    } else {
+                    if rem != nil {
                         rem[id] = true
+                    } else {
+                        phi[p.r] = map[int]bool { id: true }
                     }
 
                     /* build the Phi node args */
                     for _, pred := range y.Pred {
                         src[pred] = new(Reg)
-                        *src[pred] = a
+                        *src[pred] = p.r
                     }
 
                     /* insert a new Phi node */
                     y.Phi = append(y.Phi, &IrPhi {
-                        R: a,
+                        R: p.r,
                         V: src,
                     })
 
                     /* a node may contain both an ordinary definition and a
                      * Phi node for the same variable */
-                    if !orig[y.Id][a] {
-                        w[y.Id] = y
+                    if !orig[y.Id][p.r] {
+                        p.b = append(p.b, y)
                     }
                 }
             }
