@@ -16,10 +16,10 @@
 
 package ssa
 
-// DeadCodeElimination removes deadcode (unused registers, unreachable blocks, etc.) from CFG.
-type DeadCodeElimination struct{}
+// DCE removes deadcode (unused registers, unreachable blocks, etc.) from CFG.
+type DCE struct{}
 
-func (DeadCodeElimination) unused(cfg *CFG) {
+func (DCE) unused(cfg *CFG) {
     for {
         done := true
         decl := make(map[Reg]struct{})
@@ -141,11 +141,11 @@ func (DeadCodeElimination) unused(cfg *CFG) {
     }
 }
 
-func (DeadCodeElimination) unreachable(cfg *CFG) {
-
+func (DCE) unreachable(cfg *CFG) {
+    // TODO: remove unreachable blocks
 }
 
-func (self DeadCodeElimination) Apply(cfg *CFG) {
+func (self DCE) Apply(cfg *CFG) {
     self.unused(cfg)
     self.unreachable(cfg)
 }

@@ -50,10 +50,10 @@ func constptr(p unsafe.Pointer) _ConstData {
     }
 }
 
-// ConstantPropagation propagates constant through the expression tree.
-type ConstantPropagation struct{}
+// ConstProp propagates constant through the expression tree.
+type ConstProp struct{}
 
-func (ConstantPropagation) unary(v int64, op IrUnaryOp) int64 {
+func (ConstProp) unary(v int64, op IrUnaryOp) int64 {
     switch op {
         case IrOpNegate   : return -v
         case IrOpSwap16   : return int64(bits.ReverseBytes16(uint16(v)))
@@ -64,7 +64,7 @@ func (ConstantPropagation) unary(v int64, op IrUnaryOp) int64 {
     }
 }
 
-func (ConstantPropagation) binary(x int64, y int64, op IrBinaryOp) int64 {
+func (ConstProp) binary(x int64, y int64, op IrBinaryOp) int64 {
     switch op {
         case IrOpAdd    : return x + y
         case IrOpSub    : return x - y
@@ -82,7 +82,7 @@ func (ConstantPropagation) binary(x int64, y int64, op IrBinaryOp) int64 {
     }
 }
 
-func (ConstantPropagation) testandset(x int64, y int64) (int64, int64) {
+func (ConstProp) testandset(x int64, y int64) (int64, int64) {
     if bv := int64(1 << y); x & bv == 0 {
         return 0, x | bv
     } else {
@@ -90,11 +90,11 @@ func (ConstantPropagation) testandset(x int64, y int64) (int64, int64) {
     }
 }
 
-func (ConstantPropagation) elementptr(p unsafe.Pointer, off int64) unsafe.Pointer {
+func (ConstProp) elementptr(p unsafe.Pointer, off int64) unsafe.Pointer {
     return unsafe.Pointer(uintptr(p) + uintptr(off))
 }
 
-func (self ConstantPropagation) Apply(cfg *CFG) {
+func (self ConstProp) Apply(cfg *CFG) {
     done := false
     consts := make(map[Reg]_ConstData)
 
