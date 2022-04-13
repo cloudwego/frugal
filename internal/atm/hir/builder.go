@@ -247,11 +247,11 @@ func (self *Builder) SP(ps PointerRegister, pd PointerRegister, disp int64) *Ir 
 }
 
 func (self *Builder) MOV(rx GenericRegister, ry GenericRegister) *Ir {
-    return self.ADDI(rx, 0, ry)
+    return self.ADD(rx, Rz, ry)
 }
 
 func (self *Builder) MOVP(ps PointerRegister, pd PointerRegister) *Ir {
-    return self.ADDPI(ps, 0, pd)
+    return self.ADDP(ps, Rz, pd)
 }
 
 func (self *Builder) LDAQ(id int, rx GenericRegister) *Ir {

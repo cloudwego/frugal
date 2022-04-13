@@ -769,11 +769,17 @@ func (self *CodeGen) translate_OP_ldap(p *x86_64.Program, v *hir.Ir) {
 func (self *CodeGen) translate_OP_addp(p *x86_64.Program, v *hir.Ir) {
     if v.Pd != hir.Pn {
         if v.Ps == hir.Pn {
-            panic("addp: direct conversion of integer to pointer")
-        } else if v.Rx == hir.Rz {
-            self.dup(p, v.Ps, v.Pd)
+            if v.Rx != hir.Rz {
+                panic("addp: direct conversion of integer to pointer")
+            } else {
+                self.clr(p, v.Pd)
+            }
         } else {
-            p.LEAQ(Sib(self.r(v.Ps), self.r(v.Rx), 1, 0), self.r(v.Pd))
+            if v.Rx != hir.Rz {
+                p.LEAQ(Sib(self.r(v.Ps), self.r(v.Rx), 1, 0), self.r(v.Pd))
+            } else {
+                self.dup(p, v.Ps, v.Pd)
+            }
         }
     }
 }
