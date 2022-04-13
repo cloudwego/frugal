@@ -118,7 +118,9 @@ func (DCE) unused(cfg *CFG) {
 
             /* scan instructions */
             for _, v := range bb.Ins {
-                if defs, ok := v.(IrDefinations); ok {
+                if defs, ok := v.(IrDefinations); !ok {
+                    ins = append(ins, v)
+                } else {
                     for _, r := range defs.Definations() {
                         if r.kind() != _K_zero {
                             ins = append(ins, v)
@@ -141,7 +143,7 @@ func (DCE) unused(cfg *CFG) {
     }
 }
 
-func (DCE) unreachable(cfg *CFG) {
+func (DCE) unreachable(_ *CFG) {
     // TODO: remove unreachable blocks
 }
 
