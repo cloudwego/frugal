@@ -36,6 +36,7 @@ func newGraphBuilder() *_GraphBuilder {
 
 func (self *_GraphBuilder) build(p hir.Program) *CFG {
     self.anchor(p)
+    self.define(&p)
     return &CFG { buildDominatorTree(self.branch(p.Head)) }
 }
 
@@ -81,6 +82,30 @@ func (self *_GraphBuilder) anchor(p hir.Program) {
             }
         }
     }
+}
+
+func (self *_GraphBuilder) define(p *hir.Program) {
+    i := hir.Rz
+    m := hir.Pn
+    b := hir.CreateBuilder()
+
+    /* implicit defination of all generic registers */
+    for i = range hir.GenericRegisters {
+        if i != hir.Rz {
+            b.MOV(hir.Rz, i)
+        }
+    }
+
+    /* implicit defination of all pointer registers */
+    for m = range hir.PointerRegisters {
+        if m != hir.Pn {
+            b.MOVP(hir.Pn, m)
+        }
+    }
+
+    /* prepend to the program */
+    r := b.Append(p.Head)
+    p.Head = r
 }
 
 func (self *_GraphBuilder) branch(p *hir.Ir) *BasicBlock {

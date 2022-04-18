@@ -83,11 +83,9 @@ func (self *Builder) tab(p *Ir, sw []string) *Ir {
 
 func (self *Builder) push(ins *Ir) {
     if self.head == nil {
-        self.head = ins
-        self.tail = ins
+        self.head, self.tail = ins, ins
     } else {
-        self.tail.Ln = ins
-        self.tail    = ins
+        self.tail.Ln, self.tail = ins, ins
     }
 }
 
@@ -174,6 +172,13 @@ func (self *Builder) Build() (r Program) {
 
     /* the Builder's life-time ends here */
     r.Head = self.head
+    freeBuilder(self)
+    return
+}
+
+func (self *Builder) Append(p *Ir) (r *Ir) {
+    self.push(p)
+    r = self.head
     freeBuilder(self)
     return
 }

@@ -90,10 +90,6 @@ func (ConstProp) testandset(x int64, y int64) (int64, int64) {
     }
 }
 
-func (ConstProp) elementptr(p unsafe.Pointer, off int64) unsafe.Pointer {
-    return unsafe.Pointer(uintptr(p) + uintptr(off))
-}
-
 func (self ConstProp) Apply(cfg *CFG) {
     done := false
     consts := make(map[Reg]_ConstData)
@@ -194,7 +190,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                         } else if !off.i {
                             panic(fmt.Sprintf("constprop: pointer operation with pointer offset %p: %s", off.p, p))
                         } else {
-                            r := self.elementptr(mem.p, off.v)
+                            r := addptr(mem.p, off.v)
                             ins = append(ins, &IrConstPtr { R: p.R, P: r })
                             addconst(p.R, constptr(r))
                         }

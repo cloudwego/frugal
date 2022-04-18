@@ -26,9 +26,10 @@ type _PassDescriptor struct {
 }
 
 var _passes = [...]_PassDescriptor {
-    { desc: "Constant Propagation"  , pass: new(ConstProp) },
-    { desc: "Copy Elimination"      , pass: new(CopyElim) },
-    { desc: "Dead Code Elimination" , pass: new(DCE) },
+    { desc: "Constant Propagation"              , pass: new(ConstProp) },
+    { desc: "Common Sub-expression Elimination" , pass: new(CSE) },
+    { desc: "Copy Elimination"                  , pass: new(CopyElim) },
+    { desc: "Trivial Dead Code Elimination"     , pass: new(TDCE) },
 }
 
 func optimizeSSAGraph(cfg *CFG) {

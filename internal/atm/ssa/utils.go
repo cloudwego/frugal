@@ -17,8 +17,18 @@
 package ssa
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
+
+func ri2reg(ri uint8) hir.Register {
+    if ri & hir.ArgPointer == 0 {
+        return hir.GenericRegister(ri & hir.ArgMask)
+    } else {
+        return hir.PointerRegister(ri & hir.ArgMask)
+    }
+}
 
 func minint(a int, b int) int {
     if a < b {
@@ -28,12 +38,8 @@ func minint(a int, b int) int {
     }
 }
 
-func ri2reg(ri uint8) hir.Register {
-    if ri & hir.ArgPointer == 0 {
-        return hir.GenericRegister(ri & hir.ArgMask)
-    } else {
-        return hir.PointerRegister(ri & hir.ArgMask)
-    }
+func addptr(p unsafe.Pointer, i int64) unsafe.Pointer {
+    return unsafe.Pointer(uintptr(p) + uintptr(i))
 }
 
 func regnewref(v Reg) (r *Reg) {

@@ -16,10 +16,10 @@
 
 package ssa
 
-// DCE removes deadcode (unused registers, unreachable blocks, etc.) from CFG.
-type DCE struct{}
+// TDCE removes trivial dead-code such as unused register definations from CFG.
+type TDCE struct{}
 
-func (DCE) unused(cfg *CFG) {
+func (TDCE) Apply(cfg *CFG) {
     for {
         done := true
         decl := make(map[Reg]struct{})
@@ -141,13 +141,4 @@ func (DCE) unused(cfg *CFG) {
             break
         }
     }
-}
-
-func (DCE) unreachable(_ *CFG) {
-    // TODO: remove unreachable blocks
-}
-
-func (self DCE) Apply(cfg *CFG) {
-    self.unused(cfg)
-    self.unreachable(cfg)
 }

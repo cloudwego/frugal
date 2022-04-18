@@ -51,15 +51,42 @@ func (self CopyElim) Apply(cfg *CFG) {
     /* Phase 2: Identify all the identity operations */
     cfg.ReversePostOrder(func(bb *BasicBlock) {
         for _, v := range bb.Ins {
-            if p, ok := v.(*IrLEA); ok {
-                if cc, ok := consts[p.Off]; ok && cc.i && cc.v == 0 {
-                    regs[p.R] = p.Mem
+            switch p := v.(type) {
+                default: {
+                    continue
                 }
-            } else if p, ok := v.(*IrBinaryExpr); ok {
-                if x, ok := consts[p.X]; ok && x.i && x.v == 0 {
-                    regs[p.R] = p.Y
-                } else if y, ok := consts[p.Y]; ok && y.i && y.v == 0 {
-                    regs[p.R] = p.X
+
+                /* pointer arithmetic */
+                case *IrLEA: {
+                    if cc, ok := consts[p.Off]; ok && cc.i && cc.v == 0 {
+                        regs[p.R] = p.Mem
+                    }
+                }
+
+                /* integer arithmetic */
+                case *IrBinaryExpr: {
+                    var c bool
+                    var i int64
+                    var x _ConstData
+                    var y _ConstData
+
+                    /* calculate mathematical identities */
+                    switch p.Op {
+                        case IrOpAdd : i = 0
+                        case IrOpSub : i = 0
+                        case IrOpMul : i = 1
+                        case IrOpAnd : i = -1
+                        case IrOpXor : i = 0
+                        case IrOpShr : i = 0
+                        default      : continue
+                    }
+
+                    /* check for identity operations */
+                    if x, c = consts[p.X]; c && x.i && x.v == i {
+                        regs[p.R] = p.Y
+                    } else if y, c = consts[p.Y]; c && y.i && y.v == i {
+                        regs[p.R] = p.X
+                    }
                 }
             }
         }

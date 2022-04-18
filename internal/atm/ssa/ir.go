@@ -201,21 +201,21 @@ type IrPhi struct {
 func (self *IrPhi) String() string {
     nb := len(self.V)
     ret := make([]string, 0, nb)
-    phi := make([]struct{b int; r Reg}, 0, nb)
+    phi := make([]struct{int; Reg}, 0, nb)
 
     /* add each path */
     for bb, reg := range self.V {
-        phi = append(phi, struct{b int; r Reg}{b: bb.Id, r: *reg})
+        phi = append(phi, struct{int; Reg}{bb.Id, *reg})
     }
 
     /* sort by basic block ID */
     sort.Slice(phi, func(i int, j int) bool {
-        return phi[i].b < phi[j].b
+        return phi[i].int < phi[j].int
     })
 
     /* dump as string */
     for _, p := range phi {
-        ret = append(ret, fmt.Sprintf("bb_%d: %s", p.b, p.r))
+        ret = append(ret, fmt.Sprintf("bb_%d: %s", p.int, p.Reg))
     }
 
     /* join them together */
@@ -587,6 +587,15 @@ func (self *IrBinaryExpr) Usages() []*Reg {
 
 func (self *IrBinaryExpr) Definations() []*Reg {
     return []*Reg { &self.R }
+}
+
+func IrCopy(r Reg, v Reg) *IrBinaryExpr {
+    return &IrBinaryExpr {
+        R  : r,
+        X  : v,
+        Y  : Rz,
+        Op : IrOpAdd,
+    }
 }
 
 type IrBitTestSet struct {
