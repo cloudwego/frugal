@@ -307,50 +307,7 @@ type IrSwitch struct {
     Br map[int64]*BasicBlock
 }
 
-func (self *IrSwitch) String() string {
-    nb := len(self.Br)
-    bv := make([]int64, 0, nb)
-    ret := make([]string, 0, nb)
-
-    /* no branches */
-    if nb == 0 {
-        return fmt.Sprintf("goto bb_%d", self.Ln.Id)
-    }
-
-    /* extract the switch keys */
-    for id := range self.Br {
-        bv = append(bv, id)
-    }
-
-    /* sort the keys */
-    sort.Slice(bv, func(i int, j int) bool {
-        return bv[i] < bv[j]
-    })
-
-    /* add each case */
-    for _, id := range bv {
-        ret = append(ret, fmt.Sprintf("  %d => bb_%d,", id, self.Br[id].Id))
-    }
-
-    /* default branch */
-    ret = append(ret, fmt.Sprintf(
-        "  _ => bb_%d,",
-        self.Ln.Id,
-    ))
-
-    /* join them together */
-    return fmt.Sprintf(
-        "switch %s {\n%s\n}",
-        self.V,
-        strings.Join(ret, "\n"),
-    )
-}
-
-func (self *IrSwitch) Usages() []*Reg {
-    return []*Reg { &self.V }
-}
-
-func (self *IrSwitch) Successors() IrSuccessors {
+func (self *IrSwitch) iter() *_SwitchSuccessors {
     n := len(self.Br)
     t := make([]_SwitchTarget, 0, n + 1)
 
@@ -378,6 +335,42 @@ func (self *IrSwitch) Successors() IrSuccessors {
         t: t,
         i: -1,
     }
+}
+
+func (self *IrSwitch) String() string {
+    n := len(self.Br)
+    r := make([]string, 0, n)
+
+    /* no branches */
+    if n == 0 {
+        return fmt.Sprintf("goto bb_%d", self.Ln.Id)
+    }
+
+    /* add each case */
+    for _, v := range self.iter().t[:n] {
+        r = append(r, fmt.Sprintf("  %d => bb_%d,", v.i, v.b.Id))
+    }
+
+    /* default branch */
+    r = append(r, fmt.Sprintf(
+        "  _ => bb_%d,",
+        self.Ln.Id,
+    ))
+
+    /* join them together */
+    return fmt.Sprintf(
+        "switch %s {\n%s\n}",
+        self.V,
+        strings.Join(r, "\n"),
+    )
+}
+
+func (self *IrSwitch) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrSwitch) Successors() IrSuccessors {
+    return self.iter()
 }
 
 type _EmptySuccessor struct{}
