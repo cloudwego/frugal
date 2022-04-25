@@ -347,5 +347,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.Pred = append(t.Pred, self)
     f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch{V: reg, Ln: f, Br: map[int64]*BasicBlock{1: t}}
+    self.Term = &IrSwitch{V: reg, Ln: t, Br: map[int64]*BasicBlock{0: f}}
 }

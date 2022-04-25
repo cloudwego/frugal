@@ -175,6 +175,13 @@ func buildDominatorTree(bb *BasicBlock) DominatorTree {
         domof[p.dom.node.Id] = append(domof[p.dom.node.Id], p.node)
     }
 
+    /* sort the dominators */
+    for _, p := range domof {
+        sort.Slice(p, func(i int, j int) bool {
+            return p[i].Id < p[j].Id
+        })
+    }
+
     /* add root node for BFS */
     q := lane.NewQueue()
     q.Enqueue(bb)

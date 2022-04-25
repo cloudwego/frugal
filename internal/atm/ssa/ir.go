@@ -44,7 +44,8 @@ const (
 )
 
 const (
-    _K_max  = 12
+    _K_max  = 7
+    _K_arch = 12
     _K_zero = 13
     _K_temp = 14
     _K_norm = 15
@@ -62,7 +63,7 @@ const (
 
 func mkreg(ptr uint64, kind uint64) Reg {
     if kind > _K_max {
-        panic("mkreg: invalid register kind")
+        panic(fmt.Sprintf("invalid register kind: %d", kind))
     } else {
         return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
     }
@@ -91,6 +92,15 @@ func (self Reg) String() string {
                 return fmt.Sprintf("%%p%d.%d", self.kind(), self.Index())
             } else {
                 return fmt.Sprintf("%%r%d.%d", self.kind(), self.Index())
+            }
+        }
+
+        /* arch-specific registers */
+        case _K_arch: {
+            if i := self.Index(); i >= len(ArchRegs) {
+                panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
+            } else {
+                return "%" + ArchRegNames[ArchRegs[i]]
             }
         }
 

@@ -30,6 +30,7 @@ var _passes = [...]_PassDescriptor {
     { desc: "Common Sub-expression Elimination" , pass: new(CSE) },
     { desc: "Copy Elimination"                  , pass: new(CopyElim) },
     { desc: "Trivial Dead Code Elimination"     , pass: new(TDCE) },
+    { desc: "Branch Elimination"                , pass: new(BranchElim) },
 }
 
 func optimizeSSAGraph(cfg *CFG) {

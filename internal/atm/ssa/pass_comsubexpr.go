@@ -71,7 +71,7 @@ func (self *IrBitTestSet) vid() []string {
 }
 
 // CSE performs the Common Sub-expression Elimintation optimization.
-type CSE int
+type CSE struct{}
 
 func (CSE) Apply(cfg *CFG) {
     for {
