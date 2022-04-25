@@ -413,7 +413,11 @@ type IrLoad struct {
 }
 
 func (self *IrLoad) String() string {
-    return fmt.Sprintf("%s = load.u%d %s", self.R, self.Size * 8, self.Mem)
+    if self.R.Ptr() {
+        return fmt.Sprintf("%s = load.ptr %s", self.R, self.Mem)
+    } else {
+        return fmt.Sprintf("%s = load.u%d %s", self.R, self.Size * 8, self.Mem)
+    }
 }
 
 func (self *IrLoad) Usages() []*Reg {
@@ -431,7 +435,11 @@ type IrStore struct {
 }
 
 func (self *IrStore) String() string {
-    return fmt.Sprintf("store.u%d(%s -> *%s)", self.Size * 8, self.R, self.Mem)
+    if self.R.Ptr() {
+        return fmt.Sprintf("store.ptr(%s -> *%s)", self.R, self.Mem)
+    } else {
+        return fmt.Sprintf("store.u%d(%s -> *%s)", self.Size * 8, self.R, self.Mem)
+    }
 }
 
 func (self *IrStore) Usages() []*Reg {
@@ -444,7 +452,11 @@ type IrLoadArg struct {
 }
 
 func (self *IrLoadArg) String() string {
-    return fmt.Sprintf("%s = load.arg(#%d)", self.R, self.Id)
+    if self.R.Ptr() {
+        return fmt.Sprintf("%s = loadarg.ptr(#%d)", self.R, self.Id)
+    } else {
+        return fmt.Sprintf("%s = loadarg.i64(#%d)", self.R, self.Id)
+    }
 }
 
 func (self *IrLoadArg) Definations() []*Reg {
