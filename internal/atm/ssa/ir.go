@@ -270,55 +270,34 @@ type IrTerminator interface {
 func (*IrSwitch) irterminator() {}
 func (*IrReturn) irterminator() {}
 
-type _SwitchSorter struct {
-    k []int64
-    v []*BasicBlock
-}
-
-func newSwitchSorter(k []int64, v []*BasicBlock) _SwitchSorter {
-    return _SwitchSorter {
-        k: k,
-        v: v,
-    }
-}
-
-func (self _SwitchSorter) Len() int {
-    return len(self.k)
-}
-
-func (self _SwitchSorter) Swap(i int, j int) {
-    self.k[i], self.k[j] = self.k[j], self.k[i]
-    self.v[i], self.v[j] = self.v[j], self.v[i]
-}
-
-func (self _SwitchSorter) Less(i int, j int) bool {
-    return self.k[i] < self.k[j]
+type _SwitchTarget struct {
+    i int64
+    b *BasicBlock
 }
 
 type _SwitchSuccessors struct {
     i int
-    k []int64
-    v []*BasicBlock
+    t []_SwitchTarget
 }
 
 func (self *_SwitchSuccessors) Next() bool {
     self.i++
-    return self.i < len(self.v)
+    return self.i < len(self.t)
 }
 
 func (self *_SwitchSuccessors) Block() *BasicBlock {
-    if self.i >= len(self.v) {
+    if self.i >= len(self.t) {
         return nil
     } else {
-        return self.v[self.i]
+        return self.t[self.i].b
     }
 }
 
 func (self *_SwitchSuccessors) Value() (int64, bool) {
-    if self.i >= len(self.k) {
+    if self.i >= len(self.t) - 1 {
         return 0, false
     } else {
-        return self.k[self.i], true
+        return self.t[self.i].i, true
     }
 }
 
@@ -330,6 +309,7 @@ type IrSwitch struct {
 
 func (self *IrSwitch) String() string {
     nb := len(self.Br)
+    bv := make([]int64, 0, nb)
     ret := make([]string, 0, nb)
 
     /* no branches */
@@ -337,9 +317,19 @@ func (self *IrSwitch) String() string {
         return fmt.Sprintf("goto bb_%d", self.Ln.Id)
     }
 
+    /* extract the switch keys */
+    for id := range self.Br {
+        bv = append(bv, id)
+    }
+
+    /* sort the keys */
+    sort.Slice(bv, func(i int, j int) bool {
+        return bv[i] < bv[j]
+    })
+
     /* add each case */
-    for id, bb := range self.Br {
-        ret = append(ret, fmt.Sprintf("  %d => bb_%d,", id, bb.Id))
+    for _, id := range bv {
+        ret = append(ret, fmt.Sprintf("  %d => bb_%d,", id, self.Br[id].Id))
     }
 
     /* default branch */
@@ -362,23 +352,30 @@ func (self *IrSwitch) Usages() []*Reg {
 
 func (self *IrSwitch) Successors() IrSuccessors {
     n := len(self.Br)
-    k := make([]int64, 0, n)
-    v := make([]*BasicBlock, 0, n + 1)
+    t := make([]_SwitchTarget, 0, n + 1)
 
     /* add the key and values */
     for i, b := range self.Br {
-        k = append(k, i)
-        v = append(v, b)
+        t = append(t, _SwitchTarget {
+            i: i,
+            b: b,
+        })
     }
 
-    /* add the default branch, and sort by value */
-    v = append(v, self.Ln)
-    sort.Sort(newSwitchSorter(k, v))
+    /* add the default branch */
+    t = append(t, _SwitchTarget {
+        i: 0,
+        b: self.Ln,
+    })
+
+    /* sort by switch value */
+    sort.Slice(t[:n], func(i int, j int) bool {
+        return t[i].i < t[j].i
+    })
 
     /* construct the iterator */
     return &_SwitchSuccessors {
-        k: k,
-        v: v,
+        t: t,
         i: -1,
     }
 }
