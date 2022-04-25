@@ -33,6 +33,25 @@ func BuildCFG(p hir.Program) (cfg *CFG) {
     return
 }
 
+func (self *CFG) MaxBlock() int {
+    var id int
+    var ret int
+
+    /* get the max ID */
+    for id = range self.DominatedBy {
+        if id > ret {
+            ret = id
+        }
+    }
+
+    /* select between ID and root ID */
+    if ret > self.Root.Id {
+        return ret
+    } else {
+        return self.Root.Id
+    }
+}
+
 func (self *CFG) PostOrder(action func(bb *BasicBlock)) {
     stack := lane.NewStack()
     visited := make(map[int]bool)

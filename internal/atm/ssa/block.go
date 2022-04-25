@@ -98,6 +98,15 @@ type BasicBlock struct {
     Term IrTerminator
 }
 
+func Unreachable(bb *BasicBlock, id int) (ret *BasicBlock) {
+    ret      = new(BasicBlock)
+    ret.Id   = id
+    ret.Ins  = append(ret.Ins, new(IrBreakpoint))
+    ret.Pred = append(ret.Pred, bb, ret)
+    ret.Term = &IrSwitch { Ln: ret }
+    return
+}
+
 func (self *BasicBlock) addInstr(p *hir.Ir) {
     switch p.Op {
         default: {

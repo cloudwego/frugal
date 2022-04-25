@@ -19,6 +19,7 @@ package ssa
 import (
     `fmt`
     `math`
+    `sort`
     `strings`
 )
 
@@ -493,21 +494,24 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         return
     }
 
-    /* create a save-point */
-    ps.checkpoint()
+    /* edges to be removed */
     rem := make(map[_Edge]bool)
+    val := make([]int64, 0, len(sw.Br))
 
     /* prove every branch */
     for v, p := range sw.Br {
-        if ps.isContradiction(_Stmt { sw.V, _ValueTerm(v), _R_eq }) {
-            // TODO: handle unreachable
+        if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(v), _R_eq }) {
+            delete(sw.Br, v)
             rem[_Edge { bb, p }] = true
-            println(fmt.Sprintf("branch bb_%d => bb_%d (%d) is unreachable", bb.Id, p.Id, v))
         }
     }
 
+    /* create a save-point */
+    ps.checkpoint()
+    sort.Slice(val, func(i int, j int) bool { return val[i] < val[j] })
+
     /* add all the negated conditions */
-    for i := range sw.Br {
+    for _, i := range val {
         ps.define(sw.V, _ValueTerm(i), _R_ne)
     }
 
@@ -517,9 +521,33 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* check for reachability */
     if !reachable {
-        // TODO: handle unreachable
-        rem[_Edge { bb, sw.Ln }] = true
-        println(fmt.Sprintf("default branch bb_%d => bb_%d is unreachable", bb.Id, sw.Ln.Id))
+        if rem[_Edge { bb, sw.Ln }] = true; len(sw.Br) != 1 {
+            sw.Ln = Unreachable(bb, cfg.MaxBlock() + 1)
+        } else {
+            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int64]*BasicBlock)
+        }
+    }
+
+    /* clear register reference if needed */
+    if len(sw.Br) == 0 {
+        sw.V = Rz
+    }
+
+    /* adjust Phi nodes in the target block */
+    for edge := range rem {
+        for _, v := range edge.to.Phi {
+            delete(v.V, edge.bb)
+        }
+    }
+
+    /* remove predecessors from the target block */
+    for edge := range rem {
+        for i, p := range edge.to.Pred {
+            if p == edge.bb {
+                edge.to.Pred = append(edge.to.Pred[:i], edge.to.Pred[i + 1:]...)
+                break
+            }
+        }
     }
 
     /* DFS the dominator tree */
@@ -556,4 +584,5 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
 func (self BranchElim) Apply(cfg *CFG) {
     self.dfs(cfg, cfg.Root, new(_Proof))
+    cfg.DominatorTree = buildDominatorTree(cfg.Root)
 }
