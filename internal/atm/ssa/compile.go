@@ -16,6 +16,10 @@
 
 package ssa
 
+import (
+    `github.com/cloudwego/frugal/internal/atm/hir`
+)
+
 type Pass interface {
     Apply(*CFG)
 }
@@ -33,12 +37,22 @@ var _passes = [...]_PassDescriptor {
     { desc: "Early Trivial Dead Code Elimination" , pass: new(TDCE) },
     { desc: "Branch Elimination"                  , pass: new(BranchElim) },
     { desc: "Late Phi Elimination"                , pass: new(PhiElim) },
-    { desc: "Late Early Copy Elimination"         , pass: new(CopyElim) },
+    { desc: "Late Copy Elimination"               , pass: new(CopyElim) },
     { desc: "Late Trivial Dead Code Elimination"  , pass: new(TDCE) },
+    { desc: "Intermediate Block Merging"          , pass: new(BlockMerge) },
+    { desc: "Machine Dependent Lowering"          , pass: new(Lowering) },
 }
 
-func optimizeSSAGraph(cfg *CFG) {
+func applySSAPasses(cfg *CFG) {
     for _, p := range _passes {
         p.pass.Apply(cfg)
     }
+}
+
+func Compile(p hir.Program) (cfg *CFG) {
+    cfg = newGraphBuilder().build(p)
+    insertPhiNodes(&cfg.DominatorTree)
+    renameRegisters(&cfg.DominatorTree)
+    applySSAPasses(cfg)
+    return
 }

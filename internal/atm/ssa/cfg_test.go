@@ -271,7 +271,7 @@ func TestCFG_Build(t *testing.T) {
     p.JMP   ("L_8")
     t.Logf("Generating CFG ...")
     c := p.Build()
-    g := BuildCFG(c)
+    g := Compile(c)
     t.Logf("Generating DOT file ...")
     cfgdot(g, "/tmp/cfg.gv")
 }

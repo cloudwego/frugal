@@ -584,5 +584,5 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
 func (self BranchElim) Apply(cfg *CFG) {
     self.dfs(cfg, cfg.Root, new(_Proof))
-    cfg.DominatorTree = buildDominatorTree(cfg.Root)
+    cfg.Rebuild()
 }

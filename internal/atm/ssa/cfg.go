@@ -17,7 +17,6 @@
 package ssa
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/oleiade/lane`
 )
 
@@ -25,12 +24,15 @@ type CFG struct {
     DominatorTree
 }
 
-func BuildCFG(p hir.Program) (cfg *CFG) {
-    cfg = newGraphBuilder().build(p)
-    insertPhiNodes(&cfg.DominatorTree)
-    renameRegisters(&cfg.DominatorTree)
-    optimizeSSAGraph(cfg)
+func newCFG(bb *BasicBlock) (cfg *CFG) {
+    cfg = new(CFG)
+    cfg.Root = bb
+    cfg.Rebuild()
     return
+}
+
+func (self *CFG) Rebuild() {
+    self.DominatorTree = buildDominatorTree(self.Root)
 }
 
 func (self *CFG) MaxBlock() int {

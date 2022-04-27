@@ -17,6 +17,8 @@
 package ssa
 
 import (
+    `fmt`
+
     `github.com/chenzhuoyu/iasm/x86_64`
 )
 
@@ -56,4 +58,37 @@ var ArchRegNames = map[x86_64.Register64]string {
     x86_64.R13 : "r13",
     x86_64.R14 : "r14",
     x86_64.R15 : "r15",
+}
+
+func (*IrAMD64_MOV_abs)            irnode() {}
+func (*IrAMD64_MOV_load8_constoff) irnode() {}
+
+type IrAMD64_LEA struct {
+    R Reg
+    M Reg
+    I Reg
+    D int32
+}
+
+type IrAMD64_MOV_abs struct {
+    R Reg
+    V int64
+}
+
+func (self IrAMD64_MOV_abs) String() string {
+    return fmt.Sprintf("movabsq $%d, %s", self.V, self.R)
+}
+
+type IrAMD64_MOV_load8_constoff struct {
+    R Reg
+    M Reg
+    D int32
+}
+
+func (self IrAMD64_MOV_load8_constoff) String() string {
+    if self.D == 0 {
+        return fmt.Sprintf("movq (%s), %s", self.M, self.R)
+    } else {
+        return fmt.Sprintf("movq %d(%s), %s", self.D, self.M, self.R)
+    }
 }
