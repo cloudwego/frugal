@@ -173,7 +173,7 @@ type AMD64ABI struct {
 }
 
 func ArchCreateABI() *AMD64ABI {
-    return &AMD64ABI{
+    return &AMD64ABI {
         FnTab: make(map[int]*FunctionLayout),
     }
 }
