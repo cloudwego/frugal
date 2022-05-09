@@ -1,4 +1,4 @@
-// +build go1.16,!go1.18
+// +build go1.18,!go1.19
 
 /*
  * Copyright 2022 ByteDance Inc.
@@ -25,7 +25,7 @@ import (
 )
 
 type _Func struct {
-    entry       uintptr
+    entryOff    uint32
     nameoff     int32
     args        int32
     deferreturn uint32
@@ -35,16 +35,17 @@ type _Func struct {
     npcdata     uint32
     cuOffset    uint32
     funcID      uint8
-    _           [2]byte
+    flag        uint8
+    _           [1]byte
     nfuncdata   uint8
     pcdata      [2]uint32
-    argptrs     uintptr
-    localptrs   uintptr
+    argptrs     uint32
+    localptrs   uint32
 }
 
 type _FuncTab struct {
-    entry   uintptr
-    funcoff uintptr
+    entry   uint32
+    funcoff uint32
 }
 
 type _PCHeader struct {
@@ -54,6 +55,7 @@ type _PCHeader struct {
     ptrSize        uint8
     nfunc          int
     nfiles         uint
+    textStart      uintptr
     funcnameOffset uintptr
     cuOffset       uintptr
     filetabOffset  uintptr
@@ -62,7 +64,7 @@ type _PCHeader struct {
 }
 
 type _BitVector struct {
-    n        int32
+    n        int32 // # of bits
     bytedata *uint8
 }
 
@@ -72,9 +74,9 @@ type _ModuleData struct {
     cutab                 []uint32
     filetab               []byte
     pctab                 []byte
-    pclntable             []_Func
+    pclntable             []byte
     ftab                  []_FuncTab
-    findfunctab           *_FindFuncBucket
+    findfunctab           uintptr
     minpc, maxpc          uintptr
     text, etext           uintptr
     noptrdata, enoptrdata uintptr
@@ -83,9 +85,11 @@ type _ModuleData struct {
     noptrbss, enoptrbss   uintptr
     end, gcdata, gcbss    uintptr
     types, etypes         uintptr
+    rodata                uintptr
+    gofunc                uintptr
     textsectmap           [][3]uintptr
     typelinks             []int32
-    itablinks             []unsafe.Pointer
+    itablinks             []*rt.GoItab
     ptab                  [][2]int32
     pluginpath            string
     pkghashes             []struct{}
@@ -93,7 +97,7 @@ type _ModuleData struct {
     modulehashes          []struct{}
     hasmain               uint8
     gcdatamask, gcbssmask _BitVector
-    typemap               map[int32]unsafe.Pointer
+    typemap               map[int32]*rt.GoType
     bad                   bool
     next                  *_ModuleData
 }
@@ -103,23 +107,44 @@ type _FindFuncBucket struct {
     subbuckets [16]byte
 }
 
-var modHeader = &_PCHeader {
-    magic   : 0xfffffffa,
-    minLC   : 1,
-    nfunc   : 1,
-    ptrSize : 4 << (^uintptr(0) >> 63),
-}
+const minfunc = 16
+const pcbucketsize = 256 * minfunc
 
-var findFuncTab = &_FindFuncBucket {
-    idx: 1,
-}
-
-var emptyByte byte
+var (
+	emptyByte  byte
+    bucketList []*_FindFuncBucket
+)
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     minpc := pc
     maxpc := pc + size
     pctab := []byte{0}
+    pbase := uintptr(0)
+    ffunc := make([]_FindFuncBucket, size / pcbucketsize + 1)
+
+    /* pin the pointer maps */
+    argptrs := frame.ArgPtrs.Pin()
+    localptrs := frame.LocalPtrs.Pin()
+
+    /* pin the find function bucket */
+    pfunc := &ffunc[0]
+    bucketList = append(bucketList, pfunc)
+
+    /* find the lower base */
+    if argptrs < localptrs {
+        pbase = argptrs
+    } else {
+        pbase = localptrs
+    }
+
+    /* module header */
+    hdr := &_PCHeader {
+        magic     : 0xfffffff0,
+        minLC     : 1,
+        nfunc     : 1,
+        ptrSize   : 4 << (^uintptr(0) >> 63),
+        textStart : minpc,
+    }
 
     /* define the PC-SP ranges */
     pctab = append(pctab, encodeFirst(0)...)
@@ -132,15 +157,15 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
 
     /* function entry */
     fn := _Func {
-        entry     : pc,
+        entryOff  : 0,
         nameoff   : 1,
         args      : int32(frame.ArgSize),
         pcsp      : 1,
         npcdata   : 2,
-        nfuncdata : 2,
         cuOffset  : 1,
-        argptrs   : frame.ArgPtrs.Pin(),
-        localptrs : frame.LocalPtrs.Pin(),
+        nfuncdata : 2,
+        argptrs   : uint32(argptrs - pbase),
+        localptrs : uint32(localptrs - pbase),
     }
 
     /* mark the entire function as a single line of code */
@@ -164,26 +189,28 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
 
     /* function table */
     tab := []_FuncTab {
-        {entry: pc},
-        {entry: pc},
-        {entry: maxpc},
+        {entry: 0},
+        {entry: uint32(size)},
     }
 
     /* module data */
     mod := &_ModuleData {
-        pcHeader    : modHeader,
+        pcHeader    : hdr,
         funcnametab : append(append([]byte{0}, name...), 0),
         cutab       : []uint32{0, 0, 1},
         filetab     : []byte("\x00(jit-generated)\x00"),
         pctab       : pctab,
-        pclntable   : []_Func{fn},
+        pclntable   : ((*[unsafe.Sizeof(_Func{})]byte)(unsafe.Pointer(&fn)))[:],
         ftab        : tab,
-        findfunctab : findFuncTab,
+        findfunctab : uintptr(unsafe.Pointer(pfunc)),
         minpc       : minpc,
         maxpc       : maxpc,
+        text        : minpc,
+        etext       : maxpc,
         modulename  : name,
         gcdata      : uintptr(unsafe.Pointer(&emptyByte)), 
         gcbss       : uintptr(unsafe.Pointer(&emptyByte)),
+        gofunc      : pbase,
     }
 
     /* verify and register the new module */

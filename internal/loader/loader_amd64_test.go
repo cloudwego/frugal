@@ -35,6 +35,15 @@ type funcInfo struct {
     datap *_ModuleData
 }
 
+func (self funcInfo) entry() uintptr {
+    if runtime.Version() <= "go1.17" {
+        return *(*uintptr)(unsafe.Pointer(self._Func))
+    }
+    off := uintptr(*(*uint32)(unsafe.Pointer(self._Func)))
+    off += self.datap.text
+    return off
+}
+
 //go:linkname findfunc runtime.findfunc
 //goland:noinspection GoUnusedParameter
 func findfunc(pc uintptr) funcInfo
@@ -146,28 +155,38 @@ func dumpfunction(f interface{}) {
         panic("no such field: pctab")
     }
     p := (*(*[]byte)(unsafe.Pointer(uintptr(unsafe.Pointer(fn.datap)) + ff.Offset)))[fn.pcsp:]
-    pc := fn.entry
+    pc := fn.entry()
     val := int32(-1)
+    lastpc := uintptr(0)
     for {
         var ok bool
-        lastpc := pc
-        p, ok = step(p, &pc, &val, pc == fn.entry)
+        lastpc = pc
+        p, ok = step(p, &pc, &val, pc == fn.entry())
         if !ok {
             break
         }
-        fmt.Printf("%#x = %d\n", lastpc, val)
+        fmt.Printf("%#x = %#x\n", lastpc, val)
     }
     pc = 0
-    for i := 0; i < 16; i++ {
-        ins, err := x86asm.Decode(rt.BytesFrom(unsafe.Pointer(uintptr(fp) + pc), 15, 15), 64)
+    lastpc -= uintptr(fp)
+    for pc <= lastpc {
+        pp := unsafe.Pointer(uintptr(fp) + pc)
+        fx := runtime.FuncForPC(uintptr(pp))
+        if fx.Name() != "" && fx.Entry() == uintptr(pp) {
+            println("----", fx.Name(), "----")
+        }
+        ins, err := x86asm.Decode(rt.BytesFrom(pp, 15, 15), 64)
         if err != nil {
             panic(err)
         }
-        fmt.Printf("%#x %s\n", uintptr(fp) + pc, x86asm.GNUSyntax(ins, uint64(uintptr(fp) + pc), nil))
+        fmt.Printf("%#x %s\n", uintptr(pp), x86asm.GNUSyntax(ins, uint64(uintptr(pp)), func(u uint64) (string, uint64) {
+            v := runtime.FuncForPC(uintptr(u))
+            if v == nil {
+                return "", 0
+            }
+            return v.Name(), uint64(v.Entry())
+        }))
         pc += uintptr(ins.Len)
-        if ins.Op == x86asm.RET {
-            break
-        }
     }
 }
 

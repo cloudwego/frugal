@@ -25,17 +25,17 @@ import (
 )
 
 type _Func struct {
-    entry       uintptr // start pc
-    nameoff     int32   // function name
-    args        int32   // in/out args size
-    deferreturn uint32  // offset of start of a deferreturn call instruction from entry, if any.
+    entry       uintptr
+    nameoff     int32
+    args        int32
+    deferreturn uint32
     pcsp        int32
     pcfile      int32
     pcln        int32
     npcdata     int32
-    funcID      uint8   // set for certain special runtime functions
-    _           [2]int8 // unused
-    nfuncdata   uint8   // must be last
+    funcID      uint8
+    _           [2]int8
+    nfuncdata   uint8
     pcdata      [2]uint32
     argptrs     uintptr
     localptrs   uintptr
@@ -47,19 +47,8 @@ type _FuncTab struct {
 }
 
 type _BitVector struct {
-    n        int32 // # of bits
+    n        int32
     bytedata *uint8
-}
-
-type _PtabEntry struct {
-    name int32
-    typ  int32
-}
-
-type _TextSection struct {
-    vaddr    uintptr // prelinked section vaddr
-    length   uintptr // section length
-    baseaddr uintptr // relocated section address
 }
 
 type _ModuleData struct {
@@ -75,18 +64,18 @@ type _ModuleData struct {
     noptrbss, enoptrbss   uintptr
     end, gcdata, gcbss    uintptr
     types, etypes         uintptr
-    textsectmap           []_TextSection
-    typelinks             []int32 // offsets from types
+    textsectmap           [][3]uintptr
+    typelinks             []int32
     itablinks             []*rt.GoItab
-    ptab                  []_PtabEntry
+    ptab                  [][2]int32
     pluginpath            string
     pkghashes             []byte
     modulename            string
     modulehashes          []byte
-    hasmain               uint8 // 1 if module contains the main function, 0 otherwise
+    hasmain               uint8
     gcdatamask, gcbssmask _BitVector
-    typemap               map[int32]*rt.GoType // offset to *_rtype in previous module
-    bad                   bool                 // module failed to load and should be ignored
+    typemap               map[int32]*rt.GoType
+    bad                   bool
     next                  *_ModuleData
 }
 
