@@ -168,7 +168,7 @@ func dumpfunction(f interface{}) {
         fmt.Printf("%#x = %#x\n", lastpc, val)
     }
     pc = 0
-    lastpc -= uintptr(fp)
+    lastpc -= fn.entry()
     for pc <= lastpc {
         pp := unsafe.Pointer(uintptr(fp) + pc)
         fx := runtime.FuncForPC(uintptr(pp))

@@ -84,15 +84,27 @@ type _FindFuncBucket struct {
     subbuckets [16]byte
 }
 
-var findFuncTab = &_FindFuncBucket {
-    idx: 1,
-}
+const minfunc = 16                 // minimum function size
+const pcbucketsize = 256 * minfunc // size of bucket in the pc->func lookup table
 
-var emptyByte byte
+var (
+	emptyByte  byte
+    bucketList []*_FindFuncBucket
+)
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     minpc := pc
     maxpc := pc + size
+    ffunc := make([]_FindFuncBucket, size / pcbucketsize + 1)
+
+    /* initialize the find function buckets */
+    for i := range ffunc {
+        ffunc[i].idx = 1
+    }
+
+    /* pin the find function bucket */
+    pfunc := &ffunc[0]
+    bucketList = append(bucketList, pfunc)
 
     /* build the PC & line table */
     pclnt := []byte {
@@ -173,7 +185,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
         pclntable   : pclnt,
         ftab        : tab,
         filetab     : []uint32{0, soff},
-        findfunctab : findFuncTab,
+        findfunctab : pfunc,
         minpc       : minpc,
         maxpc       : maxpc,
         modulename  : name,

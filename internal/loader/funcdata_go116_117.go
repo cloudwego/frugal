@@ -103,6 +103,9 @@ type _FindFuncBucket struct {
     subbuckets [16]byte
 }
 
+const minfunc = 16                 // minimum function size
+const pcbucketsize = 256 * minfunc // size of bucket in the pc->func lookup table
+
 var modHeader = &_PCHeader {
     magic   : 0xfffffffa,
     minLC   : 1,
@@ -110,16 +113,25 @@ var modHeader = &_PCHeader {
     ptrSize : 4 << (^uintptr(0) >> 63),
 }
 
-var findFuncTab = &_FindFuncBucket {
-    idx: 1,
-}
-
-var emptyByte byte
+var (
+	emptyByte  byte
+    bucketList []*_FindFuncBucket
+)
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     minpc := pc
     maxpc := pc + size
     pctab := []byte{0}
+    ffunc := make([]_FindFuncBucket, size / pcbucketsize + 1)
+
+    /* initialize the find function buckets */
+    for i := range ffunc {
+        ffunc[i].idx = 1
+    }
+
+    /* pin the find function bucket */
+    pfunc := &ffunc[0]
+    bucketList = append(bucketList, pfunc)
 
     /* define the PC-SP ranges */
     pctab = append(pctab, encodeFirst(0)...)
@@ -178,7 +190,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
         pctab       : pctab,
         pclntable   : []_Func{fn},
         ftab        : tab,
-        findfunctab : findFuncTab,
+        findfunctab : pfunc,
         minpc       : minpc,
         maxpc       : maxpc,
         modulename  : name,
