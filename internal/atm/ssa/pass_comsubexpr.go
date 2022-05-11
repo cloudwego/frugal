@@ -61,12 +61,13 @@ func (self *IrBinaryExpr) vid() []string {
 
     /* commutative operations, sort the operands */
     switch self.Op {
-        case IrOpAdd: fallthrough
-        case IrOpMul: fallthrough
-        case IrOpAnd: fallthrough
-        case IrOpXor: fallthrough
-        case IrCmpEq: fallthrough
-        case IrCmpNe: if x > y { x, y = y, x }
+        case IrOpAdd : fallthrough
+        case IrOpMul : fallthrough
+        case IrOpAnd : fallthrough
+        case IrOpOr  : fallthrough
+        case IrOpXor : fallthrough
+        case IrCmpEq : fallthrough
+        case IrCmpNe : if x > y { x, y = y, x }
     }
 
     /* build the value ID */

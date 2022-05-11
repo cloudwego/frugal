@@ -24,28 +24,28 @@ type Pass interface {
     Apply(*CFG)
 }
 
-type _PassDescriptor struct {
-    pass Pass
-    desc string
+type PassDescriptor struct {
+    Pass Pass
+    Desc string
 }
 
-var _passes = [...]_PassDescriptor {
-    { desc: "Constant Propagation"                , pass: new(ConstProp) },
-    { desc: "Common Sub-expression Elimination"   , pass: new(CSE) },
-    { desc: "Early Phi Elimination"               , pass: new(PhiElim) },
-    { desc: "Early Copy Elimination"              , pass: new(CopyElim) },
-    { desc: "Early Trivial Dead Code Elimination" , pass: new(TDCE) },
-    { desc: "Branch Elimination"                  , pass: new(BranchElim) },
-    { desc: "Late Phi Elimination"                , pass: new(PhiElim) },
-    { desc: "Late Copy Elimination"               , pass: new(CopyElim) },
-    { desc: "Late Trivial Dead Code Elimination"  , pass: new(TDCE) },
-    { desc: "Intermediate Block Merging"          , pass: new(BlockMerge) },
-    { desc: "Machine Dependent Lowering"          , pass: new(Lowering) },
+var Passes = [...]PassDescriptor {
+    { Desc: "Constant Propagation"                , Pass: new(ConstProp) },
+    { Desc: "Common Sub-expression Elimination"   , Pass: new(CSE) },
+    { Desc: "Early Phi Elimination"               , Pass: new(PhiElim) },
+    { Desc: "Early Copy Elimination"              , Pass: new(CopyElim) },
+    { Desc: "Early Trivial Dead Code Elimination" , Pass: new(TDCE) },
+    { Desc: "Branch Elimination"                  , Pass: new(BranchElim) },
+    { Desc: "Late Phi Elimination"                , Pass: new(PhiElim) },
+    { Desc: "Late Copy Elimination"               , Pass: new(CopyElim) },
+    { Desc: "Late Trivial Dead Code Elimination"  , Pass: new(TDCE) },
+    { Desc: "Intermediate Block Merging"          , Pass: new(BlockMerge) },
+    { Desc: "Machine Dependent Lowering"          , Pass: new(Lowering) },
 }
 
 func applySSAPasses(cfg *CFG) {
-    for _, p := range _passes {
-        p.pass.Apply(cfg)
+    for _, p := range Passes {
+        p.Pass.Apply(cfg)
     }
 }
 

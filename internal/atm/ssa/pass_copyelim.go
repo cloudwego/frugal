@@ -76,6 +76,7 @@ func (self CopyElim) Apply(cfg *CFG) {
                         case IrOpSub : i = 0
                         case IrOpMul : i = 1
                         case IrOpAnd : i = -1
+                        case IrOpOr  : i = 0
                         case IrOpXor : i = 0
                         case IrOpShr : i = 0
                         default      : continue

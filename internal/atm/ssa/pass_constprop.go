@@ -70,9 +70,9 @@ func (ConstProp) binary(x int64, y int64, op IrBinaryOp) int64 {
         case IrOpSub    : return x - y
         case IrOpMul    : return x * y
         case IrOpAnd    : return x & y
+        case IrOpOr     : return x | y
         case IrOpXor    : return x ^ y
         case IrOpShr    : return x >> y
-        case IrOpBitSet : return x | (1 << y)
         case IrCmpEq    : if x == y { return 1 } else { return 0 }
         case IrCmpNe    : if x != y { return 1 } else { return 0 }
         case IrCmpLt    : if x <  y { return 1 } else { return 0 }
@@ -110,8 +110,8 @@ func (self ConstProp) Apply(cfg *CFG) {
     for !done {
         done = true
         cfg.ReversePostOrder(func(bb *BasicBlock) {
-            phi := make([]*IrPhi, 0, len(bb.Phi))
-            ins := make([]IrNode, 0, len(bb.Ins))
+            phi := bb.Phi[:0]
+            ins := bb.Ins[:0]
             isconst := false
 
             /* check every Phi node */

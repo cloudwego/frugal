@@ -87,7 +87,6 @@ var _BinaryOps = [...]IrBinaryOp {
     hir.OP_andi : IrOpAnd,
     hir.OP_xori : IrOpXor,
     hir.OP_shri : IrOpShr,
-    hir.OP_bsi  : IrOpBitSet,
 }
 
 type BasicBlock struct {
@@ -230,8 +229,8 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             )
         }
 
-        /* Rx {+,*,&,^,>>,bitset} Iv -> Ry */
-        case hir.OP_addi, hir.OP_muli, hir.OP_andi, hir.OP_xori, hir.OP_shri, hir.OP_bsi: {
+        /* Rx {+,*,&,^,>>} Iv -> Ry */
+        case hir.OP_addi, hir.OP_muli, hir.OP_andi, hir.OP_xori, hir.OP_shri: {
             self.Ins = append(
                 self.Ins,
                 &IrConstInt {
@@ -243,6 +242,23 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     X  : Rv(p.Rx),
                     Y  : Tr,
                     Op : _BinaryOps[p.Op],
+                },
+            )
+        }
+
+        /* Rx | (1 << Iv) -> Ry */
+        case hir.OP_bsi: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstInt {
+                    R: Tr,
+                    V: 1 << p.Iv,
+                },
+                &IrBinaryExpr {
+                    R  : Rv(p.Ry),
+                    X  : Rv(p.Rx),
+                    Y  : Tr,
+                    Op : IrOpOr,
                 },
             )
         }
@@ -324,7 +340,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
 
 func (self *BasicBlock) termBranch(to *BasicBlock) {
     to.Pred = append(to.Pred, self)
-    self.Term = &IrSwitch{Ln: to}
+    self.Term = &IrSwitch { Ln: to }
 }
 
 func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
@@ -356,5 +372,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.Pred = append(t.Pred, self)
     f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch{V: reg, Ln: t, Br: map[int64]*BasicBlock{0: f}}
+    self.Term = &IrSwitch { V: reg, Ln: t, Br: map[int64]*BasicBlock { 0: f } }
 }

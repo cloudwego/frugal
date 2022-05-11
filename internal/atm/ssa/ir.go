@@ -525,9 +525,9 @@ const (
     IrOpSub
     IrOpMul
     IrOpAnd
+    IrOpOr
     IrOpXor
     IrOpShr
-    IrOpBitSet
     IrCmpEq
     IrCmpNe
     IrCmpLt
@@ -552,9 +552,9 @@ func (self IrBinaryOp) String() string {
         case IrOpSub    : return "-"
         case IrOpMul    : return "*"
         case IrOpAnd    : return "&"
+        case IrOpOr     : return "|"
         case IrOpXor    : return "^"
         case IrOpShr    : return ">>"
-        case IrOpBitSet : return "|=#"
         case IrCmpEq    : return "=="
         case IrCmpNe    : return "!="
         case IrCmpLt    : return "<"
@@ -589,6 +589,15 @@ type IrBinaryExpr struct {
     Op IrBinaryOp
 }
 
+func IrCopy(r Reg, v Reg) *IrBinaryExpr {
+    return &IrBinaryExpr {
+        R  : r,
+        X  : v,
+        Y  : Rz,
+        Op : IrOpAdd,
+    }
+}
+
 func (self *IrBinaryExpr) String() string {
     return fmt.Sprintf("%s = %s %s %s", self.R, self.X, self.Op, self.Y)
 }
@@ -599,15 +608,6 @@ func (self *IrBinaryExpr) Usages() []*Reg {
 
 func (self *IrBinaryExpr) Definations() []*Reg {
     return []*Reg { &self.R }
-}
-
-func IrCopy(r Reg, v Reg) *IrBinaryExpr {
-    return &IrBinaryExpr {
-        R  : r,
-        X  : v,
-        Y  : Rz,
-        Op : IrOpAdd,
-    }
 }
 
 type IrBitTestSet struct {
