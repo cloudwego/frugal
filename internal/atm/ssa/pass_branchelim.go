@@ -18,7 +18,6 @@ package ssa
 
 import (
     `fmt`
-    `math`
     `sort`
     `strings`
 )
@@ -31,7 +30,7 @@ type _Term interface {
 type (
     _TrRel     uint8
     _RegTerm   Reg
-    _ValueTerm int64
+    _ValueTerm Int65
 )
 
 func (_Stmt)      term() {}
@@ -39,7 +38,7 @@ func (_RegTerm)   term() {}
 func (_ValueTerm) term() {}
 
 func (self _RegTerm)   String() string { return Reg(self).String() }
-func (self _ValueTerm) String() string { return fmt.Sprint(int64(self)) }
+func (self _ValueTerm) String() string { return Int65(self).String() }
 
 const (
     _R_eq _TrRel = iota
@@ -102,16 +101,16 @@ func (self _Stmt) condition(cond bool) _Stmt {
 }
 
 type _Range struct {
-    rr []int64
+    rr []Int65
 }
 
-func newRange(lower int64, upper int64) *_Range {
+func newRange(lower Int65, upper Int65) *_Range {
     return &_Range {
-        rr: []int64 { lower, upper },
+        rr: []Int65 { lower, upper },
     }
 }
 
-func (self *_Range) lower() int64 {
+func (self *_Range) lower() Int65 {
     if len(self.rr) == 0 {
         panic("empty range")
     } else {
@@ -119,7 +118,7 @@ func (self *_Range) lower() int64 {
     }
 }
 
-func (self *_Range) upper() int64 {
+func (self *_Range) upper() Int65 {
     if n := len(self.rr); n == 0 {
         panic("empty range")
     } else {
@@ -128,8 +127,8 @@ func (self *_Range) upper() int64 {
 }
 
 func (self *_Range) truth() (bool, bool) {
-    var lower int64
-    var upper int64
+    var lower Int65
+    var upper Int65
 
     /* empty range */
     if len(self.rr) == 0 {
@@ -138,9 +137,9 @@ func (self *_Range) truth() (bool, bool) {
 
     /* fast path: there is only one range */
     if len(self.rr) == 2 {
-        if self.rr[0] == 0 && self.rr[1] == 0 {
+        if self.rr[0].CompareZero() == 0 && self.rr[1].CompareZero() == 0 {
             return false, true
-        } else if self.rr[0] > 0 || self.rr[1] < 0 {
+        } else if self.rr[0].CompareZero() > 0 || self.rr[1].CompareZero() < 0 {
             return true, true
         } else {
             return false, false
@@ -153,7 +152,7 @@ func (self *_Range) truth() (bool, bool) {
         upper = self.rr[i + 1]
 
         /* the range contains zero, the truth cannot be determained */
-        if lower <= 0 && upper >= 0 {
+        if lower.CompareZero() <= 0 && upper.CompareZero() >= 0 {
             return false, false
         }
     }
@@ -162,32 +161,32 @@ func (self *_Range) truth() (bool, bool) {
     return true, true
 }
 
-func (self *_Range) remove(lower int64, upper int64) {
+func (self *_Range) remove(lower Int65, upper Int65) {
     for i := 0; i < len(self.rr); i += 2 {
         l := self.rr[i]
         u := self.rr[i + 1]
 
         /* not intersecting */
-        if lower > u { break }
-        if upper < l { continue }
+        if lower.Compare(u) > 0 { break }
+        if upper.Compare(l) < 0 { continue }
 
         /* splicing */
-        if l < lower && upper < u {
-            next := []int64 { l, lower - 1, upper + 1, u }
+        if lower.Compare(l) > 0 && upper.Compare(u) < 0 {
+            next := []Int65 { l, lower.OneLess(), upper.OneMore(), u }
             self.rr = append(self.rr[:i], append(next, self.rr[i + 2:]...)...)
             i += 2
             break
         }
 
         /* remove the upper half */
-        if l < lower {
-            self.rr[i + 1] = lower - 1
+        if lower.Compare(l) > 0 {
+            self.rr[i + 1] = lower.OneLess()
             continue
         }
 
         /* remove the lower half */
-        if upper < u {
-            self.rr[i] = upper + 1
+        if upper.Compare(u) < 0 {
+            self.rr[i] = upper.OneMore()
             break
         }
 
@@ -198,9 +197,9 @@ func (self *_Range) remove(lower int64, upper int64) {
     }
 }
 
-func (self *_Range) intersect(lower int64, upper int64) {
-    if upper < math.MaxInt64 { self.remove(upper + 1, math.MaxInt64) }
-    if lower > math.MinInt64 { self.remove(math.MinInt64, lower - 1) }
+func (self *_Range) intersect(lower Int65, upper Int65) {
+    if lower != MinInt65 { self.remove(MinInt65, lower.OneLess()) }
+    if upper != MaxInt65 { self.remove(upper.OneMore(), MaxInt65) }
 }
 
 func (self *_Range) removeRange(r *_Range) {
@@ -231,14 +230,14 @@ func (self *_Range) String() string {
         s := new(strings.Builder)
 
         /* lower bounds */
-        if s.WriteRune('['); l == math.MinInt64 {
+        if s.WriteRune('['); l == MinInt65 {
             s.WriteString("-∞")
         } else {
             s.WriteString(fmt.Sprint(l))
         }
 
         /* upper bounds */
-        if s.WriteString(", "); u == math.MaxInt64 {
+        if s.WriteString(", "); u == MaxInt65 {
             s.WriteString("+∞")
         } else {
             s.WriteString(fmt.Sprint(u))
@@ -262,7 +261,7 @@ type _Ranges struct {
 
 func newRanges(nb int) (r _Ranges) {
     r.rr = make(map[Reg]*_Range, nb)
-    r.rr[Rz] = newRange(0, 0)
+    r.rr[Rz] = newRange(Int65{}, Int65{})
     return
 }
 
@@ -276,7 +275,7 @@ func (self _Ranges) of(reg Reg) (r *_Range) {
     }
 
     /* create a new one if needed */
-    rr = newRange(math.MinInt64, math.MaxInt64)
+    rr = newRange(MinInt65, MaxInt65)
     self.rr[reg] = rr
     return rr
 }
@@ -334,7 +333,6 @@ func (self *_Proof) verifyCorrectness() bool {
         /* update all the ranges */
         for _, v := range sp {
             var f bool
-            var x int64
             var p _ValueTerm
 
             /* must be a value term */
@@ -343,7 +341,7 @@ func (self *_Proof) verifyCorrectness() bool {
             }
 
             /* evaluate the range */
-            switch x = int64(p); v.rel {
+            switch x := Int65(p); v.rel {
                 default: {
                     panic("unreachable")
                 }
@@ -351,32 +349,32 @@ func (self *_Proof) verifyCorrectness() bool {
                 /* simple ranges */
                 case _R_ne: rr.of(v.lhs).remove(x, x)
                 case _R_eq: rr.of(v.lhs).intersect(x, x)
-                case _R_ge: rr.of(v.lhs).intersect(x, math.MaxInt64)
+                case _R_ge: rr.of(v.lhs).intersect(x, MaxInt65)
 
                 /* signed less-than */
                 case _R_lt: {
-                    if x == math.MinInt64 {
+                    if x == MinInt65 {
                         return false
                     } else {
-                        rr.of(v.lhs).intersect(math.MinInt64, x - 1)
+                        rr.of(v.lhs).intersect(MinInt65, x.OneLess())
                     }
                 }
 
                 /* unsigned greater-than-or-equal-to */
                 case _R_geu: {
-                    if x < 0 {
-                        panic(fmt.Sprintf("unsigned comparison to a negative value %d", x))
+                    if x.CompareZero() < 0 {
+                        panic(fmt.Sprintf("unsigned comparison to a negative value %s", x))
                     } else {
-                        rr.of(v.lhs).intersect(x, math.MaxInt64)
+                        rr.of(v.lhs).intersect(x, MaxInt65)
                     }
                 }
 
                 /* unsigned less-than */
                 case _R_ltu: {
-                    if x <= 0 {
-                        panic(fmt.Sprintf("unsigned comparison to a non-positive value %d", x))
+                    if x.CompareZero() <= 0 {
+                        panic(fmt.Sprintf("unsigned comparison to a non-positive value %s", x))
                     } else {
-                        rr.of(v.lhs).intersect(0, x - 1)
+                        rr.of(v.lhs).intersect(Int65{}, x.OneLess())
                     }
                 }
             }
@@ -397,6 +395,7 @@ func (self *_Proof) verifyCorrectness() bool {
         /* evaluate all the registers */
         for _, v := range sp {
             var f bool
+            var x Int65
             var r *_Range
             var t _RegTerm
 
@@ -433,14 +432,20 @@ func (self *_Proof) verifyCorrectness() bool {
 
                 /* unsigned less-than */
                 case _R_ltu: {
-                    rt = true
-                    st = append(st, _Stmt { v.lhs, _ValueTerm(r.upper()), _R_ltu })
+                    if x, rt = r.lower(), true; x.CompareZero() > 0 {
+                        st = append(st, _Stmt { v.lhs, _ValueTerm(x), _R_ltu })
+                    } else {
+                        return false
+                    }
                 }
 
                 /* unsigned greater-than-or-equal-to */
                 case _R_geu: {
-                    rt = true
-                    st = append(st, _Stmt { v.lhs, _ValueTerm(r.lower()), _R_geu })
+                    if x, rt = r.lower(), true; x.CompareZero() >= 0 {
+                        st = append(st, _Stmt { v.lhs, _ValueTerm(x), _R_geu })
+                    } else {
+                        st = append(st, _Stmt { v.lhs, _ValueTerm(Int65{}), _R_geu })
+                    }
                 }
             }
         }
@@ -473,7 +478,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
             /* integer constant */
             case *IrConstInt: {
-                ps.define(p.R, _ValueTerm(p.V), _R_eq)
+                ps.define(p.R, _ValueTerm(Int65i(p.V)), _R_eq)
             }
 
             /* binary operators */
@@ -500,7 +505,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* prove every branch */
     for v, p := range sw.Br {
-        if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(v), _R_eq }) {
+        if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(Int65i(v)), _R_eq }) {
             delete(sw.Br, v)
             rem[_Edge { bb, p }] = true
         }
@@ -512,7 +517,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* add all the negated conditions */
     for _, i := range val {
-        ps.define(sw.V, _ValueTerm(i), _R_ne)
+        ps.define(sw.V, _ValueTerm(Int65i(i)), _R_ne)
     }
 
     /* prove the default branch */
@@ -563,7 +568,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         /* find the branch value */
         for i, b := range sw.Br {
             if b == p {
-                f, v = true, _ValueTerm(i)
+                f, v = true, _ValueTerm(Int65i(i))
                 break
             }
         }

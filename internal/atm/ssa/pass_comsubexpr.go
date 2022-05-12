@@ -113,6 +113,11 @@ func (CSE) Apply(cfg *CFG) {
                     s := defs[j]
                     r, ok = vals[vid]
 
+                    /* skip zero registers */
+                    if s.kind() == _K_zero {
+                        continue
+                    }
+
                     /* add to definations if not found */
                     if r, ok = vals[vid]; !ok {
                         vals[vid] = *s

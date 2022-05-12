@@ -38,6 +38,16 @@ func minint(a int, b int) int {
     }
 }
 
+func cmpu64(a uint64, b uint64) int {
+    if a < b {
+        return -1
+    } else if a > b {
+        return 1
+    } else {
+        return 0
+    }
+}
+
 func addptr(p unsafe.Pointer, i int64) unsafe.Pointer {
     return unsafe.Pointer(uintptr(p) + uintptr(i))
 }

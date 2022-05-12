@@ -97,8 +97,8 @@ func (*IrAMD64_MOV_ptr)      irnode() {}
 func (*IrAMD64_MOV_reg)      irnode() {}
 func (*IrAMD64_MOV_load)     irnode() {}
 func (*IrAMD64_MOV_store)    irnode() {}
-func (*IrAMD64_MOV_load_be)  irnode() {}
-func (*IrAMD64_MOV_store_be) irnode() {}
+func (*IrAMD64_MOVBE_load)   irnode() {}
+func (*IrAMD64_MOVBE_store)  irnode() {}
 func (*IrAMD64_NEG)          irnode() {}
 func (*IrAMD64_BSWAP)        irnode() {}
 func (*IrAMD64_MOVSLQ)       irnode() {}
@@ -207,6 +207,7 @@ func (self *IrAMD64_MOV_load) String() string {
         case 2  : return fmt.Sprintf("movzwq %s, %s", self.M, self.R)
         case 4  : return fmt.Sprintf("movl %s, %s", self.M, self.R)
         case 8  : return fmt.Sprintf("movq %s, %s", self.M, self.R)
+        case 16 : return fmt.Sprintf("movdqu %s, %s", self.M, self.R)
         default : panic("invalid load size")
     }
 }
@@ -233,6 +234,7 @@ func (self *IrAMD64_MOV_store) String() string {
         case 2  : return fmt.Sprintf("movw %s, %s", self.R, self.M)
         case 4  : return fmt.Sprintf("movl %s, %s", self.R, self.M)
         case 8  : return fmt.Sprintf("movq %s, %s", self.R, self.M)
+        case 16 : return fmt.Sprintf("movdqu %s, %s", self.R, self.M)
         default : panic("invalid store size")
     }
 }
@@ -244,13 +246,13 @@ func (self *IrAMD64_MOV_store) Usages() (r []*Reg) {
     return
 }
 
-type IrAMD64_MOV_load_be struct {
+type IrAMD64_MOVBE_load struct {
     R Reg
     M Mem
     S uint8
 }
 
-func (self *IrAMD64_MOV_load_be) String() string {
+func (self *IrAMD64_MOVBE_load) String() string {
     switch self.S {
         case 2  : return fmt.Sprintf("movbew %s, %s", self.M, self.R)
         case 4  : return fmt.Sprintf("movbel %s, %s", self.M, self.R)
@@ -259,23 +261,23 @@ func (self *IrAMD64_MOV_load_be) String() string {
     }
 }
 
-func (self *IrAMD64_MOV_load_be) Usages() (r []*Reg) {
+func (self *IrAMD64_MOVBE_load) Usages() (r []*Reg) {
     if self.M.M != Pn { r = append(r, &self.M.M) }
     if self.M.I != Rz { r = append(r, &self.M.I) }
     return
 }
 
-func (self *IrAMD64_MOV_load_be) Definations() []*Reg {
+func (self *IrAMD64_MOVBE_load) Definations() []*Reg {
     return []*Reg { &self.R }
 }
 
-type IrAMD64_MOV_store_be struct {
+type IrAMD64_MOVBE_store struct {
     R Reg
     M Mem
     S uint8
 }
 
-func (self *IrAMD64_MOV_store_be) String() string {
+func (self *IrAMD64_MOVBE_store) String() string {
     switch self.S {
         case 2  : return fmt.Sprintf("movbew %s, %s", self.R, self.M)
         case 4  : return fmt.Sprintf("movbel %s, %s", self.R, self.M)
@@ -284,7 +286,7 @@ func (self *IrAMD64_MOV_store_be) String() string {
     }
 }
 
-func (self *IrAMD64_MOV_store_be) Usages() (r []*Reg) {
+func (self *IrAMD64_MOVBE_store) Usages() (r []*Reg) {
     r = []*Reg { &self.R }
     if self.M.M != Pn { r = append(r, &self.M.M) }
     if self.M.I != Rz { r = append(r, &self.M.I) }

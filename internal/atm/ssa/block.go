@@ -344,26 +344,26 @@ func (self *BasicBlock) termBranch(to *BasicBlock) {
 }
 
 func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
-    var reg Reg
     var cmp IrBinaryOp
+    var lhs hir.Register
     var rhs hir.Register
 
     /* check for OpCode */
     switch p.Op {
-        case hir.OP_beq  : reg, cmp, rhs = Tr, IrCmpEq , p.Ry
-        case hir.OP_bne  : reg, cmp, rhs = Tr, IrCmpNe , p.Ry
-        case hir.OP_blt  : reg, cmp, rhs = Tr, IrCmpLt , p.Ry
-        case hir.OP_bltu : reg, cmp, rhs = Tr, IrCmpLtu, p.Ry
-        case hir.OP_bgeu : reg, cmp, rhs = Tr, IrCmpGeu, p.Ry
-        case hir.OP_beqn : reg, cmp, rhs = Pr, IrCmpEq , hir.Pn
-        case hir.OP_bnen : reg, cmp, rhs = Pr, IrCmpNe , hir.Pn
+        case hir.OP_beq  : cmp, lhs, rhs = IrCmpEq  , p.Rx, p.Ry
+        case hir.OP_bne  : cmp, lhs, rhs = IrCmpNe  , p.Rx, p.Ry
+        case hir.OP_blt  : cmp, lhs, rhs = IrCmpLt  , p.Rx, p.Ry
+        case hir.OP_bltu : cmp, lhs, rhs = IrCmpLtu , p.Rx, p.Ry
+        case hir.OP_bgeu : cmp, lhs, rhs = IrCmpGeu , p.Rx, p.Ry
+        case hir.OP_beqn : cmp, lhs, rhs = IrCmpEq  , p.Ps, hir.Pn
+        case hir.OP_bnen : cmp, lhs, rhs = IrCmpNe  , p.Ps, hir.Pn
         default          : panic("invalid branch: " + p.Disassemble(nil))
     }
 
     /* construct the instruction */
     ins := &IrBinaryExpr {
-        R  : reg,
-        X  : Rv(p.Rx),
+        R  : Tr,
+        X  : Rv(lhs),
         Y  : Rv(rhs),
         Op : cmp,
     }
@@ -372,5 +372,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.Pred = append(t.Pred, self)
     f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch { V: reg, Ln: t, Br: map[int64]*BasicBlock { 0: f } }
+    self.Term = &IrSwitch { V: Tr, Ln: t, Br: map[int64]*BasicBlock { 0: f } }
 }

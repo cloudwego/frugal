@@ -22,7 +22,7 @@ type Lowering struct{}
 func (Lowering) Apply(cfg *CFG) {
     cfg.ReversePostOrder(func(bb *BasicBlock) {
         ins := bb.Ins
-        bb.Ins = bb.Ins[:0]
+        bb.Ins = make([]IrNode, 0, len(ins))
 
         /* lower every instruction */
         for _, v := range ins {
@@ -143,8 +143,17 @@ func (Lowering) Apply(cfg *CFG) {
 
                 /* fill block with zeros */
                 case *IrBlockZero: {
-                    // TODO: this
-                    bb.Ins = append(bb.Ins, p)
+                    nb := p.Len
+                    mm := Mem { M: p.Mem }
+
+                    /* clear with decreasing chunk size */
+                    for _, n := range []uintptr { 16, 8, 4, 2, 1 } {
+                        for nb >= n {
+                            bb.Ins = append(bb.Ins, &IrAMD64_MOV_store { R: Rz, M: mm, S: uint8(n) })
+                            mm.D += int32(n)
+                            nb -= n
+                        }
+                    }
                 }
 
                 /* memory copy */
