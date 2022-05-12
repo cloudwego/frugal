@@ -33,7 +33,13 @@ func mapiternext(it *rt.GoMapIterator)
 //goland:noinspection GoUnusedParameter
 func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
+//go:nosplit
+func mapiterstart(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator) {
+    *it = rt.GoMapIterator{}
+    mapiterinit(t, h, it)
+}
+
 var (
-    F_mapiternext = hir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
-    F_mapiterinit = hir.RegisterGCall(mapiterinit, emu_gcall_mapiterinit)
+    F_mapiternext  = hir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+    F_mapiterstart = hir.RegisterGCall(mapiterstart, emu_gcall_mapiterstart)
 )

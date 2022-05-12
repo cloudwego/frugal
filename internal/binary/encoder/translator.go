@@ -402,8 +402,7 @@ func translate_OP_map_begin(p *hir.Builder, v Instr) {
     p.LP    (WP, 0, EP)
     p.ADDP  (RS, ST, TP)
     p.ADDPI (TP, MiOffset, TP)
-    p.BZERO (MiSize, TP)
-    p.GCALL (F_mapiterinit).
+    p.GCALL (F_mapiterstart).
       A0    (ET).
       A1    (EP).
       A2    (TP)

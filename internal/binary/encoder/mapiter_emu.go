@@ -29,10 +29,10 @@ func emu_gcall_mapiternext(ctx hir.CallContext) {
     }
 }
 
-func emu_gcall_mapiterinit(ctx hir.CallContext) {
+func emu_gcall_mapiterstart(ctx hir.CallContext) {
     if !ctx.Verify("***", "") {
-        panic("invalid MapBeginIterator call")
+        panic("invalid mapiterstart call")
     } else {
-        mapiterinit((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), (*rt.GoMapIterator)(ctx.Ap(2)))
+        mapiterstart((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), (*rt.GoMapIterator)(ctx.Ap(2)))
     }
 }
