@@ -161,5 +161,25 @@ func (Lowering) Apply(cfg *CFG) {
                 }
             }
         }
+
+        /* lower the terminator */
+        switch p := bb.Term.(type) {
+            default: {
+                panic("invalid terminator: " + bb.Term.String())
+            }
+
+            /* branch terminator */
+            case *IrSwitch: {
+                switch t := p.iter().t; len(p.Br) {
+                    case 0: bb.Term = &IrAMD64_JMP { To: p.Ln }
+                    case 1: bb.Term = &IrAMD64_JE_imm { R: p.V, V: t[0].i, To: t[0].b, Ln: p.Ln }
+                }
+            }
+
+            /* return terminator */
+            case *IrReturn: {
+                // TODO: this
+            }
+        }
     })
 }

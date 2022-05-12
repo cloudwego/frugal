@@ -7,5 +7,5 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/oleiade/lane v1.0.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/arch v0.0.0-20220401014709-5424468ecbac
+	golang.org/x/arch v0.0.0-20220412001346-fc48f9fe4c15
 )
