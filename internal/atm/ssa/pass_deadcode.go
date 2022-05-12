@@ -118,10 +118,12 @@ func (TDCE) Apply(cfg *CFG) {
 
             /* scan instructions */
             for _, v := range bb.Ins {
-                if defs, ok := v.(IrDefinations); !ok {
+                if d, ok := v.(IrDefinations); !ok {
+                    ins = append(ins, v)
+                } else if rr := d.Definations(); len(rr) == 0 {
                     ins = append(ins, v)
                 } else {
-                    for _, r := range defs.Definations() {
+                    for _, r := range rr {
                         if r.kind() != _K_zero {
                             ins = append(ins, v)
                             break
