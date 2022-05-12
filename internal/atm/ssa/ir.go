@@ -172,7 +172,6 @@ func (*IrBinaryExpr) irnode() {}
 func (*IrBitTestSet) irnode() {}
 func (*IrCall)       irnode() {}
 func (*IrBlockZero)  irnode() {}
-func (*IrBlockCopy)  irnode() {}
 func (*IrBreakpoint) irnode() {}
 
 type IrUsages interface {
@@ -680,14 +679,11 @@ func (self *IrCall) String() string {
     for _, r := range self.Out { out = append(out, r.String()) }
 
     /* join them together */
-    return fmt.Sprintf(
-        "%s = %s %s%s, {%s}",
-        strings.Join(out, ", "),
-        kind,
-        desc,
-        recv,
-        strings.Join(in, ", "),
-    )
+    if len(out) == 0 {
+        return fmt.Sprintf("%s %s%s, {%s}", kind, desc, recv, strings.Join(in, ", "))
+    } else {
+        return fmt.Sprintf("%s = %s %s%s, {%s}", strings.Join(out, ", "), kind, desc, recv, strings.Join(in, ", "))
+    }
 }
 
 func (self *IrCall) Usages() []*Reg {
@@ -713,20 +709,6 @@ func (self *IrBlockZero) String() string {
 
 func (self *IrBlockZero) Usages() []*Reg {
     return []*Reg { &self.Mem }
-}
-
-type IrBlockCopy struct {
-    Mem Reg
-    Src Reg
-    Len Reg
-}
-
-func (self *IrBlockCopy) String() string {
-    return fmt.Sprintf("memmove(%s, %s, %s)", self.Mem, self.Src, self.Len)
-}
-
-func (self *IrBlockCopy) Usages() []*Reg {
-    return []*Reg { &self.Mem, &self.Src, &self.Len }
 }
 
 type (

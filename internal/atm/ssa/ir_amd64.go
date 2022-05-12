@@ -234,7 +234,6 @@ func (self *IrAMD64_MOV_store) String() string {
         case 2  : return fmt.Sprintf("movw %s, %s", self.R, self.M)
         case 4  : return fmt.Sprintf("movl %s, %s", self.R, self.M)
         case 8  : return fmt.Sprintf("movq %s, %s", self.R, self.M)
-        case 16 : return fmt.Sprintf("movdqu %s, %s", self.R, self.M)
         default : panic("invalid store size")
     }
 }

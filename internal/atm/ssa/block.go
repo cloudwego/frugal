@@ -19,6 +19,7 @@ package ssa
 import (
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/cloudwego/frugal/internal/atm/rtx`
 )
 
 func memload(buf *[]IrNode, p *hir.Ir, rx hir.Register, size uint8) {
@@ -290,10 +291,9 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
         case hir.OP_bcopy: {
             self.Ins = append(
                 self.Ins,
-                &IrBlockCopy {
-                    Mem: Rv(p.Pd),
-                    Src: Rv(p.Ps),
-                    Len: Rv(p.Rx),
+                &IrCall {
+                    Fn: rtx.H_memmove,
+                    In: []Reg { Rv(p.Pd), Rv(p.Ps), Rv(p.Rx) },
                 },
             )
         }

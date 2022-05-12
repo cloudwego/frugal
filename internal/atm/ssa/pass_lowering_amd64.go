@@ -141,24 +141,8 @@ func (Lowering) Apply(cfg *CFG) {
                     bb.Ins = append(bb.Ins, p)
                 }
 
-                /* fill block with zeros */
+                /* fill block with zeros, defer to later stages */
                 case *IrBlockZero: {
-                    nb := p.Len
-                    mm := Mem { M: p.Mem }
-
-                    /* clear with decreasing chunk size */
-                    for _, n := range []uintptr { 16, 8, 4, 2, 1 } {
-                        for nb >= n {
-                            bb.Ins = append(bb.Ins, &IrAMD64_MOV_store { R: Rz, M: mm, S: uint8(n) })
-                            mm.D += int32(n)
-                            nb -= n
-                        }
-                    }
-                }
-
-                /* memory copy */
-                case *IrBlockCopy: {
-                    // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }
 
