@@ -116,19 +116,50 @@ var (
 )
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
+    var pbase uintptr
+    var sbase uintptr
+
+    /* PC ranges */
     minpc := pc
     maxpc := pc + size
-    pctab := []byte{0}
-    pbase := uintptr(0)
+    pctab := make([]byte, 1)
     ffunc := make([]_FindFuncBucket, size / pcbucketsize + 1)
+
+    /* define the PC-SP ranges */
+    for i, r := range frame.SpTab {
+        nb := r.Nb
+        ds := int(r.Sp - sbase)
+
+        /* check for remaining size */
+        if nb == 0 {
+            if i == len(frame.SpTab) - 1 {
+                nb = size - pbase
+            } else {
+                panic("invalid PC-SP tab")
+            }
+        }
+
+        /* check for the first entry */
+        if i == 0 {
+            pctab = append(pctab, encodeFirst(ds)...)
+        } else {
+            pctab = append(pctab, encodeValue(ds)...)
+        }
+
+        /* encode the length */
+        sbase = r.Sp
+        pbase = pbase + nb
+        pctab = append(pctab, encodeVariant(int(nb))...)
+    }
+
+    /* pin the find function bucket */
+    ftab := &ffunc[0]
+    pctab = append(pctab, 0)
+    bucketList = append(bucketList, ftab)
 
     /* pin the pointer maps */
     argptrs := frame.ArgPtrs.Pin()
     localptrs := frame.LocalPtrs.Pin()
-
-    /* pin the find function bucket */
-    pfunc := &ffunc[0]
-    bucketList = append(bucketList, pfunc)
 
     /* find the lower base */
     if argptrs < localptrs {
@@ -136,24 +167,6 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     } else {
         pbase = localptrs
     }
-
-    /* module header */
-    hdr := &_PCHeader {
-        magic     : 0xfffffff0,
-        minLC     : 1,
-        nfunc     : 1,
-        ptrSize   : 4 << (^uintptr(0) >> 63),
-        textStart : minpc,
-    }
-
-    /* define the PC-SP ranges */
-    pctab = append(pctab, encodeFirst(0)...)
-    pctab = append(pctab, encodeVariant(frame.Head)...)
-    pctab = append(pctab, encodeValue(frame.Size)...)
-    pctab = append(pctab, encodeVariant(frame.Tail - frame.Head)...)
-    pctab = append(pctab, encodeValue(-frame.Size)...)
-    pctab = append(pctab, encodeVariant(int(size) - frame.Tail)...)
-    pctab = append(pctab, 0)
 
     /* function entry */
     fn := _Func {
@@ -187,10 +200,19 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     pctab = append(pctab, encodeVariant(int(size))...)
     pctab = append(pctab, 0)
 
+    /* module header */
+    hdr := &_PCHeader {
+        magic     : 0xfffffff0,
+        minLC     : 1,
+        nfunc     : 1,
+        ptrSize   : 4 << (^uintptr(0) >> 63),
+        textStart : minpc,
+    }
+
     /* function table */
     tab := []_FuncTab {
-        {entry: 0},
-        {entry: uint32(size)},
+        { entry: 0 },
+        { entry: uint32(size) },
     }
 
     /* module data */
@@ -202,7 +224,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
         pctab       : pctab,
         pclntable   : ((*[unsafe.Sizeof(_Func{})]byte)(unsafe.Pointer(&fn)))[:],
         ftab        : tab,
-        findfunctab : uintptr(unsafe.Pointer(pfunc)),
+        findfunctab : uintptr(unsafe.Pointer(ftab)),
         minpc       : minpc,
         maxpc       : maxpc,
         text        : minpc,

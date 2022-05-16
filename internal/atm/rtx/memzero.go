@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-package rt
+package rtx
 
-type Stack struct {
-    Sp uintptr
-    Nb uintptr
+import (
+    `unsafe`
+)
+
+type MemZeroFn struct {
+    Fn unsafe.Pointer
+    Sz []uintptr
 }
 
-type Frame struct {
-    SpTab     []Stack
-    ArgSize   uintptr
-    ArgPtrs   *StackMap
-    LocalPtrs *StackMap
-}
+var (
+    MemZero = asmmemzero()
+)

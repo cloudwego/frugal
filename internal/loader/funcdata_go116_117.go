@@ -119,9 +119,13 @@ var (
 )
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
+    var pbase uintptr
+    var sbase uintptr
+
+    /* PC ranges */
     minpc := pc
     maxpc := pc + size
-    pctab := []byte{0}
+    pctab := make([]byte, 1)
     ffunc := make([]_FindFuncBucket, size / pcbucketsize + 1)
 
     /* initialize the find function buckets */
@@ -129,18 +133,37 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
         ffunc[i].idx = 1
     }
 
-    /* pin the find function bucket */
-    pfunc := &ffunc[0]
-    bucketList = append(bucketList, pfunc)
-
     /* define the PC-SP ranges */
-    pctab = append(pctab, encodeFirst(0)...)
-    pctab = append(pctab, encodeVariant(frame.Head)...)
-    pctab = append(pctab, encodeValue(frame.Size)...)
-    pctab = append(pctab, encodeVariant(frame.Tail - frame.Head)...)
-    pctab = append(pctab, encodeValue(-frame.Size)...)
-    pctab = append(pctab, encodeVariant(int(size) - frame.Tail)...)
+    for i, r := range frame.SpTab {
+        nb := r.Nb
+        ds := int(r.Sp - sbase)
+
+        /* check for remaining size */
+        if nb == 0 {
+            if i == len(frame.SpTab) - 1 {
+                nb = size - pbase
+            } else {
+                panic("invalid PC-SP tab")
+            }
+        }
+
+        /* check for the first entry */
+        if i == 0 {
+            pctab = append(pctab, encodeFirst(ds)...)
+        } else {
+            pctab = append(pctab, encodeValue(ds)...)
+        }
+
+        /* encode the length */
+        sbase = r.Sp
+        pbase = pbase + nb
+        pctab = append(pctab, encodeVariant(int(nb))...)
+    }
+
+    /* pin the find function bucket */
+    ftab := &ffunc[0]
     pctab = append(pctab, 0)
+    bucketList = append(bucketList, ftab)
 
     /* function entry */
     fn := _Func {
@@ -190,7 +213,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
         pctab       : pctab,
         pclntable   : []_Func{fn},
         ftab        : tab,
-        findfunctab : pfunc,
+        findfunctab : ftab,
         minpc       : minpc,
         maxpc       : maxpc,
         modulename  : name,

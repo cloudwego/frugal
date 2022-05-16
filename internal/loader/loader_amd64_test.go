@@ -123,13 +123,16 @@ func TestLoader_StackMap(t *testing.T) {
     smb.AddField(true)
     cc := asm.Code()
     fp := Loader(cc).Load("test_with_stackmap", rt.Frame {
-        Head      : 4,              // sizeof(subq $24, %rsp)
-        Tail      : len(cc) - 1,    // len(cc) - sizeof(ret)
-        Size      : 24,
+        SpTab: []rt.Stack {
+            { Sp:  0, Nb: 4 },
+            { Sp: 24, Nb: uintptr(len(cc) - 5) },
+            { Sp:  0, Nb: 0 },
+        },
         ArgSize   : 0,
         ArgPtrs   : new(rt.StackMapBuilder).Build(),
         LocalPtrs : smb.Build(),
     })
+    dumpfunction(*(*func())(unsafe.Pointer(&fp)))
     println("enter function")
     (*(*func())(unsafe.Pointer(&fp)))()
     println("leave function")

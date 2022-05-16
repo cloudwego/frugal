@@ -121,19 +121,45 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
 
     /* add PCDATA */
     pcsp := len(pclnt)
-    pclnt = append(pclnt, encodeFirst(0)...)
-    pclnt = append(pclnt, encodeVariant(frame.Head)...)
-    pclnt = append(pclnt, encodeValue(frame.Size)...)
-    pclnt = append(pclnt, encodeVariant(frame.Tail - frame.Head)...)
-    pclnt = append(pclnt, encodeValue(-frame.Size)...)
-    pclnt = append(pclnt, encodeVariant(int(size) - frame.Tail)...)
+    pbase := uintptr(0)
+    sbase := uintptr(0)
+
+    /* define the PC-SP ranges */
+    for i, r := range frame.SpTab {
+        nb := r.Nb
+        ds := int(r.Sp - sbase)
+
+        /* check for remaining size */
+        if nb == 0 {
+            if i == len(frame.SpTab) - 1 {
+                nb = size - pbase
+            } else {
+                panic("invalid PC-SP tab")
+            }
+        }
+
+        /* check for the first entry */
+        if i == 0 {
+            pclnt = append(pclnt, encodeFirst(ds)...)
+        } else {
+            pclnt = append(pclnt, encodeValue(ds)...)
+        }
+
+        /* encode the length */
+        sbase = r.Sp
+        pbase = pbase + nb
+        pclnt = append(pclnt, encodeVariant(int(nb))...)
+    }
+
+    /* add the final zero */
+    args := frame.ArgSize
     pclnt = append(pclnt, 0)
 
     /* function entry */
     fn := _Func {
         entry     : pc,
         nameoff   : int32(noff),
-        args      : int32(frame.ArgSize),
+        args      : int32(args),
         pcsp      : int32(pcsp),
         npcdata   : 2,
         nfuncdata : 2,

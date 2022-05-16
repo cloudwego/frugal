@@ -395,14 +395,26 @@ func (self *CodeGen) Generate(s hir.Program, sp uintptr) *Func {
         v.link(p)
     }
 
+    /* stack ranges */
+    code := p.Assemble(0)
+    head := toAddress(self.head)
+    tail := toAddress(self.tail)
+    args := uintptr(self.ctxt.save())
+    size := uintptr(self.ctxt.size())
+
+    /* build the PC-SP tab */
+    tab := []rt.Stack {
+        { Sp:    0, Nb: head },
+        { Sp: size, Nb: tail - head },
+        { Sp:    0, Nb: 0 },
+    }
+
     /* assemble the function */
     ret := &Func {
-        Code  : p.Assemble(0),
+        Code  : code,
         Frame : rt.Frame {
-            Head      : toAddress(self.head),
-            Tail      : toAddress(self.tail),
-            Size      : int(self.ctxt.size()),
-            ArgSize   : int(self.ctxt.save()),
+            SpTab     : tab,
+            ArgSize   : args,
             ArgPtrs   : self.ctxt.ArgPtrs(),
             LocalPtrs : self.ctxt.LocalPtrs(),
         },

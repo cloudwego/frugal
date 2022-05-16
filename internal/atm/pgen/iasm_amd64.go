@@ -73,11 +73,11 @@ func isReg64(v x86_64.Register) (ok bool) {
     return
 }
 
-func toAddress(p *x86_64.Label) int {
+func toAddress(p *x86_64.Label) uintptr {
     if v, err := p.Evaluate(); err != nil {
         panic(err)
     } else {
-        return int(v)
+        return uintptr(v)
     }
 }
 
