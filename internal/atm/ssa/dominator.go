@@ -119,10 +119,11 @@ type DominatorTree struct {
     DominanceFrontier map[int][]*BasicBlock
 }
 
-func buildDominatorTree(bb *BasicBlock) DominatorTree {
-    domby := make(map[int]*BasicBlock)
-    domof := make(map[int][]*BasicBlock)
-    domft := make(map[int][]*BasicBlock)
+func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
+    dt.Root = bb
+    dt.DominatedBy = make(map[int]*BasicBlock)
+    dt.DominatorOf = make(map[int][]*BasicBlock)
+    dt.DominanceFrontier = make(map[int][]*BasicBlock)
 
     /* Step 1: Carry out a depth-first search of the problem graph. Number the vertices
      * from 1 to n as they are reached during the search. Initialize the variables used
@@ -171,12 +172,12 @@ func buildDominatorTree(bb *BasicBlock) DominatorTree {
 
     /* map the dominator relationship */
     for _, p := range lt.nodes[1:] {
-        domby[p.node.Id] = p.dom.node
-        domof[p.dom.node.Id] = append(domof[p.dom.node.Id], p.node)
+        dt.DominatedBy[p.node.Id] = p.dom.node
+        dt.DominatorOf[p.dom.node.Id] = append(dt.DominatorOf[p.dom.node.Id], p.node)
     }
 
     /* sort the dominators */
-    for _, p := range domof {
+    for _, p := range dt.DominatorOf {
         sort.Slice(p, func(i int, j int) bool {
             return p[i].Id < p[j].Id
         })
@@ -189,16 +190,8 @@ func buildDominatorTree(bb *BasicBlock) DominatorTree {
     /* calculate dominance frontier for every block */
     for !q.Empty() {
         k := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(domof, k, q)
-        computeDominanceFrontier(domof, k, domft)
-    }
-
-    /* construct the dominator tree */
-    return DominatorTree {
-        Root              : bb,
-        DominatorOf       : domof,
-        DominatedBy       : domby,
-        DominanceFrontier : domft,
+        addImmediateDominators(dt.DominatorOf, k, q)
+        computeDominanceFrontier(dt.DominatorOf, k, dt.DominanceFrontier)
     }
 }
 

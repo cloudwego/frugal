@@ -155,7 +155,7 @@ func (TDCE) Apply(cfg *CFG) {
 
         /* no more modifications */
         if done {
-            normalizeRegisters(&cfg.DominatorTree)
+            cfg.Rebuild()
             break
         }
     }

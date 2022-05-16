@@ -26,13 +26,13 @@ type CFG struct {
 
 func newCFG(bb *BasicBlock) (cfg *CFG) {
     cfg = new(CFG)
-    cfg.Root = bb
-    cfg.Rebuild()
+    buildDominatorTree(&cfg.DominatorTree, bb)
     return
 }
 
 func (self *CFG) Rebuild() {
-    self.DominatorTree = buildDominatorTree(self.Root)
+    buildDominatorTree(&self.DominatorTree, self.Root)
+    normalizeRegisters(&self.DominatorTree)
 }
 
 func (self *CFG) MaxBlock() int {
