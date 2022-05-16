@@ -40,7 +40,7 @@ var Passes = [...]PassDescriptor {
     { Desc: "Late Copy Elimination"               , Pass: new(CopyElim) },
     { Desc: "Late Trivial Dead Code Elimination"  , Pass: new(TDCE) },
     { Desc: "Intermediate Block Merging"          , Pass: new(BlockMerge) },
-    // { Desc: "Write Barrier Insertion"             , Pass: new(WriteBarrier) },
+    { Desc: "Write Barrier Insertion"             , Pass: new(WriteBarrier) },
     // { Desc: "Machine Dependent Lowering"          , Pass: new(Lowering) },
 }
 

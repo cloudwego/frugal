@@ -20,7 +20,7 @@ package ssa
 type PhiElim struct{}
 
 func (PhiElim) Apply(cfg *CFG) {
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder(func(bb *BasicBlock) {
         phi := bb.Phi
         bb.Phi = bb.Phi[:0]
 

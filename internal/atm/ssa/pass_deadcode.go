@@ -25,7 +25,7 @@ func (TDCE) Apply(cfg *CFG) {
         decl := make(map[Reg]struct{})
 
         /* Phase 1: Mark all the definations */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder(func(bb *BasicBlock) {
             var ok bool
             var defs IrDefinations
 
@@ -54,7 +54,7 @@ func (TDCE) Apply(cfg *CFG) {
         })
 
         /* Phase 2: Find all register usages */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder(func(bb *BasicBlock) {
             var ok bool
             var use IrUsages
 
@@ -83,7 +83,7 @@ func (TDCE) Apply(cfg *CFG) {
         })
 
         /* Phase 3: Remove all unused declarations */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder(func(bb *BasicBlock) {
             var ok bool
             var defs IrDefinations
 
@@ -118,7 +118,7 @@ func (TDCE) Apply(cfg *CFG) {
         })
 
         /* Phase 4: Remove the entire defination if it's all zeros */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder(func(bb *BasicBlock) {
             phi := bb.Phi[:0]
             ins := bb.Ins[:0]
 

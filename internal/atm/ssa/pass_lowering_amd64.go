@@ -20,7 +20,7 @@ package ssa
 type Lowering struct{}
 
 func (Lowering) Apply(cfg *CFG) {
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder(func(bb *BasicBlock) {
         ins := bb.Ins
         bb.Ins = make([]IrNode, 0, len(ins))
 

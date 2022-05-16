@@ -39,7 +39,7 @@ func (self CopyElim) Apply(cfg *CFG) {
     }
 
     /* Phase 1: Find all the constants */
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder(func(bb *BasicBlock) {
         for _, v := range bb.Ins {
             switch p := v.(type) {
                 case *IrConstInt: consts[p.R] = constint(p.V)
@@ -94,7 +94,7 @@ func (self CopyElim) Apply(cfg *CFG) {
     })
 
     /* Phase 3: Replace all the register references */
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder(func(bb *BasicBlock) {
         var ok bool
         var use IrUsages
 
