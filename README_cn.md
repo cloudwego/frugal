@@ -4,6 +4,8 @@
 
 一款基于 JIT 编译的高性能动态 Thrift 编解码器。
 
+**注意：当前项目仍处于非常早期的 alpha 阶段，请谨慎使用！！**
+
 ## 特点
 
 ### 无需生成代码
@@ -90,9 +92,10 @@ package client
 import (
     "context"
 
-    "code.byted.org/kite/kitex/client"
-    "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
-    "example.com/kitex_test/client/kitex_gen/a/b/c/echo"
+
+"code.byted.org/kite/kitex/client"
+"example.com/kitex_test/client/kitex_gen/a/b/c/echo"
+"github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
 
 func Echo() {
@@ -110,8 +113,8 @@ import (
     "log"
 
     "code.byted.org/kite/kitex/server"
-    "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
     c "example.com/kitex_test/kitex_gen/a/b/c/echo"
+    "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
 
 func main() {
