@@ -187,47 +187,54 @@ We can define a struct like this:
 
 ```go
 type MyStruct struct {
-    string Msg
-    int64  Code
+    Msg     string
+    Code    int64
+    Numbers []int64 
 }
 ```
 
 #### Add Frugal tag to struct fields
 
-Frugal tag is like `frugal:"1,default,string"`, `1` is field ID, `default` is field requiredness, `string` is filed type.  
+Frugal tag is like `frugal:"1,default,string"`, `1` is field ID, `default` is field requiredness, `string` is field type. Field ID and requiredness is always required, but field type is only required for `list`, `set` and `enum`.
+
 You can add Frugal tag to `MyStruct` like below:
 
 ```go
 type MyStruct struct {
-    string Msg `frugal:"1,default,string"`
-    int64  Code `frugal:"2,default,i64"`
+    Msg     string  `frugal:"1,default"`
+    Code    int64   `frugal:"2,default"`
+    Numbers []int64 `frugal:"3,default,list<i64>"`
 }
 ```
 
-All types example：
+All types example:
 
 ```go
+type MyEnum int64
+
 type Example struct {
- MyOptBool         *bool            `frugal:"1,optional,bool"`
- MyReqBool         bool             `frugal:"2,required,bool"`
- MyOptByte         *int8            `frugal:"3,optional,byte"`
- MyReqByte         int8             `frugal:"4,required,byte"`
- MyOptI16          *int16           `frugal:"5,optional,i16"`
- MyReqI16          int16            `frugal:"6,required,i16"`
- MyOptI32          *int32           `frugal:"7,optional,i32"`
- MyReqI32          int32            `frugal:"8,required,i32"`
- MyOptI64          *int64           `frugal:"9,optional,i64"`
- MyReqI64          int64            `frugal:"10,required,i64"`
- MyOptString       *string          `frugal:"11,optional,string"`
- MyReqString       string           `frugal:"12,required,string"`
- MyOptBinary       []byte           `frugal:"13,optional,binary"`
- MyReqBinary       []byte           `frugal:"14,required,binary"`
+ MyOptBool         *bool            `frugal:"1,optional"`
+ MyReqBool         bool             `frugal:"2,required"`
+ MyOptByte         *int8            `frugal:"3,optional"`
+ MyReqByte         int8             `frugal:"4,required"`
+ MyOptI16          *int16           `frugal:"5,optional"`
+ MyReqI16          int16            `frugal:"6,required"`
+ MyOptI32          *int32           `frugal:"7,optional"`
+ MyReqI32          int32            `frugal:"8,required"`
+ MyOptI64          *int64           `frugal:"9,optional"`
+ MyReqI64          int64            `frugal:"10,required"`
+ MyOptString       *string          `frugal:"11,optional"`
+ MyReqString       string           `frugal:"12,required"`
+ MyOptBinary       []byte           `frugal:"13,optional"`
+ MyReqBinary       []byte           `frugal:"14,required"`
  MyOptI64Set       []int64          `frugal:"15,optional,set<i64>"`
  MyReqI64Set       []int64          `frugal:"16,required,set<i64>"`
  MyOptI64List      []int64          `frugal:"17,optional,list<i64>"`
  MyReqI64List      []int64          `frugal:"18,required,list<i64>"`
- MyOptI64StringMap map[int64]string `frugal:"19,optional,map<i64:string>"`
- MyReqI64StringMap map[int64]string `frugal:"20,required,map<i64:string>"`
+ MyOptI64StringMap map[int64]string `frugal:"19,optional"`
+ MyReqI64StringMap map[int64]string `frugal:"20,required"`
+ MyOptEnum         *MyEnum          `frugal:"21,optional,i64"`
+ MyReqEnum         *MyEnum          `frugal:"22,optional,i64"`
 }
 ```
 
@@ -246,6 +253,7 @@ func main() {
     ms := &thrift.MyStruct{
         Msg: "my message",
         Code: 1024,
+        Numbers: []int64{0, 1, 2, 3, 4},
     }
     ...
     buf := make([]byte, frugal.EncodeSize(ms))
