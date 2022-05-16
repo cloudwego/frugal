@@ -44,6 +44,13 @@ func (TDCE) Apply(cfg *CFG) {
                     }
                 }
             }
+
+            /* mark all definations in terminators if any */
+            if defs, ok = bb.Term.(IrDefinations); ok {
+                for _, r := range defs.Definations() {
+                    decl[*r] = struct{}{}
+                }
+            }
         })
 
         /* Phase 2: Find all register usages */
@@ -96,6 +103,15 @@ func (TDCE) Apply(cfg *CFG) {
                         if _, ok = decl[*r]; ok && r.kind() != _K_zero {
                             *r, done = r.zero(), false
                         }
+                    }
+                }
+            }
+
+            /* replace unused terminator assigments with zero registers */
+            if defs, ok = bb.Term.(IrDefinations); ok {
+                for _, r := range defs.Definations() {
+                    if _, ok = decl[*r]; ok && r.kind() != _K_zero {
+                        *r, done = r.zero(), false
                     }
                 }
             }

@@ -141,11 +141,6 @@ func (Lowering) Apply(cfg *CFG) {
                     bb.Ins = append(bb.Ins, p)
                 }
 
-                /* fill block with zeros, defer to later stages */
-                case *IrBlockZero: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
                 /* breakpoint */
                 case *IrBreakpoint: {
                     bb.Ins = append(bb.Ins, &IrAMD64_INT {

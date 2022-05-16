@@ -119,14 +119,26 @@ func renameRegisters(dt *DominatorTree) {
     normalizeRegisters(dt)
 }
 
+func assignRegisters(rr []*Reg, rm map[Reg]Reg) {
+    for _, r := range rr {
+        if *r != Rz && *r != Pn {
+            if v, ok := rm[*r]; ok {
+                panic("register redefined: " + r.String())
+            } else {
+                v = r.normalize(len(rm))
+                *r, rm[*r] = v, v
+            }
+        }
+    }
+}
+
 func replaceRegisters(rr []*Reg, rm map[Reg]Reg) {
     for _, r := range rr {
         if *r != Rz && *r != Pn {
             if v, ok := rm[*r]; ok {
                 *r = v
             } else {
-                v = r.normalize(len(rm))
-                *r, rm[*r] = v, v
+                panic("use of undefined register: " + r.String())
             }
         }
     }
@@ -136,6 +148,29 @@ func normalizeRegisters(dt *DominatorTree) {
     q := lane.NewQueue()
     r := make(map[Reg]Reg)
 
+    /* find all the register definations */
+    for q.Enqueue(dt.Root); !q.Empty(); {
+        p := q.Dequeue().(*BasicBlock)
+        addImmediateDominators(dt.DominatorOf, p, q)
+
+        /* assign Phi nodes */
+        for _, n := range p.Phi {
+            assignRegisters(n.Definations(), r)
+        }
+
+        /* assign instructions */
+        for _, n := range p.Ins {
+            if d, ok := n.(IrDefinations); ok {
+                assignRegisters(d.Definations(), r)
+            }
+        }
+
+        /* assign terminators */
+        if d, ok := p.Term.(IrDefinations); ok {
+            assignRegisters(d.Definations(), r)
+        }
+    }
+
     /* normalize each block */
     for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
@@ -144,17 +179,18 @@ func normalizeRegisters(dt *DominatorTree) {
         /* replace Phi nodes */
         for _, n := range p.Phi {
             replaceRegisters(n.Usages(), r)
-            replaceRegisters(n.Definations(), r)
         }
 
         /* replace instructions */
         for _, n := range p.Ins {
-            if u, ok := n.(IrUsages)      ; ok { replaceRegisters(u.Usages(), r) }
-            if d, ok := n.(IrDefinations) ; ok { replaceRegisters(d.Definations(), r) }
+            if u, ok := n.(IrUsages); ok {
+                replaceRegisters(u.Usages(), r)
+            }
         }
 
         /* replace terminators */
-        if u, ok := p.Term.(IrUsages)      ; ok { replaceRegisters(u.Usages(), r) }
-        if d, ok := p.Term.(IrDefinations) ; ok { replaceRegisters(d.Definations(), r) }
+        if u, ok := p.Term.(IrUsages); ok {
+            replaceRegisters(u.Usages(), r)
+        }
     }
 }

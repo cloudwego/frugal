@@ -110,8 +110,8 @@ func (self ConstProp) Apply(cfg *CFG) {
     for !done {
         done = true
         cfg.ReversePostOrder(func(bb *BasicBlock) {
-            phi := bb.Phi[:0]
-            ins := bb.Ins[:0]
+            phi := make([]*IrPhi, 0, len(bb.Phi))
+            ins := make([]IrNode, 0, len(bb.Ins))
             isconst := false
 
             /* check every Phi node */

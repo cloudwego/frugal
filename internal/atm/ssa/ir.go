@@ -158,21 +158,21 @@ type IrNode interface {
     irnode()
 }
 
-func (*IrPhi)        irnode() {}
-func (*IrSwitch)     irnode() {}
-func (*IrReturn)     irnode() {}
-func (*IrLoad)       irnode() {}
-func (*IrStore)      irnode() {}
-func (*IrLoadArg)    irnode() {}
-func (*IrConstInt)   irnode() {}
-func (*IrConstPtr)   irnode() {}
-func (*IrLEA)        irnode() {}
-func (*IrUnaryExpr)  irnode() {}
-func (*IrBinaryExpr) irnode() {}
-func (*IrBitTestSet) irnode() {}
-func (*IrCall)       irnode() {}
-func (*IrBlockZero)  irnode() {}
-func (*IrBreakpoint) irnode() {}
+func (*IrPhi)          irnode() {}
+func (*IrSwitch)       irnode() {}
+func (*IrReturn)       irnode() {}
+func (*IrLoad)         irnode() {}
+func (*IrStore)        irnode() {}
+func (*IrLoadArg)      irnode() {}
+func (*IrConstInt)     irnode() {}
+func (*IrConstPtr)     irnode() {}
+func (*IrLEA)          irnode() {}
+func (*IrUnaryExpr)    irnode() {}
+func (*IrBinaryExpr)   irnode() {}
+func (*IrBitTestSet)   irnode() {}
+func (*IrCall)         irnode() {}
+func (*IrWriteBarrier) irnode() {}
+func (*IrBreakpoint)   irnode() {}
 
 type IrUsages interface {
     IrNode
@@ -210,11 +210,11 @@ type IrPhi struct {
 func (self *IrPhi) String() string {
     nb := len(self.V)
     ret := make([]string, 0, nb)
-    phi := make([]struct{int; Reg}, 0, nb)
+    phi := make([]struct { int; Reg }, 0, nb)
 
     /* add each path */
     for bb, reg := range self.V {
-        phi = append(phi, struct{int; Reg}{bb.Id, *reg})
+        phi = append(phi, struct { int; Reg }{ bb.Id, *reg })
     }
 
     /* sort by basic block ID */
@@ -698,17 +698,17 @@ func (self *IrCall) Definations() []*Reg {
     return regsliceref(self.Out)
 }
 
-type IrBlockZero struct {
-    Mem Reg
-    Len uintptr
+type IrWriteBarrier struct {
+    R Reg
+    V Reg
 }
 
-func (self *IrBlockZero) String() string {
-    return fmt.Sprintf("memset(%s, 0, %d)", self.Mem, self.Len)
+func (self *IrWriteBarrier) String() string {
+    return fmt.Sprintf("write_barrier(%s -> *%s)", self.V, self.R)
 }
 
-func (self *IrBlockZero) Usages() []*Reg {
-    return []*Reg { &self.Mem }
+func (self *IrWriteBarrier) Usages() []*Reg {
+    return []*Reg { &self.R, &self.V }
 }
 
 type (

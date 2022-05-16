@@ -278,13 +278,31 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
 
         /* memset(Pd, 0, Iv) */
         case hir.OP_bzero: {
-            self.Ins = append(
-                self.Ins,
-                &IrBlockZero {
-                    Mem: Rv(p.Pd),
-                    Len: uintptr(p.Iv),
-                },
-            )
+            r := Rv(p.Pd)
+            d := uintptr(0)
+            n := uintptr(p.Iv)
+
+            /* call memory zero for large blocks */
+            for ; n >= rtx.MaxZeroSize; n -= rtx.MaxZeroSize {
+                self.zeroBlock(r, d, rtx.MaxZeroSize)
+                d += rtx.MaxZeroSize
+            }
+
+            /* call memory zero for smaller blocks */
+            if n >= rtx.ZeroStep {
+                self.zeroBlock(r, d, n)
+                d += n / rtx.ZeroStep * rtx.ZeroStep
+                n %= rtx.ZeroStep
+            }
+
+            /* use scalar code for remaining bytes */
+            for _, v := range []uintptr { 8, 4, 2, 1 } {
+                for n >= v {
+                    self.zeroUnit(r, d, v)
+                    d += v
+                    n -= v
+                }
+            }
         }
 
         /* memcpy(Pd, Ps, Rx) */
@@ -336,6 +354,29 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             )
         }
     }
+}
+
+func (self *BasicBlock) zeroUnit(r Reg, d uintptr, n uintptr) {
+    self.Ins = append(self.Ins,
+        &IrConstInt { R: Tr, V: int64(d) },
+        &IrLEA      { R: Pr, Mem: r, Off: Tr },
+        &IrStore    { R: Rz, Mem: Pr, Size: uint8(n) },
+    )
+}
+
+func (self *BasicBlock) zeroBlock(r Reg, d uintptr, n uintptr) {
+    self.Ins = append(self.Ins,
+        &IrConstInt { R: Tr, V: int64(d) },
+        &IrLEA      { R: Pr, Mem: r, Off: Tr },
+        &IrCall     {
+            In: []Reg { Pr },
+            Fn: &hir.CallHandle {
+                Id   : -1,
+                Type : hir.CCall,
+                Func : uintptr(rtx.MemZero.Fn) + rtx.MemZero.Sz[n / rtx.ZeroStep],
+            },
+        },
+    )
 }
 
 func (self *BasicBlock) termBranch(to *BasicBlock) {

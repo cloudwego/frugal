@@ -20,6 +20,8 @@ import (
     `fmt`
     `sort`
     `strings`
+
+    `github.com/oleiade/lane`
 )
 
 type _Term interface {
@@ -432,7 +434,7 @@ func (self *_Proof) verifyCorrectness() bool {
 
                 /* unsigned less-than */
                 case _R_ltu: {
-                    if x, rt = r.lower(), true; x.CompareZero() > 0 {
+                    if x, rt = r.upper(), true; x.CompareZero() > 0 {
                         st = append(st, _Stmt { v.lhs, _ValueTerm(x), _R_ltu })
                     } else {
                         return false
@@ -500,14 +502,15 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
     }
 
     /* edges to be removed */
-    rem := make(map[_Edge]bool)
+    rem := lane.NewQueue()
+    del := make(map[_Edge]bool)
     val := make([]int64, 0, len(sw.Br))
 
     /* prove every branch */
     for v, p := range sw.Br {
         if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(Int65i(v)), _R_eq }) {
             delete(sw.Br, v)
-            rem[_Edge { bb, p }] = true
+            rem.Enqueue(_Edge { bb, p })
         }
     }
 
@@ -526,7 +529,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* check for reachability */
     if !reachable {
-        if rem[_Edge { bb, sw.Ln }] = true; len(sw.Br) != 1 {
+        if rem.Enqueue(_Edge { bb, sw.Ln }); len(sw.Br) != 1 {
             sw.Ln = Unreachable(bb, cfg.MaxBlock() + 1)
         } else {
             sw.Ln, sw.Br = sw.Br[val[0]], make(map[int64]*BasicBlock)
@@ -538,19 +541,31 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         sw.V = Rz
     }
 
-    /* adjust Phi nodes in the target block */
-    for edge := range rem {
-        for _, v := range edge.to.Phi {
-            delete(v.V, edge.bb)
-        }
-    }
+    /* adjust all the edges */
+    for !rem.Empty() {
+        e := rem.Pop().(_Edge)
+        del[e] = true
 
-    /* remove predecessors from the target block */
-    for edge := range rem {
-        for i, p := range edge.to.Pred {
-            if p == edge.bb {
-                edge.to.Pred = append(edge.to.Pred[:i], edge.to.Pred[i + 1:]...)
+        /* adjust Phi nodes in the target block */
+        for _, v := range e.to.Phi {
+            delete(v.V, e.bb)
+        }
+
+        /* remove predecessors from the target block */
+        for i, p := range e.to.Pred {
+            if p == e.bb {
+                e.to.Pred = append(e.to.Pred[:i], e.to.Pred[i + 1:]...)
                 break
+            }
+        }
+
+        /* remove the entire block if no more entry edges left */
+        if len(e.to.Pred) == 0 {
+            for it := e.to.Term.Successors(); it.Next(); {
+                rem.Enqueue(_Edge {
+                    bb: e.to,
+                    to: it.Block(),
+                })
             }
         }
     }
@@ -561,7 +576,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         var v _ValueTerm
 
         /* no need to recurse into unreachable branches */
-        if rem[_Edge { bb, p }] {
+        if del[_Edge { bb, p }] {
             continue
         }
 

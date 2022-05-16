@@ -31,18 +31,6 @@ func (self *IrLoadArg) vid() []string {
     }
 }
 
-func (self *IrConstInt) vid() []string {
-    return []string {
-        fmt.Sprintf("$%d", self.V),
-    }
-}
-
-func (self *IrConstPtr) vid() []string {
-    return []string {
-        fmt.Sprintf("$%p", self.P),
-    }
-}
-
 func (self *IrLEA) vid() []string {
     return []string {
         fmt.Sprintf("(& %s %s)", self.Mem, self.Off),
