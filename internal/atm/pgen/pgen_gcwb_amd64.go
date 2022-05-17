@@ -62,7 +62,7 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s hir.PointerRegister, d 
         wbSetSlot               ()
         self.abiSpillReserved   (p)
         self.abiLoadReserved    (p)
-        p.MOVQ                  (int64(rtx.F_gcWriteBarrier), RSI)
+        p.MOVQ                  (rtx.F_gcWriteBarrier, RSI)
         p.CALLQ                 (RSI)
         self.abiSaveReserved    (p)
         self.abiRestoreReserved (p)

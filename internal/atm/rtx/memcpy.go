@@ -19,7 +19,6 @@ package rtx
 import (
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -31,5 +30,4 @@ func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 var (
     R_memmove = resolveClobberSet(memmove)
     F_memmove = uintptr(rt.FuncAddr(memmove))
-    H_memmove = hir.RegisterGCall(memmove, nil)
 )
