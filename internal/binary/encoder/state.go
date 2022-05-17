@@ -32,7 +32,6 @@ const (
 )
 
 const (
-    MiSize        = int64(unsafe.Sizeof(rt.GoMapIterator{}))
     MiKeyOffset   = int64(unsafe.Offsetof(rt.GoMapIterator{}.K))
     MiValueOffset = int64(unsafe.Offsetof(rt.GoMapIterator{}.V))
 )
