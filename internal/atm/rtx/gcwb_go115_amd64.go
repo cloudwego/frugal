@@ -42,7 +42,7 @@ func iszero(arg x86asm.Arg) bool {
     return ok && v == 0
 }
 
-func gcwbaddr() uintptr {
+func gcwbaddr() unsafe.Pointer {
     var err error
     var off uintptr
     var ins x86asm.Inst
@@ -76,6 +76,6 @@ func gcwbaddr() uintptr {
     if off == 0 {
         panic("gcwbaddr: could not locate the variable `writeBarrier`")
     } else {
-        return uintptr(fp) + off
+        return unsafe.Pointer(uintptr(fp) + off)
     }
 }

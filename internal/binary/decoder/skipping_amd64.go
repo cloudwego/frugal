@@ -16,6 +16,10 @@
 
 package decoder
 
-func archSkippingFn() uintptr {
-    return _subr__do_skip
+import (
+    `unsafe`
+)
+
+func archSkippingFn() unsafe.Pointer {
+    return *(*unsafe.Pointer)(unsafe.Pointer(&_subr__do_skip))
 }

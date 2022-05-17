@@ -56,7 +56,7 @@ func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd hir.PointerRegister, ps 
     p.MOVQ(rd, Ptr(RSP, 0))
     p.MOVQ(rs, Ptr(RSP, 8))
     p.MOVQ(rl, Ptr(RSP, 16))
-    p.MOVQ(rtx.F_memmove, RDI)
+    p.MOVQ(uintptr(rtx.F_memmove), RDI)
     p.CALLQ(RDI)
 
     /* restore all the registers, if they were clobbered */

@@ -27,7 +27,7 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s hir.PointerRegister, d 
     rt := x86_64.CreateLabel("_wb_return")
 
     /* check for write barrier */
-    p.MOVQ (rtx.V_pWriteBarrier, RAX)
+    p.MOVQ (uintptr(rtx.V_pWriteBarrier), RAX)
     p.CMPB (0, Ptr(RAX, 0))
     p.JNE  (wb)
 
@@ -62,7 +62,7 @@ func (self *CodeGen) wbStorePointer(p *x86_64.Program, s hir.PointerRegister, d 
         wbSetSlot               ()
         self.abiSpillReserved   (p)
         self.abiLoadReserved    (p)
-        p.MOVQ                  (rtx.F_gcWriteBarrier, RSI)
+        p.MOVQ                  (uintptr(rtx.F_gcWriteBarrier), RSI)
         p.CALLQ                 (RSI)
         self.abiSaveReserved    (p)
         self.abiRestoreReserved (p)

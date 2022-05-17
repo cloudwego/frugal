@@ -45,13 +45,13 @@ type CallState interface {
 type CallHandle struct {
     Id    int
     Slot  int
-    Func  uintptr
     Type  CallType
+    Func  unsafe.Pointer
     proxy func(CallContext)
 }
 
 func (self *CallHandle) Name() string {
-    return runtime.FuncForPC(self.Func).Name()
+    return runtime.FuncForPC(uintptr(self.Func)).Name()
 }
 
 func (self *CallHandle) Call(r CallState, p *Ir) {
@@ -173,16 +173,6 @@ func LookupCall(id int64) *CallHandle {
     }
 }
 
-func RegisterCCall(fn uintptr, proxy func(CallContext)) (h *CallHandle) {
-    h       = new(CallHandle)
-    h.Id    = len(funcTab)
-    h.Type  = CCall
-    h.Func  = fn
-    h.proxy = proxy
-    funcTab = append(funcTab, h)
-    return
-}
-
 func RegisterICall(mt rt.Method, proxy func(CallContext)) (h *CallHandle) {
     h       = new(CallHandle)
     h.Id    = len(funcTab)
@@ -198,6 +188,16 @@ func RegisterGCall(fn interface{}, proxy func(CallContext)) (h *CallHandle) {
     h.Id    = len(funcTab)
     h.Type  = GCall
     h.Func  = abi.ABI.RegisterFunction(h.Id, fn)
+    h.proxy = proxy
+    funcTab = append(funcTab, h)
+    return
+}
+
+func RegisterCCall(fn unsafe.Pointer, proxy func(CallContext)) (h *CallHandle) {
+    h       = new(CallHandle)
+    h.Id    = len(funcTab)
+    h.Type  = CCall
+    h.Func  = fn
     h.proxy = proxy
     funcTab = append(funcTab, h)
     return

@@ -25,6 +25,6 @@ import (
 //go:linkname writeBarrier runtime.writeBarrier
 var writeBarrier uintptr
 
-func gcwbaddr() uintptr {
-    return uintptr(unsafe.Pointer(&writeBarrier))
+func gcwbaddr() unsafe.Pointer {
+    return unsafe.Pointer(&writeBarrier)
 }

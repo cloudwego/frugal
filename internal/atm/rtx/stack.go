@@ -26,5 +26,5 @@ import (
 func morestack_noctxt()
 
 var (
-    F_morestack_noctxt = uintptr(rt.FuncAddr(morestack_noctxt))
+    F_morestack_noctxt = rt.FuncAddr(morestack_noctxt)
 )

@@ -28,6 +28,6 @@ import (
 func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 
 var (
+    F_memmove = rt.FuncAddr(memmove)
     R_memmove = resolveClobberSet(memmove)
-    F_memmove = uintptr(rt.FuncAddr(memmove))
 )

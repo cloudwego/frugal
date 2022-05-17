@@ -46,7 +46,7 @@ func symlookup(addr uint64) (string, uint64) {
         }
         return fmt.Sprintf("%#x{%s+%#x}", addr, fp.Name(), addr - ent), ent
     }
-    if addr == uint64(rtx.V_pWriteBarrier) {
+    if addr == uint64(uintptr(rtx.V_pWriteBarrier)) {
         return fmt.Sprintf("%#x{runtime.writeBarrier}", addr), addr
     }
     return "", 0
@@ -116,8 +116,7 @@ var (
 )
 
 func init() {
-    cfunc = uintptr(unsafe.Pointer(&cfunc))
-    hfunc = hir.RegisterCCall(cfunc, nil)
+    hfunc = hir.RegisterCCall(unsafe.Pointer(&cfunc), nil)
     hmeth = hir.RegisterICall(rt.GetMethod((*TestIface)(nil), "Foo"), nil)
 }
 
@@ -187,7 +186,7 @@ func gcalltestfn(a int) (int, int, int) {
     return a + 100, a + 200, a + 300
 }
 
-func mkccalltestfn() uintptr {
+func mkccalltestfn() unsafe.Pointer {
     var asm x86_64.Assembler
     err := asm.Assemble(`
         movq    %rdi, %rax
@@ -198,7 +197,7 @@ func mkccalltestfn() uintptr {
         panic(err)
     }
     p := loader.Loader(asm.Code()).Load("_ccalltestfn", rt.Frame{})
-    return *(*uintptr)(p)
+    return *(*unsafe.Pointer)(p)
 }
 
 func TestPGen_FunctionCall(t *testing.T) {

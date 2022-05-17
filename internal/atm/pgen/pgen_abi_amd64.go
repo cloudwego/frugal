@@ -19,6 +19,7 @@ package pgen
 import (
     `fmt`
     `math`
+    `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/abi`
@@ -58,7 +59,7 @@ func (self *CodeGen) abiEpilogue(p *x86_64.Program) {
 
 func (self *CodeGen) abiStackGrow(p *x86_64.Program) {
     self.internalSpillArgs(p)
-    p.MOVQ(rtx.F_morestack_noctxt, R12)
+    p.MOVQ(uintptr(rtx.F_morestack_noctxt), R12)
     p.CALLQ(R12)
     self.internalUnspillArgs(p)
 }
@@ -280,11 +281,11 @@ func ri2reg(ri uint8) hir.Register {
     }
 }
 
-func checkfp(fp uintptr) uintptr {
-    if fp == 0 {
+func checkfp(fp unsafe.Pointer) uintptr {
+    if fp == nil {
         panic("checkfp: nil function")
     } else {
-        return fp
+        return uintptr(fp)
     }
 }
 

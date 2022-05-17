@@ -28,5 +28,5 @@ func gcWriteBarrier()
 
 var (
     V_pWriteBarrier  = gcwbaddr()
-    F_gcWriteBarrier = uintptr(rt.FuncAddr(gcWriteBarrier))
+    F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
 )
