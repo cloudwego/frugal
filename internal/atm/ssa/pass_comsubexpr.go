@@ -126,7 +126,7 @@ func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
             r, ok = vals.lookup(vid)
 
             /* skip zero registers */
-            if s.kind() == _K_zero {
+            if s.Kind() == K_zero {
                 continue
             }
 
@@ -143,7 +143,7 @@ func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
 
             /* insert a new copy instruction */
             bb.Ins[repc] = IrCopy(*s, r)
-            *s = s.zero()
+            *s = s.Zero()
         }
 
         /* all the definations are been replaced */

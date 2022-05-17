@@ -69,7 +69,7 @@ type Mem struct {
 }
 
 func (self Mem) String() string {
-    if self.I == Rz {
+    if self.I.Kind() == K_zero {
         if self.D == 0 {
             return fmt.Sprintf("(%s)", self.M)
         } else {
@@ -143,8 +143,8 @@ func (self *IrAMD64_LEA) String() string {
 }
 
 func (self *IrAMD64_LEA) Usages() (r []*Reg) {
-    if self.M.M != Pn { r = append(r, &self.M.M) }
-    if self.M.I != Rz { r = append(r, &self.M.I) }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
 }
 
@@ -213,8 +213,8 @@ func (self *IrAMD64_MOV_load) String() string {
 }
 
 func (self *IrAMD64_MOV_load) Usages() (r []*Reg) {
-    if self.M.M != Pn { r = append(r, &self.M.M) }
-    if self.M.I != Rz { r = append(r, &self.M.I) }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
 }
 
@@ -240,8 +240,8 @@ func (self *IrAMD64_MOV_store) String() string {
 
 func (self *IrAMD64_MOV_store) Usages() (r []*Reg) {
     r = []*Reg { &self.R }
-    if self.M.M != Pn { r = append(r, &self.M.M) }
-    if self.M.I != Rz { r = append(r, &self.M.I) }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
 }
 
@@ -261,8 +261,8 @@ func (self *IrAMD64_MOVBE_load) String() string {
 }
 
 func (self *IrAMD64_MOVBE_load) Usages() (r []*Reg) {
-    if self.M.M != Pn { r = append(r, &self.M.M) }
-    if self.M.I != Rz { r = append(r, &self.M.I) }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
 }
 
@@ -287,8 +287,8 @@ func (self *IrAMD64_MOVBE_store) String() string {
 
 func (self *IrAMD64_MOVBE_store) Usages() (r []*Reg) {
     r = []*Reg { &self.R }
-    if self.M.M != Pn { r = append(r, &self.M.M) }
-    if self.M.I != Rz { r = append(r, &self.M.I) }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
 }
 

@@ -160,7 +160,7 @@ func test_error_skip(_ int)                            {}
 func test_error_missing(_ *rt.GoType, _ int, _ uint64) {}
 
 var (
-    f_test_native_entry  = hir.RegisterCCall(uintptr(rt.FuncAddr(test_native_entry)), nil)
+    f_test_native_entry  = hir.RegisterCCall(rt.FuncAddr(test_native_entry), nil)
     f_test_error_eof     = hir.RegisterGCall(test_error_eof, nil)
     f_test_error_type    = hir.RegisterGCall(test_error_type, nil)
     f_test_error_skip    = hir.RegisterGCall(test_error_skip, nil)

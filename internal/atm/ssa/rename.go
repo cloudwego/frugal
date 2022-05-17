@@ -56,7 +56,7 @@ func (self _Renamer) pushr(r Reg) (i int) {
 func (self _Renamer) renameuses(ins IrNode) {
     if u, ok := ins.(IrUsages); ok {
         for _, a := range u.Usages() {
-            *a = a.rename(self.topr(*a))
+            *a = a.Derive(self.topr(*a))
         }
     }
 }
@@ -65,7 +65,7 @@ func (self _Renamer) renamedefs(ins IrNode, buf *[]Reg) {
     if s, ok := ins.(IrDefinations); ok {
         for _, def := range s.Definations() {
             *buf = append(*buf, *def)
-            *def = def.rename(self.pushr(*def))
+            *def = def.Derive(self.pushr(*def))
         }
     }
 }
@@ -98,7 +98,7 @@ func (self _Renamer) renameblock(dt *DominatorTree, bb *BasicBlock) {
     for it.Next() {
         for _, phi := range it.Block().Phi {
             r = *phi.V[bb]
-            phi.V[bb] = regnewref(r.rename(self.topr(r)))
+            phi.V[bb] = regnewref(r.Derive(self.topr(r)))
         }
     }
 
@@ -121,11 +121,11 @@ func renameRegisters(dt *DominatorTree) {
 
 func assignRegisters(rr []*Reg, rm map[Reg]Reg) {
     for _, r := range rr {
-        if *r != Rz && *r != Pn {
+        if r.Kind() != K_zero {
             if v, ok := rm[*r]; ok {
                 panic("register redefined: " + r.String())
             } else {
-                v = r.normalize(len(rm))
+                v = r.Normalize(len(rm))
                 *r, rm[*r] = v, v
             }
         }
@@ -134,7 +134,7 @@ func assignRegisters(rr []*Reg, rm map[Reg]Reg) {
 
 func replaceRegisters(rr []*Reg, rm map[Reg]Reg) {
     for _, r := range rr {
-        if *r != Rz && *r != Pn {
+        if r.Kind() != K_zero {
             if v, ok := rm[*r]; ok {
                 *r = v
             } else {

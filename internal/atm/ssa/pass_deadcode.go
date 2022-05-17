@@ -90,8 +90,8 @@ func (TDCE) Apply(cfg *CFG) {
             /* replace unused Phi assigments with zero registers */
             for _, v := range bb.Phi {
                 for _, r := range v.Definations() {
-                    if _, ok = decl[*r]; ok && r.kind() != _K_zero {
-                        *r, done = r.zero(), false
+                    if _, ok = decl[*r]; ok && r.Kind() != K_zero {
+                        *r, done = r.Zero(), false
                     }
                 }
             }
@@ -100,8 +100,8 @@ func (TDCE) Apply(cfg *CFG) {
             for _, v := range bb.Ins {
                 if defs, ok = v.(IrDefinations); ok {
                     for _, r := range defs.Definations() {
-                        if _, ok = decl[*r]; ok && r.kind() != _K_zero {
-                            *r, done = r.zero(), false
+                        if _, ok = decl[*r]; ok && r.Kind() != K_zero {
+                            *r, done = r.Zero(), false
                         }
                     }
                 }
@@ -110,8 +110,8 @@ func (TDCE) Apply(cfg *CFG) {
             /* replace unused terminator assigments with zero registers */
             if defs, ok = bb.Term.(IrDefinations); ok {
                 for _, r := range defs.Definations() {
-                    if _, ok = decl[*r]; ok && r.kind() != _K_zero {
-                        *r, done = r.zero(), false
+                    if _, ok = decl[*r]; ok && r.Kind() != K_zero {
+                        *r, done = r.Zero(), false
                     }
                 }
             }
@@ -125,7 +125,7 @@ func (TDCE) Apply(cfg *CFG) {
             /* scan Phi nodes */
             for _, v := range bb.Phi {
                 for _, r := range v.Definations() {
-                    if r.kind() != _K_zero {
+                    if r.Kind() != K_zero {
                         phi = append(phi, v)
                         break
                     }
@@ -140,7 +140,7 @@ func (TDCE) Apply(cfg *CFG) {
                     ins = append(ins, v)
                 } else {
                     for _, r := range rr {
-                        if r.kind() != _K_zero {
+                        if r.Kind() != K_zero {
                             ins = append(ins, v)
                             break
                         }

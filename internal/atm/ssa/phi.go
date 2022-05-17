@@ -60,7 +60,7 @@ func insertPhiNodes(dt *DominatorTree) {
         for _, ins := range p.Ins {
             if def, ok := ins.(IrDefinations); ok {
                 for _, d := range def.Definations() {
-                    if k := d.kind(); k != _K_temp && k != _K_zero {
+                    if k := d.Kind(); k != K_zero {
                         orig[p.Id] = appendReg(orig[p.Id], *d)
                     }
                 }

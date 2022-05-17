@@ -18,6 +18,7 @@ package ssa
 
 import (
     `fmt`
+    `runtime`
     `sort`
     `strings`
     `unsafe`
@@ -44,35 +45,54 @@ const (
 )
 
 const (
-    _K_max  = 7
-    _K_arch = 12
-    _K_zero = 13
-    _K_temp = 14
-    _K_norm = 15
+    K_sys  = 7
+    K_zero = 8
+    K_tmp0 = 9
+    K_tmp1 = 10
+    K_tmp2 = 11
+    K_tmp3 = 12
+    K_tmp4 = 13
+    K_arch = 14
+    K_norm = 15
 )
 
 const (
-    Rz Reg = (0 << _B_ptr) | (_K_zero << _B_kind)
-    Pn Reg = (1 << _B_ptr) | (_K_zero << _B_kind)
-)
-
-const (
-    Tr Reg = (0 << _B_ptr) | (_K_temp << _B_kind)
-    Pr Reg = (1 << _B_ptr) | (_K_temp << _B_kind)
+    Rz Reg = (0 << _B_ptr) | (K_zero << _B_kind)
+    Pn Reg = (1 << _B_ptr) | (K_zero << _B_kind)
 )
 
 func mkreg(ptr uint64, kind uint64) Reg {
-    if kind > _K_max {
+    return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
+}
+
+func mksys(ptr uint64, kind uint64) Reg {
+    if kind > K_sys {
         panic(fmt.Sprintf("invalid register kind: %d", kind))
     } else {
-        return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
+        return mkreg(ptr, kind)
+    }
+}
+
+func Tr(i uint64) Reg {
+    if i > K_tmp4 - K_tmp0 {
+        panic("invalid generic temporary register index")
+    } else {
+        return mkreg(0, K_tmp0 + i)
+    }
+}
+
+func Pr(i uint64) Reg {
+    if i > K_tmp4 - K_tmp0 {
+        panic("invalid generic temporary register index")
+    } else {
+        return mkreg(1, K_tmp0 + i)
     }
 }
 
 func Rv(reg hir.Register) Reg {
     switch r := reg.(type) {
-        case hir.GenericRegister : if r == hir.Rz { return Rz } else { return mkreg(0, uint64(r)) }
-        case hir.PointerRegister : if r == hir.Pn { return Pn } else { return mkreg(1, uint64(r)) }
+        case hir.GenericRegister : if r == hir.Rz { return Rz } else { return mksys(0, uint64(r)) }
+        case hir.PointerRegister : if r == hir.Pn { return Pn } else { return mksys(1, uint64(r)) }
         default                  : panic("unreachable")
     }
 }
@@ -81,22 +101,30 @@ func (self Reg) Ptr() bool {
     return self & _R_ptr != 0
 }
 
+func (self Reg) Zero() Reg {
+    return (self & _R_ptr) | (K_zero << _B_kind)
+}
+
+func (self Reg) Kind() uint8 {
+    return uint8((self & _R_kind) >> _B_kind)
+}
+
 func (self Reg) Index() int {
     return int(self & _R_index)
 }
 
 func (self Reg) String() string {
-    switch self.kind() {
+    switch self.Kind() {
         default: {
             if self.Ptr() {
-                return fmt.Sprintf("%%p%d.%d", self.kind(), self.Index())
+                return fmt.Sprintf("%%p%d.%d", self.Kind(), self.Index())
             } else {
-                return fmt.Sprintf("%%r%d.%d", self.kind(), self.Index())
+                return fmt.Sprintf("%%r%d.%d", self.Kind(), self.Index())
             }
         }
 
         /* arch-specific registers */
-        case _K_arch: {
+        case K_arch: {
             if i := self.Index(); i >= len(ArchRegs) {
                 panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
             } else {
@@ -105,7 +133,7 @@ func (self Reg) String() string {
         }
 
         /* zero registers */
-        case _K_zero: {
+        case K_zero: {
             if self.Ptr() {
                 return "nil"
             } else {
@@ -114,16 +142,16 @@ func (self Reg) String() string {
         }
 
         /* temp registers */
-        case _K_temp: {
+        case K_tmp0, K_tmp1, K_tmp2, K_tmp3, K_tmp4: {
             if self.Ptr() {
-                return fmt.Sprintf("%%tp%d", self.Index())
+                return fmt.Sprintf("%%tp%d.%d", self.Kind() - K_tmp0, self.Index())
             } else {
-                return fmt.Sprintf("%%tr%d", self.Index())
+                return fmt.Sprintf("%%tr%d.%d", self.Kind() - K_tmp0, self.Index())
             }
         }
 
         /* SSA normalized registers */
-        case _K_norm: {
+        case K_norm: {
             if self.Ptr() {
                 return fmt.Sprintf("%%p%d", self.Index())
             } else {
@@ -133,24 +161,20 @@ func (self Reg) String() string {
     }
 }
 
-func (self Reg) zero() Reg {
-    if self.Ptr() {
-        return Pn
+func (self Reg) Derive(i int) Reg {
+    if self.Kind() == K_zero {
+        return self
     } else {
-        return Rz
+        return (self & (_R_ptr | _R_kind)) | Reg(i & _R_index)
     }
 }
 
-func (self Reg) kind() uint8 {
-    return uint8((self & _R_kind) >> _B_kind)
-}
-
-func (self Reg) rename(i int) Reg {
-    return (self & (_R_ptr | _R_kind)) | Reg(i & _R_index)
-}
-
-func (self Reg) normalize(i int) Reg {
-    return (self & _R_ptr) | (_K_norm << _B_kind) | Reg(i & _R_index)
+func (self Reg) Normalize(i int) Reg {
+    if self.Kind() == K_zero {
+        return self
+    } else {
+        return (self & _R_ptr) | (K_norm << _B_kind) | Reg(i & _R_index)
+    }
 }
 
 type IrNode interface {
@@ -170,7 +194,9 @@ func (*IrLEA)          irnode() {}
 func (*IrUnaryExpr)    irnode() {}
 func (*IrBinaryExpr)   irnode() {}
 func (*IrBitTestSet)   irnode() {}
-func (*IrCall)         irnode() {}
+func (*IrCallFunc)     irnode() {}
+func (*IrCallNative)   irnode() {}
+func (*IrCallMethod)   irnode() {}
 func (*IrWriteBarrier) irnode() {}
 func (*IrBreakpoint)   irnode() {}
 
@@ -434,11 +460,7 @@ type IrStore struct {
 }
 
 func (self *IrStore) String() string {
-    if self.R.Ptr() {
-        return fmt.Sprintf("store.ptr(%s -> *%s)", self.R, self.Mem)
-    } else {
-        return fmt.Sprintf("store.u%d(%s -> *%s)", self.Size * 8, self.R, self.Mem)
-    }
+    return fmt.Sprintf("store.u%d %s -> *%s", self.Size * 8, self.R, self.Mem)
 }
 
 func (self *IrStore) Usages() []*Reg {
@@ -452,9 +474,9 @@ type IrLoadArg struct {
 
 func (self *IrLoadArg) String() string {
     if self.R.Ptr() {
-        return fmt.Sprintf("%s = loadarg.ptr(#%d)", self.R, self.Id)
+        return fmt.Sprintf("%s = loadarg.ptr #%d", self.R, self.Id)
     } else {
-        return fmt.Sprintf("%s = loadarg.i64(#%d)", self.R, self.Id)
+        return fmt.Sprintf("%s = loadarg.i64 #%d", self.R, self.Id)
     }
 }
 
@@ -481,7 +503,13 @@ type IrConstPtr struct {
 }
 
 func (self *IrConstPtr) String() string {
-    return fmt.Sprintf("%s = const.ptr %p", self.R, self.P)
+    if fn := runtime.FuncForPC(uintptr(self.P)); fn == nil {
+        return fmt.Sprintf("%s = const.ptr %p", self.R, self.P)
+    } else if fp := fn.Entry(); fp == uintptr(self.P) {
+        return fmt.Sprintf("%s = const.ptr %p [%s]", self.R, self.P, fn.Name())
+    } else {
+        return fmt.Sprintf("%s = const.ptr %p [%s+%#x]", self.R, self.P, fn.Name(), uintptr(self.P) - fp)
+    }
 }
 
 func (self *IrConstPtr) Definations() []*Reg {
@@ -628,87 +656,91 @@ func (self *IrBitTestSet) Definations() []*Reg {
     return []*Reg { &self.T, &self.S }
 }
 
-type IrReceiver struct {
-    T Reg
-    V Reg
-}
-
-type IrCall struct {
-    Fn  *hir.CallHandle
-    Rx  *IrReceiver
+type IrCallFunc struct {
+    R   Reg
     In  []Reg
     Out []Reg
 }
 
-func (self *IrCall) String() string {
-    var desc string
-    var kind string
-    var recv string
-
-    /* check for receivers */
-    if (self.Rx == nil) == (self.Fn.Type == hir.ICall) {
-        panic("invalid receiver value")
-    }
-
-    /* argument buffer */
-    in := make([]string, 0, len(self.In))
-    out := make([]string, 0, len(self.Out))
-
-    /* convert call type */
-    switch self.Fn.Type {
-        case hir.CCall : kind = "ccall"
-        case hir.GCall : kind = "gcall"
-        case hir.ICall : kind = "icall"
-        default        : panic("invalid call type")
-    }
-
-    /* convert function descriptor */
-    if self.Fn.Type != hir.ICall {
-        desc = self.Fn.String()
+func (self *IrCallFunc) String() string {
+    if in := regslicerepr(self.In); len(self.Out) == 0 {
+        return fmt.Sprintf("gcall *%s, {%s}", self.R, in)
     } else {
-        desc = fmt.Sprintf("#%d", self.Fn.Slot)
-    }
-
-    /* add receiver type if any */
-    if self.Rx != nil {
-        recv = fmt.Sprintf(", {%s, %s}", self.Rx.T, self.Rx.V)
-    }
-
-    /* dump args and rets */
-    for _, r := range self.In  { in = append(in, r.String()) }
-    for _, r := range self.Out { out = append(out, r.String()) }
-
-    /* join them together */
-    if len(out) == 0 {
-        return fmt.Sprintf("%s %s%s, {%s}", kind, desc, recv, strings.Join(in, ", "))
-    } else {
-        return fmt.Sprintf("%s = %s %s%s, {%s}", strings.Join(out, ", "), kind, desc, recv, strings.Join(in, ", "))
+        return fmt.Sprintf("%s = gcall *%s, {%s}", regslicerepr(self.Out), self.R, in)
     }
 }
 
-func (self *IrCall) Usages() []*Reg {
-    if in := regsliceref(self.In); self.Rx == nil {
-        return in
-    } else {
-        return append([]*Reg { &self.Rx.T, &self.Rx.V }, in...)
-    }
+func (self *IrCallFunc) Usages() []*Reg {
+    return append([]*Reg { &self.R }, regsliceref(self.In)...)
 }
 
-func (self *IrCall) Definations() []*Reg {
+func (self *IrCallFunc) Definations() []*Reg {
     return regsliceref(self.Out)
 }
 
+type IrCallNative struct {
+    R   Reg
+    In  []Reg
+    Out Reg
+}
+
+func (self *IrCallNative) String() string {
+    if in := regslicerepr(self.In); self.Out.Kind() == K_zero {
+        return fmt.Sprintf("ccall *%s, {%s}", self.R, in)
+    } else {
+        return fmt.Sprintf("%s = ccall *%s, {%s}", self.Out, self.R, in)
+    }
+}
+
+func (self *IrCallNative) Usages() []*Reg {
+    return append([]*Reg { &self.R }, regsliceref(self.In)...)
+}
+
+func (self *IrCallNative) Definations() []*Reg {
+    if self.Out.Kind() == K_zero {
+        return nil
+    } else {
+        return []*Reg { &self.Out }
+    }
+}
+
+type IrCallMethod struct {
+    T    Reg
+    V    Reg
+    In   []Reg
+    Out  []Reg
+    Slot int
+}
+
+func (self *IrCallMethod) String() string {
+    if in := regslicerepr(self.In); len(self.Out) == 0 {
+        return fmt.Sprintf("icall #%d, (%s:%s), {%s}", self.Slot, self.T, self.V, in)
+    } else {
+        return fmt.Sprintf("%s = icall #%d, (%s:%s), {%s}", regslicerepr(self.Out), self.Slot, self.T, self.V, in)
+    }
+}
+
+func (self *IrCallMethod) Usages() []*Reg {
+    return regsliceref(self.In)
+}
+
+func (self *IrCallMethod) Definations() []*Reg {
+    return append([]*Reg { &self.T, &self.V }, regsliceref(self.Out)...)
+}
+
 type IrWriteBarrier struct {
-    R Reg
-    V Reg
+    R   Reg
+    V   Reg
+    Fn  Reg
+    Var Reg
 }
 
 func (self *IrWriteBarrier) String() string {
-    return fmt.Sprintf("write_barrier(%s -> *%s)", self.V, self.R)
+    return fmt.Sprintf("write_barrier (%s:%s), %s -> *%s", self.Var, self.Fn, self.V, self.R)
 }
 
 func (self *IrWriteBarrier) Usages() []*Reg {
-    return []*Reg { &self.R, &self.V }
+    return []*Reg { &self.R, &self.V, &self.Fn, &self.Var }
 }
 
 type (

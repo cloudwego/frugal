@@ -147,16 +147,5 @@ func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
 }
 
 func (self *_GraphBuilder) termret(p *hir.Ir, bb *BasicBlock) {
-    var i uint8
-    var ret []Reg
-
-    /* convert each register */
-    for i = 0; i < p.Rn; i++ {
-        ret = append(ret, Rv(ri2reg(p.Rr[i])))
-    }
-
-    /* build the "return" IR */
-    bb.Term = &IrReturn {
-        R: ret,
-    }
+    bb.Term = &IrReturn { R: ri2regs(p.Rr[:p.Rn]) }
 }

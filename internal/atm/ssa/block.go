@@ -22,46 +22,6 @@ import (
     `github.com/cloudwego/frugal/internal/atm/rtx`
 )
 
-func memload(buf *[]IrNode, p *hir.Ir, rx hir.Register, size uint8) {
-    *buf = append(
-        *buf,
-        &IrConstInt {
-            R: Tr,
-            V: p.Iv,
-        },
-        &IrLEA {
-            R   : Pr,
-            Off : Tr,
-            Mem : Rv(p.Ps),
-        },
-        &IrLoad {
-            R    : Rv(rx),
-            Mem  : Pr,
-            Size : size,
-        },
-    )
-}
-
-func memstore(buf *[]IrNode, p *hir.Ir, rx hir.Register, size uint8) {
-    *buf = append(
-        *buf,
-        &IrConstInt {
-            R: Tr,
-            V: p.Iv,
-        },
-        &IrLEA {
-            R   : Pr,
-            Off : Tr,
-            Mem : Rv(p.Pd),
-        },
-        &IrStore {
-            R    : Rv(rx),
-            Mem  : Pr,
-            Size : size,
-        },
-    )
-}
-
 var _MemSize = [...]uint8 {
     hir.OP_lb: 1,
     hir.OP_lw: 2,
@@ -129,13 +89,98 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             )
         }
 
-        /* *(Ps + Iv) -> Rx / Pd */
-        case hir.OP_lb, hir.OP_lw, hir.OP_ll, hir.OP_lq : memload(&self.Ins, p, p.Rx, _MemSize[p.Op])
-        case hir.OP_lp                                  : memload(&self.Ins, p, p.Pd, abi.PtrSize)
+        /* *(Ps + Iv) -> Rx */
+        case hir.OP_lb, hir.OP_lw, hir.OP_ll, hir.OP_lq: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstInt {
+                    R: Tr(0),
+                    V: p.Iv,
+                },
+                &IrLEA {
+                    R   : Pr(0),
+                    Mem : Rv(p.Ps),
+                    Off : Tr(0),
+                },
+                &IrLoad {
+                    R    : Rv(p.Rx),
+                    Mem  : Pr(0),
+                    Size : _MemSize[p.Op],
+                },
+            )
+        }
 
-        /* Rx / Ps -> *(Pd + Iv) */
-        case hir.OP_sb, hir.OP_sw, hir.OP_sl, hir.OP_sq : memstore(&self.Ins, p, p.Rx, _MemSize[p.Op])
-        case hir.OP_sp                                  : memstore(&self.Ins, p, p.Ps, abi.PtrSize)
+        /* *(Ps + Iv) -> Pd */
+        case hir.OP_lp: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstInt {
+                    R: Tr(0),
+                    V: p.Iv,
+                },
+                &IrLEA {
+                    R   : Pr(0),
+                    Mem : Rv(p.Ps),
+                    Off : Tr(0),
+                },
+                &IrLoad {
+                    R    : Rv(p.Pd),
+                    Mem  : Pr(0),
+                    Size : abi.PtrSize,
+                },
+            )
+        }
+
+        /* Rx -> *(Pd + Iv) */
+        case hir.OP_sb, hir.OP_sw, hir.OP_sl, hir.OP_sq: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstInt {
+                    R: Tr(0),
+                    V: p.Iv,
+                },
+                &IrLEA {
+                    R   : Pr(0),
+                    Mem : Rv(p.Pd),
+                    Off : Tr(0),
+                },
+                &IrStore {
+                    R    : Rv(p.Rx),
+                    Mem  : Pr(0),
+                    Size : _MemSize[p.Op],
+                },
+            )
+        }
+
+        /* Ps -> *(Pd + Iv) */
+        case hir.OP_sp: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstInt {
+                    R: Tr(0),
+                    V: p.Iv,
+                },
+                &IrLEA {
+                    R   : Pr(0),
+                    Mem : Rv(p.Pd),
+                    Off : Tr(0),
+                },
+                &IrConstPtr {
+                    R: Pr(1),
+                    P: rtx.V_pWriteBarrier,
+                },
+                &IrConstPtr {
+                    R: Pr(2),
+                    P: rtx.F_gcWriteBarrier,
+                },
+                &IrWriteBarrier {
+                    R   : Pr(0),
+                    V   : Rv(p.Ps),
+                    Fn  : Pr(2),
+                    Var : Pr(1),
+                },
+            )
+        }
 
         /* arg[Iv] -> Rx */
         case hir.OP_ldaq: {
@@ -176,14 +221,14 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrUnaryExpr {
-                    R  : Tr,
+                    R  : Tr(0),
                     V  : Rv(p.Rx),
                     Op : IrOpNegate,
                 },
                 &IrLEA {
                     R   : Rv(p.Pd),
                     Mem : Rv(p.Ps),
-                    Off : Tr,
+                    Off : Tr(0),
                 },
             )
         }
@@ -193,13 +238,13 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrConstInt {
-                    R: Tr,
+                    R: Tr(0),
                     V: p.Iv,
                 },
                 &IrLEA {
                     R   : Rv(p.Pd),
                     Mem : Rv(p.Ps),
-                    Off : Tr,
+                    Off : Tr(0),
                 },
             )
         }
@@ -235,13 +280,13 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrConstInt {
-                    R: Tr,
+                    R: Tr(0),
                     V: p.Iv,
                 },
                 &IrBinaryExpr {
                     R  : Rv(p.Ry),
                     X  : Rv(p.Rx),
-                    Y  : Tr,
+                    Y  : Tr(0),
                     Op : _BinaryOps[p.Op],
                 },
             )
@@ -252,13 +297,13 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrConstInt {
-                    R: Tr,
+                    R: Tr(0),
                     V: 1 << p.Iv,
                 },
                 &IrBinaryExpr {
                     R  : Rv(p.Ry),
                     X  : Rv(p.Rx),
-                    Y  : Tr,
+                    Y  : Tr(0),
                     Op : IrOpOr,
                 },
             )
@@ -309,39 +354,59 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
         case hir.OP_bcopy: {
             self.Ins = append(
                 self.Ins,
-                &IrCall {
-                    Fn: rtx.H_memmove,
-                    In: []Reg { Rv(p.Pd), Rv(p.Ps), Rv(p.Rx) },
+                &IrConstPtr {
+                    R: Pr(0),
+                    P: rtx.F_memmove,
+                },
+                &IrCallFunc {
+                    R  : Pr(0),
+                    In : []Reg { Rv(p.Pd), Rv(p.Ps), Rv(p.Rx) },
                 },
             )
         }
 
-        /* call external functions */
-        case hir.OP_ccall, hir.OP_gcall, hir.OP_icall: {
-            var in []Reg
-            var out []Reg
-            var recv *IrReceiver
-
-            /* convert args and rets */
-            for _, rr := range p.Ar[:p.An] { in = append(in, Rv(ri2reg(rr))) }
-            for _, rr := range p.Rr[:p.Rn] { out = append(out, Rv(ri2reg(rr))) }
-
-            /* convert receiver if any */
-            if p.Op == hir.OP_icall {
-                recv = &IrReceiver {
-                    T: Rv(p.Ps),
-                    V: Rv(p.Pd),
-                }
-            }
-
-            /* build the IR */
+        /* C subroutine calls */
+        case hir.OP_ccall: {
             self.Ins = append(
                 self.Ins,
-                &IrCall {
-                    Fn  : hir.LookupCall(p.Iv),
-                    Rx  : recv,
-                    In  : in,
-                    Out : out,
+                &IrConstPtr {
+                    R: Pr(0),
+                    P: hir.LookupCall(p.Iv).Func,
+                },
+                &IrCallNative {
+                    R   : Pr(0),
+                    In  : ri2regs(p.Ar[:p.An]),
+                    Out : ri2regz(p.Rr[:p.Rn]),
+                },
+            )
+        }
+
+        /* Go subroutine calls */
+        case hir.OP_gcall: {
+            self.Ins = append(
+                self.Ins,
+                &IrConstPtr {
+                    R: Pr(0),
+                    P: hir.LookupCall(p.Iv).Func,
+                },
+                &IrCallFunc {
+                    R   : Pr(0),
+                    In  : ri2regs(p.Ar[:p.An]),
+                    Out : ri2regs(p.Rr[:p.Rn]),
+                },
+            )
+        }
+
+        /* interface method calls */
+        case hir.OP_icall: {
+            self.Ins = append(
+                self.Ins,
+                &IrCallMethod {
+                    T    : Rv(p.Ps),
+                    V    : Rv(p.Pd),
+                    In   : ri2regs(p.Ar[:p.An]),
+                    Out  : ri2regs(p.Rr[:p.Rn]),
+                    Slot : hir.LookupCall(p.Iv).Slot,
                 },
             )
         }
@@ -358,23 +423,41 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
 
 func (self *BasicBlock) zeroUnit(r Reg, d uintptr, n uintptr) {
     self.Ins = append(self.Ins,
-        &IrConstInt { R: Tr, V: int64(d) },
-        &IrLEA      { R: Pr, Mem: r, Off: Tr },
-        &IrStore    { R: Rz, Mem: Pr, Size: uint8(n) },
+        &IrConstInt {
+            R: Tr(0),
+            V: int64(d),
+        },
+        &IrLEA {
+            R   : Pr(0),
+            Mem : r,
+            Off : Tr(0),
+        },
+        &IrStore {
+            R    : Rz,
+            Mem  : Pr(0),
+            Size : uint8(n),
+        },
     )
 }
 
 func (self *BasicBlock) zeroBlock(r Reg, d uintptr, n uintptr) {
     self.Ins = append(self.Ins,
-        &IrConstInt { R: Tr, V: int64(d) },
-        &IrLEA      { R: Pr, Mem: r, Off: Tr },
-        &IrCall     {
-            In: []Reg { Pr },
-            Fn: &hir.CallHandle {
-                Id   : -1,
-                Type : hir.CCall,
-                Func : uintptr(rtx.MemZero.Fn) + rtx.MemZero.Sz[n / rtx.ZeroStep],
-            },
+        &IrConstInt {
+            R: Tr(0),
+            V: int64(d),
+        },
+        &IrLEA {
+            R   : Pr(0),
+            Mem : r,
+            Off : Tr(0),
+        },
+        &IrConstPtr {
+            R: Pr(1),
+            P: rtx.MemZero.ForSize(n),
+        },
+        &IrCallNative {
+            R  : Pr(1),
+            In : []Reg { Pr(0) },
         },
     )
 }
@@ -403,7 +486,7 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
 
     /* construct the instruction */
     ins := &IrBinaryExpr {
-        R  : Tr,
+        R  : Tr(0),
         X  : Rv(lhs),
         Y  : Rv(rhs),
         Op : cmp,
@@ -413,5 +496,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.Pred = append(t.Pred, self)
     f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch { V: Tr, Ln: t, Br: map[int64]*BasicBlock { 0: f } }
+    self.Term = &IrSwitch { V: Tr(0), Ln: t, Br: map[int64]*BasicBlock { 0: f } }
 }

@@ -144,7 +144,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                 }
 
                 /* registers declared by Phi nodes can never be zero registers */
-                if p.R == Rz || p.R == Pn {
+                if p.R.Kind() == K_zero {
                     panic("constprop: assignment to zero registers in Phi node: " + p.String())
                 }
 

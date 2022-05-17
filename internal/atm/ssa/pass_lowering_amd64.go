@@ -136,7 +136,19 @@ func (Lowering) Apply(cfg *CFG) {
                 }
 
                 /* subroutine call */
-                case *IrCall: {
+                case *IrCallFunc: {
+                    // TODO: this
+                    bb.Ins = append(bb.Ins, p)
+                }
+
+                /* native subroutine call */
+                case *IrCallNative: {
+                    // TODO: this
+                    bb.Ins = append(bb.Ins, p)
+                }
+
+                /* interface method call */
+                case *IrCallMethod: {
                     // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }

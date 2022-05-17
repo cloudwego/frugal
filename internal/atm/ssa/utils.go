@@ -17,17 +17,32 @@
 package ssa
 
 import (
+    `strings`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
-func ri2reg(ri uint8) hir.Register {
+func ri2reg(ri uint8) Reg {
     if ri & hir.ArgPointer == 0 {
-        return hir.GenericRegister(ri & hir.ArgMask)
+        return Rv(hir.GenericRegister(ri & hir.ArgMask))
     } else {
-        return hir.PointerRegister(ri & hir.ArgMask)
+        return Rv(hir.PointerRegister(ri & hir.ArgMask))
     }
+}
+
+func ri2regz(ri []uint8) Reg {
+    switch len(ri) {
+        case 0  : return Rz
+        case 1  : return ri2reg(ri[0])
+        default : panic("invalid register count")
+    }
+}
+
+func ri2regs(ri []uint8) []Reg {
+    ret := make([]Reg, len(ri))
+    for i, r := range ri { ret[i] = ri2reg(r) }
+    return ret
 }
 
 func minint(a int, b int) int {
@@ -62,4 +77,10 @@ func regsliceref(v []Reg) (r []*Reg) {
     r = make([]*Reg, len(v))
     for i := range v { r[i] = &v[i] }
     return
+}
+
+func regslicerepr(v []Reg) string {
+    ret := make([]string, 0, len(v))
+    for _, r := range v  { ret = append(ret, r.String()) }
+    return strings.Join(ret, ", ")
 }
