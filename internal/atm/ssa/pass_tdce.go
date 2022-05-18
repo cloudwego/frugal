@@ -27,27 +27,27 @@ func (TDCE) Apply(cfg *CFG) {
         /* Phase 1: Mark all the definations */
         cfg.PostOrder(func(bb *BasicBlock) {
             var ok bool
-            var defs IrDefinations
+            var defs IrDefinitions
 
             /* mark all definations in Phi nodes */
             for _, v := range bb.Phi {
-                for _, r := range v.Definations() {
+                for _, r := range v.Definitions() {
                     decl[*r] = struct{}{}
                 }
             }
 
             /* mark all definations in instructions if any */
             for _, v := range bb.Ins {
-                if defs, ok = v.(IrDefinations); ok {
-                    for _, r := range defs.Definations() {
+                if defs, ok = v.(IrDefinitions); ok {
+                    for _, r := range defs.Definitions() {
                         decl[*r] = struct{}{}
                     }
                 }
             }
 
             /* mark all definations in terminators if any */
-            if defs, ok = bb.Term.(IrDefinations); ok {
-                for _, r := range defs.Definations() {
+            if defs, ok = bb.Term.(IrDefinitions); ok {
+                for _, r := range defs.Definitions() {
                     decl[*r] = struct{}{}
                 }
             }
@@ -85,11 +85,11 @@ func (TDCE) Apply(cfg *CFG) {
         /* Phase 3: Remove all unused declarations */
         cfg.PostOrder(func(bb *BasicBlock) {
             var ok bool
-            var defs IrDefinations
+            var defs IrDefinitions
 
             /* replace unused Phi assigments with zero registers */
             for _, v := range bb.Phi {
-                for _, r := range v.Definations() {
+                for _, r := range v.Definitions() {
                     if _, ok = decl[*r]; ok && r.Kind() != K_zero {
                         *r, done = r.Zero(), false
                     }
@@ -98,8 +98,8 @@ func (TDCE) Apply(cfg *CFG) {
 
             /* replace unused instruction assigments with zero registers */
             for _, v := range bb.Ins {
-                if defs, ok = v.(IrDefinations); ok {
-                    for _, r := range defs.Definations() {
+                if defs, ok = v.(IrDefinitions); ok {
+                    for _, r := range defs.Definitions() {
                         if _, ok = decl[*r]; ok && r.Kind() != K_zero {
                             *r, done = r.Zero(), false
                         }
@@ -108,8 +108,8 @@ func (TDCE) Apply(cfg *CFG) {
             }
 
             /* replace unused terminator assigments with zero registers */
-            if defs, ok = bb.Term.(IrDefinations); ok {
-                for _, r := range defs.Definations() {
+            if defs, ok = bb.Term.(IrDefinitions); ok {
+                for _, r := range defs.Definitions() {
                     if _, ok = decl[*r]; ok && r.Kind() != K_zero {
                         *r, done = r.Zero(), false
                     }
@@ -124,7 +124,7 @@ func (TDCE) Apply(cfg *CFG) {
 
             /* scan Phi nodes */
             for _, v := range bb.Phi {
-                for _, r := range v.Definations() {
+                for _, r := range v.Definitions() {
                     if r.Kind() != K_zero {
                         phi = append(phi, v)
                         break
@@ -134,9 +134,9 @@ func (TDCE) Apply(cfg *CFG) {
 
             /* scan instructions */
             for _, v := range bb.Ins {
-                if d, ok := v.(IrDefinations); !ok {
+                if d, ok := v.(IrDefinitions); !ok {
                     ins = append(ins, v)
-                } else if rr := d.Definations(); len(rr) == 0 {
+                } else if rr := d.Definitions(); len(rr) == 0 {
                     ins = append(ins, v)
                 } else {
                     for _, r := range rr {

@@ -21,7 +21,7 @@ import (
 )
 
 type _Vid interface {
-    IrDefinations
+    IrDefinitions
     vid() []string
 }
 
@@ -118,7 +118,7 @@ func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
         /* calculate the VIDs */
         repc := i
         vids := d.vid()
-        defs := d.Definations()
+        defs := d.Definitions()
 
         /* replace each VID with a copy instruction */
         for j, vid := range vids {

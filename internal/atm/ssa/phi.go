@@ -56,10 +56,10 @@ func insertPhiNodes(dt *DominatorTree) {
         p := q.Dequeue().(*BasicBlock)
         addImmediateDominated(dt.DominatorOf, p, q)
 
-        /* mark all the defination sites */
+        /* mark all the definition sites */
         for _, ins := range p.Ins {
-            if def, ok := ins.(IrDefinations); ok {
-                for _, d := range def.Definations() {
+            if def, ok := ins.(IrDefinitions); ok {
+                for _, d := range def.Definitions() {
                     if k := d.Kind(); k != K_zero {
                         orig[p.Id] = appendReg(orig[p.Id], *d)
                     }

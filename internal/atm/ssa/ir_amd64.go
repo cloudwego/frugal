@@ -150,7 +150,7 @@ func (self *IrAMD64_LEA) Usages() (r []*Reg) {
     return
 }
 
-func (self *IrAMD64_LEA) Definations() []*Reg {
+func (self *IrAMD64_LEA) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -163,7 +163,7 @@ func (self *IrAMD64_MOV_abs) String() string {
     return fmt.Sprintf("movabsq $%d, %s  # %#x", self.V, self.R, self.V)
 }
 
-func (self *IrAMD64_MOV_abs) Definations() []*Reg {
+func (self *IrAMD64_MOV_abs) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -182,7 +182,7 @@ func (self *IrAMD64_MOV_ptr) String() string {
     }
 }
 
-func (self *IrAMD64_MOV_ptr) Definations() []*Reg {
+func (self *IrAMD64_MOV_ptr) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -199,7 +199,7 @@ func (self *IrAMD64_MOV_reg) Usages() []*Reg {
     return []*Reg { &self.V }
 }
 
-func (self *IrAMD64_MOV_reg) Definations() []*Reg {
+func (self *IrAMD64_MOV_reg) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -226,7 +226,7 @@ func (self *IrAMD64_MOV_load) Usages() (r []*Reg) {
     return
 }
 
-func (self *IrAMD64_MOV_load) Definations() []*Reg {
+func (self *IrAMD64_MOV_load) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -289,7 +289,7 @@ func (self *IrAMD64_MOVBE_load) Usages() (r []*Reg) {
     return
 }
 
-func (self *IrAMD64_MOVBE_load) Definations() []*Reg {
+func (self *IrAMD64_MOVBE_load) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -332,7 +332,7 @@ func (self *IrAMD64_NEG) Usages() []*Reg {
     return []*Reg { &self.V }
 }
 
-func (self *IrAMD64_NEG) Definations() []*Reg {
+func (self *IrAMD64_NEG) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -364,7 +364,7 @@ func (self *IrAMD64_BSWAP) Usages() []*Reg {
     return []*Reg { &self.V }
 }
 
-func (self *IrAMD64_BSWAP) Definations() []*Reg {
+func (self *IrAMD64_BSWAP) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -381,7 +381,7 @@ func (self *IrAMD64_MOVSLQ) Usages() []*Reg {
     return []*Reg { &self.V }
 }
 
-func (self *IrAMD64_MOVSLQ) Definations() []*Reg {
+func (self *IrAMD64_MOVSLQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -403,7 +403,7 @@ func (self *IrAMD64_ADDQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_ADDQ) Definations() []*Reg {
+func (self *IrAMD64_ADDQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -425,7 +425,7 @@ func (self *IrAMD64_SUBQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_SUBQ) Definations() []*Reg {
+func (self *IrAMD64_SUBQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -447,7 +447,7 @@ func (self *IrAMD64_IMULQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_IMULQ) Definations() []*Reg {
+func (self *IrAMD64_IMULQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -469,7 +469,7 @@ func (self *IrAMD64_ANDQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_ANDQ) Definations() []*Reg {
+func (self *IrAMD64_ANDQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -491,7 +491,7 @@ func (self *IrAMD64_ORQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_ORQ) Definations() []*Reg {
+func (self *IrAMD64_ORQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -513,7 +513,7 @@ func (self *IrAMD64_XORQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_XORQ) Definations() []*Reg {
+func (self *IrAMD64_XORQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -535,7 +535,7 @@ func (self *IrAMD64_SHRQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_SHRQ) Definations() []*Reg {
+func (self *IrAMD64_SHRQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -553,7 +553,7 @@ func (self *IrAMD64_CMPQ_eq) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_CMPQ_eq) Definations() []*Reg {
+func (self *IrAMD64_CMPQ_eq) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -571,7 +571,7 @@ func (self *IrAMD64_CMPQ_ne) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_CMPQ_ne) Definations() []*Reg {
+func (self *IrAMD64_CMPQ_ne) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -589,7 +589,7 @@ func (self *IrAMD64_CMPQ_lt) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_CMPQ_lt) Definations() []*Reg {
+func (self *IrAMD64_CMPQ_lt) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -607,7 +607,7 @@ func (self *IrAMD64_CMPQ_ltu) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_CMPQ_ltu) Definations() []*Reg {
+func (self *IrAMD64_CMPQ_ltu) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -625,7 +625,7 @@ func (self *IrAMD64_CMPQ_geu) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_CMPQ_geu) Definations() []*Reg {
+func (self *IrAMD64_CMPQ_geu) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -648,7 +648,7 @@ func (self *IrAMD64_BTSQ) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrAMD64_BTSQ) Definations() []*Reg {
+func (self *IrAMD64_BTSQ) Definitions() []*Reg {
     return []*Reg { &self.T, &self.S }
 }
 

@@ -176,7 +176,7 @@ func (Lowering) Apply(cfg *CFG) {
                 switch t := p.iter().t; len(p.Br) {
                     case 0  : bb.Term = &IrAMD64_JMP    { To: p.Ln }
                     case 1  : bb.Term = &IrAMD64_JE_imm { R: p.V, V: t[0].i, To: t[0].b, Ln: p.Ln }
-                    default : // TODO: this
+                    default : break
                 }
             }
 

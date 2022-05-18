@@ -165,7 +165,7 @@ func (Reorder) moveValueDefs(cfg *CFG) {
         cfg.PostOrder(func(bb *BasicBlock) {
             for i, v := range bb.Ins {
                 var f bool
-                var d IrDefinations
+                var d IrDefinitions
 
                 /* we can't move values which have a memory arg, it
                  * might make two memory values live across a block boundary */
@@ -174,8 +174,8 @@ func (Reorder) moveValueDefs(cfg *CFG) {
                 if _, f = v.(*IrLoadArg) ; f { continue }
 
                 /* add all the definitions */
-                if d, f = v.(IrDefinations); f {
-                    for _, r := range d.Definations() {
+                if d, f = v.(IrDefinitions); f {
+                    for _, r := range d.Definitions() {
                         defs[*r] = &_ValuePos { i: i, bb: bb }
                     }
                 }

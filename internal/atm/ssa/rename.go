@@ -62,8 +62,8 @@ func (self _Renamer) renameuses(ins IrNode) {
 }
 
 func (self _Renamer) renamedefs(ins IrNode, buf *[]Reg) {
-    if s, ok := ins.(IrDefinations); ok {
-        for _, def := range s.Definations() {
+    if s, ok := ins.(IrDefinitions); ok {
+        for _, def := range s.Definitions() {
             *buf = append(*buf, *def)
             *def = def.Derive(self.pushr(*def))
         }
@@ -155,19 +155,19 @@ func normalizeRegisters(dt *DominatorTree) {
 
         /* assign Phi nodes */
         for _, n := range p.Phi {
-            assignRegisters(n.Definations(), r)
+            assignRegisters(n.Definitions(), r)
         }
 
         /* assign instructions */
         for _, n := range p.Ins {
-            if d, ok := n.(IrDefinations); ok {
-                assignRegisters(d.Definations(), r)
+            if d, ok := n.(IrDefinitions); ok {
+                assignRegisters(d.Definitions(), r)
             }
         }
 
         /* assign terminators */
-        if d, ok := p.Term.(IrDefinations); ok {
-            assignRegisters(d.Definations(), r)
+        if d, ok := p.Term.(IrDefinitions); ok {
+            assignRegisters(d.Definitions(), r)
         }
     }
 

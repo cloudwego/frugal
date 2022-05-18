@@ -205,9 +205,9 @@ type IrUsages interface {
     Usages() []*Reg
 }
 
-type IrDefinations interface {
+type IrDefinitions interface {
     IrNode
-    Definations() []*Reg
+    Definitions() []*Reg
 }
 
 type _PhiSorter struct {
@@ -276,7 +276,7 @@ func (self *IrPhi) Usages() []*Reg {
     return v
 }
 
-func (self *IrPhi) Definations() []*Reg {
+func (self *IrPhi) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -449,7 +449,7 @@ func (self *IrLoad) Usages() []*Reg {
     return []*Reg { &self.Mem }
 }
 
-func (self *IrLoad) Definations() []*Reg {
+func (self *IrLoad) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -480,7 +480,7 @@ func (self *IrLoadArg) String() string {
     }
 }
 
-func (self *IrLoadArg) Definations() []*Reg {
+func (self *IrLoadArg) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -493,7 +493,7 @@ func (self *IrConstInt) String() string {
     return fmt.Sprintf("%s = const.i64 %d (%#x)", self.R, self.V, self.V)
 }
 
-func (self *IrConstInt) Definations() []*Reg {
+func (self *IrConstInt) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -512,7 +512,7 @@ func (self *IrConstPtr) String() string {
     }
 }
 
-func (self *IrConstPtr) Definations() []*Reg {
+func (self *IrConstPtr) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -530,7 +530,7 @@ func (self *IrLEA) Usages() []*Reg {
     return []*Reg { &self.Mem, &self.Off }
 }
 
-func (self *IrLEA) Definations() []*Reg {
+func (self *IrLEA) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -605,7 +605,7 @@ func (self *IrUnaryExpr) Usages() []*Reg {
     return []*Reg { &self.V }
 }
 
-func (self *IrUnaryExpr) Definations() []*Reg {
+func (self *IrUnaryExpr) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -633,7 +633,7 @@ func (self *IrBinaryExpr) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrBinaryExpr) Definations() []*Reg {
+func (self *IrBinaryExpr) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
@@ -652,7 +652,7 @@ func (self *IrBitTestSet) Usages() []*Reg {
     return []*Reg { &self.X, &self.Y }
 }
 
-func (self *IrBitTestSet) Definations() []*Reg {
+func (self *IrBitTestSet) Definitions() []*Reg {
     return []*Reg { &self.T, &self.S }
 }
 
@@ -674,7 +674,7 @@ func (self *IrCallFunc) Usages() []*Reg {
     return append([]*Reg { &self.R }, regsliceref(self.In)...)
 }
 
-func (self *IrCallFunc) Definations() []*Reg {
+func (self *IrCallFunc) Definitions() []*Reg {
     return regsliceref(self.Out)
 }
 
@@ -696,7 +696,7 @@ func (self *IrCallNative) Usages() []*Reg {
     return append([]*Reg { &self.R }, regsliceref(self.In)...)
 }
 
-func (self *IrCallNative) Definations() []*Reg {
+func (self *IrCallNative) Definitions() []*Reg {
     if self.Out.Kind() == K_zero {
         return nil
     } else {
@@ -724,7 +724,7 @@ func (self *IrCallMethod) Usages() []*Reg {
     return append([]*Reg { &self.T, &self.V }, regsliceref(self.In)...)
 }
 
-func (self *IrCallMethod) Definations() []*Reg {
+func (self *IrCallMethod) Definitions() []*Reg {
     return regsliceref(self.Out)
 }
 
