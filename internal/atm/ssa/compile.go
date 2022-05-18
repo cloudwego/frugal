@@ -40,7 +40,10 @@ var Passes = [...]PassDescriptor {
     { Desc: "Late Copy Elimination"               , Pass: new(CopyElim) },
     { Desc: "Late Trivial Dead Code Elimination"  , Pass: new(TDCE) },
     { Desc: "Intermediate Block Merging"          , Pass: new(BlockMerge) },
-    // { Desc: "Machine Dependent Lowering"          , Pass: new(Lowering) },
+    { Desc: "Value Reordering"                    , Pass: new(Reorder) },
+    { Desc: "Machine Dependent Lowering"          , Pass: new(Lowering) },
+    { Desc: "Machine Dependent Macro-fusion"      , Pass: new(Fusion) },
+    { Desc: "Final Trivial Dead Code Elimination" , Pass: new(TDCE) },
 }
 
 func applySSAPasses(cfg *CFG) {

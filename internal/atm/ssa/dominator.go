@@ -112,8 +112,14 @@ func (self *_LengauerTarjan) compress(p *_LtNode) {
     }
 }
 
+type _NodeDepth struct {
+    d  int
+    bb int
+}
+
 type DominatorTree struct {
     Root              *BasicBlock
+    Depth             map[int]int
     DominatedBy       map[int]*BasicBlock
     DominatorOf       map[int][]*BasicBlock
     DominanceFrontier map[int][]*BasicBlock
@@ -121,6 +127,7 @@ type DominatorTree struct {
 
 func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
     dt.Root = bb
+    dt.Depth = make(map[int]int)
     dt.DominatedBy = make(map[int]*BasicBlock)
     dt.DominatorOf = make(map[int][]*BasicBlock)
     dt.DominanceFrontier = make(map[int][]*BasicBlock)
@@ -183,15 +190,35 @@ func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
         })
     }
 
-    /* add root node for BFS */
+    /* add root node for dominance frontier calculation */
     q := lane.NewQueue()
     q.Enqueue(bb)
 
     /* calculate dominance frontier for every block */
     for !q.Empty() {
         k := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(dt.DominatorOf, k, q)
+        addImmediateDominated(dt.DominatorOf, k, q)
         computeDominanceFrontier(dt.DominatorOf, k, dt.DominanceFrontier)
+    }
+
+    /* add root node for depth calculation */
+    q.Enqueue(_NodeDepth {
+        d  : 0,
+        bb : bb.Id,
+    })
+
+    /* calculate depth for every block */
+    for !q.Empty() {
+        d := q.Dequeue().(_NodeDepth)
+        dt.Depth[d.bb] = d.d
+
+        /* add all the dominated nodes */
+        for _, p := range dt.DominatorOf[d.bb] {
+            q.Enqueue(_NodeDepth {
+                d  : d.d + 1,
+                bb : p.Id,
+            })
+        }
     }
 }
 
@@ -204,7 +231,7 @@ func isStrictlyDominates(dom map[int][]*BasicBlock, p *BasicBlock, q *BasicBlock
     return false
 }
 
-func addImmediateDominators(dom map[int][]*BasicBlock, node *BasicBlock, q *lane.Queue) {
+func addImmediateDominated(dom map[int][]*BasicBlock, node *BasicBlock, q *lane.Queue) {
     for _, p := range dom[node.Id] {
         q.Enqueue(p)
     }

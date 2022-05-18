@@ -24,15 +24,8 @@ type CFG struct {
     DominatorTree
 }
 
-func newCFG(bb *BasicBlock) (cfg *CFG) {
-    cfg = new(CFG)
-    buildDominatorTree(&cfg.DominatorTree, bb)
-    return
-}
-
 func (self *CFG) Rebuild() {
     buildDominatorTree(&self.DominatorTree, self.Root)
-    normalizeRegisters(&self.DominatorTree)
 }
 
 func (self *CFG) MaxBlock() int {

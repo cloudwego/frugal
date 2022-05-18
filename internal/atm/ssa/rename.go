@@ -151,7 +151,7 @@ func normalizeRegisters(dt *DominatorTree) {
     /* find all the register definations */
     for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(dt.DominatorOf, p, q)
+        addImmediateDominated(dt.DominatorOf, p, q)
 
         /* assign Phi nodes */
         for _, n := range p.Phi {
@@ -174,7 +174,7 @@ func normalizeRegisters(dt *DominatorTree) {
     /* normalize each block */
     for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(dt.DominatorOf, p, q)
+        addImmediateDominated(dt.DominatorOf, p, q)
 
         /* replace Phi nodes */
         for _, n := range p.Phi {

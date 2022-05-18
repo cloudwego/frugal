@@ -18,6 +18,7 @@ package ssa
 
 import (
     `fmt`
+    `runtime`
     `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
@@ -90,33 +91,34 @@ func (self Mem) String() string {
     }
 }
 
-func (*IrAMD64_INT)          irnode() {}
-func (*IrAMD64_LEA)          irnode() {}
-func (*IrAMD64_MOV_abs)      irnode() {}
-func (*IrAMD64_MOV_ptr)      irnode() {}
-func (*IrAMD64_MOV_reg)      irnode() {}
-func (*IrAMD64_MOV_load)     irnode() {}
-func (*IrAMD64_MOV_store)    irnode() {}
-func (*IrAMD64_MOVBE_load)   irnode() {}
-func (*IrAMD64_MOVBE_store)  irnode() {}
-func (*IrAMD64_NEG)          irnode() {}
-func (*IrAMD64_BSWAP)        irnode() {}
-func (*IrAMD64_MOVSLQ)       irnode() {}
-func (*IrAMD64_ADDQ)         irnode() {}
-func (*IrAMD64_SUBQ)         irnode() {}
-func (*IrAMD64_IMULQ)        irnode() {}
-func (*IrAMD64_ANDQ)         irnode() {}
-func (*IrAMD64_ORQ)          irnode() {}
-func (*IrAMD64_XORQ)         irnode() {}
-func (*IrAMD64_SHRQ)         irnode() {}
-func (*IrAMD64_CMPQ_eq)      irnode() {}
-func (*IrAMD64_CMPQ_ne)      irnode() {}
-func (*IrAMD64_CMPQ_lt)      irnode() {}
-func (*IrAMD64_CMPQ_ltu)     irnode() {}
-func (*IrAMD64_CMPQ_geu)     irnode() {}
-func (*IrAMD64_BTSQ)         irnode() {}
-func (*IrAMD64_JE_imm)       irnode() {}
-func (*IrAMD64_JMP)          irnode() {}
+func (*IrAMD64_INT)         irnode() {}
+func (*IrAMD64_LEA)         irnode() {}
+func (*IrAMD64_MOV_abs)     irnode() {}
+func (*IrAMD64_MOV_ptr)     irnode() {}
+func (*IrAMD64_MOV_reg)     irnode() {}
+func (*IrAMD64_MOV_load)    irnode() {}
+func (*IrAMD64_MOV_store)   irnode() {}
+func (*IrAMD64_MOV_wb)      irnode() {}
+func (*IrAMD64_MOVBE_load)  irnode() {}
+func (*IrAMD64_MOVBE_store) irnode() {}
+func (*IrAMD64_NEG)         irnode() {}
+func (*IrAMD64_BSWAP)       irnode() {}
+func (*IrAMD64_MOVSLQ)      irnode() {}
+func (*IrAMD64_ADDQ)        irnode() {}
+func (*IrAMD64_SUBQ)        irnode() {}
+func (*IrAMD64_IMULQ)       irnode() {}
+func (*IrAMD64_ANDQ)        irnode() {}
+func (*IrAMD64_ORQ)         irnode() {}
+func (*IrAMD64_XORQ)        irnode() {}
+func (*IrAMD64_SHRQ)        irnode() {}
+func (*IrAMD64_CMPQ_eq)     irnode() {}
+func (*IrAMD64_CMPQ_ne)     irnode() {}
+func (*IrAMD64_CMPQ_lt)     irnode() {}
+func (*IrAMD64_CMPQ_ltu)    irnode() {}
+func (*IrAMD64_CMPQ_geu)    irnode() {}
+func (*IrAMD64_BTSQ)        irnode() {}
+func (*IrAMD64_JE_imm)      irnode() {}
+func (*IrAMD64_JMP)         irnode() {}
 
 func (*IrAMD64_JE_imm) irterminator() {}
 func (*IrAMD64_JMP)    irterminator() {}
@@ -158,7 +160,7 @@ type IrAMD64_MOV_abs struct {
 }
 
 func (self *IrAMD64_MOV_abs) String() string {
-    return fmt.Sprintf("movabsq $%d, %s", self.V, self.R)
+    return fmt.Sprintf("movabsq $%d, %s  # %#x", self.V, self.R, self.V)
 }
 
 func (self *IrAMD64_MOV_abs) Definations() []*Reg {
@@ -171,7 +173,13 @@ type IrAMD64_MOV_ptr struct {
 }
 
 func (self *IrAMD64_MOV_ptr) String() string {
-    return fmt.Sprintf("movabsq $%p, %s", self.P, self.R)
+    if fn := runtime.FuncForPC(uintptr(self.P)); fn == nil {
+        return fmt.Sprintf("movabsq $%p, %s", self.P, self.R)
+    } else if fp := fn.Entry(); fp == uintptr(self.P) {
+        return fmt.Sprintf("movabsq $%p, %s  # %s", self.P, self.R, fn.Name())
+    } else {
+        return fmt.Sprintf("movabsq $%p, %s  # %s+%#x", self.P, self.R, fn.Name(), uintptr(self.P) - fp)
+    }
 }
 
 func (self *IrAMD64_MOV_ptr) Definations() []*Reg {
@@ -243,6 +251,21 @@ func (self *IrAMD64_MOV_store) Usages() (r []*Reg) {
     if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
     if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
+}
+
+type IrAMD64_MOV_wb struct {
+    M  Reg
+    R  Reg
+    V  Reg
+    Fn unsafe.Pointer
+}
+
+func (self *IrAMD64_MOV_wb) String() string {
+    return fmt.Sprintf("cmpb $0, (%s); jne *%p; movq %s, (%s)", self.V, self.Fn, self.R, self.M)
+}
+
+func (self *IrAMD64_MOV_wb) Usages() (r []*Reg) {
+    return []*Reg { &self.V, &self.R, &self.M }
 }
 
 type IrAMD64_MOVBE_load struct {

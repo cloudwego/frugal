@@ -54,7 +54,7 @@ func insertPhiNodes(dt *DominatorTree) {
     /* find out all the variable origins */
     for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(dt.DominatorOf, p, q)
+        addImmediateDominated(dt.DominatorOf, p, q)
 
         /* mark all the defination sites */
         for _, ins := range p.Ins {
@@ -71,7 +71,7 @@ func insertPhiNodes(dt *DominatorTree) {
     /* find out all the variable defination sites */
     for q.Enqueue(dt.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominators(dt.DominatorOf, p, q)
+        addImmediateDominated(dt.DominatorOf, p, q)
 
         /* mark all the defination sites */
         for def := range orig[p.Id] {

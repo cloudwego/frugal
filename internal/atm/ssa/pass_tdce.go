@@ -155,7 +155,6 @@ func (TDCE) Apply(cfg *CFG) {
 
         /* no more modifications */
         if done {
-            cfg.Rebuild()
             break
         }
     }

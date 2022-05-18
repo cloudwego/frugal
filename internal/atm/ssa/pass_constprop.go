@@ -19,36 +19,7 @@ package ssa
 import (
     `fmt`
     `math/bits`
-    `unsafe`
 )
-
-type _ConstData struct {
-    i bool
-    v int64
-    p unsafe.Pointer
-}
-
-func (self _ConstData) String() string {
-    if self.i {
-        return fmt.Sprintf("(i64) %d", self.v)
-    } else {
-        return fmt.Sprintf("(ptr) %p", self.p)
-    }
-}
-
-func constint(v int64) _ConstData {
-    return _ConstData {
-        v: v,
-        i: true,
-    }
-}
-
-func constptr(p unsafe.Pointer) _ConstData {
-    return _ConstData {
-        p: p,
-        i: false,
-    }
-}
 
 // ConstProp propagates constant through the expression tree.
 type ConstProp struct{}
@@ -125,15 +96,17 @@ func (self ConstProp) Apply(cfg *CFG) {
 
                 /* a Phi node is a const iff all it's arguments are the same const */
                 for _, r := range p.V {
-                    if cc, ok := consts[*r]; !ok {
-                        isconst = false
-                        break
-                    } else if first {
-                        cdata = cc
-                        first = false
-                    } else if cdata != cc {
-                        isconst = false
-                        break
+                    if *r != p.R {
+                        if cc, ok := consts[*r]; !ok {
+                            isconst = false
+                            break
+                        } else if first {
+                            cdata = cc
+                            first = false
+                        } else if cdata != cc {
+                            isconst = false
+                            break
+                        }
                     }
                 }
 

@@ -37,7 +37,14 @@ func newGraphBuilder() *_GraphBuilder {
 func (self *_GraphBuilder) build(p hir.Program) *CFG {
     self.anchor(p)
     self.define(&p)
-    return newCFG(self.branch(p.Head))
+    return self.begin(p)
+}
+
+func (self *_GraphBuilder) begin(p hir.Program) (r *CFG) {
+    r = new(CFG)
+    r.Root = self.branch(p.Head)
+    r.Rebuild()
+    return
 }
 
 func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {

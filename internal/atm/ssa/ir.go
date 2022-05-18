@@ -490,7 +490,7 @@ type IrConstInt struct {
 }
 
 func (self *IrConstInt) String() string {
-    return fmt.Sprintf("%s = const.i64 %d", self.R, self.V)
+    return fmt.Sprintf("%s = const.i64 %d (%#x)", self.R, self.V, self.V)
 }
 
 func (self *IrConstInt) Definations() []*Reg {
@@ -721,11 +721,11 @@ func (self *IrCallMethod) String() string {
 }
 
 func (self *IrCallMethod) Usages() []*Reg {
-    return regsliceref(self.In)
+    return append([]*Reg { &self.T, &self.V }, regsliceref(self.In)...)
 }
 
 func (self *IrCallMethod) Definations() []*Reg {
-    return append([]*Reg { &self.T, &self.V }, regsliceref(self.Out)...)
+    return regsliceref(self.Out)
 }
 
 type IrWriteBarrier struct {
@@ -740,7 +740,7 @@ func (self *IrWriteBarrier) String() string {
 }
 
 func (self *IrWriteBarrier) Usages() []*Reg {
-    return []*Reg { &self.R, &self.V, &self.Fn, &self.Var }
+    return []*Reg { &self.Var, &self.Fn, &self.V, &self.R }
 }
 
 type (

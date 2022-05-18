@@ -86,7 +86,7 @@ func (Lowering) Apply(cfg *CFG) {
                     bb.Ins = append(bb.Ins, &IrAMD64_LEA {
                         R: p.R,
                         M: Mem {
-                            M: p.R,
+                            M: p.Mem,
                             I: p.Off,
                             S: 1,
                             D: 0,
@@ -97,10 +97,10 @@ func (Lowering) Apply(cfg *CFG) {
                 /* unary operators */
                 case *IrUnaryExpr: {
                     switch p.Op {
-                        case IrOpNegate   : bb.Ins = append(bb.Ins, &IrAMD64_NEG { R: p.R, V: p.V })
-                        case IrOpSwap16   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP { R: p.R, V: p.V, S: 2 })
-                        case IrOpSwap32   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP { R: p.R, V: p.V, S: 4 })
-                        case IrOpSwap64   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP { R: p.R, V: p.V, S: 8 })
+                        case IrOpNegate   : bb.Ins = append(bb.Ins, &IrAMD64_NEG    { R: p.R, V: p.V })
+                        case IrOpSwap16   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 2 })
+                        case IrOpSwap32   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 4 })
+                        case IrOpSwap64   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 8 })
                         case IrOpSx32to64 : bb.Ins = append(bb.Ins, &IrAMD64_MOVSLQ { R: p.R, V: p.V })
                         default           : panic("unreachable")
                     }
@@ -109,16 +109,16 @@ func (Lowering) Apply(cfg *CFG) {
                 /* binary operators */
                 case *IrBinaryExpr: {
                     switch p.Op {
-                        case IrOpAdd  : bb.Ins = append(bb.Ins, &IrAMD64_ADDQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpSub  : bb.Ins = append(bb.Ins, &IrAMD64_SUBQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpMul  : bb.Ins = append(bb.Ins, &IrAMD64_IMULQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpAnd  : bb.Ins = append(bb.Ins, &IrAMD64_ANDQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpOr   : bb.Ins = append(bb.Ins, &IrAMD64_ORQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpXor  : bb.Ins = append(bb.Ins, &IrAMD64_XORQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpShr  : bb.Ins = append(bb.Ins, &IrAMD64_SHRQ { R: p.R, X: p.X, Y: p.Y })
-                        case IrCmpEq  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_eq { R: p.R, X: p.X, Y: p.Y })
-                        case IrCmpNe  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_ne { R: p.R, X: p.X, Y: p.Y })
-                        case IrCmpLt  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_lt { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpAdd  : bb.Ins = append(bb.Ins, &IrAMD64_ADDQ     { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpSub  : bb.Ins = append(bb.Ins, &IrAMD64_SUBQ     { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpMul  : bb.Ins = append(bb.Ins, &IrAMD64_IMULQ    { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpAnd  : bb.Ins = append(bb.Ins, &IrAMD64_ANDQ     { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpOr   : bb.Ins = append(bb.Ins, &IrAMD64_ORQ      { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpXor  : bb.Ins = append(bb.Ins, &IrAMD64_XORQ     { R: p.R, X: p.X, Y: p.Y })
+                        case IrOpShr  : bb.Ins = append(bb.Ins, &IrAMD64_SHRQ     { R: p.R, X: p.X, Y: p.Y })
+                        case IrCmpEq  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_eq  { R: p.R, X: p.X, Y: p.Y })
+                        case IrCmpNe  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_ne  { R: p.R, X: p.X, Y: p.Y })
+                        case IrCmpLt  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_lt  { R: p.R, X: p.X, Y: p.Y })
                         case IrCmpLtu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_ltu { R: p.R, X: p.X, Y: p.Y })
                         case IrCmpGeu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_geu { R: p.R, X: p.X, Y: p.Y })
                         default       : panic("unreachable")
@@ -153,11 +153,14 @@ func (Lowering) Apply(cfg *CFG) {
                     bb.Ins = append(bb.Ins, p)
                 }
 
+                /* write barrier, will be fused in later stage */
+                case *IrWriteBarrier: {
+                    bb.Ins = append(bb.Ins, p)
+                }
+
                 /* breakpoint */
                 case *IrBreakpoint: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_INT {
-                        I: 3,
-                    })
+                    bb.Ins = append(bb.Ins, &IrAMD64_INT { 3 })
                 }
             }
         }
@@ -171,8 +174,9 @@ func (Lowering) Apply(cfg *CFG) {
             /* branch terminator */
             case *IrSwitch: {
                 switch t := p.iter().t; len(p.Br) {
-                    case 0: bb.Term = &IrAMD64_JMP { To: p.Ln }
-                    case 1: bb.Term = &IrAMD64_JE_imm { R: p.V, V: t[0].i, To: t[0].b, Ln: p.Ln }
+                    case 0  : bb.Term = &IrAMD64_JMP    { To: p.Ln }
+                    case 1  : bb.Term = &IrAMD64_JE_imm { R: p.V, V: t[0].i, To: t[0].b, Ln: p.Ln }
+                    default : // TODO: this
                 }
             }
 
