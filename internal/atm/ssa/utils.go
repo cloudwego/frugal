@@ -17,11 +17,16 @@
 package ssa
 
 import (
+    `math`
     `strings`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
+
+func isi32(v int64) bool {
+    return v >= math.MinInt32 && v <= math.MaxInt32
+}
 
 func ri2reg(ri uint8) Reg {
     if ri & hir.ArgPointer == 0 {
@@ -65,6 +70,16 @@ func cmpu64(a uint64, b uint64) int {
 
 func addptr(p unsafe.Pointer, i int64) unsafe.Pointer {
     return unsafe.Pointer(uintptr(p) + uintptr(i))
+}
+
+func memsizec(n uint8) rune {
+    switch n {
+        case 1  : return 'b'
+        case 2  : return 'w'
+        case 4  : return 'l'
+        case 8  : return 'q'
+        default : panic("unreachable")
+    }
 }
 
 func regnewref(v Reg) (r *Reg) {

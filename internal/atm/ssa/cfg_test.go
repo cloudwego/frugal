@@ -36,6 +36,7 @@ func dumpbb(bb *BasicBlock, cfg *CFG) string {
     for _, v := range bb.Phi {
         for _, ss := range strings.Split(v.String(), "\n") {
             vv := strings.ReplaceAll(html.EscapeString(ss), " ", "&nbsp;")
+            vv = strings.ReplaceAll(vv, "$", "$$")
             phi = append(phi, fmt.Sprintf("<tr><td align=\"left\">%s</td></tr>\n", vv))
             if len(ss) > w {
                 w = len(ss)
@@ -45,6 +46,7 @@ func dumpbb(bb *BasicBlock, cfg *CFG) string {
     for _, v := range bb.Ins {
         for _, ss := range strings.Split(v.String(), "\n") {
             vv := strings.ReplaceAll(html.EscapeString(ss), " ", "&nbsp;")
+            vv = strings.ReplaceAll(vv, "$", "$$")
             ins = append(ins, fmt.Sprintf("<tr><td align=\"left\">%s</td></tr>\n", vv))
             if len(ss) > w {
                 w = len(ss)
@@ -53,6 +55,7 @@ func dumpbb(bb *BasicBlock, cfg *CFG) string {
     }
     for _, ss := range strings.Split(bb.Term.String(), "\n") {
         vv := strings.ReplaceAll(html.EscapeString(ss), " ", "&nbsp;")
+        vv = strings.ReplaceAll(vv, "$", "$$")
         term = append(term, fmt.Sprintf("<tr><td align=\"left\">%s</td></tr>\n", vv))
         if len(ss) > w {
             w = len(ss)
