@@ -135,9 +135,9 @@ func (self Reg) String() string {
         /* zero registers */
         case K_zero: {
             if self.Ptr() {
-                return "nil"
+                return "%nil"
             } else {
-                return "$0"
+                return "%z"
             }
         }
 
@@ -283,7 +283,7 @@ func (self *IrPhi) Definitions() []*Reg {
 type IrSuccessors interface {
     Next() bool
     Block() *BasicBlock
-    Value() (int64, bool)
+    Value() (int32, bool)
 }
 
 type IrTerminator interface {
@@ -296,7 +296,7 @@ func (*IrSwitch) irterminator() {}
 func (*IrReturn) irterminator() {}
 
 type _SwitchTarget struct {
-    i int64
+    i int32
     b *BasicBlock
 }
 
@@ -318,7 +318,7 @@ func (self *_SwitchSuccessors) Block() *BasicBlock {
     }
 }
 
-func (self *_SwitchSuccessors) Value() (int64, bool) {
+func (self *_SwitchSuccessors) Value() (int32, bool) {
     if self.i >= len(self.t) - 1 {
         return 0, false
     } else {
@@ -329,7 +329,7 @@ func (self *_SwitchSuccessors) Value() (int64, bool) {
 type IrSwitch struct {
     V  Reg
     Ln *BasicBlock
-    Br map[int64]*BasicBlock
+    Br map[int32]*BasicBlock
 }
 
 func (self *IrSwitch) iter() *_SwitchSuccessors {
@@ -401,7 +401,7 @@ func (self *IrSwitch) Successors() IrSuccessors {
 type _EmptySuccessor struct{}
 func (_EmptySuccessor) Next()  bool          { return false }
 func (_EmptySuccessor) Block() *BasicBlock   { return nil }
-func (_EmptySuccessor) Value() (int64, bool) { return 0, false }
+func (_EmptySuccessor) Value() (int32, bool) { return 0, false }
 
 type IrReturn struct {
     R []Reg

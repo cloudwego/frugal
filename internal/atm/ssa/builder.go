@@ -71,7 +71,7 @@ func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
     /* add terminators */
     switch p.Op {
         case hir.OP_bsw : self.termbsw(p, bb)
-        case hir.OP_ret : self.termret(p, bb)
+        case hir.OP_ret : bb.termReturn(p)
         case hir.OP_jmp : bb.termBranch(self.branch(p.Br))
         default         : bb.termCondition(p, self.branch(p.Br), self.branch(p.Ln))
     }
@@ -136,7 +136,7 @@ func (self *_GraphBuilder) branch(p *hir.Ir) *BasicBlock {
 
 func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
     sw := new(IrSwitch)
-    sw.Br = make(map[int64]*BasicBlock, p.Iv)
+    sw.Br = make(map[int32]*BasicBlock, p.Iv)
     bb.Term = sw
 
     /* add every branch of the switch instruction */
@@ -144,15 +144,11 @@ func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
         if br != nil {
             to := self.branch(br)
             to.Pred = append(to.Pred, bb)
-            sw.Br[int64(i)] = to
+            sw.Br[int32(i)] = to
         }
     }
 
     /* add the default branch */
     sw.Ln = self.branch(p.Ln)
     sw.Ln.Pred = append(sw.Ln.Pred, bb)
-}
-
-func (self *_GraphBuilder) termret(p *hir.Ir, bb *BasicBlock) {
-    bb.Term = &IrReturn { R: ri2regs(p.Rr[:p.Rn]) }
 }

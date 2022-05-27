@@ -91,28 +91,27 @@ func (self Mem) String() string {
     }
 }
 
-func (*IrAMD64_INT)         irnode() {}
-func (*IrAMD64_LEA)         irnode() {}
+func (*IrAMD64_INT)    irnode() {}
+func (*IrAMD64_LEA)    irnode() {}
+func (*IrAMD64_NEG)    irnode() {}
+func (*IrAMD64_BSWAP)  irnode() {}
+func (*IrAMD64_MOVSLQ) irnode() {}
+
 func (*IrAMD64_MOV_abs)     irnode() {}
 func (*IrAMD64_MOV_ptr)     irnode() {}
 func (*IrAMD64_MOV_reg)     irnode() {}
 func (*IrAMD64_MOV_load)    irnode() {}
-func (*IrAMD64_MOV_store)   irnode() {}
+func (*IrAMD64_MOV_store_r) irnode() {}
+func (*IrAMD64_MOV_store_i) irnode() {}
 func (*IrAMD64_MOV_wb)      irnode() {}
+
 func (*IrAMD64_MOVBE_load)  irnode() {}
 func (*IrAMD64_MOVBE_store) irnode() {}
-func (*IrAMD64_NEG)         irnode() {}
-func (*IrAMD64_BSWAP)       irnode() {}
-func (*IrAMD64_MOVSLQ)      irnode() {}
-func (*IrAMD64_ADDQ_rr)     irnode() {}
-func (*IrAMD64_ADDQ_ri)     irnode() {}
-func (*IrAMD64_SUBQ)        irnode() {}
-func (*IrAMD64_IMULQ)       irnode() {}
-func (*IrAMD64_ANDQ)        irnode() {}
-func (*IrAMD64_ORQ)         irnode() {}
-func (*IrAMD64_XORQ)        irnode() {}
-func (*IrAMD64_SHRQ)        irnode() {}
-func (*IrAMD64_BTSQ)        irnode() {}
+
+func (*IrAMD64_BinOp_rr) irnode() {}
+func (*IrAMD64_BinOp_ri) irnode() {}
+func (*IrAMD64_BTSQ_rr)  irnode() {}
+func (*IrAMD64_BTSQ_ri)  irnode() {}
 
 func (*IrAMD64_CMPQ_rr) irnode() {}
 func (*IrAMD64_CMPQ_ri) irnode() {}
@@ -127,6 +126,8 @@ func (*IrAMD64_CMPQ_im) irnode() {}
 func (*IrAMD64_CMPQ_pm) irnode() {}
 
 func (*IrAMD64_JMP)     irnode() {}
+func (*IrAMD64_JNC)     irnode() {}
+
 func (*IrAMD64_Jcc_rr)  irnode() {}
 func (*IrAMD64_Jcc_ri)  irnode() {}
 func (*IrAMD64_Jcc_rp)  irnode() {}
@@ -140,6 +141,8 @@ func (*IrAMD64_Jcc_im)  irnode() {}
 func (*IrAMD64_Jcc_pm)  irnode() {}
 
 func (*IrAMD64_JMP)    irterminator() {}
+func (*IrAMD64_JNC)    irterminator() {}
+
 func (*IrAMD64_Jcc_rr) irterminator() {}
 func (*IrAMD64_Jcc_ri) irterminator() {}
 func (*IrAMD64_Jcc_rp) irterminator() {}
@@ -182,6 +185,77 @@ func (self *IrAMD64_LEA) Usages() (r []*Reg) {
 func (self *IrAMD64_LEA) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
+
+type IrAMD64_NEG struct {
+    R Reg
+    V Reg
+}
+
+func (self *IrAMD64_NEG) String() string {
+    if self.R == self.V {
+        return fmt.Sprintf("negq %s", self.R)
+    } else {
+        return fmt.Sprintf("movq %s, %s; negq %s", self.V, self.R, self.R)
+    }
+}
+
+func (self *IrAMD64_NEG) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrAMD64_NEG) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
+type IrAMD64_BSWAP struct {
+    R Reg
+    V Reg
+    S uint8
+}
+
+func (self *IrAMD64_BSWAP) String() string {
+    if self.R == self.V {
+        switch self.S {
+            case 2  : return fmt.Sprintf("rolw $8, %s", self.R)
+            case 4  : return fmt.Sprintf("bswapl %s", self.R)
+            case 8  : return fmt.Sprintf("bswapq %s", self.R)
+            default : panic("invalid bswap size")
+        }
+    } else {
+        switch self.S {
+            case 2  : return fmt.Sprintf("movq %s, %s; rolw $8, %s", self.V, self.R, self.R)
+            case 4  : return fmt.Sprintf("movq %s, %s; bswapl %s", self.V, self.R, self.R)
+            case 8  : return fmt.Sprintf("movq %s, %s; bswapq %s", self.V, self.R, self.R)
+            default : panic("invalid bswap size")
+        }
+    }
+}
+
+func (self *IrAMD64_BSWAP) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrAMD64_BSWAP) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
+type IrAMD64_MOVSLQ struct {
+    R Reg
+    V Reg
+}
+
+func (self *IrAMD64_MOVSLQ) String() string {
+    return fmt.Sprintf("movslq %s, %s", self.V, self.R)
+}
+
+func (self *IrAMD64_MOVSLQ) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrAMD64_MOVSLQ) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
 
 type IrAMD64_MOV_abs struct {
     R Reg
@@ -259,18 +333,34 @@ func (self *IrAMD64_MOV_load) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
-type IrAMD64_MOV_store struct {
+type IrAMD64_MOV_store_r struct {
     R Reg
     M Mem
     N uint8
 }
 
-func (self *IrAMD64_MOV_store) String() string {
+func (self *IrAMD64_MOV_store_r) String() string {
     return fmt.Sprintf("mov%c %s, %s", memsizec(self.N), self.R, self.M)
 }
 
-func (self *IrAMD64_MOV_store) Usages() (r []*Reg) {
+func (self *IrAMD64_MOV_store_r) Usages() (r []*Reg) {
     r = []*Reg { &self.R }
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
+    return
+}
+
+type IrAMD64_MOV_store_i struct {
+    V int32
+    M Mem
+    N uint8
+}
+
+func (self *IrAMD64_MOV_store_i) String() string {
+    return fmt.Sprintf("mov%c $%d, %s  # %#x", memsizec(self.N), self.V, self.M, self.V)
+}
+
+func (self *IrAMD64_MOV_store_i) Usages() (r []*Reg) {
     if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
     if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
@@ -338,276 +428,20 @@ func (self *IrAMD64_MOVBE_store) Usages() (r []*Reg) {
     return
 }
 
-type IrAMD64_NEG struct {
-    R Reg
-    V Reg
-}
+type (
+    IrAMD64_BinOp uint8
+    IrAMD64_CmpOp uint8
+)
 
-func (self *IrAMD64_NEG) String() string {
-    if self.R == self.V {
-        return fmt.Sprintf("negq %s", self.R)
-    } else {
-        return fmt.Sprintf("movq %s, %s; negq %s", self.V, self.R, self.R)
-    }
-}
-
-func (self *IrAMD64_NEG) Usages() []*Reg {
-    return []*Reg { &self.V }
-}
-
-func (self *IrAMD64_NEG) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_BSWAP struct {
-    R Reg
-    V Reg
-    S uint8
-}
-
-func (self *IrAMD64_BSWAP) String() string {
-    if self.R == self.V {
-        switch self.S {
-            case 2  : return fmt.Sprintf("rolw $8, %s", self.R)
-            case 4  : return fmt.Sprintf("bswapl %s", self.R)
-            case 8  : return fmt.Sprintf("bswapq %s", self.R)
-            default : panic("invalid bswap size")
-        }
-    } else {
-        switch self.S {
-            case 2  : return fmt.Sprintf("movq %s, %s; rolw $8, %s", self.V, self.R, self.R)
-            case 4  : return fmt.Sprintf("movq %s, %s; bswapl %s", self.V, self.R, self.R)
-            case 8  : return fmt.Sprintf("movq %s, %s; bswapq %s", self.V, self.R, self.R)
-            default : panic("invalid bswap size")
-        }
-    }
-}
-
-func (self *IrAMD64_BSWAP) Usages() []*Reg {
-    return []*Reg { &self.V }
-}
-
-func (self *IrAMD64_BSWAP) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_MOVSLQ struct {
-    R Reg
-    V Reg
-}
-
-func (self *IrAMD64_MOVSLQ) String() string {
-    return fmt.Sprintf("movslq %s, %s", self.V, self.R)
-}
-
-func (self *IrAMD64_MOVSLQ) Usages() []*Reg {
-    return []*Reg { &self.V }
-}
-
-func (self *IrAMD64_MOVSLQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_ADDQ_rr struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_ADDQ_rr) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("addq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; addq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_ADDQ_rr) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_ADDQ_rr) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_ADDQ_ri struct {
-    R Reg
-    X Reg
-    Y int64
-}
-
-func (self *IrAMD64_ADDQ_ri) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("addq $%d, %s  # %#x", self.Y, self.X, self.Y)
-    } else {
-        return fmt.Sprintf("movq %s, %s; addq $%d, %s  # %#x", self.X, self.R, self.Y, self.R, self.Y)
-    }
-}
-
-func (self *IrAMD64_ADDQ_ri) Usages() []*Reg {
-    return []*Reg { &self.X }
-}
-
-func (self *IrAMD64_ADDQ_ri) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_SUBQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_SUBQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("subq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; subq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_SUBQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_SUBQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_IMULQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_IMULQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("imulq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; imulq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_IMULQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_IMULQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_ANDQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_ANDQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("andq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; andq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_ANDQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_ANDQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_ORQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_ORQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("orq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; orq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_ORQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_ORQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_XORQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_XORQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("xorq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; xorq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_XORQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_XORQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_SHRQ struct {
-    R Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_SHRQ) String() string {
-    if self.R == self.X {
-        return fmt.Sprintf("shrq %s, %s", self.Y, self.X)
-    } else {
-        return fmt.Sprintf("movq %s, %s; shrq %s, %s", self.X, self.R, self.Y, self.R)
-    }
-}
-
-func (self *IrAMD64_SHRQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_SHRQ) Definitions() []*Reg {
-    return []*Reg { &self.R }
-}
-
-type IrAMD64_BTSQ struct {
-    T Reg
-    S Reg
-    X Reg
-    Y Reg
-}
-
-func (self *IrAMD64_BTSQ) String() string {
-    if self.S == self.Y {
-        return fmt.Sprintf("btsq %s, %s; setc %s", self.Y, self.X, self.T)
-    } else {
-        return fmt.Sprintf("movq %s, %s; btsq %s, %s; setc %s", self.X, self.S, self.Y, self.S, self.T)
-    }
-}
-
-func (self *IrAMD64_BTSQ) Usages() []*Reg {
-    return []*Reg { &self.X, &self.Y }
-}
-
-func (self *IrAMD64_BTSQ) Definitions() []*Reg {
-    return []*Reg { &self.T, &self.S }
-}
-
-type IrAMD64_CmpOp uint8
+const (
+    IrAMD64_BinAdd IrAMD64_BinOp = iota
+    IrAMD64_BinSub
+    IrAMD64_BinMul
+    IrAMD64_BinAnd
+    IrAMD64_BinOr
+    IrAMD64_BinXor
+    IrAMD64_BinShr
+)
 
 const (
     IrAMD64_CmpEq IrAMD64_CmpOp = iota
@@ -617,6 +451,19 @@ const (
     IrAMD64_CmpLtu
     IrAMD64_CmpGeu
 )
+
+func (self IrAMD64_BinOp) String() string {
+    switch self {
+        case IrAMD64_BinAdd : return "addq"
+        case IrAMD64_BinSub : return "subq"
+        case IrAMD64_BinMul : return "imulq"
+        case IrAMD64_BinAnd : return "andq"
+        case IrAMD64_BinOr  : return "orq"
+        case IrAMD64_BinXor : return "xorq"
+        case IrAMD64_BinShr : return "shrq"
+        default             : panic("unreachable")
+    }
+}
 
 func (self IrAMD64_CmpOp) String() string {
     switch self {
@@ -642,6 +489,108 @@ func (self IrAMD64_CmpOp) Negated() IrAMD64_CmpOp {
     }
 }
 
+type IrAMD64_BinOp_rr struct {
+    R  Reg
+    X  Reg
+    Y  Reg
+    Op IrAMD64_BinOp
+}
+
+func (self *IrAMD64_BinOp_rr) String() string {
+    if self.R == self.X {
+        return fmt.Sprintf("%s %s, %s", self.Op, self.Y, self.X)
+    } else {
+        return fmt.Sprintf("movq %s, %s; %s %s, %s", self.X, self.R, self.Op, self.Y, self.R)
+    }
+}
+
+func (self *IrAMD64_BinOp_rr) Usages() []*Reg {
+    return []*Reg { &self.X, &self.Y }
+}
+
+func (self *IrAMD64_BinOp_rr) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
+type IrAMD64_BinOp_ri struct {
+    R  Reg
+    X  Reg
+    Y  int32
+    Op IrAMD64_BinOp
+}
+
+func (self *IrAMD64_BinOp_ri) String() string {
+    if self.Op == IrAMD64_BinMul {
+        return fmt.Sprintf("imulq $%d, %s, %s  # %#x", self.Y, self.X, self.R, self.Y)
+    } else if self.R == self.X {
+        return fmt.Sprintf("%s $%d, %s  # %#x", self.Op, self.Y, self.X, self.Y)
+    } else {
+        return fmt.Sprintf("movq %s, %s; %s $%d, %s  # %#x", self.X, self.R, self.Op, self.Y, self.R, self.Y)
+    }
+}
+
+func (self *IrAMD64_BinOp_ri) Usages() []*Reg {
+    return []*Reg { &self.X }
+}
+
+func (self *IrAMD64_BinOp_ri) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
+type IrAMD64_BTSQ_rr struct {
+    T Reg
+    S Reg
+    X Reg
+    Y Reg
+}
+
+func (self *IrAMD64_BTSQ_rr) String() string {
+    if self.T.Kind() == K_zero {
+        if self.S == self.Y {
+            return fmt.Sprintf("btsq %s, %s", self.Y, self.X)
+        } else {
+            return fmt.Sprintf("movq %s, %s; btsq %s, %s", self.X, self.S, self.Y, self.S)
+        }
+    } else {
+        if self.S == self.Y {
+            return fmt.Sprintf("btsq %s, %s; setc %s", self.Y, self.X, self.T)
+        } else {
+            return fmt.Sprintf("movq %s, %s; btsq %s, %s; setc %s", self.X, self.S, self.Y, self.S, self.T)
+        }
+    }
+}
+
+func (self *IrAMD64_BTSQ_rr) Usages() []*Reg {
+    return []*Reg { &self.X, &self.Y }
+}
+
+func (self *IrAMD64_BTSQ_rr) Definitions() []*Reg {
+    return []*Reg { &self.T, &self.S }
+}
+
+type IrAMD64_BTSQ_ri struct {
+    T Reg
+    S Reg
+    X Reg
+    Y uint8
+}
+
+func (self *IrAMD64_BTSQ_ri) String() string {
+    if self.S == self.X {
+        return fmt.Sprintf("btsq $%d, %s; setc %s", self.Y, self.X, self.T)
+    } else {
+        return fmt.Sprintf("movq %s, %s; btsq $%d, %s; setc %s", self.X, self.S, self.Y, self.S, self.T)
+    }
+}
+
+func (self *IrAMD64_BTSQ_ri) Usages() []*Reg {
+    return []*Reg { &self.X }
+}
+
+func (self *IrAMD64_BTSQ_ri) Definitions() []*Reg {
+    return []*Reg { &self.T, &self.S }
+}
+
 type IrAMD64_CMPQ_rr struct {
     R  Reg
     X  Reg
@@ -664,7 +613,7 @@ func (self *IrAMD64_CMPQ_rr) Definitions() []*Reg {
 type IrAMD64_CMPQ_ri struct {
     R  Reg
     X  Reg
-    Y  int64
+    Y  int32
     Op IrAMD64_CmpOp
 }
 
@@ -701,7 +650,7 @@ func (self *IrAMD64_CMPQ_rp) Definitions() []*Reg {
 
 type IrAMD64_CMPQ_ir struct {
     R  Reg
-    X  int64
+    X  int32
     Y  Reg
     Op IrAMD64_CmpOp
 }
@@ -802,7 +751,7 @@ func (self *IrAMD64_CMPQ_mr) Definitions() []*Reg {
 type IrAMD64_CMPQ_mi struct {
     R  Reg
     X  Mem
-    Y  int64
+    Y  int32
     N  uint8
     Op IrAMD64_CmpOp
 }
@@ -856,7 +805,7 @@ func (self *IrAMD64_CMPQ_mp) Definitions() []*Reg {
 
 type IrAMD64_CMPQ_im struct {
     R  Reg
-    X  int64
+    X  int32
     Y  Mem
     N  uint8
     Op IrAMD64_CmpOp
@@ -924,6 +873,25 @@ func (self *IrAMD64_JMP) Successors() IrSuccessors {
     }
 }
 
+type IrAMD64_JNC struct {
+    To *BasicBlock
+    Ln *BasicBlock
+}
+
+func (self *IrAMD64_JNC) String() string {
+    return fmt.Sprintf("jnc bb_%d; jmp bb_%d", self.To.Id, self.Ln.Id)
+}
+
+func (self *IrAMD64_JNC) Successors() IrSuccessors {
+    return &_SwitchSuccessors {
+        i: -1,
+        t: []_SwitchTarget {
+            { b: self.To, i: 1 },
+            { b: self.Ln },
+        },
+    }
+}
+
 type IrAMD64_Jcc_rr struct {
     X  Reg
     Y  Reg
@@ -959,7 +927,7 @@ func (self *IrAMD64_Jcc_rr) Successors() IrSuccessors {
 
 type IrAMD64_Jcc_ri struct {
     X  Reg
-    Y  int64
+    Y  int32
     To *BasicBlock
     Ln *BasicBlock
     Op IrAMD64_CmpOp
@@ -1025,7 +993,7 @@ func (self *IrAMD64_Jcc_rp) Successors() IrSuccessors {
 }
 
 type IrAMD64_Jcc_ir struct {
-    X  int64
+    X  int32
     Y  Reg
     To *BasicBlock
     Ln *BasicBlock
@@ -1171,7 +1139,7 @@ func (self *IrAMD64_Jcc_mr) Successors() IrSuccessors {
 
 type IrAMD64_Jcc_mi struct {
     X  Mem
-    Y  int64
+    Y  int32
     N  uint8
     To *BasicBlock
     Ln *BasicBlock
@@ -1248,7 +1216,7 @@ func (self *IrAMD64_Jcc_mp) Successors() IrSuccessors {
 }
 
 type IrAMD64_Jcc_im struct {
-    X  int64
+    X  int32
     Y  Mem
     N  uint8
     To *BasicBlock

@@ -47,7 +47,7 @@ func (Lowering) Apply(cfg *CFG) {
 
                 /* store into memory */
                 case *IrStore: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_store {
+                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_store_r {
                         R: p.R,
                         N: p.Size,
                         M: Mem {
@@ -109,25 +109,25 @@ func (Lowering) Apply(cfg *CFG) {
                 /* binary operators */
                 case *IrBinaryExpr: {
                     switch p.Op {
-                        case IrOpAdd  : bb.Ins = append(bb.Ins, &IrAMD64_ADDQ_rr { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpSub  : bb.Ins = append(bb.Ins, &IrAMD64_SUBQ    { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpMul  : bb.Ins = append(bb.Ins, &IrAMD64_IMULQ   { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpAnd  : bb.Ins = append(bb.Ins, &IrAMD64_ANDQ    { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpOr   : bb.Ins = append(bb.Ins, &IrAMD64_ORQ     { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpXor  : bb.Ins = append(bb.Ins, &IrAMD64_XORQ    { R: p.R, X: p.X, Y: p.Y })
-                        case IrOpShr  : bb.Ins = append(bb.Ins, &IrAMD64_SHRQ    { R: p.R, X: p.X, Y: p.Y })
-                        case IrCmpEq  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpEq })
-                        case IrCmpNe  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpNe })
-                        case IrCmpLt  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLt })
-                        case IrCmpLtu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLtu })
-                        case IrCmpGeu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpGeu })
+                        case IrOpAdd  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAdd })
+                        case IrOpSub  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinSub })
+                        case IrOpMul  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinMul })
+                        case IrOpAnd  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAnd })
+                        case IrOpOr   : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinOr  })
+                        case IrOpXor  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinXor })
+                        case IrOpShr  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinShr })
+                        case IrCmpEq  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpEq })
+                        case IrCmpNe  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpNe })
+                        case IrCmpLt  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLt })
+                        case IrCmpLtu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLtu })
+                        case IrCmpGeu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpGeu })
                         default       : panic("unreachable")
                     }
                 }
 
                 /* bit test and set */
                 case *IrBitTestSet: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_BTSQ {
+                    bb.Ins = append(bb.Ins, &IrAMD64_BTSQ_rr {
                         T: p.T,
                         S: p.S,
                         X: p.X,

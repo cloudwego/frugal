@@ -176,7 +176,9 @@ func (Reorder) moveValueDefs(cfg *CFG) {
                 /* add all the definitions */
                 if d, f = v.(IrDefinitions); f {
                     for _, r := range d.Definitions() {
-                        defs[*r] = &_ValuePos { i: i, bb: bb }
+                        if r.Kind() != K_zero {
+                            defs[*r] = &_ValuePos { i: i, bb: bb }
+                        }
                     }
                 }
             }

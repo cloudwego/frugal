@@ -504,11 +504,11 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
     /* edges to be removed */
     rem := lane.NewQueue()
     del := make(map[_Edge]bool)
-    val := make([]int64, 0, len(sw.Br))
+    val := make([]int32, 0, len(sw.Br))
 
     /* prove every branch */
     for v, p := range sw.Br {
-        if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(Int65i(v)), _R_eq }) {
+        if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(Int65i(int64(v))), _R_eq }) {
             delete(sw.Br, v)
             rem.Enqueue(_Edge { bb, p })
         }
@@ -520,7 +520,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* add all the negated conditions */
     for _, i := range val {
-        ps.define(sw.V, _ValueTerm(Int65i(i)), _R_ne)
+        ps.define(sw.V, _ValueTerm(Int65i(int64(i))), _R_ne)
     }
 
     /* prove the default branch */
@@ -532,7 +532,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         if rem.Enqueue(_Edge { bb, sw.Ln }); len(sw.Br) != 1 {
             sw.Ln = Unreachable(bb, cfg.MaxBlock() + 1)
         } else {
-            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int64]*BasicBlock)
+            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]*BasicBlock)
         }
     }
 
@@ -583,7 +583,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         /* find the branch value */
         for i, b := range sw.Br {
             if b == p {
-                f, v = true, _ValueTerm(Int65i(i))
+                f, v = true, _ValueTerm(Int65i(int64(i)))
                 break
             }
         }

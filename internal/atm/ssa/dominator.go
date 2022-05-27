@@ -223,11 +223,7 @@ func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
 }
 
 func isStrictlyDominates(dom map[int][]*BasicBlock, p *BasicBlock, q *BasicBlock) bool {
-    for _, node := range dom[p.Id] {
-        if node != p && (node == q || isStrictlyDominates(dom, node, q)) {
-            return true
-        }
-    }
+    for _, v := range dom[p.Id] { if v != p && (v == q || isStrictlyDominates(dom, v, q)) { return true } }
     return false
 }
 

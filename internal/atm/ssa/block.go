@@ -262,15 +262,16 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             )
         }
 
-        /* Ry & (1 << (Rx % PTR_BITS)) != 0 -> Rz, Ry |= 1 << (Rx % PTR_BITS) */
+        /* Ry & (1 << (Rx % PTR_BITS)) != 0 -> Rz
+         * Ry |= 1 << (Rx % PTR_BITS) */
         case hir.OP_bts: {
             self.Ins = append(
                 self.Ins,
                 &IrBitTestSet {
                     T: Rv(p.Rz),
                     S: Rv(p.Ry),
-                    X: Rv(p.Rx),
-                    Y: Rv(p.Ry),
+                    X: Rv(p.Ry),
+                    Y: Rv(p.Rx),
                 },
             )
         }
@@ -462,6 +463,12 @@ func (self *BasicBlock) zeroBlock(r Reg, d uintptr, n uintptr) {
     )
 }
 
+func (self *BasicBlock) termReturn(p *hir.Ir) {
+    self.Term = &IrReturn {
+        R: ri2regs(p.Rr[:p.Rn]),
+    }
+}
+
 func (self *BasicBlock) termBranch(to *BasicBlock) {
     to.Pred = append(to.Pred, self)
     self.Term = &IrSwitch { Ln: to }
@@ -496,5 +503,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.Pred = append(t.Pred, self)
     f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch { V: Tr(0), Ln: t, Br: map[int64]*BasicBlock { 0: f } }
+    self.Term = &IrSwitch { V: Tr(0), Ln: t, Br: map[int32]*BasicBlock { 0: f } }
 }

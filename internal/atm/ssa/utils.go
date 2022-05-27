@@ -24,8 +24,16 @@ import (
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
+func isu8(v int64) bool {
+    return v >= 0 && v <= math.MaxUint8
+}
+
 func isi32(v int64) bool {
     return v >= math.MinInt32 && v <= math.MaxInt32
+}
+
+func isp32(p unsafe.Pointer) bool {
+    return uintptr(p) <= math.MaxInt32
 }
 
 func ri2reg(ri uint8) Reg {
