@@ -198,6 +198,7 @@ func (*IrCallFunc)     irnode() {}
 func (*IrCallNative)   irnode() {}
 func (*IrCallMethod)   irnode() {}
 func (*IrWriteBarrier) irnode() {}
+func (*IrNop)          irnode() {}
 func (*IrBreakpoint)   irnode() {}
 
 type IrUsages interface {
@@ -744,8 +745,13 @@ func (self *IrWriteBarrier) Usages() []*Reg {
 }
 
 type (
+    IrNop        struct{}
 	IrBreakpoint struct{}
 )
+
+func (IrNop) String() string {
+    return "nop"
+}
 
 func (IrBreakpoint) String() string {
     return "breakpoint"

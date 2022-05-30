@@ -19,7 +19,7 @@ package ssa
 import (
     `fmt`
     `html`
-    `os`
+    `io/ioutil`
     `strings`
     `testing`
 
@@ -28,7 +28,8 @@ import (
     `github.com/oleiade/lane`
 )
 
-func dumpbb(bb *BasicBlock, cfg *CFG) string {
+
+func dumpbb(bb *BasicBlock) string {
     var w int
     var phi []string
     var ins []string
@@ -61,41 +62,9 @@ func dumpbb(bb *BasicBlock, cfg *CFG) string {
             w = len(ss)
         }
     }
-    var pred []string
-    for _, d := range bb.Pred {
-        pred = append(pred, fmt.Sprintf("bb_%d", d.Id))
-    }
-    idomby := "∅"
-    if d := cfg.DominatedBy[bb.Id]; d != nil {
-        idomby = fmt.Sprintf("bb_%d", d.Id)
-    }
-    var idomof []string
-    for _, d := range cfg.DominatorOf[bb.Id] {
-        idomof = append(idomof, fmt.Sprintf("bb_%d", d.Id))
-    }
-    var df []string
-    for _, d := range cfg.DominanceFrontier[bb.Id] {
-        df = append(df, fmt.Sprintf("bb_%d", d.Id))
-    }
-    meta := []string {
-        fmt.Sprintf("# pred = {%s}", strings.Join(pred, ", ")),
-        fmt.Sprintf("# idom_by = %s", idomby),
-        fmt.Sprintf("# idom_of = {%s}", strings.Join(idomof, ", ")),
-        fmt.Sprintf("# df = {%s}", strings.Join(df, ", ")),
-    }
-    for i, ss := range meta {
-        meta[i] = fmt.Sprintf("<tr><td align=\"left\">%s</td></tr>\n", ss)
-        if len(ss) > w {
-            w = len(ss)
-        }
-    }
     buf := []string {
         "<table border=\"1\" cellborder=\"0\" cellspacing=\"0\">\n",
         fmt.Sprintf("<tr><td width=\"%d\">bb_%d</td></tr>\n", w * 10 + 5, bb.Id),
-    }
-    if len(meta) != 0 {
-        buf = append(buf, "<hr/>\n")
-        buf = append(buf, meta...)
     }
     if len(bb.Phi) != 0 {
         buf = append(buf, "<hr/>\n")
@@ -128,7 +97,7 @@ func cfgdot(cfg *CFG, fn string) {
         f := true
         p := q.Dequeue().(*BasicBlock)
         it := p.Term.Successors()
-        buf = append(buf, fmt.Sprintf(`    bb_%d [ label = < %s > ]`, p.Id, dumpbb(p, cfg)))
+        buf = append(buf, fmt.Sprintf(`    bb_%d [ label = < %s > ]`, p.Id, dumpbb(p)))
         n[p.Id] = true
         for it.Next() {
             ln := it.Block()
@@ -150,7 +119,7 @@ func cfgdot(cfg *CFG, fn string) {
         }
     }
     buf = append(buf, "}")
-    err := os.WriteFile(fn, []byte(strings.Join(buf, "\n")), 0644)
+    err := ioutil.WriteFile(fn, []byte(strings.Join(buf, "\n")), 0644)
     if err != nil {
         panic(err)
     }

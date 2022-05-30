@@ -67,104 +67,69 @@ func (self *_ValuePos) String() string {
     return fmt.Sprintf("bb_%d:%d", self.bb.Id, self.i)
 }
 
-type _MoveInfo struct {
-    ins  IrNode
-    dest *_ValuePos
-}
-
 // Reorder moves value closer to it's usage, which reduces register pressure.
 type Reorder struct{}
 
 func (Reorder) moveLoadArgs(cfg *CFG) {
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    var ok bool
+    var ir []IrNode
+    var vv *IrLoadArg
+
+    /* extract all the argument loads */
+    cfg.PostOrder(func(bb *BasicBlock) {
         if bb != cfg.Root {
             ins := bb.Ins
             bb.Ins = bb.Ins[:0]
 
-            /* move all argument loads into the entry block */
+            /* scan instructions */
             for _, v := range ins {
-                if _, ok := v.(*IrLoadArg); !ok {
-                    bb.Ins = append(bb.Ins, v)
+                if vv, ok = v.(*IrLoadArg); ok {
+                    ir = append(ir, vv)
                 } else {
-                    cfg.Root.Ins = append(cfg.Root.Ins, v)
+                    bb.Ins = append(bb.Ins, v)
                 }
             }
         }
     })
-}
-
-func (Reorder) sortLoadArgs(cfg *CFG) {
-    var ok bool
-    var vv *IrLoadArg
-    var ir []*IrLoadArg
-
-    /* extract all the argument loads */
-    for _, v := range cfg.Root.Ins {
-        if vv, ok = v.(*IrLoadArg); ok {
-            ir = append(ir, vv)
-        }
-    }
 
     /* sort by argument ID */
     sort.Slice(ir, func(i int, j int) bool {
-        return ir[i].Id < ir[j].Id
+        return ir[i].(*IrLoadArg).Id < ir[j].(*IrLoadArg).Id
     })
 
-    /* make a copy of all the instructions */
+    /* prepend to the root node */
     ins := cfg.Root.Ins
-    cfg.Root.Ins = make([]IrNode, 0, len(ins))
-
-    /* add all the argument loads */
-    for _, v := range ir {
-        cfg.Root.Ins = append(cfg.Root.Ins, v)
-    }
-
-    /* add all the remaining instructions */
-    for _, v := range ins {
-        if _, ok = v.(*IrLoadArg); !ok {
-            cfg.Root.Ins = append(cfg.Root.Ins, v)
-        }
-    }
+    cfg.Root.Ins = append(ir, ins...)
 }
 
-func (Reorder) moveValueDefs(cfg *CFG) {
-    move := make([]_MoveInfo, 16)
+func (Reorder) moveInterblock(cfg *CFG) {
     defs := make(map[Reg]*_ValuePos)
-    uses := make(map[Reg]*_ValuePos)
-    dest := make(map[int][]*_ValuePos)
+    move := make(map[*BasicBlock][]int)
+    uses := make(map[_ValuePos]*_ValuePos)
 
     /* usage update routine */
     updateUsage := func(r Reg, bb *BasicBlock, i int) {
-        var ok bool
-        var pos *_ValuePos
-
-        /* immovable values, ignore */
-        if _, ok = defs[r]; !ok {
-            return
+        if m, ok := defs[r]; ok {
+            if m.bb == nil {
+                m.i, m.bb = i, bb
+            } else {
+                m.update(cfg, bb, i)
+            }
         }
-
-        /* update values if already met */
-        if pos, ok = uses[r]; ok {
-            pos.update(cfg, bb, i)
-            return
-        }
-
-        /* add the new value */
-        pos = &_ValuePos { i: i, bb: bb }
-        uses[r], dest[bb.Id] = pos, append(dest[bb.Id], pos)
     }
 
     /* retry until no modifications */
-    for len(move) != 0 {
-        move = move[:0]
+    for move[nil] = nil; len(move) != 0; {
         rt.MapClear(defs)
+        rt.MapClear(move)
         rt.MapClear(uses)
-        rt.MapClear(dest)
 
         /* Phase 1: Find all movable value definitions */
         cfg.PostOrder(func(bb *BasicBlock) {
             for i, v := range bb.Ins {
                 var f bool
+                var k _ValuePos
+                var p *_ValuePos
                 var d IrDefinitions
 
                 /* we can't move values which have a memory arg, it
@@ -175,16 +140,26 @@ func (Reorder) moveValueDefs(cfg *CFG) {
 
                 /* add all the definitions */
                 if d, f = v.(IrDefinitions); f {
+                    k.i = i
+                    k.bb = bb
+
+                    /* create a new value movement if needed */
+                    if p, f = uses[k]; !f {
+                        p = new(_ValuePos)
+                        uses[k] = p
+                    }
+
+                    /* mark all the non-definition sites */
                     for _, r := range d.Definitions() {
                         if r.Kind() != K_zero {
-                            defs[*r] = &_ValuePos { i: i, bb: bb }
+                            defs[*r] = p
                         }
                     }
                 }
             }
         })
 
-        /* Phase 2: Identify the nearest location to place the definition */
+        /* Phase 2: Identify the earliest usage locations */
         cfg.ReversePostOrder(func(bb *BasicBlock) {
             var ok bool
             var use IrUsages
@@ -192,7 +167,7 @@ func (Reorder) moveValueDefs(cfg *CFG) {
             /* search in Phi nodes */
             for _, v := range bb.Phi {
                 for b, r := range v.V {
-                    updateUsage(*r, b, -1)
+                    updateUsage(*r, b, len(bb.Ins))
                 }
             }
 
@@ -208,55 +183,47 @@ func (Reorder) moveValueDefs(cfg *CFG) {
             /* search the terminator */
             if use, ok = bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
-                    updateUsage(*r, bb, -1)
+                    updateUsage(*r, bb, len(bb.Ins))
                 }
             }
         })
 
         /* Phase 3: Move value definitions to their usage block */
-        for r, v := range defs {
-            var ins IrNode
-            var pos *_ValuePos
-
-            /* in the same block, ignore */
-            if pos = uses[r]; v.bb == pos.bb {
-                continue
+        for p, m := range uses {
+            if m.bb != nil && m.bb != p.bb {
+                m.bb.Ins = append(m.bb.Ins, p.bb.Ins[p.i])
+                move[m.bb] = append(move[m.bb], m.i)
+                p.bb.Ins[p.i] = new(IrNop)
             }
+        }
 
-            /* extract the instruction */
-            ins = v.bb.Ins[v.i]
-            v.bb.Ins = append(v.bb.Ins[:v.i], v.bb.Ins[v.i + 1:]...)
+        /* Phase 4: Move values to place */
+        for bb, m := range move {
+            for i := len(m) - 1; i >= 0; i-- {
+                n := len(bb.Ins)
+                p := bb.Ins[n - 1]
+                copy(bb.Ins[m[i] + 1:], bb.Ins[m[i]:n - 1])
+                bb.Ins[m[i]] = p
+            }
+        }
 
-            /* adjust positions if needed */
-            if pv, ok := dest[v.bb.Id]; ok {
-                for _, p := range pv {
-                    if p.i > v.i {
-                        p.i--
-                    }
+        /* Phase 5: Remove all the placeholder NOP instructions */
+        cfg.PostOrder(func(bb *BasicBlock) {
+            ins := bb.Ins
+            bb.Ins = bb.Ins[:0]
+
+            /* filter out the NOP instructions */
+            for _, v := range ins {
+                if _, ok := v.(*IrNop); !ok {
+                    bb.Ins = append(bb.Ins, v)
                 }
             }
-
-            /* add the movement info */
-            move = append(move, _MoveInfo {
-                ins  : ins,
-                dest : pos,
-            })
-        }
-
-        /* insert instruction into new block */
-        for _, p := range move {
-            if p.dest.i == -1 {
-                p.dest.bb.Ins = append(p.dest.bb.Ins, p.ins)
-            } else {
-                p.dest.bb.Ins = append(p.dest.bb.Ins[:p.dest.i], append([]IrNode { p.ins }, p.dest.bb.Ins[p.dest.i:]...)...)
-            }
-        }
+        })
     }
 }
 
 func (self Reorder) Apply(cfg *CFG) {
     self.moveLoadArgs(cfg)
-    self.sortLoadArgs(cfg)
-    self.moveValueDefs(cfg)
+    self.moveInterblock(cfg)
 }
 
