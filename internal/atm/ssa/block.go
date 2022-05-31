@@ -174,8 +174,8 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     P: rtx.F_gcWriteBarrier,
                 },
                 &IrWriteBarrier {
-                    R   : Pr(0),
-                    V   : Rv(p.Ps),
+                    R   : Rv(p.Ps),
+                    M   : Pr(0),
                     Fn  : Pr(2),
                     Var : Pr(1),
                 },

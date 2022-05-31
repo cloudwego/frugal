@@ -18,7 +18,6 @@ package ssa
 
 import (
     `fmt`
-    `runtime`
     `sort`
     `strings`
     `unsafe`
@@ -182,6 +181,16 @@ type IrNode interface {
     irnode()
 }
 
+type IrImpure interface {
+    IrNode
+    irimpure()
+}
+
+type IrImmovable interface {
+    IrNode
+    irimmovable()
+}
+
 func (*IrPhi)          irnode() {}
 func (*IrSwitch)       irnode() {}
 func (*IrReturn)       irnode() {}
@@ -200,6 +209,17 @@ func (*IrCallMethod)   irnode() {}
 func (*IrWriteBarrier) irnode() {}
 func (*IrNop)          irnode() {}
 func (*IrBreakpoint)   irnode() {}
+
+func (*IrStore)        irimpure() {}
+func (*IrCallFunc)     irimpure() {}
+func (*IrCallNative)   irimpure() {}
+func (*IrCallMethod)   irimpure() {}
+func (*IrWriteBarrier) irimpure() {}
+
+func (*IrLoad)         irimmovable() {}
+func (*IrStore)        irimmovable() {}
+func (*IrLoadArg)      irimmovable() {}
+func (*IrWriteBarrier) irimmovable() {}
 
 type IrUsages interface {
     IrNode
@@ -504,13 +524,7 @@ type IrConstPtr struct {
 }
 
 func (self *IrConstPtr) String() string {
-    if fn := runtime.FuncForPC(uintptr(self.P)); fn == nil {
-        return fmt.Sprintf("%s = const.ptr %p", self.R, self.P)
-    } else if fp := fn.Entry(); fp == uintptr(self.P) {
-        return fmt.Sprintf("%s = const.ptr %p [%s]", self.R, self.P, fn.Name())
-    } else {
-        return fmt.Sprintf("%s = const.ptr %p [%s+%#x]", self.R, self.P, fn.Name(), uintptr(self.P) - fp)
-    }
+    return fmt.Sprintf("%s = const.ptr %p [%s]", self.R, self.P, funcname(self.P))
 }
 
 func (self *IrConstPtr) Definitions() []*Reg {
@@ -731,17 +745,17 @@ func (self *IrCallMethod) Definitions() []*Reg {
 
 type IrWriteBarrier struct {
     R   Reg
-    V   Reg
+    M   Reg
     Fn  Reg
     Var Reg
 }
 
 func (self *IrWriteBarrier) String() string {
-    return fmt.Sprintf("write_barrier (%s:%s), %s -> *%s", self.Var, self.Fn, self.V, self.R)
+    return fmt.Sprintf("write_barrier (%s:%s), %s -> *%s", self.Var, self.Fn, self.R, self.M)
 }
 
 func (self *IrWriteBarrier) Usages() []*Reg {
-    return []*Reg { &self.Var, &self.Fn, &self.V, &self.R }
+    return []*Reg { &self.Var, &self.Fn, &self.R, &self.M }
 }
 
 type (

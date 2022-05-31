@@ -18,6 +18,7 @@ package ssa
 
 import (
     `fmt`
+    `sort`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
@@ -35,21 +36,76 @@ func newGraphBuilder() *_GraphBuilder {
 }
 
 func (self *_GraphBuilder) build(p hir.Program) *CFG {
-    self.anchor(p)
-    self.define(&p)
-    return self.begin(p)
-}
+    ret := new(CFG)
+    val := make([]hir.GenericRegister, 0, len(hir.GenericRegisters))
+    ptr := make([]hir.PointerRegister, 0, len(hir.PointerRegisters))
 
-func (self *_GraphBuilder) begin(p hir.Program) (r *CFG) {
-    r = new(CFG)
-    r.Root = self.branch(p.Head)
-    r.Rebuild()
-    return
+    /* extract all generic registers */
+    for i := range hir.GenericRegisters {
+        if i != hir.Rz {
+            val = append(val, i)
+        }
+    }
+
+    /* extract all pointer registers */
+    for m := range hir.PointerRegisters {
+        if m != hir.Pn {
+            ptr = append(ptr, m)
+        }
+    }
+
+    /* sort by register ID */
+    sort.Slice(val, func(i int, j int) bool { return val[i] < val[j] })
+    sort.Slice(ptr, func(i int, j int) bool { return ptr[i] < ptr[j] })
+
+    /* create the root block */
+    ret.Root = new(BasicBlock)
+    ret.Root.Id = 1
+
+    /* implicit defination of all generic registers */
+    for _, v := range val {
+        ret.Root.Ins = append(ret.Root.Ins, &IrConstInt { R: Rv(v), V: 0 })
+    }
+
+    /* implicit defination of all pointer registers */
+    for _, v := range ptr {
+        ret.Root.Ins = append(ret.Root.Ins, &IrConstPtr { R: Rv(v), P: nil })
+    }
+
+    /* implicitly define all the temporary registers */
+    for i := uint64(K_tmp0); i <= K_tmp4; i++ {
+        ret.Root.Ins = append(
+            ret.Root.Ins,
+            &IrConstInt { R: Tr(i - K_tmp0), V: 0 },
+            &IrConstPtr { R: Pr(i - K_tmp0), P: nil },
+        )
+    }
+
+    /* mark all the branch targets */
+    for v := p.Head; v != nil; v = v.Ln {
+        if v.IsBranch() {
+            if v.Op != hir.OP_bsw {
+                self.p[v.Br] = true
+            } else {
+                for _, lb := range v.Sw() {
+                    self.p[lb] = true
+                }
+            }
+        }
+    }
+
+    /* process the root block */
+    self.g[p.Head] = ret.Root
+    self.block(p.Head, ret.Root)
+
+    /* build the dominator tree */
+    ret.Rebuild()
+    return ret
 }
 
 func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
     bb.Phi = nil
-    bb.Ins = make([]IrNode, 0, 16)
+    bb.Term = nil
 
     /* traverse down until it hits a branch instruction */
     for p != nil && !p.IsBranch() && p.Op != hir.OP_ret {
@@ -75,44 +131,6 @@ func (self *_GraphBuilder) block(p *hir.Ir, bb *BasicBlock) {
         case hir.OP_jmp : bb.termBranch(self.branch(p.Br))
         default         : bb.termCondition(p, self.branch(p.Br), self.branch(p.Ln))
     }
-}
-
-func (self *_GraphBuilder) anchor(p hir.Program) {
-    for v := p.Head; v != nil; v = v.Ln {
-        if v.IsBranch() {
-            if v.Op != hir.OP_bsw {
-                self.p[v.Br] = true
-            } else {
-                for _, lb := range v.Sw() {
-                    self.p[lb] = true
-                }
-            }
-        }
-    }
-}
-
-func (self *_GraphBuilder) define(p *hir.Program) {
-    i := hir.Rz
-    m := hir.Pn
-    b := hir.CreateBuilder()
-
-    /* implicit defination of all generic registers */
-    for i = range hir.GenericRegisters {
-        if i != hir.Rz {
-            b.MOV(hir.Rz, i)
-        }
-    }
-
-    /* implicit defination of all pointer registers */
-    for m = range hir.PointerRegisters {
-        if m != hir.Pn {
-            b.MOVP(hir.Pn, m)
-        }
-    }
-
-    /* prepend to the program */
-    r := b.Append(p.Head)
-    p.Head = r
 }
 
 func (self *_GraphBuilder) branch(p *hir.Ir) *BasicBlock {

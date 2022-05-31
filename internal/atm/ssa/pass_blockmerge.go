@@ -56,13 +56,8 @@ func (BlockMerge) Apply(cfg *CFG) {
 
                     /* update in Phi nodes */
                     for _, v := range rb.Phi {
-                        for b, r := range v.V {
-                            if b == sw.Ln {
-                                v.V[bb] = r
-                                delete(v.V, b)
-                                break
-                            }
-                        }
+                        v.V[bb] = v.V[sw.Ln]
+                        delete(v.V, sw.Ln)
                     }
                 }
             }

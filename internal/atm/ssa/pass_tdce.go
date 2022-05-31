@@ -119,38 +119,34 @@ func (TDCE) Apply(cfg *CFG) {
 
         /* Phase 4: Remove the entire defination if it's all zeros */
         cfg.PostOrder(func(bb *BasicBlock) {
-            phi := bb.Phi[:0]
-            ins := bb.Ins[:0]
+            phi, ins := bb.Phi, bb.Ins
+            bb.Phi, bb.Ins = bb.Phi[:0], bb.Ins[:0]
 
-            /* scan Phi nodes */
-            for _, v := range bb.Phi {
+            /* remove Phi nodes that don't have any effects */
+            for _, v := range phi {
                 for _, r := range v.Definitions() {
                     if r.Kind() != K_zero {
-                        phi = append(phi, v)
+                        bb.Phi = append(bb.Phi, v)
                         break
                     }
                 }
             }
 
-            /* scan instructions */
-            for _, v := range bb.Ins {
-                if d, ok := v.(IrDefinitions); !ok {
-                    ins = append(ins, v)
-                } else if rr := d.Definitions(); len(rr) == 0 {
-                    ins = append(ins, v)
+            /* remove instructions that don't have any effects */
+            for _, v := range ins {
+                if _, ok := v.(IrImpure); ok {
+                    bb.Ins = append(bb.Ins, v)
+                } else if d, ok := v.(IrDefinitions); !ok {
+                    bb.Ins = append(bb.Ins, v)
                 } else {
-                    for _, r := range rr {
+                    for _, r := range d.Definitions() {
                         if r.Kind() != K_zero {
-                            ins = append(ins, v)
+                            bb.Ins = append(bb.Ins, v)
                             break
                         }
                     }
                 }
             }
-
-            /* rebuild the basic block */
-            bb.Phi = phi
-            bb.Ins = ins
         })
 
         /* no more modifications */

@@ -45,20 +45,20 @@ func (Fusion) flagsafe(bb *BasicBlock, ins IrNode) bool {
      * known to preserve flags, all other instructions are assumed to clobber */
     for _, p = range bb.Ins[i + 1:] {
         switch p.(type) {
-            case *IrAMD64_INT         : break
-            case *IrAMD64_LEA         : break
-            case *IrAMD64_BSWAP       : break
-            case *IrAMD64_MOVSLQ      : break
-            case *IrAMD64_MOV_abs     : break
-            case *IrAMD64_MOV_ptr     : break
-            case *IrAMD64_MOV_reg     : break
-            case *IrAMD64_MOV_load    : break
-            case *IrAMD64_MOV_store_r : break
-            case *IrAMD64_MOV_store_i : break
-            case *IrAMD64_MOV_wb      : break
-            case *IrAMD64_MOVBE_load  : break
-            case *IrAMD64_MOVBE_store : break
-            default                   : return false
+            case *IrAMD64_INT          : break
+            case *IrAMD64_LEA          : break
+            case *IrAMD64_BSWAP        : break
+            case *IrAMD64_MOVSLQ       : break
+            case *IrAMD64_MOV_abs      : break
+            case *IrAMD64_MOV_ptr      : break
+            case *IrAMD64_MOV_reg      : break
+            case *IrAMD64_MOV_load     : break
+            case *IrAMD64_MOV_store_r  : break
+            case *IrAMD64_MOV_store_i  : break
+            case *IrAMD64_MOV_wb       : break
+            case *IrAMD64_MOV_load_be  : break
+            case *IrAMD64_MOV_store_be : break
+            default                    : return false
         }
     }
 
@@ -78,10 +78,6 @@ func (self Fusion) Apply(cfg *CFG) {
         /* pseudo-definition for zero registers */
         defs[Rz] = &IrAMD64_MOV_abs { R: Rz, V: 0 }
         defs[Pn] = &IrAMD64_MOV_ptr { R: Rz, P: nil }
-
-        /* perform TDCE & reordering before fusion to get better result */
-        new(TDCE).Apply(cfg)
-        new(Reorder).Apply(cfg)
 
         /* check every block */
         cfg.ReversePostOrder(func(bb *BasicBlock) {
@@ -139,6 +135,14 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
+                    /* movx {mem}, %r0; bswapx %r0, %r1 --> movbex {mem}, %r1 */
+                    case *IrAMD64_BSWAP: {
+                        if ins, ok := defs[p.V].(*IrAMD64_MOV_load); ok && ins.N != 1 {
+                            done = false
+                            bb.Ins[i] = &IrAMD64_MOV_load_be { R: p.R, M: ins.M, N: ins.N }
+                        }
+                    }
+
                     /* leaq {mem}, %r0; movx (%r0), %r1 --> movx {mem}, %r1 */
                     case *IrAMD64_MOV_load: {
                         if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
@@ -150,12 +154,40 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* leaq {mem}, %r0; movx %r1, (%r0) --> movx %r1, {mem} */
+                    /* movq {imm}, %r0; movx %r0, {mem}                       --> movx {imm}, {mem}
+                     * bswapx %r0, %r1; movx %r1, {mm1}                       --> movbex %r0, {mm1}
+                     * leaq {mem}, %r0; movx %r1, (%r0)                       --> movx %r1, {mem}
+                     * movx {mem}, %r0; btsq %r2, %r0, %r1; movx %r1, {mem}   --> btsq %r2, {mem}
+                     * movx {mem}, %r0; btsq {imm}, %r0, %r1; movx %r1, {mem} --> btsq {imm}, {mem} */
                     case *IrAMD64_MOV_store_r: {
                         if ins, ok := defs[p.R].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_i { V: int32(ins.V), M: p.M, N: p.N }
+                        } else if ins, ok := defs[p.R].(*IrAMD64_BSWAP); ok && p.N != 1 {
+                            done = false
+                            bb.Ins[i] = &IrAMD64_MOV_store_be { R: ins.V, M: p.M, N: p.N }
                         } else if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
+                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
+                                p.M = ins.M
+                                done = false
+                                p.M.D = int32(x)
+                            }
+                        } else if ins, ok := defs[p.R].(*IrAMD64_BTSQ_rr); ok && p.N != 1 {
+                            if ldr, ok := defs[ins.X].(*IrAMD64_MOV_load); ok && p.N == ldr.N && p.M == ldr.M {
+                                done = false
+                                bb.Ins[i], ins.T = &IrAMD64_BTSQ_rm { T: ins.T, R: ins.Y, M: p.M, N: p.N }, Rz
+                            }
+                        } else if ins, ok := defs[p.R].(*IrAMD64_BTSQ_ri); ok && p.N != 1 {
+                            if ldr, ok := defs[ins.X].(*IrAMD64_MOV_load); ok && p.N == ldr.N && p.M == ldr.M {
+                                done = false
+                                bb.Ins[i], ins.T = &IrAMD64_BTSQ_im { T: ins.T, V: ins.Y, M: p.M, N: p.N }, Rz
+                            }
+                        }
+                    }
+
+                    /* leaq {mem}, %r0; movx {imm}, (%r0) --> movx {imm}, {mem} */
+                    case *IrAMD64_MOV_store_i: {
+                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
                             if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
                                 p.M = ins.M
                                 done = false
@@ -164,8 +196,19 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* leaq {mem}, %r0; movx {imm}, (%r0) --> movx {imm}, {mem} */
-                    case *IrAMD64_MOV_store_i: {
+                    /* leaq {mem}, %r0; movbex (%r0), %r1 --> movbex {mem}, %r1 */
+                    case *IrAMD64_MOV_load_be: {
+                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
+                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
+                                p.M = ins.M
+                                done = false
+                                p.M.D = int32(x)
+                            }
+                        }
+                    }
+
+                    /* leaq {mem}, %r0; movbex %r1, (%r0) --> movbex %r1, {mem} */
+                    case *IrAMD64_MOV_store_be: {
                         if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
                             if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
                                 p.M = ins.M
@@ -304,8 +347,16 @@ func (self Fusion) Apply(cfg *CFG) {
                             bb.Term = &IrAMD64_Jcc_mr { X: ins.X, Y: ins.Y, To: p.To, Ln: p.Ln, Op: ins.Op.Negated(), N: ins.N }
                         } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_rr); ok && p.X == ins.T && self.flagsafe(bb, ins) {
                             done = false
-                            ins.T = Rz
-                            bb.Term = &IrAMD64_JNC { To: p.To, Ln: p.Ln }
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_ri); ok && p.X == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_rm); ok && p.X == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_im); ok && p.X == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
                         }
                     }
                 }
@@ -324,8 +375,16 @@ func (self Fusion) Apply(cfg *CFG) {
                             bb.Term = &IrAMD64_Jcc_mr { X: ins.X, Y: ins.Y, To: p.To, Ln: p.Ln, Op: ins.Op.Negated(), N: ins.N }
                         } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_rr); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
                             done = false
-                            ins.T = Rz
-                            bb.Term = &IrAMD64_JNC { To: p.To, Ln: p.Ln }
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_rm); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_ri); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
+                        } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_im); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
+                            done = false
+                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
                         }
                     }
                 }

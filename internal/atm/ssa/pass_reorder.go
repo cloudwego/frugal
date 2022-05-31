@@ -17,7 +17,6 @@
 package ssa
 
 import (
-    `fmt`
     `sort`
 
     `github.com/cloudwego/frugal/internal/rt`
@@ -28,7 +27,11 @@ type _ValuePos struct {
     bb *BasicBlock
 }
 
-func (self *_ValuePos) lca(cfg *CFG, bb *BasicBlock) *BasicBlock {
+type _BlockRef struct {
+    bb *BasicBlock
+}
+
+func (self *_BlockRef) update(cfg *CFG, bb *BasicBlock) {
     u := bb
     v := self.bb
 
@@ -49,22 +52,10 @@ func (self *_ValuePos) lca(cfg *CFG, bb *BasicBlock) *BasicBlock {
 
     /* sanity check */
     if u != nil {
-        return u
+        self.bb = u
     } else {
         panic("invalid CFG dominator tree")
     }
-}
-
-func (self *_ValuePos) update(cfg *CFG, bb *BasicBlock, p int) {
-    switch lca := self.lca(cfg, bb); {
-        case lca == self.bb : break
-        case lca == bb      : self.i, self.bb = p, bb
-        default             : self.i, self.bb = -1, lca
-    }
-}
-
-func (self *_ValuePos) String() string {
-    return fmt.Sprintf("bb_%d:%d", self.bb.Id, self.i)
 }
 
 // Reorder moves value closer to it's usage, which reduces register pressure.
@@ -101,23 +92,23 @@ func (Reorder) moveLoadArgs(cfg *CFG) {
 }
 
 func (Reorder) moveInterblock(cfg *CFG) {
-    defs := make(map[Reg]*_ValuePos)
-    move := make(map[*BasicBlock][]int)
-    uses := make(map[_ValuePos]*_ValuePos)
+    defs := make(map[Reg]*_BlockRef)
+    move := make(map[*BasicBlock]int)
+    uses := make(map[_ValuePos]*_BlockRef)
 
     /* usage update routine */
-    updateUsage := func(r Reg, bb *BasicBlock, i int) {
+    updateUsage := func(r Reg, bb *BasicBlock) {
         if m, ok := defs[r]; ok {
             if m.bb == nil {
-                m.i, m.bb = i, bb
+                m.bb = bb
             } else {
-                m.update(cfg, bb, i)
+                m.update(cfg, bb)
             }
         }
     }
 
     /* retry until no modifications */
-    for move[nil] = nil; len(move) != 0; {
+    for move[nil] = 0; len(move) != 0; {
         rt.MapClear(defs)
         rt.MapClear(move)
         rt.MapClear(uses)
@@ -126,32 +117,29 @@ func (Reorder) moveInterblock(cfg *CFG) {
         cfg.PostOrder(func(bb *BasicBlock) {
             for i, v := range bb.Ins {
                 var f bool
-                var k _ValuePos
-                var p *_ValuePos
+                var p *_BlockRef
                 var d IrDefinitions
 
-                /* we can't move values which have a memory arg, it
-                 * might make two memory values live across a block boundary */
-                if _, f = v.(*IrLoad)    ; f { continue }
-                if _, f = v.(*IrStore)   ; f { continue }
-                if _, f = v.(*IrLoadArg) ; f { continue }
+                /* value must be movable, and have definitions */
+                if _, f = v.(IrImmovable)  ;  f { continue }
+                if d, f = v.(IrDefinitions); !f { continue }
 
-                /* add all the definitions */
-                if d, f = v.(IrDefinitions); f {
-                    k.i = i
-                    k.bb = bb
+                /* initialize the lookup key */
+                k := _ValuePos {
+                    i  : i,
+                    bb : bb,
+                }
 
-                    /* create a new value movement if needed */
-                    if p, f = uses[k]; !f {
-                        p = new(_ValuePos)
-                        uses[k] = p
-                    }
+                /* create a new value movement if needed */
+                if p, f = uses[k]; !f {
+                    p = new(_BlockRef)
+                    uses[k] = p
+                }
 
-                    /* mark all the non-definition sites */
-                    for _, r := range d.Definitions() {
-                        if r.Kind() != K_zero {
-                            defs[*r] = p
-                        }
+                /* mark all the non-definition sites */
+                for _, r := range d.Definitions() {
+                    if r.Kind() != K_zero {
+                        defs[*r] = p
                     }
                 }
             }
@@ -165,15 +153,15 @@ func (Reorder) moveInterblock(cfg *CFG) {
             /* search in Phi nodes */
             for _, v := range bb.Phi {
                 for b, r := range v.V {
-                    updateUsage(*r, b, len(b.Ins))
+                    updateUsage(*r, b)
                 }
             }
 
             /* search in instructions */
-            for i, v := range bb.Ins {
+            for _, v := range bb.Ins {
                 if use, ok = v.(IrUsages); ok {
                     for _, r := range use.Usages() {
-                        updateUsage(*r, bb, i)
+                        updateUsage(*r, bb)
                     }
                 }
             }
@@ -181,7 +169,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
             /* search the terminator */
             if use, ok = bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
-                    updateUsage(*r, bb, len(bb.Ins))
+                    updateUsage(*r, bb)
                 }
             }
         })
@@ -190,34 +178,33 @@ func (Reorder) moveInterblock(cfg *CFG) {
         for p, m := range uses {
             if m.bb != nil && m.bb != p.bb {
                 m.bb.Ins = append(m.bb.Ins, p.bb.Ins[p.i])
-                move[m.bb] = append(move[m.bb], m.i)
+                move[m.bb] = move[m.bb] + 1
                 p.bb.Ins[p.i] = new(IrNop)
             }
         }
 
         /* Phase 4: Move values to place */
-        for bb, m := range move {
-            for i := len(m) - 1; i >= 0; i-- {
-                n := len(bb.Ins)
-                p := bb.Ins[n - 1]
-                copy(bb.Ins[m[i] + 1:], bb.Ins[m[i]:n - 1])
-                bb.Ins[m[i]] = p
+        for bb, i := range move {
+            v := bb.Ins
+            n := len(bb.Ins)
+            bb.Ins = make([]IrNode, n)
+            copy(bb.Ins[i:], v[:n - i])
+            copy(bb.Ins[:i], v[n - i:])
+        }
+    }
+
+    /* Phase 5: Remove all the placeholder NOP instructions */
+    cfg.PostOrder(func(bb *BasicBlock) {
+        ins := bb.Ins
+        bb.Ins = bb.Ins[:0]
+
+        /* filter out the NOP instructions */
+        for _, v := range ins {
+            if _, ok := v.(*IrNop); !ok {
+                bb.Ins = append(bb.Ins, v)
             }
         }
-
-        /* Phase 5: Remove all the placeholder NOP instructions */
-        cfg.PostOrder(func(bb *BasicBlock) {
-            ins := bb.Ins
-            bb.Ins = bb.Ins[:0]
-
-            /* filter out the NOP instructions */
-            for _, v := range ins {
-                if _, ok := v.(*IrNop); !ok {
-                    bb.Ins = append(bb.Ins, v)
-                }
-            }
-        })
-    }
+    })
 }
 
 func (self Reorder) Apply(cfg *CFG) {

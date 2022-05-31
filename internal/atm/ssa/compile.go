@@ -26,23 +26,21 @@ type Pass interface {
 
 type PassDescriptor struct {
     Pass Pass
-    Desc string
+    Name string
 }
 
 var Passes = [...]PassDescriptor {
-    { Desc: "Constant Propagation"                , Pass: new(ConstProp) },
-    { Desc: "Common Sub-expression Elimination"   , Pass: new(CSE) },
-    { Desc: "Early Phi Elimination"               , Pass: new(PhiElim) },
-    { Desc: "Early Copy Elimination"              , Pass: new(CopyElim) },
-    { Desc: "Early Trivial Dead Code Elimination" , Pass: new(TDCE) },
-    { Desc: "Branch Elimination"                  , Pass: new(BranchElim) },
-    { Desc: "Late Phi Elimination"                , Pass: new(PhiElim) },
-    { Desc: "Late Copy Elimination"               , Pass: new(CopyElim) },
-    { Desc: "Late Trivial Dead Code Elimination"  , Pass: new(TDCE) },
-    { Desc: "Intermediate Block Merging"          , Pass: new(BlockMerge) },
-    { Desc: "Value Reordering"                    , Pass: new(Reorder) },
-    { Desc: "Machine Dependent Lowering"          , Pass: new(Lowering) },
-    { Desc: "Machine Dependent Macro-fusion"      , Pass: new(Fusion) },
+    { Name: "Constant Propagation"       , Pass: new(ConstProp) },
+    { Name: "Early Reduction"            , Pass: new(Reduce) },
+    { Name: "Branch Elimination"         , Pass: new(BranchElim) },
+    { Name: "Intermediate Block Merging" , Pass: new(BlockMerge) },
+    { Name: "Value Reordering"           , Pass: new(Reorder) },
+    { Name: "Late Reduction"             , Pass: new(Reduce) },
+    { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
+    { Name: "Late Value Reordering"      , Pass: new(Reorder) },
+    { Name: "Machine Dependent Fusion"   , Pass: new(Fusion) },
+    { Name: "Final Value Reordering"     , Pass: new(Reorder) },
+    { Name: "Final Reduction"            , Pass: new(Reduce) },
 }
 
 func applySSAPasses(cfg *CFG) {

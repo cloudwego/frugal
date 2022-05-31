@@ -19,7 +19,7 @@ package ssa
 // CopyElim removes unnessecery register copies.
 type CopyElim struct{}
 
-func (self CopyElim) Apply(cfg *CFG) {
+func (CopyElim) Apply(cfg *CFG) {
     regs := make(map[Reg]Reg)
     consts := make(map[Reg]_ConstData)
 
