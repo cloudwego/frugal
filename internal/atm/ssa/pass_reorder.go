@@ -77,17 +77,15 @@ func (Reorder) moveLoadArgs(cfg *CFG) {
 
     /* extract all the argument loads */
     cfg.PostOrder(func(bb *BasicBlock) {
-        if bb != cfg.Root {
-            ins := bb.Ins
-            bb.Ins = bb.Ins[:0]
+        ins := bb.Ins
+        bb.Ins = bb.Ins[:0]
 
-            /* scan instructions */
-            for _, v := range ins {
-                if vv, ok = v.(*IrLoadArg); ok {
-                    ir = append(ir, vv)
-                } else {
-                    bb.Ins = append(bb.Ins, v)
-                }
+        /* scan instructions */
+        for _, v := range ins {
+            if vv, ok = v.(*IrLoadArg); ok {
+                ir = append(ir, vv)
+            } else {
+                bb.Ins = append(bb.Ins, v)
             }
         }
     })
@@ -167,7 +165,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
             /* search in Phi nodes */
             for _, v := range bb.Phi {
                 for b, r := range v.V {
-                    updateUsage(*r, b, len(bb.Ins))
+                    updateUsage(*r, b, len(b.Ins))
                 }
             }
 
