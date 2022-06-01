@@ -407,7 +407,7 @@ type IrAMD64_MOV_wb struct {
 }
 
 func (self *IrAMD64_MOV_wb) String() string {
-    return fmt.Sprintf("write_barrier *%p [%s], %s -> (%s)", self.Fn, funcname(self.Fn), self.R, self.M)
+    return fmt.Sprintf("scall *%p [%s], %s -> (%s)", self.Fn, funcname(self.Fn), self.R, self.M)
 }
 
 func (self *IrAMD64_MOV_wb) Usages() []*Reg {

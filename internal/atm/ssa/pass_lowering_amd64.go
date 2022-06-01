@@ -331,7 +331,6 @@ func (Lowering) barrier(cfg *CFG) {
         /* Phase 3: Rebuild the CFG */
         if len(mbir) != 0 {
             cfg.Rebuild()
-            break
         }
     }
 }
