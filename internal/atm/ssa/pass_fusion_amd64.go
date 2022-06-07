@@ -18,6 +18,7 @@ package ssa
 
 import (
     `github.com/cloudwego/frugal/internal/atm/abi`
+    `github.com/cloudwego/frugal/internal/cpu`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -137,7 +138,7 @@ func (self Fusion) Apply(cfg *CFG) {
 
                     /* movx {mem}, %r0; bswapx %r0, %r1 --> movbex {mem}, %r1 */
                     case *IrAMD64_BSWAP: {
-                        if ins, ok := defs[p.V].(*IrAMD64_MOV_load); ok && ins.N != 1 {
+                        if ins, ok := defs[p.V].(*IrAMD64_MOV_load); ok && ins.N != 1 && cpu.HasMOVBE {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_load_be { R: p.R, M: ins.M, N: ins.N }
                         }
@@ -154,16 +155,14 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* movq {imm}, %r0; movx %r0, {mem}                       --> movx {imm}, {mem}
-                     * bswapx %r0, %r1; movx %r1, {mm1}                       --> movbex %r0, {mm1}
-                     * leaq {mem}, %r0; movx %r1, (%r0)                       --> movx %r1, {mem}
-                     * movx {mem}, %r0; btsq %r2, %r0, %r1; movx %r1, {mem}   --> btsq %r2, {mem}
-                     * movx {mem}, %r0; btsq {imm}, %r0, %r1; movx %r1, {mem} --> btsq {imm}, {mem} */
+                    /* movq {imm}, %r0; movx %r0, {mem} --> movx {imm}, {mem}
+                     * bswapx %r0, %r1; movx %r1, {mm1} --> movbex %r0, {mm1}
+                     * leaq {mem}, %r0; movx %r1, (%r0) --> movx %r1, {mem} */
                     case *IrAMD64_MOV_store_r: {
                         if ins, ok := defs[p.R].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_i { V: int32(ins.V), M: p.M, N: p.N }
-                        } else if ins, ok := defs[p.R].(*IrAMD64_BSWAP); ok && p.N != 1 {
+                        } else if ins, ok := defs[p.R].(*IrAMD64_BSWAP); ok && p.N != 1 && cpu.HasMOVBE {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_be { R: ins.V, M: p.M, N: p.N }
                         } else if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
@@ -171,16 +170,6 @@ func (self Fusion) Apply(cfg *CFG) {
                                 p.M = ins.M
                                 done = false
                                 p.M.D = int32(x)
-                            }
-                        } else if ins, ok := defs[p.R].(*IrAMD64_BTSQ_rr); ok && p.N != 1 {
-                            if ldr, ok := defs[ins.X].(*IrAMD64_MOV_load); ok && p.N == ldr.N && p.M == ldr.M {
-                                done = false
-                                bb.Ins[i], ins.T = &IrAMD64_BTSQ_rm { T: ins.T, R: ins.Y, M: p.M, N: p.N }, Rz
-                            }
-                        } else if ins, ok := defs[p.R].(*IrAMD64_BTSQ_ri); ok && p.N != 1 {
-                            if ldr, ok := defs[ins.X].(*IrAMD64_MOV_load); ok && p.N == ldr.N && p.M == ldr.M {
-                                done = false
-                                bb.Ins[i], ins.T = &IrAMD64_BTSQ_im { T: ins.T, V: ins.Y, M: p.M, N: p.N }, Rz
                             }
                         }
                     }
@@ -351,12 +340,6 @@ func (self Fusion) Apply(cfg *CFG) {
                         } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_ri); ok && p.X == ins.T && self.flagsafe(bb, ins) {
                             done = false
                             bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
-                        } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_rm); ok && p.X == ins.T && self.flagsafe(bb, ins) {
-                            done = false
-                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
-                        } else if ins, ok := defs[p.X].(*IrAMD64_BTSQ_im); ok && p.X == ins.T && self.flagsafe(bb, ins) {
-                            done = false
-                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
                         }
                     }
                 }
@@ -376,13 +359,7 @@ func (self Fusion) Apply(cfg *CFG) {
                         } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_rr); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
                             done = false
                             bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
-                        } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_rm); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
-                            done = false
-                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
                         } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_ri); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
-                            done = false
-                            bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
-                        } else if ins, ok := defs[p.Y].(*IrAMD64_BTSQ_im); ok && p.Y == ins.T && self.flagsafe(bb, ins) {
                             done = false
                             bb.Term, ins.T = &IrAMD64_JNC { To: p.To, Ln: p.Ln }, Rz
                         }

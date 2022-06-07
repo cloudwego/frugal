@@ -112,8 +112,6 @@ func (*IrAMD64_BinOp_ri) irnode() {}
 
 func (*IrAMD64_BTSQ_rr) irnode() {}
 func (*IrAMD64_BTSQ_ri) irnode() {}
-func (*IrAMD64_BTSQ_rm) irnode() {}
-func (*IrAMD64_BTSQ_im) irnode() {}
 
 func (*IrAMD64_CMPQ_rr) irnode() {}
 func (*IrAMD64_CMPQ_ri) irnode() {}
@@ -147,18 +145,12 @@ func (*IrAMD64_MOV_store_i)  irimpure() {}
 func (*IrAMD64_MOV_wb)       irimpure() {}
 func (*IrAMD64_MOV_store_be) irimpure() {}
 
-func (*IrAMD64_BTSQ_rm) irimpure() {}
-func (*IrAMD64_BTSQ_im) irimpure() {}
-
 func (*IrAMD64_MOV_load)     irimmovable() {}
 func (*IrAMD64_MOV_store_r)  irimmovable() {}
 func (*IrAMD64_MOV_store_i)  irimmovable() {}
 func (*IrAMD64_MOV_wb)       irimmovable() {}
 func (*IrAMD64_MOV_load_be)  irimmovable() {}
 func (*IrAMD64_MOV_store_be) irimmovable() {}
-
-func (*IrAMD64_BTSQ_rm) irimmovable() {}
-func (*IrAMD64_BTSQ_im) irimmovable() {}
 
 func (*IrAMD64_CMPQ_rm) irimmovable() {}
 func (*IrAMD64_CMPQ_mr) irimmovable() {}
@@ -422,7 +414,7 @@ type IrAMD64_MOV_load_be struct {
 
 func (self *IrAMD64_MOV_load_be) String() string {
     switch self.N {
-        case 2  : return fmt.Sprintf("movbew %s, %s", self.M, self.R)
+        case 2  : return fmt.Sprintf("movbew %s, %s; movzwl %s, %s", self.M, self.R, self.R, self.R)
         case 4  : return fmt.Sprintf("movbel %s, %s", self.M, self.R)
         case 8  : return fmt.Sprintf("movbeq %s, %s", self.M, self.R)
         default : panic("invalid load size")
@@ -630,57 +622,6 @@ func (self *IrAMD64_BTSQ_ri) Usages() []*Reg {
 
 func (self *IrAMD64_BTSQ_ri) Definitions() []*Reg {
     return []*Reg { &self.T, &self.S }
-}
-
-type IrAMD64_BTSQ_rm struct {
-    T Reg
-    R Reg
-    M Mem
-    N uint8
-}
-
-func (self *IrAMD64_BTSQ_rm) String() string {
-    if self.T.Kind() == K_zero {
-        return fmt.Sprintf("btsq %s, %s", self.R, self.M)
-    } else {
-        return fmt.Sprintf("btsq %s, %s; setc %s", self.R, self.M, self.T)
-    }
-}
-
-func (self *IrAMD64_BTSQ_rm) Usages() (r []*Reg) {
-    r = []*Reg { &self.R }
-    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
-    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
-    return
-}
-
-func (self *IrAMD64_BTSQ_rm) Definitions() []*Reg {
-    return []*Reg { &self.T }
-}
-
-type IrAMD64_BTSQ_im struct {
-    T Reg
-    M Mem
-    V uint8
-    N uint8
-}
-
-func (self *IrAMD64_BTSQ_im) String() string {
-    if self.T.Kind() == K_zero {
-        return fmt.Sprintf("bts%c $%d, %s", memsizec(self.N), self.V, self.M)
-    } else {
-        return fmt.Sprintf("bts%c $%d, %s; setc %s", memsizec(self.N), self.V, self.M, self.T)
-    }
-}
-
-func (self *IrAMD64_BTSQ_im) Usages() (r []*Reg) {
-    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
-    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
-    return
-}
-
-func (self *IrAMD64_BTSQ_im) Definitions() []*Reg {
-    return []*Reg { &self.T }
 }
 
 type IrAMD64_CMPQ_rr struct {
