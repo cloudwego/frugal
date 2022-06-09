@@ -45,16 +45,16 @@ func appendBlock(buf map[int]*BasicBlock, bb *BasicBlock) map[int]*BasicBlock {
     }
 }
 
-func insertPhiNodes(dt *DominatorTree) {
+func insertPhiNodes(cfg *CFG) {
     q := lane.NewQueue()
     phi := make(map[Reg]map[int]bool)
     orig := make(map[int]map[Reg]bool)
     defs := make(map[Reg]map[int]*BasicBlock)
 
     /* find out all the variable origins */
-    for q.Enqueue(dt.Root); !q.Empty(); {
+    for q.Enqueue(cfg.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(dt.DominatorOf, p, q)
+        addImmediateDominated(cfg.DominatorOf, p, q)
 
         /* mark all the definition sites */
         for _, ins := range p.Ins {
@@ -69,9 +69,9 @@ func insertPhiNodes(dt *DominatorTree) {
     }
 
     /* find out all the variable defination sites */
-    for q.Enqueue(dt.Root); !q.Empty(); {
+    for q.Enqueue(cfg.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(dt.DominatorOf, p, q)
+        addImmediateDominated(cfg.DominatorOf, p, q)
 
         /* mark all the defination sites */
         for def := range orig[p.Id] {
@@ -117,7 +117,7 @@ func insertPhiNodes(dt *DominatorTree) {
             p.b = p.b[1:]
 
             /* insert Phi nodes */
-            for _, y := range dt.DominanceFrontier[n.Id] {
+            for _, y := range cfg.DominanceFrontier[n.Id] {
                 if rem := phi[p.r]; !rem[y.Id] {
                     id := y.Id
                     src := make(map[*BasicBlock]*Reg)

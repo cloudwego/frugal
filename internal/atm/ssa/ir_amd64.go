@@ -383,7 +383,7 @@ type IrAMD64_MOV_store_i struct {
 }
 
 func (self *IrAMD64_MOV_store_i) String() string {
-    return fmt.Sprintf("mov%c $%d, %s  # %#x", memsizec(self.N), self.V, self.M, self.V)
+    return fmt.Sprintf("mov%c $%d, %s  # %#0*x", memsizec(self.N), self.V, self.M, self.N * 2, self.V)
 }
 
 func (self *IrAMD64_MOV_store_i) Usages() (r []*Reg) {

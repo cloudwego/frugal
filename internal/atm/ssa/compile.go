@@ -42,9 +42,10 @@ var Passes = [...]PassDescriptor {
     { Name: "Final Value Reordering"       , Pass: new(Reorder) },
     { Name: "Final Reduction"              , Pass: new(Reduce) },
     { Name: "Machine Dependent Compaction" , Pass: new(Compaction) },
+    { Name: "Liveness Analysis"            , Pass: new(Liveness) },
 }
 
-func applySSAPasses(cfg *CFG) {
+func executeSSAPasses(cfg *CFG) {
     for _, p := range Passes {
         p.Pass.Apply(cfg)
     }
@@ -52,8 +53,8 @@ func applySSAPasses(cfg *CFG) {
 
 func Compile(p hir.Program) (cfg *CFG) {
     cfg = newGraphBuilder().build(p)
-    insertPhiNodes(&cfg.DominatorTree)
-    renameRegisters(&cfg.DominatorTree)
-    applySSAPasses(cfg)
+    insertPhiNodes(cfg)
+    renameRegisters(cfg)
+    executeSSAPasses(cfg)
     return
 }

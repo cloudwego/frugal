@@ -70,7 +70,7 @@ func (self _Renamer) renamedefs(ins IrNode, buf *[]Reg) {
     }
 }
 
-func (self _Renamer) renameblock(dt *DominatorTree, bb *BasicBlock) {
+func (self _Renamer) renameblock(cfg *CFG, bb *BasicBlock) {
     var r Reg
     var d []Reg
     var n IrNode
@@ -103,8 +103,8 @@ func (self _Renamer) renameblock(dt *DominatorTree, bb *BasicBlock) {
     }
 
     /* rename all it's children in the dominator tree */
-    for _, p := range dt.DominatorOf[bb.Id] {
-        self.renameblock(dt, p)
+    for _, p := range cfg.DominatorOf[bb.Id] {
+        self.renameblock(cfg, p)
     }
 
     /* pop the definations */
@@ -113,10 +113,10 @@ func (self _Renamer) renameblock(dt *DominatorTree, bb *BasicBlock) {
     }
 }
 
-func renameRegisters(dt *DominatorTree) {
+func renameRegisters(cfg *CFG) {
     rr := newRenamer()
-    rr.renameblock(dt, dt.Root)
-    normalizeRegisters(dt)
+    rr.renameblock(cfg, cfg.Root)
+    normalizeRegisters(cfg)
 }
 
 func assignRegisters(rr []*Reg, rm map[Reg]Reg) {
@@ -144,14 +144,14 @@ func replaceRegisters(rr []*Reg, rm map[Reg]Reg) {
     }
 }
 
-func normalizeRegisters(dt *DominatorTree) {
+func normalizeRegisters(cfg *CFG) {
     q := lane.NewQueue()
     r := make(map[Reg]Reg)
 
     /* find all the register definations */
-    for q.Enqueue(dt.Root); !q.Empty(); {
+    for q.Enqueue(cfg.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(dt.DominatorOf, p, q)
+        addImmediateDominated(cfg.DominatorOf, p, q)
 
         /* assign Phi nodes */
         for _, n := range p.Phi {
@@ -172,9 +172,9 @@ func normalizeRegisters(dt *DominatorTree) {
     }
 
     /* normalize each block */
-    for q.Enqueue(dt.Root); !q.Empty(); {
+    for q.Enqueue(cfg.Root); !q.Empty(); {
         p := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(dt.DominatorOf, p, q)
+        addImmediateDominated(cfg.DominatorOf, p, q)
 
         /* replace Phi nodes */
         for _, n := range p.Phi {

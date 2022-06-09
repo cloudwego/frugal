@@ -23,6 +23,7 @@ package ssa
 import (
     `sort`
 
+    `github.com/cloudwego/frugal/internal/rt`
     `github.com/oleiade/lane`
 )
 
@@ -117,26 +118,17 @@ type _NodeDepth struct {
     bb int
 }
 
-type DominatorTree struct {
-    Root              *BasicBlock
-    Depth             map[int]int
-    DominatedBy       map[int]*BasicBlock
-    DominatorOf       map[int][]*BasicBlock
-    DominanceFrontier map[int][]*BasicBlock
-}
-
-func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
-    dt.Root = bb
-    dt.Depth = make(map[int]int)
-    dt.DominatedBy = make(map[int]*BasicBlock)
-    dt.DominatorOf = make(map[int][]*BasicBlock)
-    dt.DominanceFrontier = make(map[int][]*BasicBlock)
+func buildDominatorTree(cfg *CFG) {
+    rt.MapClear(cfg.Depth)
+    rt.MapClear(cfg.DominatedBy)
+    rt.MapClear(cfg.DominatorOf)
+    rt.MapClear(cfg.DominanceFrontier)
 
     /* Step 1: Carry out a depth-first search of the problem graph. Number the vertices
      * from 1 to n as they are reached during the search. Initialize the variables used
      * in succeeding steps. */
     lt := newLengauerTarjan()
-    lt.dfs(bb)
+    lt.dfs(cfg.Root)
 
     /* perform Step 2 and Step 3 simultaneously */
     for i := len(lt.nodes) - 1; i > 0; i-- {
@@ -179,12 +171,12 @@ func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
 
     /* map the dominator relationship */
     for _, p := range lt.nodes[1:] {
-        dt.DominatedBy[p.node.Id] = p.dom.node
-        dt.DominatorOf[p.dom.node.Id] = append(dt.DominatorOf[p.dom.node.Id], p.node)
+        cfg.DominatedBy[p.node.Id] = p.dom.node
+        cfg.DominatorOf[p.dom.node.Id] = append(cfg.DominatorOf[p.dom.node.Id], p.node)
     }
 
     /* sort the dominators */
-    for _, p := range dt.DominatorOf {
+    for _, p := range cfg.DominatorOf {
         sort.Slice(p, func(i int, j int) bool {
             return p[i].Id < p[j].Id
         })
@@ -192,28 +184,28 @@ func buildDominatorTree(dt *DominatorTree, bb *BasicBlock) {
 
     /* add root node for dominance frontier calculation */
     q := lane.NewQueue()
-    q.Enqueue(bb)
+    q.Enqueue(cfg.Root)
 
     /* calculate dominance frontier for every block */
     for !q.Empty() {
         k := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(dt.DominatorOf, k, q)
-        computeDominanceFrontier(dt.DominatorOf, k, dt.DominanceFrontier)
+        addImmediateDominated(cfg.DominatorOf, k, q)
+        computeDominanceFrontier(cfg.DominatorOf, k, cfg.DominanceFrontier)
     }
 
     /* add root node for depth calculation */
     q.Enqueue(_NodeDepth {
         d  : 0,
-        bb : bb.Id,
+        bb : cfg.Root.Id,
     })
 
     /* calculate depth for every block */
     for !q.Empty() {
         d := q.Dequeue().(_NodeDepth)
-        dt.Depth[d.bb] = d.d
+        cfg.Depth[d.bb] = d.d
 
         /* add all the dominated nodes */
-        for _, p := range dt.DominatorOf[d.bb] {
+        for _, p := range cfg.DominatorOf[d.bb] {
             q.Enqueue(_NodeDepth {
                 d  : d.d + 1,
                 bb : p.Id,

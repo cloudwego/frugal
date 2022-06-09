@@ -21,11 +21,17 @@ import (
 )
 
 type CFG struct {
-    DominatorTree
+    Root              *BasicBlock
+    Depth             map[int]int
+    DominatedBy       map[int]*BasicBlock
+    DominatorOf       map[int][]*BasicBlock
+    DominanceFrontier map[int][]*BasicBlock
+    ReachabilityMatrix
 }
 
 func (self *CFG) Rebuild() {
-    buildDominatorTree(&self.DominatorTree, self.Root)
+    buildDominatorTree(self)
+    buildReachabilityMatrix(self)
 }
 
 func (self *CFG) MaxBlock() int {

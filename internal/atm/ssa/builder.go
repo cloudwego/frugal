@@ -36,7 +36,6 @@ func newGraphBuilder() *_GraphBuilder {
 }
 
 func (self *_GraphBuilder) build(p hir.Program) *CFG {
-    ret := new(CFG)
     val := make([]hir.GenericRegister, 0, len(hir.GenericRegisters))
     ptr := make([]hir.PointerRegister, 0, len(hir.PointerRegisters))
 
@@ -59,23 +58,26 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
     sort.Slice(ptr, func(i int, j int) bool { return ptr[i] < ptr[j] })
 
     /* create the root block */
-    ret.Root = new(BasicBlock)
-    ret.Root.Id = 1
+    root := &BasicBlock {
+        Id   : 1,
+        Phi  : nil,
+        Pred : nil,
+    }
 
     /* implicit defination of all generic registers */
     for _, v := range val {
-        ret.Root.Ins = append(ret.Root.Ins, &IrConstInt { R: Rv(v), V: 0 })
+        root.Ins = append(root.Ins, &IrConstInt { R: Rv(v), V: 0 })
     }
 
     /* implicit defination of all pointer registers */
     for _, v := range ptr {
-        ret.Root.Ins = append(ret.Root.Ins, &IrConstPtr { R: Rv(v), P: nil })
+        root.Ins = append(root.Ins, &IrConstPtr { R: Rv(v), P: nil })
     }
 
     /* implicitly define all the temporary registers */
     for i := uint64(K_tmp0); i <= K_tmp4; i++ {
-        ret.Root.Ins = append(
-            ret.Root.Ins,
+        root.Ins = append(
+            root.Ins,
             &IrConstInt { R: Tr(i - K_tmp0), V: 0 },
             &IrConstPtr { R: Pr(i - K_tmp0), P: nil },
         )
@@ -95,10 +97,19 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
     }
 
     /* process the root block */
-    self.g[p.Head] = ret.Root
-    self.block(p.Head, ret.Root)
+    self.g[p.Head] = root
+    self.block(p.Head, root)
 
-    /* build the dominator tree */
+    /* create a new CFG */
+    ret := &CFG {
+        Root              : root,
+        Depth             : make(map[int]int),
+        DominatedBy       : make(map[int]*BasicBlock),
+        DominatorOf       : make(map[int][]*BasicBlock),
+        DominanceFrontier : make(map[int][]*BasicBlock),
+    }
+
+    /* build the CFG */
     ret.Rebuild()
     return ret
 }
