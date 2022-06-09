@@ -30,17 +30,18 @@ type PassDescriptor struct {
 }
 
 var Passes = [...]PassDescriptor {
-    { Name: "Constant Propagation"       , Pass: new(ConstProp) },
-    { Name: "Early Reduction"            , Pass: new(Reduce) },
-    { Name: "Branch Elimination"         , Pass: new(BranchElim) },
-    { Name: "Intermediate Block Merging" , Pass: new(BlockMerge) },
-    { Name: "Value Reordering"           , Pass: new(Reorder) },
-    { Name: "Late Reduction"             , Pass: new(Reduce) },
-    { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
-    { Name: "Late Value Reordering"      , Pass: new(Reorder) },
-    { Name: "Machine Dependent Fusion"   , Pass: new(Fusion) },
-    { Name: "Final Value Reordering"     , Pass: new(Reorder) },
-    { Name: "Final Reduction"            , Pass: new(Reduce) },
+    { Name: "Constant Propagation"         , Pass: new(ConstProp) },
+    { Name: "Early Reduction"              , Pass: new(Reduce) },
+    { Name: "Branch Elimination"           , Pass: new(BranchElim) },
+    { Name: "Intermediate Block Merging"   , Pass: new(BlockMerge) },
+    { Name: "Value Reordering"             , Pass: new(Reorder) },
+    { Name: "Late Reduction"               , Pass: new(Reduce) },
+    { Name: "Machine Dependent Lowering"   , Pass: new(Lowering) },
+    { Name: "Late Value Reordering"        , Pass: new(Reorder) },
+    { Name: "Machine Dependent Fusion"     , Pass: new(Fusion) },
+    { Name: "Final Value Reordering"       , Pass: new(Reorder) },
+    { Name: "Final Reduction"              , Pass: new(Reduce) },
+    { Name: "Machine Dependent Compaction" , Pass: new(Compaction) },
 }
 
 func applySSAPasses(cfg *CFG) {

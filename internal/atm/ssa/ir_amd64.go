@@ -236,19 +236,19 @@ func (self *IrAMD64_NEG) Definitions() []*Reg {
 type IrAMD64_BSWAP struct {
     R Reg
     V Reg
-    S uint8
+    N uint8
 }
 
 func (self *IrAMD64_BSWAP) String() string {
     if self.R == self.V {
-        switch self.S {
+        switch self.N {
             case 2  : return fmt.Sprintf("rolw $8, %s", self.R)
             case 4  : return fmt.Sprintf("bswapl %s", self.R)
             case 8  : return fmt.Sprintf("bswapq %s", self.R)
             default : panic("invalid bswap size")
         }
     } else {
-        switch self.S {
+        switch self.N {
             case 2  : return fmt.Sprintf("movq %s, %s; rolw $8, %s", self.V, self.R, self.R)
             case 4  : return fmt.Sprintf("movq %s, %s; bswapl %s", self.V, self.R, self.R)
             case 8  : return fmt.Sprintf("movq %s, %s; bswapq %s", self.V, self.R, self.R)

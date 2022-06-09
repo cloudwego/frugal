@@ -112,9 +112,9 @@ func (Lowering) lower(cfg *CFG) {
                 case *IrUnaryExpr: {
                     switch p.Op {
                         case IrOpNegate   : bb.Ins = append(bb.Ins, &IrAMD64_NEG    { R: p.R, V: p.V })
-                        case IrOpSwap16   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 2 })
-                        case IrOpSwap32   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 4 })
-                        case IrOpSwap64   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, S: 8 })
+                        case IrOpSwap16   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 2 })
+                        case IrOpSwap32   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 4 })
+                        case IrOpSwap64   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 8 })
                         case IrOpSx32to64 : bb.Ins = append(bb.Ins, &IrAMD64_MOVSLQ { R: p.R, V: p.V })
                         default           : panic("unreachable")
                     }
