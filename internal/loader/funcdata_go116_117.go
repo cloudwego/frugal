@@ -114,7 +114,7 @@ var modHeader = &_PCHeader {
 }
 
 var (
-	emptyByte  byte
+    emptyByte  byte
     bucketList []*_FindFuncBucket
 )
 

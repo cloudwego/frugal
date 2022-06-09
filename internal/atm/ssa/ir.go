@@ -760,7 +760,7 @@ func (self *IrWriteBarrier) Usages() []*Reg {
 
 type (
     IrNop        struct{}
-	IrBreakpoint struct{}
+    IrBreakpoint struct{}
 )
 
 func (IrNop) String() string {

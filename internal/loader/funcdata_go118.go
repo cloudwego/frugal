@@ -111,7 +111,7 @@ const minfunc = 16
 const pcbucketsize = 256 * minfunc
 
 var (
-	emptyByte  byte
+    emptyByte  byte
     bucketList []*_FindFuncBucket
 )
 

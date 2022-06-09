@@ -37,7 +37,7 @@ var (
 )
 
 type (
-	FieldBitmap [MaxBitmap]int64
+    FieldBitmap [MaxBitmap]int64
 )
 
 func newFieldBitmap() *FieldBitmap {

@@ -30,6 +30,7 @@ func (*_IrKill) irimmovable() {}
 func (self *_IrKill) String() string {
     return fmt.Sprintf("kill {%s}", regslicerepr(self.R))
 }
+
 func (self *_IrKill) Usages() []*Reg {
     return regsliceref(self.R)
 }

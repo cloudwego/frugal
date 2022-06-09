@@ -88,7 +88,7 @@ const minfunc = 16                 // minimum function size
 const pcbucketsize = 256 * minfunc // size of bucket in the pc->func lookup table
 
 var (
-	emptyByte  byte
+    emptyByte  byte
     bucketList []*_FindFuncBucket
 )
 
