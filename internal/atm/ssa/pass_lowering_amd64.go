@@ -189,7 +189,7 @@ func (Lowering) lower(cfg *CFG) {
             case *IrSwitch: {
                 switch t := p.iter().t; len(p.Br) {
                     case 0  : bb.Term = &IrAMD64_JMP    { To: p.Ln }
-                    case 1  : bb.Term = &IrAMD64_Jcc_ri { X: p.V, Y: t[0].i, To: t[0].b, Ln: p.Ln, Op: IrAMD64_CmpEq}
+                    case 1  : bb.Term = &IrAMD64_Jcc_ri { X: p.V, Y: t[0].i, To: t[0].b, Ln: p.Ln, Op: IrAMD64_CmpEq }
                     default : break
                 }
             }
