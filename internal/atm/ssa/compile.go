@@ -42,7 +42,6 @@ var Passes = [...]PassDescriptor {
     { Name: "Final Value Reordering"       , Pass: new(Reorder) },
     { Name: "Final Reduction"              , Pass: new(Reduce) },
     { Name: "Machine Dependent Compaction" , Pass: new(Compaction) },
-    { Name: "Liveness Analysis"            , Pass: new(Liveness) },
 }
 
 func executeSSAPasses(cfg *CFG) {

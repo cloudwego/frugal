@@ -26,12 +26,12 @@ type CFG struct {
     DominatedBy       map[int]*BasicBlock
     DominatorOf       map[int][]*BasicBlock
     DominanceFrontier map[int][]*BasicBlock
-    ReachabilityMatrix
 }
 
 func (self *CFG) Rebuild() {
-    buildDominatorTree(self)
-    buildReachabilityMatrix(self)
+    updateDominatorTree(self)
+    updateDominatorDepth(self)
+    updateDominatorFrontier(self)
 }
 
 func (self *CFG) MaxBlock() int {

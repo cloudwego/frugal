@@ -118,11 +118,9 @@ type _NodeDepth struct {
     bb int
 }
 
-func buildDominatorTree(cfg *CFG) {
-    rt.MapClear(cfg.Depth)
+func updateDominatorTree(cfg *CFG) {
     rt.MapClear(cfg.DominatedBy)
     rt.MapClear(cfg.DominatorOf)
-    rt.MapClear(cfg.DominanceFrontier)
 
     /* Step 1: Carry out a depth-first search of the problem graph. Number the vertices
      * from 1 to n as they are reached during the search. Initialize the variables used
@@ -181,23 +179,15 @@ func buildDominatorTree(cfg *CFG) {
             return p[i].Id < p[j].Id
         })
     }
+}
 
-    /* add root node for dominance frontier calculation */
+func updateDominatorDepth(cfg *CFG) {
+    r := cfg.Root.Id
     q := lane.NewQueue()
-    q.Enqueue(cfg.Root)
 
-    /* calculate dominance frontier for every block */
-    for !q.Empty() {
-        k := q.Dequeue().(*BasicBlock)
-        addImmediateDominated(cfg.DominatorOf, k, q)
-        computeDominanceFrontier(cfg.DominatorOf, k, cfg.DominanceFrontier)
-    }
-
-    /* add root node for depth calculation */
-    q.Enqueue(_NodeDepth {
-        d  : 0,
-        bb : cfg.Root.Id,
-    })
+    /* add the root node */
+    q.Enqueue(_NodeDepth { bb: r })
+    rt.MapClear(cfg.Depth)
 
     /* calculate depth for every block */
     for !q.Empty() {
@@ -211,6 +201,22 @@ func buildDominatorTree(cfg *CFG) {
                 bb : p.Id,
             })
         }
+    }
+}
+
+func updateDominatorFrontier(cfg *CFG) {
+    r := cfg.Root
+    q := lane.NewQueue()
+
+    /* add the root node */
+    q.Enqueue(r)
+    rt.MapClear(cfg.DominanceFrontier)
+
+    /* calculate dominance frontier for every block */
+    for !q.Empty() {
+        k := q.Dequeue().(*BasicBlock)
+        addImmediateDominated(cfg.DominatorOf, k, q)
+        computeDominanceFrontier(cfg.DominatorOf, k, cfg.DominanceFrontier)
     }
 }
 
