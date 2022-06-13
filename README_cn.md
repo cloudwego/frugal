@@ -170,7 +170,7 @@ func main() {
         Code: 1024,
     }
     ...
-    buf := make([]byte, frugal.EncodeSize(ms))
+    buf := make([]byte, frugal.EncodedSize(ms))
     frugal.EncodeObject(buf, nil, ms)
     ...
     got := &thrift.MyStruct{}
@@ -257,7 +257,7 @@ func main() {
         Numbers: []int64{0, 1, 2, 3, 4},
     }
     ...
-    buf := make([]byte, frugal.EncodeSize(ms))
+    buf := make([]byte, frugal.EncodedSize(ms))
     frugal.EncodeObject(buf, nil, ms)
     ...
     got := &thrift.MyStruct{}
