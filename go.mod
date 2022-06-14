@@ -3,7 +3,12 @@ module github.com/cloudwego/frugal
 go 1.15
 
 require (
-	github.com/chenzhuoyu/iasm v0.0.0-20220520152703-997ea6739ce9
+	github.com/apache/thrift v0.13.0
+	github.com/brianvoe/gofakeit/v6 v6.16.0
+	github.com/bytedance/gopkg v0.0.0-20220509134931-d1878f638986
+	github.com/chenzhuoyu/iasm v0.0.0-20220407070608-915f5d279eca
+	github.com/cloudwego/kitex v0.3.2
+	github.com/cloudwego/thriftgo v0.1.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/klauspost/cpuid/v2 v2.1.0
 	github.com/oleiade/lane v1.0.1
