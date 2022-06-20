@@ -64,12 +64,17 @@ func FuzzMain(f *testing.F) {
 			if err != nil {
 				return
 			}
+			if length != len(data) {
+				return
+			}
 			rt, err := fuzzDynamicStruct(data, thrift.TType(i))
 			if err != nil {
 				t.Fatal(err)
 			}
 			object := reflect.New(rt).Interface()
-			wrappedData := append([]byte{byte(i), 0x0, 0x0}, data[:length]...)
+			wrappedData := make([]byte, 0, len(data)+3)
+			wrappedData = append(wrappedData, []byte{byte(i), 0x0, 0x0}...)
+			wrappedData = append(wrappedData, data...)
 			wrappedData = append(wrappedData, 0x0)
 			_, err = frugal.DecodeObject(wrappedData, object)
 			if err != nil {
