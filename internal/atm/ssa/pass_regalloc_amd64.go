@@ -22,7 +22,6 @@ import (
     `strings`
 
     `github.com/davecgh/go-spew/spew`
-    `github.com/oleiade/lane`
 )
 
 type _LivePoint struct {
@@ -74,40 +73,13 @@ func liverangemark(regs map[Reg]*_LiveRange, refs []*Reg, b int, i int) {
 type RegAlloc struct{}
 
 func (RegAlloc) Apply(cfg *CFG) {
-    st := lane.NewStack()
-    vis := make(map[int]bool)
     bbs := make([]*BasicBlock, 0, 16)
     regs := make(map[Reg]*_LiveRange)
 
     /* Phase 1: Enumerate all the basic blocks */
-    vis[cfg.Root.Id] = true
-    st.Push(cfg.Root)
-
-    /* traverse the graph */
-    for !st.Empty() {
-        tail := true
-        this := st.Head().(*BasicBlock)
-
-        /* add all the successors */
-        for it := this.Term.Successors(); it.Next(); {
-            if p := it.Block(); !vis[p.Id] {
-                tail = false
-                vis[p.Id] = true
-                st.Push(p)
-                break
-            }
-        }
-
-        /* all the successors are visited, pop the current node */
-        if tail {
-            bbs = append(bbs, st.Pop().(*BasicBlock))
-        }
-    }
-
-    /* reverse the blocks */
-    for i, j := 0, len(bbs) - 1; i < j; i, j = i + 1, j - 1 {
-        bbs[i], bbs[j] = bbs[j], bbs[i]
-    }
+    cfg.ReversePostOrder(func(bb *BasicBlock) {
+        bbs = append(bbs, bb)
+    })
 
     /* Phase 2: Scan all the instructions to determain live ranges */
     for b, bb := range bbs {
