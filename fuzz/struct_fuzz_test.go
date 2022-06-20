@@ -31,9 +31,11 @@ const (
 	Optional
 )
 
+var FuzzRequiredness = []string{"default"}
+
 var (
 	BoolType   = reflect.TypeOf(bool(true))
-	ByteType   = reflect.TypeOf(byte(0))
+	ByteType   = reflect.TypeOf(int8(0))
 	I16Type    = reflect.TypeOf(int16(0))
 	I32Type    = reflect.TypeOf(int32(0))
 	I64Type    = reflect.TypeOf(int64(0))
@@ -66,7 +68,7 @@ func fuzzDynamicStruct(data []byte, tt thrift.TType) (reflect.Type, error) {
 		return nil, err
 	}
 	fields := generateStructFields(0, ts)
-	return reflect.TypeOf(fields), nil
+	return reflect.StructOf(fields), nil
 }
 
 type TypeSpec struct {
@@ -245,15 +247,15 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 }
 
 func generateStructFields(fieldIDStart int, ts TypeSpec) (ret []reflect.StructField) {
-	for i, r := range []string{"default", "required", "optional"} {
+	for i, r := range FuzzRequiredness {
 		name := strconv.Itoa(fieldIDStart + i)
-		tag := fmt.Sprintf("%d,%s,%s", fieldIDStart+i, r, ts.TypeTag)
+		tag := fmt.Sprintf("frugal:\"%d,%s,%s\"", fieldIDStart+i, r, ts.TypeTag)
 		typ := ts.Type
 		if PointerMap[Requiredness(i)][ts.Type.Kind()] {
 			typ = reflect.PointerTo(ts.Type)
 		}
 		ret = append(ret, reflect.StructField{
-			Name: name,
+			Name: "Field" + name,
 			Type: typ,
 			Tag:  reflect.StructTag(tag),
 		})

@@ -51,12 +51,6 @@ func FuzzMain(f *testing.F) {
 	ct := &CompilerTest{
 		H: CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
 		I: &CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
-		J: map[string]int{"0": 0, "1": 1, "2": 2},
-		K: []string{"0", "1", "2"},
-		L: []string{"0", "1", "2"},
-		M: []byte{0, 1, 2},
-		N: []int8{0, 1, 2},
-		O: []int8{0, 1, 2},
 	}
 	buf := make([]byte, frugal.EncodedSize(ct))
 	_, err := frugal.EncodeObject(buf, nil, ct)
@@ -66,7 +60,7 @@ func FuzzMain(f *testing.F) {
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
-			_, err := bthrift.Binary.Skip(data, thrift.TType(i))
+			length, err := bthrift.Binary.Skip(data, thrift.TType(i))
 			if err != nil {
 				return
 			}
@@ -75,7 +69,9 @@ func FuzzMain(f *testing.F) {
 				t.Fatal(err)
 			}
 			object := reflect.New(rt).Interface()
-			_, err = frugal.DecodeObject(data, object)
+			wrappedData := append([]byte{byte(i), 0x0, 0x0}, data[:length]...)
+			wrappedData = append(wrappedData, 0x0)
+			_, err = frugal.DecodeObject(wrappedData, object)
 			if err != nil {
 				t.Fatal(err)
 			}
