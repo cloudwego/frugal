@@ -320,6 +320,13 @@ type IrAMD64_MOV_reg struct {
     V Reg
 }
 
+func IrCopyArch(r Reg, v Reg) *IrAMD64_MOV_reg {
+    return &IrAMD64_MOV_reg {
+        R: r,
+        V: v,
+    }
+}
+
 func (self *IrAMD64_MOV_reg) String() string {
     return fmt.Sprintf("movq %s, %s", self.V, self.R)
 }

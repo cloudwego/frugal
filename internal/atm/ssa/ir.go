@@ -412,7 +412,11 @@ func (self *IrSwitch) String() string {
 }
 
 func (self *IrSwitch) Usages() []*Reg {
-    return []*Reg { &self.V }
+    if len(self.Br) == 0 {
+        return nil
+    } else {
+        return []*Reg { &self.V }
+    }
 }
 
 func (self *IrSwitch) Successors() IrSuccessors {

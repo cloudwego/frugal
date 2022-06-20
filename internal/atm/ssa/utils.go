@@ -68,14 +68,6 @@ func minint(a int, b int) int {
     }
 }
 
-func minu64(a uint64, b uint64) uint64 {
-    if a < b {
-        return a
-    } else {
-        return b
-    }
-}
-
 func cmpu64(a uint64, b uint64) int {
     if a < b {
         return -1
@@ -83,12 +75,6 @@ func cmpu64(a uint64, b uint64) int {
         return 1
     } else {
         return 0
-    }
-}
-
-func setu64(m []uint64, v uint64) {
-    for i := range m {
-        m[i] = v
     }
 }
 

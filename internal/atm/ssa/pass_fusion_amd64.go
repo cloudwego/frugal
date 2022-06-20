@@ -391,5 +391,9 @@ func (self Fusion) Apply(cfg *CFG) {
                 }
             }
         })
+
+        /* perform reorder & reduction after each round */
+        new(Reorder).Apply(cfg)
+        new(Reduce).Apply(cfg)
     }
 }
