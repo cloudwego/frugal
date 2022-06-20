@@ -37,6 +37,7 @@ var Passes = [...]PassDescriptor {
     { Name: "Value Reordering"           , Pass: new(Reorder) },
     { Name: "Late Reduction"             , Pass: new(Reduce) },
     { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
+    { Name: "Write Barrier Insertion"    , Pass: new(WriteBarrier) },
     { Name: "Instruction Fusion"         , Pass: new(Fusion) },
     { Name: "Instruction Compaction"     , Pass: new(Compaction) },
     { Name: "Phi Propagation"            , Pass: new(PhiProp) },    // The CFG is no longer in SSA form after this pass.
