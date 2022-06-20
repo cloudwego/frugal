@@ -172,12 +172,12 @@ func (self *_GraphBuilder) termbsw(p *hir.Ir, bb *BasicBlock) {
     for i, br := range p.Sw() {
         if br != nil {
             to := self.branch(br)
-            to.Pred = append(to.Pred, bb)
+            to.addPred(bb)
             sw.Br[int32(i)] = to
         }
     }
 
     /* add the default branch */
     sw.Ln = self.branch(p.Ln)
-    sw.Ln.Pred = append(sw.Ln.Pred, bb)
+    sw.Ln.addPred(bb)
 }

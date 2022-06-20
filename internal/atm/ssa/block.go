@@ -61,10 +61,15 @@ type BasicBlock struct {
 func Unreachable(bb *BasicBlock, id int) (ret *BasicBlock) {
     ret      = new(BasicBlock)
     ret.Id   = id
-    ret.Ins  = append(ret.Ins, new(IrBreakpoint))
-    ret.Pred = append(ret.Pred, bb, ret)
+    ret.Ins  = []IrNode { new(IrBreakpoint) }
     ret.Term = &IrSwitch { Ln: ret }
+    ret.Pred = []*BasicBlock { bb, ret }
     return
+}
+
+func (self *BasicBlock) addPred(p *BasicBlock) {
+    for _, b := range self.Pred { if b == p { return } }
+    self.Pred = append(self.Pred, p)
 }
 
 func (self *BasicBlock) addInstr(p *hir.Ir) {
@@ -470,7 +475,7 @@ func (self *BasicBlock) termReturn(p *hir.Ir) {
 }
 
 func (self *BasicBlock) termBranch(to *BasicBlock) {
-    to.Pred = append(to.Pred, self)
+    to.addPred(self)
     self.Term = &IrSwitch { Ln: to }
 }
 
@@ -499,9 +504,11 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
         Op : cmp,
     }
 
+    /* add predecessors */
+    t.addPred(self)
+    f.addPred(self)
+
     /* attach to the block */
-    t.Pred = append(t.Pred, self)
-    f.Pred = append(f.Pred, self)
     self.Ins = append(self.Ins, ins)
     self.Term = &IrSwitch { V: Tr(0), Ln: t, Br: map[int32]*BasicBlock { 0: f } }
 }

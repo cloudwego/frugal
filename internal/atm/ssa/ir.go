@@ -178,6 +178,7 @@ func (self Reg) Normalize(i int) Reg {
 
 type IrNode interface {
     fmt.Stringer
+    Clone() IrNode
     irnode()
 }
 
@@ -194,6 +195,8 @@ type IrImmovable interface {
 func (*IrPhi)          irnode() {}
 func (*IrSwitch)       irnode() {}
 func (*IrReturn)       irnode() {}
+func (*IrNop)          irnode() {}
+func (*IrBreakpoint)   irnode() {}
 func (*IrLoad)         irnode() {}
 func (*IrStore)        irnode() {}
 func (*IrLoadArg)      irnode() {}
@@ -207,8 +210,6 @@ func (*IrCallFunc)     irnode() {}
 func (*IrCallNative)   irnode() {}
 func (*IrCallMethod)   irnode() {}
 func (*IrWriteBarrier) irnode() {}
-func (*IrNop)          irnode() {}
-func (*IrBreakpoint)   irnode() {}
 
 func (*IrStore)        irimpure() {}
 func (*IrCallFunc)     irimpure() {}
@@ -252,6 +253,21 @@ func (self _PhiSorter) Less(i int, j int) bool {
 type IrPhi struct {
     R Reg
     V map[*BasicBlock]*Reg
+}
+
+func (self *IrPhi) Clone() IrNode {
+    ret := new(IrPhi)
+    ret.V = make(map[*BasicBlock]*Reg, len(self.V))
+
+    /* clone the Phi mappings */
+    for b, r := range self.V {
+        p := *r
+        ret.V[b] = &p
+    }
+
+    /* set the dest register */
+    ret.R = self.R
+    return ret
 }
 
 func (self *IrPhi) String() string {
@@ -383,6 +399,21 @@ func (self *IrSwitch) iter() *_SwitchSuccessors {
     }
 }
 
+func (self *IrSwitch) Clone() IrNode {
+    ret := new(IrSwitch)
+    ret.Br = make(map[int32]*BasicBlock, len(ret.Br))
+
+    /* clone the switch branches */
+    for v, b := range self.Br {
+        ret.Br[v] = b
+    }
+
+    /* set the switch register and default branch */
+    ret.V = self.V
+    ret.Ln = self.Ln
+    return ret
+}
+
 func (self *IrSwitch) String() string {
     n := len(self.Br)
     r := make([]string, 0, n)
@@ -432,6 +463,13 @@ type IrReturn struct {
     R []Reg
 }
 
+func (self *IrReturn) Clone() IrNode {
+    r := new(IrReturn)
+    r.R = make([]Reg, len(self.R))
+    copy(r.R, self.R)
+    return r
+}
+
 func (self *IrReturn) String() string {
     nb := len(self.R)
     ret := make([]string, 0, nb)
@@ -456,10 +494,26 @@ func (self *IrReturn) Successors() IrSuccessors {
     return _EmptySuccessor{}
 }
 
+type (
+    IrNop        struct{}
+    IrBreakpoint struct{}
+)
+
+func (IrNop)        Clone() IrNode { return new(IrNop) }
+func (IrBreakpoint) Clone() IrNode { return new(IrBreakpoint) }
+
+func (IrNop)        String() string { return "nop" }
+func (IrBreakpoint) String() string { return "breakpoint" }
+
 type IrLoad struct {
     R    Reg
     Mem  Reg
     Size uint8
+}
+
+func (self *IrLoad) Clone() IrNode {
+    r := *self
+    return &r
 }
 
 func (self *IrLoad) String() string {
@@ -484,6 +538,11 @@ type IrStore struct {
     Size uint8
 }
 
+func (self *IrStore) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrStore) String() string {
     return fmt.Sprintf("store.u%d %s -> *%s", self.Size * 8, self.R, self.Mem)
 }
@@ -495,6 +554,11 @@ func (self *IrStore) Usages() []*Reg {
 type IrLoadArg struct {
     R  Reg
     Id uint64
+}
+
+func (self *IrLoadArg) Clone() IrNode {
+    r := *self
+    return &r
 }
 
 func (self *IrLoadArg) String() string {
@@ -514,6 +578,11 @@ type IrConstInt struct {
     V int64
 }
 
+func (self *IrConstInt) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrConstInt) String() string {
     return fmt.Sprintf("%s = const.i64 %d (%#x)", self.R, self.V, self.V)
 }
@@ -525,6 +594,11 @@ func (self *IrConstInt) Definitions() []*Reg {
 type IrConstPtr struct {
     R Reg
     P unsafe.Pointer
+}
+
+func (self *IrConstPtr) Clone() IrNode {
+    r := *self
+    return &r
 }
 
 func (self *IrConstPtr) String() string {
@@ -539,6 +613,11 @@ type IrLEA struct {
     R   Reg
     Mem Reg
     Off Reg
+}
+
+func (self *IrLEA) Clone() IrNode {
+    r := *self
+    return &r
 }
 
 func (self *IrLEA) String() string {
@@ -616,6 +695,11 @@ type IrUnaryExpr struct {
     Op IrUnaryOp
 }
 
+func (self *IrUnaryExpr) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrUnaryExpr) String() string {
     return fmt.Sprintf("%s = %s %s", self.R, self.Op, self.V)
 }
@@ -644,6 +728,11 @@ func IrCopy(r Reg, v Reg) *IrBinaryExpr {
     }
 }
 
+func (self *IrBinaryExpr) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrBinaryExpr) String() string {
     return fmt.Sprintf("%s = %s %s %s", self.R, self.X, self.Op, self.Y)
 }
@@ -663,6 +752,11 @@ type IrBitTestSet struct {
     Y Reg
 }
 
+func (self *IrBitTestSet) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrBitTestSet) String() string {
     return fmt.Sprintf("t.%s, s.%s = bts %s, %s", self.T, self.S, self.X, self.Y)
 }
@@ -679,6 +773,16 @@ type IrCallFunc struct {
     R   Reg
     In  []Reg
     Out []Reg
+}
+
+func (self *IrCallFunc) Clone() IrNode {
+    r := new(IrCallFunc)
+    r.R = self.R
+    r.In = make([]Reg, len(self.In))
+    r.Out = make([]Reg, len(self.Out))
+    copy(r.In, self.In)
+    copy(r.Out, self.Out)
+    return r
 }
 
 func (self *IrCallFunc) String() string {
@@ -701,6 +805,15 @@ type IrCallNative struct {
     R   Reg
     In  []Reg
     Out Reg
+}
+
+func (self *IrCallNative) Clone() IrNode {
+    r := new(IrCallNative)
+    r.R = self.R
+    r.In = make([]Reg, len(self.In))
+    r.Out = self.Out
+    copy(r.In, self.In)
+    return r
 }
 
 func (self *IrCallNative) String() string {
@@ -731,6 +844,18 @@ type IrCallMethod struct {
     Slot int
 }
 
+func (self *IrCallMethod) Clone() IrNode {
+    r := new(IrCallMethod)
+    r.T = self.T
+    r.V = self.V
+    r.In = make([]Reg, len(self.In))
+    r.Out = make([]Reg, len(self.Out))
+    r.Slot = self.Slot
+    copy(r.In, self.In)
+    copy(r.Out, self.Out)
+    return r
+}
+
 func (self *IrCallMethod) String() string {
     if in := regslicerepr(self.In); len(self.Out) == 0 {
         return fmt.Sprintf("icall #%d, (%s:%s), {%s}", self.Slot, self.T, self.V, in)
@@ -754,23 +879,15 @@ type IrWriteBarrier struct {
     Var Reg
 }
 
+func (self *IrWriteBarrier) Clone() IrNode {
+    r := *self
+    return &r
+}
+
 func (self *IrWriteBarrier) String() string {
     return fmt.Sprintf("write_barrier (%s:%s), %s -> *%s", self.Var, self.Fn, self.R, self.M)
 }
 
 func (self *IrWriteBarrier) Usages() []*Reg {
     return []*Reg { &self.Var, &self.Fn, &self.R, &self.M }
-}
-
-type (
-    IrNop        struct{}
-    IrBreakpoint struct{}
-)
-
-func (IrNop) String() string {
-    return "nop"
-}
-
-func (IrBreakpoint) String() string {
-    return "breakpoint"
 }
