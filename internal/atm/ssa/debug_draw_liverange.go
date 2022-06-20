@@ -66,7 +66,7 @@ func draw_liverange(fn string, bb []*BasicBlock, lr map[Reg]*_LiveRange) {
     }
     p := svg.New(fp)
     p.Start(len(regs) * regw + insw + 100, leni * 24 + 100)
-    if _, err = fp.WriteString(`<rect width="100%" height="100%" fill="white" />`); err != nil {
+    if _, err = fp.WriteString(`<rect width="100%" height="100%" fill="white" />` + "\n"); err != nil {
         panic(err)
     }
     bbi := 0
