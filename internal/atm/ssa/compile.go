@@ -33,7 +33,7 @@ var Passes = [...]PassDescriptor {
     { Name: "Constant Propagation"       , Pass: new(ConstProp) },
     { Name: "Early Reduction"            , Pass: new(Reduce) },
     { Name: "Branch Elimination"         , Pass: new(BranchElim) },
-    { Name: "Intermediate Block Merging" , Pass: new(BlockMerge) },
+    { Name: "Return Spreading"           , Pass: new(ReturnSpread) },
     { Name: "Value Reordering"           , Pass: new(Reorder) },
     { Name: "Late Reduction"             , Pass: new(Reduce) },
     { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
