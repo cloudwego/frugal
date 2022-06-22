@@ -16,13 +16,14 @@ package fuzz
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 )
 
 func isValidType(t thrift.TType) bool {
-	if t < thrift.BOOL || t > thrift.LIST || t == thrift.TType(9) {
+	if t < thrift.BOOL || t > thrift.LIST || t == thrift.TType(9) || t == thrift.TType(5) {
 		return false
 	}
 	return true
@@ -137,12 +138,22 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			err = e
 			return
 		}
+		strs := make([]string, size)
 		for i := 0; i < size; i++ {
 			l, e = Check(buf[length:], elemType)
+			strs[i] = string(buf[length : length+l])
 			length += l
 			if e != nil {
 				err = e
 				return
+			}
+		}
+		if size >= 2 {
+			sort.Strings(strs)
+			for i := 0; i < len(strs)-2; i++ {
+				if strs[i] == strs[i+1] {
+					return 0, fmt.Errorf("set element duplicated")
+				}
 			}
 		}
 		if size == 0 {
