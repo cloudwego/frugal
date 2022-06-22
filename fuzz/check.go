@@ -81,8 +81,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if err != nil {
 			return
 		}
+		ids := make([]int16, 0, 16)
 		for {
-			_, typeID, _, l, e := bthrift.Binary.ReadFieldBegin(buf[length:])
+			_, typeID, id, l, e := bthrift.Binary.ReadFieldBegin(buf[length:])
 			length += l
 			if e != nil {
 				err = e
@@ -91,6 +92,12 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			if typeID == thrift.STOP {
 				break
 			}
+			for _, old := range ids {
+				if old == id {
+					return 0, fmt.Errorf("duplicated field id")
+				}
+			}
+			ids = append(ids, id)
 			l, e = Check(buf[length:], typeID)
 			length += l
 			if e != nil {
