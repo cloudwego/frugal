@@ -138,6 +138,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if !isValidType(valueType) {
 			return 0, fmt.Errorf("unknown data type %d", keyType)
 		}
+		if keyType == thrift.LIST || keyType == thrift.SET || keyType == thrift.MAP {
+			return 0, fmt.Errorf("map key cannot be container")
+		}
 		if length+size*(TypeSize[keyType]+TypeSize[valueType]) >= len(buf) {
 			return 0, fmt.Errorf("size not enough")
 		}
