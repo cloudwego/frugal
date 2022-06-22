@@ -47,14 +47,17 @@ func (self *Builder) add(ins *Ir) *Ir {
 
 func (self *Builder) jmp(p *Ir, to string) *Ir {
     ok := false
+    lr := Likely
     lb := strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
 
-    /* check for backward jumps */
+    /* forward jumps are predicted "unlikely" */
     if p.Br, ok = self.refs[lb]; !ok {
+        lr = Unlikely
         self.pends[lb] = append(self.pends[lb], &p.Br)
     }
 
     /* add to instruction buffer */
+    p.An = uint8(lr)
     return self.add(p)
 }
 

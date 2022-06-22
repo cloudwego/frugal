@@ -1137,7 +1137,7 @@ func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *hir.Ir) {
 
 func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *hir.Ir) {
     nsw := v.Iv
-    tab := v.Sw()
+    tab := v.Switch()
 
     /* empty switch */
     if nsw == 0 {

@@ -24,7 +24,10 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type OpCode byte
+type (
+	OpCode     byte
+    Likeliness byte
+)
 
 const (
     OP_nop OpCode = iota    // no operation
@@ -75,6 +78,11 @@ const (
     OP_break                // trigger a debugger breakpoint
 )
 
+const (
+    Likely Likeliness = iota
+    Unlikely
+)
+
 type Ir struct {
     Op OpCode
     Rx GenericRegister
@@ -100,6 +108,17 @@ func (self *Ir) rz(v GenericRegister) *Ir { self.Rz = v; return self }
 func (self *Ir) ps(v PointerRegister) *Ir { self.Ps = v; return self }
 func (self *Ir) pd(v PointerRegister) *Ir { self.Pd = v; return self }
 
+func (self *Ir) lr(p Likeliness) *Ir {
+    if !self.IsBranch() {
+        panic("only applicable to branch instructions")
+    } else if self.Op == OP_bsw {
+        panic("cannot specify likeliness for `OP_bsw`")
+    } else {
+        self.An = uint8(p)
+        return self
+    }
+}
+
 func (self *Ir) A0(v Register) *Ir { self.An, self.Ar[0] = 1, v.A(); return self }
 func (self *Ir) A1(v Register) *Ir { self.An, self.Ar[1] = 2, v.A(); return self }
 func (self *Ir) A2(v Register) *Ir { self.An, self.Ar[2] = 3, v.A(); return self }
@@ -118,15 +137,18 @@ func (self *Ir) R5(v Register) *Ir { self.Rn, self.Rr[5] = 6, v.A(); return self
 func (self *Ir) R6(v Register) *Ir { self.Rn, self.Rr[6] = 7, v.A(); return self }
 func (self *Ir) R7(v Register) *Ir { self.Rn, self.Rr[7] = 8, v.A(); return self }
 
-func (self *Ir) Sw() (p []*Ir) {
+func (self *Ir) Likely()   *Ir { return self.lr(Likely) }
+func (self *Ir) Unlikely() *Ir { return self.lr(Unlikely) }
+
+func (self *Ir) Free() {
+    freeInstr(self)
+}
+
+func (self *Ir) Switch() (p []*Ir) {
     (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = self.Pr
     (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(self.Iv)
     (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(self.Iv)
     return
-}
-
-func (self *Ir) Free() {
-    freeInstr(self)
 }
 
 func (self *Ir) IsBranch() bool {
@@ -170,7 +192,7 @@ func (self *Ir) formatRefs(refs map[*Ir]string, v *Ir) string {
 }
 
 func (self *Ir) formatTable(refs map[*Ir]string) string {
-    tab := self.Sw()
+    tab := self.Switch()
     ret := make([]string, 0, self.Iv)
 
     /* empty table */

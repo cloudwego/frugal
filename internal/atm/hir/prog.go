@@ -44,7 +44,7 @@ func (self Program) Disassemble() string {
                     ref[p.Br] = fmt.Sprintf("L_%d", len(ref))
                 }
             } else {
-                for _, lb := range p.Sw() {
+                for _, lb := range p.Switch() {
                     if lb != nil {
                         if _, ok := ref[lb]; !ok {
                             ref[lb] = fmt.Sprintf("L_%d", len(ref))

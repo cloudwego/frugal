@@ -100,7 +100,7 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
             if v.Op != hir.OP_bsw {
                 self.p[v.Br] = true
             } else {
-                for _, lb := range v.Sw() {
+                for _, lb := range v.Switch() {
                     self.p[lb] = true
                 }
             }
@@ -168,7 +168,7 @@ func (self *_GraphBuilder) termbsw(cfg *CFG, p *hir.Ir, bb *BasicBlock) {
     bb.Term = sw
 
     /* add every branch of the switch instruction */
-    for i, br := range p.Sw() {
+    for i, br := range p.Switch() {
         if br != nil {
             to := self.branch(cfg, br)
             to.addPred(bb)
