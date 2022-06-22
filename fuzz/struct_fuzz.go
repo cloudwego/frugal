@@ -286,8 +286,10 @@ func GenerateTypeSpec(t thrift.TType, keySpec, valSpec *TypeSpec) TypeSpec {
 		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("set<%s>", valSpec.TypeTag)}
 	case thrift.LIST:
 		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("list<%s>", valSpec.TypeTag)}
+	case thrift.STRUCT:
+		return TypeSpec{reflect.StructOf(nil), "ANONYMOUS"}
 	default:
-		panic("unreachable code")
+		panic("unreachable code" + t.String())
 	}
 }
 
