@@ -50,10 +50,15 @@ func (self *Builder) jmp(p *Ir, to string) *Ir {
     lr := Likely
     lb := strings.ReplaceAll(to, "{n}", strconv.Itoa(self.i))
 
-    /* forward jumps are predicted "unlikely" */
+    /* backward jumps are predicted "likely", forward "unlikely" */
     if p.Br, ok = self.refs[lb]; !ok {
         lr = Unlikely
         self.pends[lb] = append(self.pends[lb], &p.Br)
+    }
+
+    /* unconditional jumps are always predicted "likely" */
+    if p.Op == OP_jmp {
+        lr = Likely
     }
 
     /* add to instruction buffer */
