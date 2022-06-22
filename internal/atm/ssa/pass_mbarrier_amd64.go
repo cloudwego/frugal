@@ -122,7 +122,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
             /* construct the direct store block */
             ds.Ins  = []IrNode { st }
-            ds.Term = &IrSwitch { Ln: bb }
+            ds.Term = &IrSwitch { Ln: IrLikely(bb) }
             ds.Pred = []*BasicBlock { p.bb }
 
             /* rewrite the write barrier instruction */
@@ -139,7 +139,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
             /* construct the write barrier block */
             wb.Ins  = []IrNode { fn }
-            wb.Term = &IrSwitch { Ln: bb }
+            wb.Term = &IrSwitch { Ln: IrLikely(bb) }
             wb.Pred = []*BasicBlock { p.bb }
 
             /* rewrite the terminator to check for write barrier */
@@ -148,8 +148,8 @@ func (WriteBarrier) Apply(cfg *CFG) {
                 X  : Mem { M: ir.Var, I: Rz, S: 1, D: 0 },
                 Y  : 0,
                 N  : 1,
-                To : wb,
-                Ln : ds,
+                To : IrUnlikely(wb),
+                Ln : IrLikely(ds),
                 Op : IrAMD64_CmpNe,
             }
         }

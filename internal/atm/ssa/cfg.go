@@ -63,7 +63,7 @@ func (self *CFG) CreateBlock() (r *BasicBlock) {
 func (self *CFG) CreateUnreachable(bb *BasicBlock) (ret *BasicBlock) {
     ret      = self.CreateBlock()
     ret.Ins  = []IrNode { new(IrBreakpoint) }
-    ret.Term = &IrSwitch { Ln: ret }
+    ret.Term = &IrSwitch { Ln: IrLikely(ret) }
     ret.Pred = []*BasicBlock { bb, ret }
     return
 }

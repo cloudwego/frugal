@@ -510,7 +510,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
     for v, p := range sw.Br {
         if val = append(val, v); ps.isContradiction(_Stmt { sw.V, _ValueTerm(Int65i(int64(v))), _R_eq }) {
             delete(sw.Br, v)
-            rem.Enqueue(_Edge { bb, p })
+            rem.Enqueue(_Edge { bb, p.To })
         }
     }
 
@@ -529,10 +529,10 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
     /* check for reachability */
     if !reachable {
-        if rem.Enqueue(_Edge { bb, sw.Ln }); len(sw.Br) != 1 {
-            sw.Ln = cfg.CreateUnreachable(bb)
+        if rem.Enqueue(_Edge { bb, sw.Ln.To }); len(sw.Br) != 1 {
+            sw.Ln = IrUnlikely(cfg.CreateUnreachable(bb))
         } else {
-            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]*BasicBlock)
+            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]IrBranch)
         }
     }
 
@@ -582,7 +582,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
 
         /* find the branch value */
         for i, b := range sw.Br {
-            if b == p {
+            if b.To == p {
                 f, v = true, _ValueTerm(Int65i(int64(i)))
                 break
             }

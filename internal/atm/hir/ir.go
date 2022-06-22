@@ -79,8 +79,8 @@ const (
 )
 
 const (
-    Likely Likeliness = iota
-    Unlikely
+    Unlikely Likeliness = iota
+    Likely
 )
 
 type Ir struct {
@@ -153,6 +153,16 @@ func (self *Ir) Switch() (p []*Ir) {
 
 func (self *Ir) IsBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jmp
+}
+
+func (self *Ir) Likeliness() Likeliness {
+    if !self.IsBranch() {
+        panic("only applicable to branch instructions")
+    } else if self.Op == OP_bsw {
+        panic("`OP_bsw` does not have likeliness assigned")
+    } else {
+        return Likeliness(self.An)
+    }
 }
 
 func (self *Ir) formatCall() string {

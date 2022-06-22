@@ -467,7 +467,7 @@ func (self *BasicBlock) termReturn(p *hir.Ir) {
 
 func (self *BasicBlock) termBranch(to *BasicBlock) {
     to.addPred(self)
-    self.Term = &IrSwitch { Ln: to }
+    self.Term = &IrSwitch { Ln: IrLikely(to) }
 }
 
 func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
@@ -499,7 +499,18 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     t.addPred(self)
     f.addPred(self)
 
+    /* create branch targets */
+    to := IrBranch { To: t, Likeliness: Unlikely }
+    br := IrBranch { To: f, Likeliness: Unlikely }
+
+    /* assign the correct likeliness */
+    if p.Likeliness() == hir.Likely {
+        to.Likeliness = Likely
+    } else {
+        br.Likeliness = Likely
+    }
+
     /* attach to the block */
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch { V: Tr(0), Ln: t, Br: map[int32]*BasicBlock { 0: f } }
+    self.Term = &IrSwitch { V: Tr(0), Ln: to, Br: map[int32]IrBranch { 0: br } }
 }

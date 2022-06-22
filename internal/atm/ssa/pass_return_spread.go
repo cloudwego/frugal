@@ -114,15 +114,18 @@ func (ReturnSpread) Apply(cfg *CFG) {
                 }
 
                 /* check for default branch */
-                if sw.Ln == bb {
-                    sw.Ln = ret
+                if sw.Ln.To == bb {
+                    sw.Ln.To = ret
                     continue
                 }
 
                 /* replace the switch targets */
                 for v, b := range sw.Br {
-                    if b == bb {
-                        sw.Br[v] = ret
+                    if b.To == bb {
+                        sw.Br[v] = IrBranch {
+                            To         : ret,
+                            Likeliness : b.Likeliness,
+                        }
                     }
                 }
             }

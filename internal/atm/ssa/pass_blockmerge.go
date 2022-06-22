@@ -28,18 +28,18 @@ func (BlockMerge) Apply(cfg *CFG) {
 
         /* check every block */
         cfg.PostOrder(func(bb *BasicBlock) {
-            if sw, ok = bb.Term.(*IrSwitch); ok && len(sw.Br) == 0 && len(sw.Ln.Pred) == 1 {
+            if sw, ok = bb.Term.(*IrSwitch); ok && len(sw.Br) == 0 && len(sw.Ln.To.Pred) == 1 {
                 rt = true
-                bb.Ins = append(bb.Ins, sw.Ln.Ins...)
-                bb.Term = sw.Ln.Term
+                bb.Ins = append(bb.Ins, sw.Ln.To.Ins...)
+                bb.Term = sw.Ln.To.Term
 
                 /* must not have Phi nodes */
-                if len(sw.Ln.Phi) != 0 {
+                if len(sw.Ln.To.Phi) != 0 {
                     panic("invalid Phi node found in intermediate blocks")
                 }
 
                 /* get the successor iterator */
-                tr := sw.Ln.Term
+                tr := sw.Ln.To.Term
                 it := tr.Successors()
 
                 /* update all predecessors references */
@@ -49,15 +49,15 @@ func (BlockMerge) Apply(cfg *CFG) {
 
                     /* update predecessor list */
                     for i, p := range pp {
-                        if p == sw.Ln {
+                        if p == sw.Ln.To {
                             pp[i] = bb
                         }
                     }
 
                     /* update in Phi nodes */
                     for _, v := range rb.Phi {
-                        v.V[bb] = v.V[sw.Ln]
-                        delete(v.V, sw.Ln)
+                        v.V[bb] = v.V[sw.Ln.To]
+                        delete(v.V, sw.Ln.To)
                     }
                 }
             }

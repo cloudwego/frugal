@@ -25,7 +25,10 @@ import (
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
-type Reg uint64
+type (
+    Reg        uint64
+	Likeliness uint8
+)
 
 const (
     _B_ptr  = 63
@@ -59,6 +62,19 @@ const (
     Rz Reg = (0 << _B_ptr) | (K_zero << _B_kind)
     Pn Reg = (1 << _B_ptr) | (K_zero << _B_kind)
 )
+
+const (
+    Unlikely Likeliness = iota
+    Likely
+)
+
+func (self Likeliness) String() string {
+    if self == Likely {
+        return "likely"
+    } else {
+        return "unlikely"
+    }
+}
 
 func mkreg(ptr uint64, kind uint64) Reg {
     return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
@@ -317,10 +333,34 @@ func (self *IrPhi) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
+type IrBranch struct {
+    To         *BasicBlock
+    Likeliness Likeliness
+}
+
+func IrLikely(bb *BasicBlock) IrBranch {
+    return IrBranch {
+        To         : bb,
+        Likeliness : Likely,
+    }
+}
+
+func IrUnlikely(bb *BasicBlock) IrBranch {
+    return IrBranch {
+        To         : bb,
+        Likeliness : Unlikely,
+    }
+}
+
+func (self IrBranch) String() string {
+    return fmt.Sprintf("bb_%d (%s)", self.To.Id, self.Likeliness)
+}
+
 type IrSuccessors interface {
     Next() bool
     Block() *BasicBlock
     Value() (int32, bool)
+    Likeliness() Likeliness
 }
 
 type IrTerminator interface {
@@ -334,7 +374,7 @@ func (*IrReturn) irterminator() {}
 
 type _SwitchTarget struct {
     i int32
-    b *BasicBlock
+    b IrBranch
 }
 
 type _SwitchSuccessors struct {
@@ -351,7 +391,7 @@ func (self *_SwitchSuccessors) Block() *BasicBlock {
     if self.i >= len(self.t) {
         return nil
     } else {
-        return self.t[self.i].b
+        return self.t[self.i].b.To
     }
 }
 
@@ -363,10 +403,18 @@ func (self *_SwitchSuccessors) Value() (int32, bool) {
     }
 }
 
+func (self *_SwitchSuccessors) Likeliness() Likeliness {
+    if self.i >= len(self.t) {
+        return Unlikely
+    } else {
+        return self.t[self.i].b.Likeliness
+    }
+}
+
 type IrSwitch struct {
     V  Reg
-    Ln *BasicBlock
-    Br map[int32]*BasicBlock
+    Ln IrBranch
+    Br map[int32]IrBranch
 }
 
 func (self *IrSwitch) iter() *_SwitchSuccessors {
@@ -401,7 +449,7 @@ func (self *IrSwitch) iter() *_SwitchSuccessors {
 
 func (self *IrSwitch) Clone() IrNode {
     ret := new(IrSwitch)
-    ret.Br = make(map[int32]*BasicBlock, len(ret.Br))
+    ret.Br = make(map[int32]IrBranch, len(ret.Br))
 
     /* clone the switch branches */
     for v, b := range self.Br {
@@ -420,18 +468,18 @@ func (self *IrSwitch) String() string {
 
     /* no branches */
     if n == 0 {
-        return fmt.Sprintf("goto bb_%d", self.Ln.Id)
+        return "goto " + self.Ln.String()
     }
 
     /* add each case */
     for _, v := range self.iter().t[:n] {
-        r = append(r, fmt.Sprintf("  %d => bb_%d,", v.i, v.b.Id))
+        r = append(r, fmt.Sprintf("  %d => %s,", v.i, v.b))
     }
 
     /* default branch */
     r = append(r, fmt.Sprintf(
-        "  _ => bb_%d,",
-        self.Ln.Id,
+        "  _ => %s,",
+        self.Ln,
     ))
 
     /* join them together */
@@ -455,9 +503,10 @@ func (self *IrSwitch) Successors() IrSuccessors {
 }
 
 type _EmptySuccessor struct{}
-func (_EmptySuccessor) Next()  bool          { return false }
-func (_EmptySuccessor) Block() *BasicBlock   { return nil }
-func (_EmptySuccessor) Value() (int32, bool) { return 0, false }
+func (_EmptySuccessor) Next()       bool          { return false }
+func (_EmptySuccessor) Block()      *BasicBlock   { return nil }
+func (_EmptySuccessor) Value()      (int32, bool) { return 0, false }
+func (_EmptySuccessor) Likeliness() Likeliness    { return Unlikely }
 
 type IrReturn struct {
     R []Reg

@@ -164,7 +164,7 @@ func (self *_GraphBuilder) branch(cfg *CFG, p *hir.Ir) *BasicBlock {
 
 func (self *_GraphBuilder) termbsw(cfg *CFG, p *hir.Ir, bb *BasicBlock) {
     sw := new(IrSwitch)
-    sw.Br = make(map[int32]*BasicBlock, p.Iv)
+    sw.Br = make(map[int32]IrBranch, p.Iv)
     bb.Term = sw
 
     /* add every branch of the switch instruction */
@@ -172,11 +172,11 @@ func (self *_GraphBuilder) termbsw(cfg *CFG, p *hir.Ir, bb *BasicBlock) {
         if br != nil {
             to := self.branch(cfg, br)
             to.addPred(bb)
-            sw.Br[int32(i)] = to
+            sw.Br[int32(i)] = IrLikely(to)
         }
     }
 
     /* add the default branch */
-    sw.Ln = self.branch(cfg, p.Ln)
-    sw.Ln.addPred(bb)
+    sw.Ln = IrUnlikely(self.branch(cfg, p.Ln))
+    sw.Ln.To.addPred(bb)
 }
