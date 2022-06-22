@@ -189,7 +189,7 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		}
 		if size >= 2 {
 			sort.Strings(strs)
-			for i := 0; i < len(strs)-2; i++ {
+			for i := 0; i < len(strs)-1; i++ {
 				if strs[i] == strs[i+1] {
 					return 0, fmt.Errorf("set element duplicated")
 				}
