@@ -15,12 +15,13 @@
 package fuzz
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
-	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 )
 
 type CompilerTest struct {
@@ -33,7 +34,7 @@ type CompilerTest struct {
 	G string                 `frugal:"6,default,string"`
 	H CompilerTestSubStruct  `frugal:"7,default,CompilerTestSubStruct"`
 	I *CompilerTestSubStruct `frugal:"8,default,CompilerTestSubStruct"`
-	J map[string]int         `frugal:"9,default,map<string:int>"`
+	J map[string]int64       `frugal:"9,default,map<string:i64>"`
 	K []string               `frugal:"10,default,set<string>"`
 	L []string               `frugal:"11,default,list<string>"`
 	M []byte                 `frugal:"12,default,binary"`
@@ -43,7 +44,7 @@ type CompilerTest struct {
 }
 
 type CompilerTestSubStruct struct {
-	X int                    `frugal:"0,default,i64"`
+	X int64                  `frugal:"0,default,i64"`
 	Y *CompilerTestSubStruct `frugal:"1,default,CompilerTestSubStruct"`
 }
 
@@ -60,7 +61,7 @@ func FuzzMain(f *testing.F) {
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
-			length, err := bthrift.Binary.Skip(data, thrift.TType(i))
+			length, err := Check(data, thrift.TType(i))
 			if err != nil {
 				continue
 			}
@@ -72,19 +73,50 @@ func FuzzMain(f *testing.F) {
 				t.Fatal(err)
 			}
 			object := reflect.New(rt).Interface()
+			// wrap base types or container types with struct
 			wrappedData := make([]byte, 0, len(data)+3)
 			wrappedData = append(wrappedData, []byte{byte(i), 0x0, 0x0}...)
 			wrappedData = append(wrappedData, data...)
 			wrappedData = append(wrappedData, 0x0)
 			_, err = frugal.DecodeObject(wrappedData, object)
 			if err != nil {
+				PrintStructTag(rt)
 				t.Fatal(err)
 			}
 			buf := make([]byte, frugal.EncodedSize(object))
 			_, err = frugal.EncodeObject(buf, nil, object)
 			if err != nil {
+				PrintStructTag(rt)
 				t.Fatal(err)
 			}
 		}
 	})
+}
+
+func PrintStructTag(rt reflect.Type) {
+	fmt.Println("struct {")
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		var strs []string
+		strs = append(strs, field.Name)
+
+		switch field.Type.Kind() {
+		case reflect.Ptr:
+			strs = append(strs, "ptr<"+field.Type.Elem().Name()+">")
+		case reflect.Slice:
+			strs = append(strs, "slice<"+field.Type.Elem().Name()+">")
+		default:
+			strs = append(strs, field.Type.Kind().String())
+		}
+		strs = append(strs, field.Tag.Get("frugal"))
+		fmt.Println("\t", strings.Join(strs, " "))
+	}
+	fmt.Println("}")
+
+	for i := 0; i < rt.NumField(); i++ {
+		ft := rt.Field(i).Type
+		if ft.Kind() == reflect.Ptr && ft.Elem().Kind() == reflect.Struct {
+			PrintStructTag(ft.Elem())
+		}
+	}
 }
