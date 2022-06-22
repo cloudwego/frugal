@@ -22,6 +22,7 @@ import (
     `strings`
 
     `github.com/davecgh/go-spew/spew`
+    `github.com/oleiade/lane`
 )
 
 type _LivePoint struct {
@@ -72,14 +73,59 @@ func liverangemark(regs map[Reg]*_LiveRange, refs []*Reg, b int, i int) {
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
-func (RegAlloc) Apply(cfg *CFG) {
+func (self RegAlloc) Apply(cfg *CFG) {
+    st := lane.NewStack()
+    vis := make(map[int]bool)
+    buf := make([]IrBranch, 0, 16)
     bbs := make([]*BasicBlock, 0, 16)
     regs := make(map[Reg]*_LiveRange)
 
-    /* Phase 1: Enumerate all the basic blocks */
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    /* Phase 1: Serialize all the basic blocks with heuristics */
+    for st.Push(cfg.Root); !st.Empty(); {
+        v := st.Pop()
+        bb := v.(*BasicBlock)
+
+        /* check if it's visited */
+        if vis[bb.Id] {
+            continue
+        }
+
+        /* add to basic blocks */
         bbs = append(bbs, bb)
-    })
+        buf, vis[bb.Id] = buf[:0], true
+
+        /* get all it's successors that are not visited yet */
+        for it := bb.Term.Successors(); it.Next(); {
+            if !vis[it.Block().Id] {
+                buf = append(buf, IrBranch {
+                    To         : it.Block(),
+                    Likeliness : it.Likeliness(),
+                })
+            }
+        }
+
+        /* sort them with likeliness */
+        sort.SliceStable(buf, func(i int, j int) bool {
+            return buf[i].Likeliness > buf[j].Likeliness
+        })
+
+        /* force all "return" blocks that has a single predecessor to act as "likely"
+         * by removing them to the end, in order to shorten register live ranges */
+        for i := len(buf) - 1; i >= 0; i-- {
+            // FIXME: this should be arch-specific after ABI lowering
+            if _, ok := buf[i].To.Term.(*IrReturn); !ok || len(buf[i].To.Pred) != 1 {
+                st.Push(buf[i].To)
+            }
+        }
+
+        /* make all "return" blocks that has a single predecessor appear at stack top */
+        for i := len(buf) - 1; i >= 0; i-- {
+            // FIXME: this should be arch-specific after ABI lowering
+            if _, ok := buf[i].To.Term.(*IrReturn); ok && len(buf[i].To.Pred) == 1 {
+                st.Push(buf[i].To)
+            }
+        }
+    }
 
     /* Phase 2: Scan all the instructions to determain live ranges */
     for b, bb := range bbs {
