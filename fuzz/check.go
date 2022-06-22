@@ -22,6 +22,20 @@ import (
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 )
 
+var TypeSize = map[thrift.TType]int{
+	thrift.BOOL:   1,
+	thrift.BYTE:   1,
+	thrift.I16:    2,
+	thrift.I32:    4,
+	thrift.I64:    8,
+	thrift.DOUBLE: 8,
+	thrift.STRING: 4,
+	thrift.LIST:   5,
+	thrift.SET:    5,
+	thrift.MAP:    6,
+	thrift.STRUCT: 1,
+}
+
 func isValidType(t thrift.TType) bool {
 	if t < thrift.BOOL || t > thrift.LIST || t == thrift.TType(9) || t == thrift.TType(5) {
 		return false
@@ -103,6 +117,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			err = e
 			return
 		}
+		if length+size*(TypeSize[keyType]+TypeSize[valueType]) >= len(buf) {
+			return 0, fmt.Errorf("size not enough")
+		}
 		for i := 0; i < size; i++ {
 			l, e := Check(buf[length:], keyType)
 			length += l
@@ -137,6 +154,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if e != nil {
 			err = e
 			return
+		}
+		if length+size*TypeSize[elemType] >= len(buf) {
+			return 0, fmt.Errorf("size not enough")
 		}
 		strs := make([]string, size)
 		for i := 0; i < size; i++ {
@@ -173,6 +193,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if e != nil {
 			err = e
 			return
+		}
+		if length+size*TypeSize[elemType] >= len(buf) {
+			return 0, fmt.Errorf("size not enough")
 		}
 		for i := 0; i < size; i++ {
 			l, e = Check(buf[length:], elemType)
