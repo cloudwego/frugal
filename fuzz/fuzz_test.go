@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package frugal_fuzz
+package fuzz
 
 import (
 	"reflect"
@@ -62,10 +62,10 @@ func FuzzMain(f *testing.F) {
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
 			length, err := bthrift.Binary.Skip(data, thrift.TType(i))
 			if err != nil {
-				return
+				continue
 			}
 			if length != len(data) {
-				return
+				continue
 			}
 			rt, err := fuzzDynamicStruct(data, thrift.TType(i))
 			if err != nil {

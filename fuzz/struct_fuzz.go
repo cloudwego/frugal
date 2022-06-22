@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package frugal_fuzz
+package fuzz
 
 import (
 	"fmt"
@@ -31,16 +31,27 @@ const (
 	Optional
 )
 
-var FuzzRequiredness = []string{"default"}
+var RequirednessString = [...]string{
+	Default:  "default",
+	Required: "required",
+	Optional: "optional",
+}
 
 var (
-	BoolType   = reflect.TypeOf(bool(true))
-	ByteType   = reflect.TypeOf(int8(0))
-	I16Type    = reflect.TypeOf(int16(0))
-	I32Type    = reflect.TypeOf(int32(0))
-	I64Type    = reflect.TypeOf(int64(0))
-	DoubleType = reflect.TypeOf(float64(0))
-	StringType = reflect.TypeOf(string("str"))
+	BoolType      = reflect.TypeOf(bool(true))
+	OptBoolType   = reflect.TypeOf(&(&struct{ x bool }{x: true}).x)
+	ByteType      = reflect.TypeOf(int8(0))
+	OptByteType   = reflect.TypeOf(&(&struct{ x int8 }{x: 0}).x)
+	I16Type       = reflect.TypeOf(int16(0))
+	OptI16Type    = reflect.TypeOf(&(&struct{ x int16 }{x: 0}).x)
+	I32Type       = reflect.TypeOf(int32(0))
+	OptI32Type    = reflect.TypeOf(&(&struct{ x int32 }{x: 0}).x)
+	I64Type       = reflect.TypeOf(int64(0))
+	OptI64Type    = reflect.TypeOf(&(&struct{ x int64 }{x: 0}).x)
+	DoubleType    = reflect.TypeOf(float64(0))
+	OptDoubleType = reflect.TypeOf(&(&struct{ x float64 }{x: 0}).x)
+	StringType    = reflect.TypeOf(string("str"))
+	OptStringType = reflect.TypeOf(&(&struct{ x string }{x: "0"}).x)
 )
 
 var PointerMap = map[Requiredness]map[reflect.Kind]bool{
@@ -67,8 +78,7 @@ func fuzzDynamicStruct(data []byte, tt thrift.TType) (reflect.Type, error) {
 	if err != nil {
 		return nil, err
 	}
-	fields := generateStructFields(0, ts)
-	return reflect.StructOf(fields), nil
+	return ts.Type, nil
 }
 
 type TypeSpec struct {
@@ -154,9 +164,9 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 				err = e
 				return
 			}
-			gsf := generateStructFields(fieldID, fts)
-			fields = append(fields, gsf...)
-			fieldID += len(gsf)
+			gsf := GenerateStructFields(fieldID, Default, fts)
+			fields = append(fields, gsf)
+			fieldID++
 		}
 		l, e := t.bp.ReadStructEnd(buf[length:])
 		length += l
@@ -188,6 +198,10 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 				return
 			}
 		}
+		if size == 0 { // TODO: use random kv?
+			kts = TypeSpec{StringType, "string"}
+			vts = TypeSpec{I64Type, "i64"}
+		}
 		l, e = t.bp.ReadMapEnd(buf[length:])
 		length += l
 		if e != nil {
@@ -210,6 +224,9 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 				err = e
 				return
 			}
+		}
+		if size == 0 { // TODO: use random kv?
+			ets = TypeSpec{I64Type, "i64"}
 		}
 		l, e = t.bp.ReadSetEnd(buf[length:])
 		length += l
@@ -234,6 +251,9 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 				return
 			}
 		}
+		if size == 0 { // TODO: use random kv?
+			ets = TypeSpec{I64Type, "i64"}
+		}
 		l, e = t.bp.ReadListEnd(buf[length:])
 		length += l
 		if e != nil {
@@ -246,19 +266,15 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 	}
 }
 
-func generateStructFields(fieldIDStart int, ts TypeSpec) (ret []reflect.StructField) {
-	for i, r := range FuzzRequiredness {
-		name := strconv.Itoa(fieldIDStart + i)
-		tag := fmt.Sprintf("frugal:\"%d,%s,%s\"", fieldIDStart+i, r, ts.TypeTag)
-		typ := ts.Type
-		if PointerMap[Requiredness(i)][ts.Type.Kind()] {
-			typ = reflect.PointerTo(ts.Type)
-		}
-		ret = append(ret, reflect.StructField{
-			Name: "Field" + name,
-			Type: typ,
-			Tag:  reflect.StructTag(tag),
-		})
+func GenerateStructFields(id int, requiredness Requiredness, ts TypeSpec) (ret reflect.StructField) {
+	tag := fmt.Sprintf("frugal:\"%d,%s,%s\"", id, RequirednessString[requiredness], ts.TypeTag)
+	typ := ts.Type
+	if PointerMap[requiredness][typ.Kind()] {
+		typ = reflect.PointerTo(ts.Type)
 	}
-	return
+	return reflect.StructField{
+		Name: "Field" + strconv.Itoa(id),
+		Type: typ,
+		Tag:  reflect.StructTag(tag),
+	}
 }
