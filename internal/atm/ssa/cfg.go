@@ -17,10 +17,26 @@
 package ssa
 
 import (
+    `sync/atomic`
+
     `github.com/oleiade/lane`
 )
 
+type _CFGPrivate struct {
+    nextreg   uint64
+    nextblock uint64
+}
+
+func (self *_CFGPrivate) allocreg() int {
+    return int(atomic.AddUint64(&self.nextreg, 1)) - 1
+}
+
+func (self *_CFGPrivate) allocblock() int {
+    return int(atomic.AddUint64(&self.nextblock, 1)) - 1
+}
+
 type CFG struct {
+    _CFGPrivate
     Root              *BasicBlock
     Depth             map[int]int
     DominatedBy       map[int]*BasicBlock
@@ -34,23 +50,22 @@ func (self *CFG) Rebuild() {
     updateDominatorFrontier(self)
 }
 
-func (self *CFG) MaxBlock() int {
-    var id int
-    var ret int
+func (self *CFG) DeriveFrom(r Reg) Reg {
+    return r.Derive(self.allocreg())
+}
 
-    /* get the max ID */
-    for id = range self.DominatedBy {
-        if id > ret {
-            ret = id
-        }
-    }
+func (self *CFG) CreateBlock() (r *BasicBlock) {
+    r = new(BasicBlock)
+    r.Id = self.allocblock()
+    return
+}
 
-    /* select between ID and root ID */
-    if ret > self.Root.Id {
-        return ret
-    } else {
-        return self.Root.Id
-    }
+func (self *CFG) CreateUnreachable(bb *BasicBlock) (ret *BasicBlock) {
+    ret      = self.CreateBlock()
+    ret.Ins  = []IrNode { new(IrBreakpoint) }
+    ret.Term = &IrSwitch { Ln: ret }
+    ret.Pred = []*BasicBlock { bb, ret }
+    return
 }
 
 func (self *CFG) PostOrder(action func(bb *BasicBlock)) {

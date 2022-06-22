@@ -58,15 +58,6 @@ type BasicBlock struct {
     Term IrTerminator
 }
 
-func Unreachable(bb *BasicBlock, id int) (ret *BasicBlock) {
-    ret      = new(BasicBlock)
-    ret.Id   = id
-    ret.Ins  = []IrNode { new(IrBreakpoint) }
-    ret.Term = &IrSwitch { Ln: ret }
-    ret.Pred = []*BasicBlock { bb, ret }
-    return
-}
-
 func (self *BasicBlock) addPred(p *BasicBlock) {
     for _, b := range self.Pred { if b == p { return } }
     self.Pred = append(self.Pred, p)

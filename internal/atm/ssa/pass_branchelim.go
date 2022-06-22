@@ -530,7 +530,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
     /* check for reachability */
     if !reachable {
         if rem.Enqueue(_Edge { bb, sw.Ln }); len(sw.Br) != 1 {
-            sw.Ln = Unreachable(bb, cfg.MaxBlock() + 1)
+            sw.Ln = cfg.CreateUnreachable(bb)
         } else {
             sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]*BasicBlock)
         }

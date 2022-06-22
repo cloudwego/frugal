@@ -114,18 +114,17 @@ func (self _Renamer) renameblock(cfg *CFG, bb *BasicBlock) {
 }
 
 func renameRegisters(cfg *CFG) {
-    rr := newRenamer()
-    rr.renameblock(cfg, cfg.Root)
+    newRenamer().renameblock(cfg, cfg.Root)
     normalizeRegisters(cfg)
 }
 
-func assignRegisters(rr []*Reg, rm map[Reg]Reg) {
+func assignRegisters(rr []*Reg, rm map[Reg]Reg, cfg *CFG) {
     for _, r := range rr {
         if r.Kind() != K_zero {
             if v, ok := rm[*r]; ok {
                 panic("register redefined: " + r.String())
             } else {
-                v = r.Normalize(len(rm))
+                v = r.Normalize(cfg.allocreg())
                 *r, rm[*r] = v, v
             }
         }
@@ -155,19 +154,19 @@ func normalizeRegisters(cfg *CFG) {
 
         /* assign Phi nodes */
         for _, n := range p.Phi {
-            assignRegisters(n.Definitions(), r)
+            assignRegisters(n.Definitions(), r, cfg)
         }
 
         /* assign instructions */
         for _, n := range p.Ins {
             if d, ok := n.(IrDefinitions); ok {
-                assignRegisters(d.Definitions(), r)
+                assignRegisters(d.Definitions(), r, cfg)
             }
         }
 
         /* assign terminators */
         if d, ok := p.Term.(IrDefinitions); ok {
-            assignRegisters(d.Definitions(), r)
+            assignRegisters(d.Definitions(), r, cfg)
         }
     }
 

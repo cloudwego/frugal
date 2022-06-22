@@ -94,8 +94,8 @@ func (RegAlloc) Apply(cfg *CFG) {
 
         /* scan instructions */
         for i, v := range bb.Ins {
-            if use, ok = v.(IrUsages)     ; ok { liverangemark(regs, use.Usages(), b, i) }
-            if def, ok = v.(IrDefinitions); ok { liverangemark(regs, def.Definitions(), b, i) }
+            if use, ok = v.(IrUsages)      ; ok { liverangemark(regs, use.Usages(), b, i) }
+            if def, ok = v.(IrDefinitions) ; ok { liverangemark(regs, def.Definitions(), b, i) }
         }
 
         /* scan terminators */

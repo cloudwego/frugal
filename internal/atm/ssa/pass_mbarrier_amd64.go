@@ -18,7 +18,6 @@ package ssa
 
 import (
     `sort`
-    `sync/atomic`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/abi`
@@ -35,9 +34,8 @@ type WriteBarrier struct{}
 
 func (WriteBarrier) Apply(cfg *CFG) {
     more := true
-    next := uint64(cfg.MaxBlock())
-    ptrs := make(map[Reg]unsafe.Pointer)
     mbir := make(map[*BasicBlock]int)
+    ptrs := make(map[Reg]unsafe.Pointer)
 
     /* find all constant pointers */
     cfg.PostOrder(func(bb *BasicBlock) {
@@ -85,13 +83,12 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
         /* Phase 2: Split basic block at write barrier */
         for _, p := range mb {
-            bb := new(BasicBlock)
-            ds := new(BasicBlock)
-            wb := new(BasicBlock)
+            bb := cfg.CreateBlock()
+            ds := cfg.CreateBlock()
+            wb := cfg.CreateBlock()
             ir := p.bb.Ins[p.i].(*IrWriteBarrier)
 
             /* move instructions after the write barrier into a new block */
-            bb.Id   = int(atomic.AddUint64(&next, 1))
             bb.Ins  = p.bb.Ins[p.i + 1:]
             bb.Term = p.bb.Term
             bb.Pred = []*BasicBlock { ds, wb }
@@ -124,7 +121,6 @@ func (WriteBarrier) Apply(cfg *CFG) {
             }
 
             /* construct the direct store block */
-            ds.Id   = int(atomic.AddUint64(&next, 1))
             ds.Ins  = []IrNode { st }
             ds.Term = &IrSwitch { Ln: bb }
             ds.Pred = []*BasicBlock { p.bb }
@@ -142,7 +138,6 @@ func (WriteBarrier) Apply(cfg *CFG) {
             }
 
             /* construct the write barrier block */
-            wb.Id   = int(atomic.AddUint64(&next, 1))
             wb.Ins  = []IrNode { fn }
             wb.Term = &IrSwitch { Ln: bb }
             wb.Pred = []*BasicBlock { p.bb }

@@ -16,28 +16,13 @@
 
 package ssa
 
-import (
-    `sync/atomic`
-)
-
 // ReturnSpread spreads the return block to all it's
 // successors, in order to shorten register live ranges.
 type ReturnSpread struct{}
 
 func (ReturnSpread) Apply(cfg *CFG) {
     more := true
-    nrid := uint64(0)
-    nbid := uint64(cfg.MaxBlock())
     rets := make([]*BasicBlock, 0, 1)
-
-    /* register index updater */
-    updateregs := func(rr []*Reg) {
-        for _, r := range rr {
-            if i := uint64(r.Index()); i > nrid {
-                nrid = i
-            }
-        }
-    }
 
     /* register replacer */
     replaceregs := func(rr map[Reg]Reg, ins IrNode) {
@@ -65,30 +50,6 @@ func (ReturnSpread) Apply(cfg *CFG) {
         }
     }
 
-    /* find the maximum register index */
-    cfg.PostOrder(func(bb *BasicBlock) {
-        var ok bool
-        var use IrUsages
-        var def IrDefinitions
-
-        /* scan Phi nodes */
-        for _, p := range bb.Phi {
-            updateregs(p.Usages())
-            updateregs(p.Definitions())
-        }
-
-        /* scan instructions */
-        for _, p := range bb.Ins {
-            if use, ok = p.(IrUsages)      ; ok { updateregs(use.Usages()) }
-            if def, ok = p.(IrDefinitions) ; ok { updateregs(def.Definitions()) }
-        }
-
-        /* scan terminator */
-        if use, ok = bb.Term.(IrUsages); ok {
-            updateregs(use.Usages())
-        }
-    })
-
     /* loop until no more modifications */
     for more {
         more = false
@@ -114,24 +75,22 @@ func (ReturnSpread) Apply(cfg *CFG) {
 
                 /* allocate registers for Phi definitions */
                 for _, phi := range bb.Phi {
-                    rr[phi.R] = phi.R.Derive(int(atomic.AddUint64(&nrid, 1)))
+                    rr[phi.R] = cfg.DeriveFrom(phi.R)
                 }
 
                 /* allocate registers for instruction definitions */
                 for _, ins := range bb.Ins {
                     if def, ok := ins.(IrDefinitions); ok {
                         for _, r := range def.Definitions() {
-                            rr[*r] = r.Derive(int(atomic.AddUint64(&nrid, 1)))
+                            rr[*r] = cfg.DeriveFrom(*r)
                         }
                     }
                 }
 
                 /* create a new basic block */
-                ret := &BasicBlock {
-                    Id   : int(atomic.AddUint64(&nbid, 1)),
-                    Ins  : make([]IrNode, 0, nb),
-                    Pred : []*BasicBlock { pred },
-                }
+                ret := cfg.CreateBlock()
+                ret.Ins = make([]IrNode, 0, nb)
+                ret.Pred = []*BasicBlock { pred }
 
                 /* add copy instruction for Phi nodes */
                 for _, phi := range bb.Phi {
