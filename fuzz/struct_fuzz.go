@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
@@ -296,9 +297,16 @@ func GenerateStructFields(id int16, requiredness Requiredness, ts TypeSpec) (ret
 	if PointerMap[requiredness][typ.Kind()] {
 		typ = reflect.PointerTo(ts.Type)
 	}
+	var pkgPath string
+	name := "Field" + strconv.Itoa(int(id))
+	if id < 0 {
+		name = "field" + strings.ReplaceAll(strconv.Itoa(int(id)), "-", "_")
+		pkgPath = "anonymous"
+	}
 	return reflect.StructField{
-		Name: "Field" + strconv.Itoa(int(id)),
-		Type: typ,
-		Tag:  reflect.StructTag(tag),
+		Name:    name,
+		Type:    typ,
+		Tag:     reflect.StructTag(tag),
+		PkgPath: pkgPath,
 	}
 }
