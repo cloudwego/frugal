@@ -117,6 +117,12 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			err = e
 			return
 		}
+		if !isValidType(keyType) {
+			return 0, fmt.Errorf("unknown data type %d", keyType)
+		}
+		if !isValidType(valueType) {
+			return 0, fmt.Errorf("unknown data type %d", keyType)
+		}
 		if length+size*(TypeSize[keyType]+TypeSize[valueType]) >= len(buf) {
 			return 0, fmt.Errorf("size not enough")
 		}
@@ -134,14 +140,6 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 				return
 			}
 		}
-		if size == 0 {
-			if !isValidType(keyType) {
-				return 0, fmt.Errorf("unknown data type %d", keyType)
-			}
-			if !isValidType(valueType) {
-				return 0, fmt.Errorf("unknown data type %d", keyType)
-			}
-		}
 		l, e = bthrift.Binary.ReadMapEnd(buf[length:])
 		length += l
 		if e != nil {
@@ -154,6 +152,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if e != nil {
 			err = e
 			return
+		}
+		if !isValidType(elemType) {
+			return 0, fmt.Errorf("unknown data type %d", elemType)
 		}
 		if length+size*TypeSize[elemType] >= len(buf) {
 			return 0, fmt.Errorf("size not enough")
@@ -176,11 +177,6 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 				}
 			}
 		}
-		if size == 0 {
-			if !isValidType(elemType) {
-				return 0, fmt.Errorf("unknown data type %d", elemType)
-			}
-		}
 		l, e = bthrift.Binary.ReadSetEnd(buf[length:])
 		length += l
 		if e != nil {
@@ -194,6 +190,9 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			err = e
 			return
 		}
+		if !isValidType(elemType) {
+			return 0, fmt.Errorf("unknown data type %d", elemType)
+		}
 		if length+size*TypeSize[elemType] >= len(buf) {
 			return 0, fmt.Errorf("size not enough")
 		}
@@ -203,11 +202,6 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			if e != nil {
 				err = e
 				return
-			}
-		}
-		if size == 0 {
-			if !isValidType(elemType) {
-				return 0, fmt.Errorf("unknown data type %d", elemType)
 			}
 		}
 		l, e = bthrift.Binary.ReadListEnd(buf[length:])
