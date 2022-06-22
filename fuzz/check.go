@@ -17,6 +17,7 @@ package fuzz
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
@@ -45,6 +46,13 @@ func isValidType(t thrift.TType) bool {
 
 // Check checks if buf is valid thrift binary-buffered binary.
 func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
+	defer func() {
+		if panic_err := recover(); panic_err != nil {
+			if strings.Contains(fmt.Sprint(panic_err), "slice bounds out of range") {
+				err = fmt.Errorf(fmt.Sprint(panic_err))
+			}
+		}
+	}()
 	var l int
 	switch fieldType {
 	case thrift.BOOL:
