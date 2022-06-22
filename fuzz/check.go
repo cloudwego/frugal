@@ -38,7 +38,7 @@ var TypeSize = map[thrift.TType]int{
 }
 
 func isValidType(t thrift.TType) bool {
-	if t < thrift.BOOL || t > thrift.LIST || t == thrift.TType(9) || t == thrift.TType(5) {
+	if t < thrift.BOOL || t > thrift.LIST || t == thrift.TType(5) || t == thrift.TType(7) || t == thrift.TType(9) {
 		return false
 	}
 	return true
