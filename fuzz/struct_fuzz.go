@@ -78,7 +78,7 @@ func fuzzDynamicStruct(data []byte, tt thrift.TType) (reflect.Type, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ts.Type, nil
+	return reflect.StructOf([]reflect.StructField{{Name: "Field0", Type: ts.Type, Tag: reflect.StructTag(ts.TypeTag)}}), nil
 }
 
 type TypeSpec struct {
