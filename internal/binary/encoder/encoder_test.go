@@ -79,3 +79,20 @@ func TestEncoder_StructSeek(t *testing.T) {
     buf := make([]byte, EncodedSize(c))
     _, _ = EncodeObject(buf, nil, c)
 }
+
+type ListI8UniqueOuter struct {
+    Field0 *ListI8UniqueInner `frugal:"0,default,ListI8UniqueInner"`
+}
+
+type ListI8UniqueInner struct {
+    Field12336 []int8 `frugal:"12336,default,set<i8>"`
+}
+
+func TestEncoder_ListI8Unique(t *testing.T) {
+    want := &ListI8UniqueOuter{&ListI8UniqueInner{Field12336: []int8{-61, 67}}}
+    buf := make([]byte, EncodedSize(want))
+    _, err := EncodeObject(buf, nil, want)
+    if err != nil {
+        t.Fatal(err)
+    }
+}
