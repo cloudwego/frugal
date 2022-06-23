@@ -121,7 +121,7 @@ func (self *FunctionLayout) StackMap() *rt.StackMap {
 
     /* add arguments */
     for _, v := range self.Args {
-        st = append(st, _StackSlot{
+        st = append(st, _StackSlot {
             m: v.Mem,
             p: v.IsPointer(),
         })
@@ -130,7 +130,7 @@ func (self *FunctionLayout) StackMap() *rt.StackMap {
     /* add stack-passed return values */
     for _, v := range self.Rets {
         if !v.InRegister {
-            st = append(st, _StackSlot{
+            st = append(st, _StackSlot {
                 m: v.Mem,
                 p: v.IsPointer(),
             })

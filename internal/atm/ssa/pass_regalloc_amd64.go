@@ -112,16 +112,14 @@ func (self RegAlloc) Apply(cfg *CFG) {
         /* force all "return" blocks that has a single predecessor to act as "likely"
          * by removing them to the end, in order to shorten register live ranges */
         for i := len(buf) - 1; i >= 0; i-- {
-            // FIXME: this should be arch-specific after ABI lowering
-            if _, ok := buf[i].To.Term.(*IrReturn); !ok || len(buf[i].To.Pred) != 1 {
+            if _, ok := buf[i].To.Term.(*IrAMD64_RET); !ok || len(buf[i].To.Pred) != 1 {
                 st.Push(buf[i].To)
             }
         }
 
         /* make all "return" blocks that has a single predecessor appear at stack top */
         for i := len(buf) - 1; i >= 0; i-- {
-            // FIXME: this should be arch-specific after ABI lowering
-            if _, ok := buf[i].To.Term.(*IrReturn); ok && len(buf[i].To.Pred) == 1 {
+            if _, ok := buf[i].To.Term.(*IrAMD64_RET); ok && len(buf[i].To.Pred) == 1 {
                 st.Push(buf[i].To)
             }
         }

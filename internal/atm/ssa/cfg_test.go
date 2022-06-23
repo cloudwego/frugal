@@ -127,7 +127,7 @@ func TestCFG_Build(t *testing.T) {
     p.RET   ().R0(hir.R0).R1(hir.R1)
     t.Logf("Generating CFG ...")
     c := p.Build()
-    g := Compile(c)
+    g := Compile(c, (func())(nil))
     t.Logf("Generating DOT file ...")
     cfgdot(g, "/tmp/cfg.gv")
 }

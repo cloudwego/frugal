@@ -183,8 +183,8 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrLoadArg {
-                    R  : Rv(p.Rx),
-                    Id : uint64(p.Iv),
+                    R: Rv(p.Rx),
+                    I: int(p.Iv),
                 },
             )
         }
@@ -194,8 +194,8 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
             self.Ins = append(
                 self.Ins,
                 &IrLoadArg {
-                    R  : Rv(p.Pd),
-                    Id : uint64(p.Iv),
+                    R: Rv(p.Pd),
+                    I: int(p.Iv),
                 },
             )
         }
@@ -356,8 +356,9 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     P: rtx.F_memmove,
                 },
                 &IrCallFunc {
-                    R  : Pr(0),
-                    In : []Reg { Rv(p.Pd), Rv(p.Ps), Rv(p.Rx) },
+                    R    : Pr(0),
+                    In   : []Reg { Rv(p.Pd), Rv(p.Ps), Rv(p.Rx) },
+                    Func : rtx.S_memmove,
                 },
             )
         }
@@ -387,9 +388,10 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     P: hir.LookupCall(p.Iv).Func,
                 },
                 &IrCallFunc {
-                    R   : Pr(0),
-                    In  : ri2regs(p.Ar[:p.An]),
-                    Out : ri2regs(p.Rr[:p.Rn]),
+                    R    : Pr(0),
+                    In   : ri2regs(p.Ar[:p.An]),
+                    Out  : ri2regs(p.Rr[:p.Rn]),
+                    Func : abi.ABI.FnTab[hir.LookupCall(p.Iv).Id],
                 },
             )
         }
@@ -404,6 +406,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     In   : ri2regs(p.Ar[:p.An]),
                     Out  : ri2regs(p.Rr[:p.Rn]),
                     Slot : hir.LookupCall(p.Iv).Slot,
+                    Func : abi.ABI.FnTab[hir.LookupCall(p.Iv).Id],
                 },
             )
         }

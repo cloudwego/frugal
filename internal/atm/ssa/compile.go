@@ -17,6 +17,9 @@
 package ssa
 
 import (
+    `reflect`
+
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
@@ -46,14 +49,23 @@ var Passes = [...]PassDescriptor {
     { Name: "Register Allocation"        , Pass: new(RegAlloc) },
 }
 
+func toFuncType(fn interface{}) reflect.Type {
+    if vt := reflect.TypeOf(fn); vt.Kind() != reflect.Func {
+        panic("ssa: fn must be a function prototype")
+    } else {
+        return vt
+    }
+}
+
 func executeSSAPasses(cfg *CFG) {
     for _, p := range Passes {
         p.Pass.Apply(cfg)
     }
 }
 
-func Compile(p hir.Program) (cfg *CFG) {
+func Compile(p hir.Program, fn interface{}) (cfg *CFG) {
     cfg = newGraphBuilder().build(p)
+    cfg.Layout = abi.ABI.LayoutFunc(-1, toFuncType(fn))
     insertPhiNodes(cfg)
     renameRegisters(cfg)
     executeSSAPasses(cfg)

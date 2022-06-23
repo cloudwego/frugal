@@ -27,7 +27,7 @@ type _Vid interface {
 
 func (self *IrLoadArg) vid() []string {
     return []string {
-        fmt.Sprintf("#%d", self.Id),
+        fmt.Sprintf("#%d", self.I),
     }
 }
 

@@ -53,9 +53,11 @@ func draw_liverange(fn string, bb []*BasicBlock, lr map[Reg]*_LiveRange) {
         }
     }
     insw := maxi * 9 + 120
-    regw := (maxw + 1) * 8 + 9
+    regw := (maxw + 1) * 8 + 16
     sort.Slice(regs, func(i, j int) bool {
-        return regs[i] < regs[j]
+        k1, k2 := regs[i].Kind(), regs[j].Kind()
+        n1, n2 := regs[i].Name(), regs[j].Name()
+        return k1 < k2 || (k1 == k2 && n1 < n2) || (k1 == k2 && n1 == n2 && regs[i] < regs[j])
     })
     for _, b := range bb {
         leni += len(b.Ins) + 1

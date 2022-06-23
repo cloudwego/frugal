@@ -22,6 +22,7 @@ import (
     `strings`
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/atm/hir`
 )
 
@@ -32,33 +33,37 @@ type (
 
 const (
     _B_ptr  = 63
-    _B_kind = 59
+    _B_kind = 60
+    _B_name = 52
 )
 
 const (
     _M_ptr  = 1
-    _M_kind = 0x0f
+    _M_kind = 0x07
+    _M_name = 0xff
 )
 
 const (
     _R_ptr   = _M_ptr << _B_ptr
     _R_kind  = _M_kind << _B_kind
-    _R_index = (1 << _B_kind) - 1
+    _R_name  = _M_name << _B_name
+    _R_index = (1 << _B_name) - 1
 )
 
 const (
-    K_sys  = 7
-    K_zero = 8
-    K_tmp0 = 9
-    K_tmp1 = 10
-    K_tmp2 = 11
-    K_tmp3 = 12
-    K_tmp4 = 13
-    K_arch = 14
-    K_norm = 15
+    K_sys  = 0
+    K_zero = 1
+    K_temp = 2
+    K_arch = 3
+    K_norm = 4
 )
 
 const (
+    N_name = _M_name + 1
+)
+
+const (
+    Ra Reg = _R_index
     Rz Reg = (0 << _B_ptr) | (K_zero << _B_kind)
     Pn Reg = (1 << _B_ptr) | (K_zero << _B_kind)
 )
@@ -76,31 +81,31 @@ func (self Likeliness) String() string {
     }
 }
 
-func mkreg(ptr uint64, kind uint64) Reg {
-    return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind))
-}
-
 func mksys(ptr uint64, kind uint64) Reg {
-    if kind > K_sys {
+    if kind > N_name {
         panic(fmt.Sprintf("invalid register kind: %d", kind))
     } else {
-        return mkreg(ptr, kind)
+        return mkreg(ptr, K_sys, kind)
     }
 }
 
-func Tr(i uint64) Reg {
-    if i > K_tmp4 - K_tmp0 {
+func mkreg(ptr uint64, kind uint64, name uint64) Reg {
+    return Reg(((ptr & _M_ptr) << _B_ptr) | ((kind & _M_kind) << _B_kind) | ((name & _M_name) << _B_name))
+}
+
+func Tr(i int) Reg {
+    if i < 0 || i > N_name {
         panic("invalid generic temporary register index")
     } else {
-        return mkreg(0, K_tmp0 + i)
+        return mkreg(0, K_temp, uint64(i))
     }
 }
 
-func Pr(i uint64) Reg {
-    if i > K_tmp4 - K_tmp0 {
+func Pr(i int) Reg {
+    if i < 0 || i > N_name {
         panic("invalid generic temporary register index")
     } else {
-        return mkreg(1, K_tmp0 + i)
+        return mkreg(1, K_temp, uint64(i))
     }
 }
 
@@ -120,8 +125,12 @@ func (self Reg) Zero() Reg {
     return (self & _R_ptr) | (K_zero << _B_kind)
 }
 
-func (self Reg) Kind() uint8 {
-    return uint8((self & _R_kind) >> _B_kind)
+func (self Reg) Kind() int {
+    return int((self & _R_kind) >> _B_kind)
+}
+
+func (self Reg) Name() int {
+    return int((self & _R_name) >> _B_name)
 }
 
 func (self Reg) Index() int {
@@ -140,10 +149,14 @@ func (self Reg) String() string {
 
         /* arch-specific registers */
         case K_arch: {
-            if i := self.Index(); i >= len(ArchRegs) {
+            if i := self.Name(); i >= len(ArchRegs) {
                 panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
+            } else if self.Index() == _R_index {
+                return fmt.Sprintf("{%s}", ArchRegNames[ArchRegs[i]])
+            } else if self.Ptr() {
+                return fmt.Sprintf("%%p%d{%s}", self.Index(), ArchRegNames[ArchRegs[i]])
             } else {
-                return "%" + ArchRegNames[ArchRegs[i]]
+                return fmt.Sprintf("%%r%d{%s}", self.Index(), ArchRegNames[ArchRegs[i]])
             }
         }
 
@@ -157,11 +170,11 @@ func (self Reg) String() string {
         }
 
         /* temp registers */
-        case K_tmp0, K_tmp1, K_tmp2, K_tmp3, K_tmp4: {
+        case K_temp: {
             if self.Ptr() {
-                return fmt.Sprintf("%%tp%d.%d", self.Kind() - K_tmp0, self.Index())
+                return fmt.Sprintf("%%tp%d.%d", self.Name(), self.Index())
             } else {
-                return fmt.Sprintf("%%tr%d.%d", self.Kind() - K_tmp0, self.Index())
+                return fmt.Sprintf("%%tr%d.%d", self.Name(), self.Index())
             }
         }
 
@@ -180,7 +193,7 @@ func (self Reg) Derive(i int) Reg {
     if self.Kind() == K_zero {
         return self
     } else {
-        return (self & (_R_ptr | _R_kind)) | Reg(i & _R_index)
+        return (self & (_R_ptr | _R_kind | _R_name)) | Reg(i & _R_index)
     }
 }
 
@@ -213,6 +226,7 @@ func (*IrSwitch)       irnode() {}
 func (*IrReturn)       irnode() {}
 func (*IrNop)          irnode() {}
 func (*IrBreakpoint)   irnode() {}
+func (*IrEntry)        irnode() {}
 func (*IrLoad)         irnode() {}
 func (*IrStore)        irnode() {}
 func (*IrLoadArg)      irnode() {}
@@ -554,6 +568,22 @@ func (IrBreakpoint) Clone() IrNode { return new(IrBreakpoint) }
 func (IrNop)        String() string { return "nop" }
 func (IrBreakpoint) String() string { return "breakpoint" }
 
+type IrEntry struct {
+    R []Reg
+}
+
+func (self *IrEntry) Clone() IrNode {
+    panic(`entry node "` + self.String() + `" is not cloneable`)
+}
+
+func (self *IrEntry) String() string {
+    return "entry_point " + regslicerepr(self.R)
+}
+
+func (self *IrEntry) Definitions() []*Reg {
+    return regsliceref(self.R)
+}
+
 type IrLoad struct {
     R    Reg
     Mem  Reg
@@ -601,8 +631,8 @@ func (self *IrStore) Usages() []*Reg {
 }
 
 type IrLoadArg struct {
-    R  Reg
-    Id uint64
+    R Reg
+    I int
 }
 
 func (self *IrLoadArg) Clone() IrNode {
@@ -612,9 +642,9 @@ func (self *IrLoadArg) Clone() IrNode {
 
 func (self *IrLoadArg) String() string {
     if self.R.Ptr() {
-        return fmt.Sprintf("%s = loadarg.ptr #%d", self.R, self.Id)
+        return fmt.Sprintf("%s = loadarg.ptr #%d", self.R, self.I)
     } else {
-        return fmt.Sprintf("%s = loadarg.i64 #%d", self.R, self.Id)
+        return fmt.Sprintf("%s = loadarg.i64 #%d", self.R, self.I)
     }
 }
 
@@ -819,9 +849,10 @@ func (self *IrBitTestSet) Definitions() []*Reg {
 }
 
 type IrCallFunc struct {
-    R   Reg
-    In  []Reg
-    Out []Reg
+    R    Reg
+    In   []Reg
+    Out  []Reg
+    Func *abi.FunctionLayout
 }
 
 func (self *IrCallFunc) Clone() IrNode {
@@ -829,6 +860,7 @@ func (self *IrCallFunc) Clone() IrNode {
     r.R = self.R
     r.In = make([]Reg, len(self.In))
     r.Out = make([]Reg, len(self.Out))
+    r.Func = self.Func
     copy(r.In, self.In)
     copy(r.Out, self.Out)
     return r
@@ -891,6 +923,7 @@ type IrCallMethod struct {
     In   []Reg
     Out  []Reg
     Slot int
+    Func *abi.FunctionLayout
 }
 
 func (self *IrCallMethod) Clone() IrNode {
@@ -900,6 +933,7 @@ func (self *IrCallMethod) Clone() IrNode {
     r.In = make([]Reg, len(self.In))
     r.Out = make([]Reg, len(self.Out))
     r.Slot = self.Slot
+    r.Func = self.Func
     copy(r.In, self.In)
     copy(r.Out, self.Out)
     return r

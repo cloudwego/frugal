@@ -19,6 +19,7 @@ package ssa
 import (
     `sync/atomic`
 
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/oleiade/lane`
 )
 
@@ -39,6 +40,7 @@ type CFG struct {
     _CFGPrivate
     Root              *BasicBlock
     Depth             map[int]int
+    Layout            *abi.FunctionLayout
     DominatedBy       map[int]*BasicBlock
     DominatorOf       map[int][]*BasicBlock
     DominanceFrontier map[int][]*BasicBlock
@@ -58,9 +60,9 @@ func (self *CFG) CreateBlock() (r *BasicBlock) {
 
 func (self *CFG) CreateRegister(ptr bool) Reg {
     if i := self.allocreg(); ptr {
-        return mkreg(0, K_norm).Derive(i)
+        return mkreg(0, K_norm, 0).Derive(i)
     } else {
-        return mkreg(1, K_norm).Derive(i)
+        return mkreg(1, K_norm, 0).Derive(i)
     }
 }
 

@@ -28,7 +28,7 @@ func (Lowering) Apply(cfg *CFG) {
         for _, v := range ins {
             switch p := v.(type) {
                 default: {
-                    panic("invalid instruction: " + v.String())
+                    bb.Ins = append(bb.Ins, p)
                 }
 
                 /* load from memory */
@@ -57,11 +57,6 @@ func (Lowering) Apply(cfg *CFG) {
                             D: 0,
                         },
                     })
-                }
-
-                /* load argument by index, ABI specific, will be lowered in later pass */
-                case *IrLoadArg: {
-                    bb.Ins = append(bb.Ins, p)
                 }
 
                 /* load constant into register */
@@ -132,26 +127,6 @@ func (Lowering) Apply(cfg *CFG) {
                         X: p.X,
                         Y: p.Y,
                     })
-                }
-
-                /* subroutine call, ABI specific, will be lowered in later pass */
-                case *IrCallFunc: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* native subroutine call, ABI specific, will be lowered in later pass */
-                case *IrCallNative: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* interface method call, ABI specific, will be lowered in later pass */
-                case *IrCallMethod: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* write barrier, handled in later pass */
-                case *IrWriteBarrier: {
-                    bb.Ins = append(bb.Ins, p)
                 }
 
                 /* breakpoint */

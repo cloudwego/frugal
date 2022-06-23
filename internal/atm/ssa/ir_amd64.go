@@ -42,6 +42,25 @@ var ArchRegs = [...]x86_64.Register64 {
     x86_64.R15,
 }
 
+var ArchRegIds = map[x86_64.Register64]uint64 {
+    x86_64.RAX : 0,
+    x86_64.RCX : 1,
+    x86_64.RDX : 2,
+    x86_64.RBX : 3,
+    x86_64.RSP : 4,
+    x86_64.RBP : 5,
+    x86_64.RSI : 6,
+    x86_64.RDI : 7,
+    x86_64.R8  : 8,
+    x86_64.R9  : 9,
+    x86_64.R10 : 10,
+    x86_64.R11 : 11,
+    x86_64.R12 : 12,
+    x86_64.R13 : 13,
+    x86_64.R14 : 14,
+    x86_64.R15 : 15,
+}
+
 var ArchRegNames = map[x86_64.Register64]string {
     x86_64.RAX : "rax",
     x86_64.RCX : "rcx",
@@ -59,6 +78,16 @@ var ArchRegNames = map[x86_64.Register64]string {
     x86_64.R13 : "r13",
     x86_64.R14 : "r14",
     x86_64.R15 : "r15",
+}
+
+func IrSetArch(r Reg, rr x86_64.Register64) Reg {
+    if id, ok := ArchRegIds[rr]; !ok {
+        panic("invalid arch-specific register: " + rr.String())
+    } else if r.Ptr() {
+        return mkreg(1, K_arch, id).Derive(r.Index())
+    } else {
+        return mkreg(0, K_arch, id).Derive(r.Index())
+    }
 }
 
 type Mem struct {
@@ -96,16 +125,18 @@ func (*IrAMD64_NEG)    irnode() {}
 func (*IrAMD64_BSWAP)  irnode() {}
 func (*IrAMD64_MOVSLQ) irnode() {}
 
-func (*IrAMD64_MOV_abs)      irnode() {}
-func (*IrAMD64_MOV_ptr)      irnode() {}
-func (*IrAMD64_MOV_reg)      irnode() {}
-func (*IrAMD64_MOV_load)     irnode() {}
-func (*IrAMD64_MOV_store_r)  irnode() {}
-func (*IrAMD64_MOV_store_i)  irnode() {}
-func (*IrAMD64_MOV_store_p)  irnode() {}
-func (*IrAMD64_MOV_wb)       irnode() {}
-func (*IrAMD64_MOV_load_be)  irnode() {}
-func (*IrAMD64_MOV_store_be) irnode() {}
+func (*IrAMD64_MOV_abs)        irnode() {}
+func (*IrAMD64_MOV_ptr)        irnode() {}
+func (*IrAMD64_MOV_reg)        irnode() {}
+func (*IrAMD64_MOV_load)       irnode() {}
+func (*IrAMD64_MOV_store_r)    irnode() {}
+func (*IrAMD64_MOV_store_i)    irnode() {}
+func (*IrAMD64_MOV_store_p)    irnode() {}
+func (*IrAMD64_MOV_wb)         irnode() {}
+func (*IrAMD64_MOV_load_be)    irnode() {}
+func (*IrAMD64_MOV_store_be)   irnode()  {}
+func (*IrAMD64_MOV_load_stack)  irnode() {}
+func (*IrAMD64_MOV_store_stack) irnode() {}
 
 func (*IrAMD64_BinOp_rr) irnode() {}
 func (*IrAMD64_BinOp_ri) irnode() {}
@@ -125,6 +156,7 @@ func (*IrAMD64_CMPQ_mp) irnode() {}
 func (*IrAMD64_CMPQ_im) irnode() {}
 func (*IrAMD64_CMPQ_pm) irnode() {}
 
+func (*IrAMD64_RET) irnode() {}
 func (*IrAMD64_JMP) irnode() {}
 func (*IrAMD64_JNC) irnode() {}
 
@@ -140,19 +172,23 @@ func (*IrAMD64_Jcc_mp) irnode() {}
 func (*IrAMD64_Jcc_im) irnode() {}
 func (*IrAMD64_Jcc_pm) irnode() {}
 
-func (*IrAMD64_MOV_store_r)  irimpure() {}
-func (*IrAMD64_MOV_store_i)  irimpure() {}
-func (*IrAMD64_MOV_store_p)  irimpure() {}
-func (*IrAMD64_MOV_wb)       irimpure() {}
-func (*IrAMD64_MOV_store_be) irimpure() {}
+func (*IrAMD64_MOV_store_r)     irimpure() {}
+func (*IrAMD64_MOV_store_i)     irimpure() {}
+func (*IrAMD64_MOV_store_p)     irimpure() {}
+func (*IrAMD64_MOV_wb)          irimpure() {}
+func (*IrAMD64_MOV_store_be)    irimpure() {}
+func (*IrAMD64_MOV_load_stack)  irimpure() {}
+func (*IrAMD64_MOV_store_stack) irimpure() {}
 
-func (*IrAMD64_MOV_load)     irimmovable() {}
-func (*IrAMD64_MOV_store_r)  irimmovable() {}
-func (*IrAMD64_MOV_store_i)  irimmovable() {}
-func (*IrAMD64_MOV_store_p)  irimmovable() {}
-func (*IrAMD64_MOV_wb)       irimmovable() {}
-func (*IrAMD64_MOV_load_be)  irimmovable() {}
-func (*IrAMD64_MOV_store_be) irimmovable() {}
+func (*IrAMD64_MOV_load)        irimmovable() {}
+func (*IrAMD64_MOV_store_r)     irimmovable() {}
+func (*IrAMD64_MOV_store_i)     irimmovable() {}
+func (*IrAMD64_MOV_store_p)     irimmovable() {}
+func (*IrAMD64_MOV_wb)          irimmovable() {}
+func (*IrAMD64_MOV_load_be)     irimmovable() {}
+func (*IrAMD64_MOV_store_be)    irimmovable() {}
+func (*IrAMD64_MOV_load_stack)  irimmovable() {}
+func (*IrAMD64_MOV_store_stack) irimmovable() {}
 
 func (*IrAMD64_CMPQ_rm) irimmovable() {}
 func (*IrAMD64_CMPQ_mr) irimmovable() {}
@@ -161,13 +197,7 @@ func (*IrAMD64_CMPQ_mp) irimmovable() {}
 func (*IrAMD64_CMPQ_im) irimmovable() {}
 func (*IrAMD64_CMPQ_pm) irimmovable() {}
 
-func (*IrAMD64_Jcc_rm) irimmovable() {}
-func (*IrAMD64_Jcc_mr) irimmovable() {}
-func (*IrAMD64_Jcc_mi) irimmovable() {}
-func (*IrAMD64_Jcc_mp) irimmovable() {}
-func (*IrAMD64_Jcc_im) irimmovable() {}
-func (*IrAMD64_Jcc_pm) irimmovable() {}
-
+func (*IrAMD64_RET)    irterminator() {}
 func (*IrAMD64_JMP)    irterminator() {}
 func (*IrAMD64_JNC)    irterminator() {}
 
@@ -544,6 +574,61 @@ func (self *IrAMD64_MOV_store_be) Usages() (r []*Reg) {
     if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
     if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return
+}
+
+type (
+    IrSlotKind uint8
+)
+
+const (
+    IrSlotArgs IrSlotKind = iota
+    IrSlotLocal
+)
+
+func (self IrSlotKind) String() string {
+    switch self {
+        case IrSlotArgs  : return "args"
+        case IrSlotLocal : return "local"
+        default          : return "???"
+    }
+}
+
+type IrAMD64_MOV_load_stack struct {
+    R Reg
+    S uintptr
+    K IrSlotKind
+}
+
+func (self *IrAMD64_MOV_load_stack) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrAMD64_MOV_load_stack) String() string {
+    return fmt.Sprintf("movq %s+%d<>(FP), %s", self.K, self.S, self.R)
+}
+
+func (self *IrAMD64_MOV_load_stack) Definitions() (r []*Reg) {
+    return []*Reg { &self.R }
+}
+
+type IrAMD64_MOV_store_stack struct {
+    R Reg
+    S uintptr
+    K IrSlotKind
+}
+
+func (self *IrAMD64_MOV_store_stack) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrAMD64_MOV_store_stack) String() string {
+    return fmt.Sprintf("movq %s, %s+%d<>(FP)", self.R, self.K, self.S)
+}
+
+func (self *IrAMD64_MOV_store_stack) Usages() (r []*Reg) {
+    return []*Reg { &self.R }
 }
 
 type (
@@ -1057,6 +1142,29 @@ func (self *IrAMD64_CMPQ_pm) Usages() []*Reg {
 
 func (self *IrAMD64_CMPQ_pm) Definitions() []*Reg {
     return []*Reg { &self.R }
+}
+
+type IrAMD64_RET struct {
+    R []Reg
+}
+
+func (self *IrAMD64_RET) Clone() IrNode {
+    r := new(IrAMD64_RET)
+    r.R = make([]Reg, len(self.R))
+    copy(r.R, self.R)
+    return r
+}
+
+func (self *IrAMD64_RET) String() string {
+    return "retq"
+}
+
+func (self *IrAMD64_RET) Usages() []*Reg {
+    return regsliceref(self.R)
+}
+
+func (self *IrAMD64_RET) Successors() IrSuccessors {
+    return _EmptySuccessor{}
 }
 
 type IrAMD64_JMP struct {

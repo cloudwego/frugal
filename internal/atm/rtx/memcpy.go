@@ -17,8 +17,10 @@
 package rtx
 
 import (
+    `reflect`
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -30,4 +32,5 @@ func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 var (
     F_memmove = rt.FuncAddr(memmove)
     R_memmove = resolveClobberSet(memmove)
+    S_memmove = abi.ABI.LayoutFunc(-1, reflect.TypeOf(memmove))
 )

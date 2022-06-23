@@ -83,7 +83,7 @@ func (Reorder) moveLoadArgs(cfg *CFG) {
 
     /* sort by argument ID */
     sort.Slice(ir, func(i int, j int) bool {
-        return ir[i].(*IrLoadArg).Id < ir[j].(*IrLoadArg).Id
+        return ir[i].(*IrLoadArg).I < ir[j].(*IrLoadArg).I
     })
 
     /* prepend to the root node */
