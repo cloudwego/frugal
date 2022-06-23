@@ -156,7 +156,6 @@ func (self Compiler) measureSeq(p *Program, sp int, vt *defs.Type, maxpc int) {
 }
 
 func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type, maxpc int) {
-    var off int
     var err error
     var fvs []defs.Field
 
@@ -183,9 +182,9 @@ func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type, maxpc int)
 
     /* measure every field */
     for _, fv := range fvs {
-        p.i64(OP_seek, int64(fv.F - off))
+        p.i64(OP_seek, int64(fv.F))
         self.measureField(p, sp + 1, fv, maxpc)
-        off = fv.F
+        p.i64(OP_seek, -int64(fv.F))
     }
 }
 
