@@ -59,6 +59,14 @@ func bool2u64(val bool) uint64 {
     }
 }
 
+func checkptr(p unsafe.Pointer) unsafe.Pointer {
+    if p == nil || checkptrBase(p) != 0 {
+        return p
+    } else {
+        panic(fmt.Sprintf("emu: invalid pointer: %p", p))
+    }
+}
+
 func (self *Emulator) trap() {
     println("****** DEBUGGER BREAK ******")
     println("Current State:", self.String())
@@ -86,22 +94,22 @@ func (self *Emulator) Run() {
         switch p.Op {
             default          : return
             case hir.OP_nop   : break
-            case hir.OP_ip    : self.pv[p.Pd] = p.Pr
+            case hir.OP_ip    : self.pv[p.Pd] = checkptr(p.Pr)
             case hir.OP_lb    : self.uv[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
             case hir.OP_lw    : self.uv[p.Rx] = uint64(*(*int16)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
             case hir.OP_ll    : self.uv[p.Rx] = uint64(*(*int32)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
             case hir.OP_lq    : self.uv[p.Rx] = uint64(*(*int64)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case hir.OP_lp    : self.pv[p.Pd] = *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv)))
+            case hir.OP_lp    : self.pv[p.Pd] = checkptr(*(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
             case hir.OP_sb    : *(*int8)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int8(self.uv[p.Rx])
             case hir.OP_sw    : *(*int16)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int16(self.uv[p.Rx])
             case hir.OP_sl    : *(*int32)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int32(self.uv[p.Rx])
             case hir.OP_sq    : *(*int64)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int64(self.uv[p.Rx])
             case hir.OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.pv[p.Ps]
             case hir.OP_ldaq  : self.uv[p.Rx] = self.ar[p.Iv].U
-            case hir.OP_ldap  : self.pv[p.Pd] = self.ar[p.Iv].P
-            case hir.OP_addp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(self.uv[p.Rx]))
-            case hir.OP_subp  : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) - uintptr(self.uv[p.Rx]))
-            case hir.OP_addpi : self.pv[p.Pd] = unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))
+            case hir.OP_ldap  : self.pv[p.Pd] = checkptr(self.ar[p.Iv].P)
+            case hir.OP_addp  : self.pv[p.Pd] = checkptr(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(self.uv[p.Rx])))
+            case hir.OP_subp  : self.pv[p.Pd] = checkptr(unsafe.Pointer(uintptr(self.pv[p.Ps]) - uintptr(self.uv[p.Rx])))
+            case hir.OP_addpi : self.pv[p.Pd] = checkptr(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv)))
             case hir.OP_add   : self.uv[p.Rz] = self.uv[p.Rx] + self.uv[p.Ry]
             case hir.OP_sub   : self.uv[p.Rz] = self.uv[p.Rx] - self.uv[p.Ry]
             case hir.OP_addi  : self.uv[p.Ry] = self.uv[p.Rx] + uint64(p.Iv)

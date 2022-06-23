@@ -29,3 +29,8 @@ func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 //go:linkname memclrNoHeapPointers runtime.memclrNoHeapPointers
 //goland:noinspection GoUnusedParameter
 func memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr)
+
+//go:noescape
+//go:linkname checkptrBase runtime.checkptrBase
+//goland:noinspection GoUnusedParameter
+func checkptrBase(p unsafe.Pointer) uintptr
