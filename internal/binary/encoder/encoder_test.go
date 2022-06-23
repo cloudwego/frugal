@@ -63,3 +63,19 @@ func TestEncoder_Encode(t *testing.T) {
     mm.Write(buf)
     println("Base64 Encoded Message:", base64.StdEncoding.EncodeToString(mm.Bytes()))
 }
+
+type StructSeekTest struct {
+    H StructSeekTestSubStruct `frugal:"0,default,StructSeekTestSubStruct"`
+    O []int8                  `frugal:"1,default,list<i8>"`
+}
+
+type StructSeekTestSubStruct struct {
+    X int  `frugal:"0,default,i64"`
+    Y *int `frugal:"1,optional,i64"`
+}
+
+func TestEncoder_StructSeek(t *testing.T) {
+    c := StructSeekTest{O: []int8{-61}}
+    buf := make([]byte, EncodedSize(c))
+    _, _ = EncodeObject(buf, nil, c)
+}
