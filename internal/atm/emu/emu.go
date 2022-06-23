@@ -60,11 +60,8 @@ func bool2u64(val bool) uint64 {
 }
 
 func checkptr(p unsafe.Pointer) unsafe.Pointer {
-    if p == nil || checkptrBase(p) != 0 {
-        return p
-    } else {
-        panic(fmt.Sprintf("emu: invalid pointer: %p", p))
-    }
+    if p != nil { _ = *(*uint8)(p) }
+    return p
 }
 
 func (self *Emulator) trap() {
@@ -94,15 +91,15 @@ func (self *Emulator) Run() {
         switch p.Op {
             case hir.OP_nop   : break
             case hir.OP_ip    : self.pv[p.Pd] = checkptr(p.Pr)
-            case hir.OP_lb    : self.uv[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case hir.OP_lw    : self.uv[p.Rx] = uint64(*(*int16)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case hir.OP_ll    : self.uv[p.Rx] = uint64(*(*int32)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case hir.OP_lq    : self.uv[p.Rx] = uint64(*(*int64)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lb    : self.uv[p.Rx] = uint64(*(*uint8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lw    : self.uv[p.Rx] = uint64(*(*uint16)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_ll    : self.uv[p.Rx] = uint64(*(*uint32)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
+            case hir.OP_lq    : self.uv[p.Rx] = *(*uint64)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv)))
             case hir.OP_lp    : self.pv[p.Pd] = checkptr(*(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
-            case hir.OP_sb    : *(*int8)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int8(self.uv[p.Rx])
-            case hir.OP_sw    : *(*int16)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int16(self.uv[p.Rx])
-            case hir.OP_sl    : *(*int32)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int32(self.uv[p.Rx])
-            case hir.OP_sq    : *(*int64)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = int64(self.uv[p.Rx])
+            case hir.OP_sb    : *(*uint8)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = uint8(self.uv[p.Rx])
+            case hir.OP_sw    : *(*uint16)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = uint16(self.uv[p.Rx])
+            case hir.OP_sl    : *(*uint32)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = uint32(self.uv[p.Rx])
+            case hir.OP_sq    : *(*uint64)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.uv[p.Rx]
             case hir.OP_sp    : *(*unsafe.Pointer)(unsafe.Pointer(uintptr(self.pv[p.Pd]) + uintptr(p.Iv))) = self.pv[p.Ps]
             case hir.OP_ldaq  : self.uv[p.Rx] = self.ar[p.Iv].U
             case hir.OP_ldap  : self.pv[p.Pd] = checkptr(self.ar[p.Iv].P)
@@ -140,8 +137,10 @@ func (self *Emulator) Run() {
 
             /* bit test and set */
             case hir.OP_bts: {
-                self.uv[p.Rz] = bool2u64(self.uv[p.Ry] & (1 << self.uv[p.Rx]) != 0)
-                self.uv[p.Ry] |= 1 << self.uv[p.Rx]
+                bi := self.uv[p.Rx]
+                bv := self.uv[p.Ry]
+                self.uv[p.Ry] = bv | (1 << (bi % 64))
+                self.uv[p.Rz] = bool2u64(bv & (1 << (bi % 64)) != 0)
             }
 
             /* table switch */
