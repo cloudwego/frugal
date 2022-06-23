@@ -92,7 +92,6 @@ func (self *Emulator) Run() {
 
         /* main switch on OpCode */
         switch p.Op {
-            default          : return
             case hir.OP_nop   : break
             case hir.OP_ip    : self.pv[p.Pd] = checkptr(p.Pr)
             case hir.OP_lb    : self.uv[p.Rx] = uint64(*(*int8)(unsafe.Pointer(uintptr(self.pv[p.Ps]) + uintptr(p.Iv))))
@@ -164,12 +163,12 @@ func (self *Emulator) Run() {
                     }
                 }
             }
-        }
-    }
 
-    /* check for exceptions */
-    if self.pc != nil {
-        panic(fmt.Sprintf("illegal OpCode: %#02x", self.pc.Op))
+            /* illegal OpCode */
+            default: {
+                panic(fmt.Sprintf("illegal OpCode: %#02x", p.Op))
+            }
+        }
     }
 }
 
