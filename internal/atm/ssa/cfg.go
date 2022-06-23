@@ -23,16 +23,16 @@ import (
 )
 
 type _CFGPrivate struct {
-    nextreg   uint64
-    nextblock uint64
+    reg   uint64
+    block uint64
 }
 
 func (self *_CFGPrivate) allocreg() int {
-    return int(atomic.AddUint64(&self.nextreg, 1)) - 1
+    return int(atomic.AddUint64(&self.reg, 1)) - 1
 }
 
 func (self *_CFGPrivate) allocblock() int {
-    return int(atomic.AddUint64(&self.nextblock, 1)) - 1
+    return int(atomic.AddUint64(&self.block, 1)) - 1
 }
 
 type CFG struct {
@@ -50,14 +50,18 @@ func (self *CFG) Rebuild() {
     updateDominatorFrontier(self)
 }
 
-func (self *CFG) DeriveFrom(r Reg) Reg {
-    return r.Derive(self.allocreg())
-}
-
 func (self *CFG) CreateBlock() (r *BasicBlock) {
     r = new(BasicBlock)
     r.Id = self.allocblock()
     return
+}
+
+func (self *CFG) CreateRegister(ptr bool) Reg {
+    if i := self.allocreg(); ptr {
+        return mkreg(0, K_norm).Derive(i)
+    } else {
+        return mkreg(1, K_norm).Derive(i)
+    }
 }
 
 func (self *CFG) CreateUnreachable(bb *BasicBlock) (ret *BasicBlock) {

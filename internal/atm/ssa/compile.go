@@ -36,10 +36,12 @@ var Passes = [...]PassDescriptor {
     { Name: "Return Spreading"           , Pass: new(ReturnSpread) },
     { Name: "Value Reordering"           , Pass: new(Reorder) },
     { Name: "Late Reduction"             , Pass: new(Reduce) },
+    { Name: "Zero Register Substitution" , Pass: new(ZeroReg) },
     { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
     { Name: "Write Barrier Insertion"    , Pass: new(WriteBarrier) },
     { Name: "Instruction Fusion"         , Pass: new(Fusion) },
     { Name: "Instruction Compaction"     , Pass: new(Compaction) },
+    { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering) },
     { Name: "Phi Propagation"            , Pass: new(PhiProp) },    // The CFG is no longer in SSA form after this pass.
     { Name: "Register Allocation"        , Pass: new(RegAlloc) },
 }

@@ -29,11 +29,25 @@ func (CopyElim) Apply(cfg *CFG) {
 
     /* register replacement func */
     replacereg := func(rr *Reg) {
+        var rv Reg
+        var ok bool
+        var cc _ConstData
+
+        /* substitute registers */
         for {
-            if r, ok := regs[*rr]; ok {
-                *rr = r
+            if rv, ok = regs[*rr]; ok {
+                *rr = rv
             } else {
                 break
+            }
+        }
+
+        /* substitute zero registers */
+        if cc, ok = consts[*rr]; ok {
+            if cc.i && cc.v == 0 {
+                *rr = Rz
+            } else if !cc.i && cc.p == nil {
+                *rr = Pn
             }
         }
     }

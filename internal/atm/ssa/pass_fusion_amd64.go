@@ -155,13 +155,17 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* movq {imm}, %r0; movx %r0, {mem} --> movx {imm}, {mem}
+                    /* movq {i32}, %r0; movx %r0, {mem} --> movx {i32}, {mem}
+                     * movq {p32}, %r0; movx %r0, {mem} --> movx {p32}, {mem}
                      * bswapx %r0, %r1; movx %r1, {mm1} --> movbex %r0, {mm1}
                      * leaq {mem}, %r0; movx %r1, (%r0) --> movx %r1, {mem} */
                     case *IrAMD64_MOV_store_r: {
                         if ins, ok := defs[p.R].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_i { V: int32(ins.V), M: p.M, N: p.N }
+                        } else if ins, ok := defs[p.R].(*IrAMD64_MOV_ptr); ok && isp32(ins.P) && p.N == abi.PtrSize {
+                            done = false
+                            bb.Ins[i] = &IrAMD64_MOV_store_p { P: ins.P, M: p.M }
                         } else if ins, ok := defs[p.R].(*IrAMD64_BSWAP); ok && p.N != 1 && cpu.HasMOVBE {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_be { R: ins.V, M: p.M, N: p.N }
@@ -252,19 +256,19 @@ func (self Fusion) Apply(cfg *CFG) {
                     }
 
                     /* movq {i32}, %r0; cmpx %r0, {mem} --> cmpx {i32}, {mem}
-                     * movq {ptr}, %p0; cmpq %p0, {mem} --> cmpq {ptr}, {mem} */
+                     * movq {p32}, %p0; cmpq %p0, {mem} --> cmpq {p32}, {mem} */
                     case *IrAMD64_CMPQ_rm: {
                         if ins, ok := defs[p.X].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
                             bb.Ins[i] = &IrAMD64_CMPQ_im { R: p.R, X: int32(ins.V), Y: p.Y, Op: p.Op, N: p.N }
-                        } else if ins, ok := defs[p.X].(*IrAMD64_MOV_ptr); ok && isp32(ins.P) {
+                        } else if ins, ok := defs[p.X].(*IrAMD64_MOV_ptr); ok && isp32(ins.P) && p.N == abi.PtrSize {
                             done = false
                             bb.Ins[i] = &IrAMD64_CMPQ_pm { R: p.R, X: ins.P, Y: p.Y, Op: p.Op }
                         }
                     }
 
                     /* movq {i32}, %r0; cmpx {mem}, %r0 --> cmpx {mem}, {i32}
-                     * movq {ptr}, %p0; cmpq {mem}, %p0 --> cmpq {mem}, {ptr} */
+                     * movq {p32}, %p0; cmpq {mem}, %p0 --> cmpq {mem}, {p32} */
                     case *IrAMD64_CMPQ_mr: {
                         if ins, ok := defs[p.Y].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
@@ -367,7 +371,7 @@ func (self Fusion) Apply(cfg *CFG) {
                 }
 
                 /* movq {i32}, %r0; cmpq %r0, {mem}; jcc {label} --> cmpq {i32}, {mem}; jcc {label}
-                 * movq {ptr}, %p0; cmpq %p0, {mem}; jcc {label} --> cmpq {ptr}, {mem}; jcc {label} */
+                 * movq {p32}, %p0; cmpq %p0, {mem}; jcc {label} --> cmpq {p32}, {mem}; jcc {label} */
                 case *IrAMD64_Jcc_rm: {
                     if ins, ok := defs[p.X].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                         done = false
@@ -379,7 +383,7 @@ func (self Fusion) Apply(cfg *CFG) {
                 }
 
                 /* movq {i32}, %r0; cmpq {mem}, %r0; jcc {label} --> cmpq {mem}, {i32}; jcc {label}
-                 * movq {ptr}, %p0; cmpq {mem}, %p0; jcc {label} --> cmpq {mem}, {ptr}; jcc {label} */
+                 * movq {p32}, %p0; cmpq {mem}, %p0; jcc {label} --> cmpq {mem}, {p32}; jcc {label} */
                 case *IrAMD64_Jcc_mr: {
                     if ins, ok := defs[p.Y].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                         done = false
@@ -392,8 +396,8 @@ func (self Fusion) Apply(cfg *CFG) {
             }
         })
 
-        /* perform reorder & reduction after each round */
+        /* perform reorder & TDCE after each round */
         new(Reorder).Apply(cfg)
-        new(Reduce).Apply(cfg)
+        new(TDCE).Apply(cfg)
     }
 }

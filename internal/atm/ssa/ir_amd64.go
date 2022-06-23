@@ -102,6 +102,7 @@ func (*IrAMD64_MOV_reg)      irnode() {}
 func (*IrAMD64_MOV_load)     irnode() {}
 func (*IrAMD64_MOV_store_r)  irnode() {}
 func (*IrAMD64_MOV_store_i)  irnode() {}
+func (*IrAMD64_MOV_store_p)  irnode() {}
 func (*IrAMD64_MOV_wb)       irnode() {}
 func (*IrAMD64_MOV_load_be)  irnode() {}
 func (*IrAMD64_MOV_store_be) irnode() {}
@@ -141,12 +142,14 @@ func (*IrAMD64_Jcc_pm) irnode() {}
 
 func (*IrAMD64_MOV_store_r)  irimpure() {}
 func (*IrAMD64_MOV_store_i)  irimpure() {}
+func (*IrAMD64_MOV_store_p)  irimpure() {}
 func (*IrAMD64_MOV_wb)       irimpure() {}
 func (*IrAMD64_MOV_store_be) irimpure() {}
 
 func (*IrAMD64_MOV_load)     irimmovable() {}
 func (*IrAMD64_MOV_store_r)  irimmovable() {}
 func (*IrAMD64_MOV_store_i)  irimmovable() {}
+func (*IrAMD64_MOV_store_p)  irimmovable() {}
 func (*IrAMD64_MOV_wb)       irimmovable() {}
 func (*IrAMD64_MOV_load_be)  irimmovable() {}
 func (*IrAMD64_MOV_store_be) irimmovable() {}
@@ -442,6 +445,26 @@ func (self *IrAMD64_MOV_store_i) String() string {
 }
 
 func (self *IrAMD64_MOV_store_i) Usages() (r []*Reg) {
+    if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
+    if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
+    return
+}
+
+type IrAMD64_MOV_store_p struct {
+    P unsafe.Pointer
+    M Mem
+}
+
+func (self *IrAMD64_MOV_store_p) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrAMD64_MOV_store_p) String() string {
+    return fmt.Sprintf("movq $%p, %s  # %s", self.P, self.M, funcname(self.P))
+}
+
+func (self *IrAMD64_MOV_store_p) Usages() (r []*Reg) {
     if self.M.M.Kind() != K_zero { r = append(r, &self.M.M) }
     if self.M.I.Kind() != K_zero { r = append(r, &self.M.I) }
     return

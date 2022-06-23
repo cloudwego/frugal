@@ -59,9 +59,8 @@ func (Lowering) Apply(cfg *CFG) {
                     })
                 }
 
-                /* load argument by index */
+                /* load argument by index, ABI specific, will be lowered in later pass */
                 case *IrLoadArg: {
-                    // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }
 
@@ -135,25 +134,22 @@ func (Lowering) Apply(cfg *CFG) {
                     })
                 }
 
-                /* subroutine call */
+                /* subroutine call, ABI specific, will be lowered in later pass */
                 case *IrCallFunc: {
-                    // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }
 
-                /* native subroutine call */
+                /* native subroutine call, ABI specific, will be lowered in later pass */
                 case *IrCallNative: {
-                    // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }
 
-                /* interface method call */
+                /* interface method call, ABI specific, will be lowered in later pass */
                 case *IrCallMethod: {
-                    // TODO: this
                     bb.Ins = append(bb.Ins, p)
                 }
 
-                /* write barrier, handled in later stage */
+                /* write barrier, handled in later pass */
                 case *IrWriteBarrier: {
                     bb.Ins = append(bb.Ins, p)
                 }
@@ -180,9 +176,9 @@ func (Lowering) Apply(cfg *CFG) {
                 }
             }
 
-            /* return terminator */
+            /* return terminator, ABI specific, will be lowered in later pass */
             case *IrReturn: {
-                // TODO: this
+                break
             }
         }
     })

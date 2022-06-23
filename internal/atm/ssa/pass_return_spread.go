@@ -75,14 +75,14 @@ func (ReturnSpread) Apply(cfg *CFG) {
 
                 /* allocate registers for Phi definitions */
                 for _, phi := range bb.Phi {
-                    rr[phi.R] = cfg.DeriveFrom(phi.R)
+                    rr[phi.R] = cfg.CreateRegister(phi.R.Ptr())
                 }
 
                 /* allocate registers for instruction definitions */
                 for _, ins := range bb.Ins {
                     if def, ok := ins.(IrDefinitions); ok {
                         for _, r := range def.Definitions() {
-                            rr[*r] = cfg.DeriveFrom(*r)
+                            rr[*r] = cfg.CreateRegister(r.Ptr())
                         }
                     }
                 }
