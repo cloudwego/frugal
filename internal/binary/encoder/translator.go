@@ -510,7 +510,7 @@ func translate_OP_unique_small(p *hir.Builder, nb int64, dv int64, ld func(hir.P
     ld      (EP, 0, RC)
     p.SHRI  (RC, 3, UR)
     p.ANDI  (RC, 0x3f, RC)
-    p.ANDI  (UR, ^0x3f, UR)
+    p.ANDI  (UR, ^0x07, UR)
     p.ADDP  (ET, UR, TP)
     p.LQ    (TP, 0, UR)
     p.BTS   (RC, UR, RC)

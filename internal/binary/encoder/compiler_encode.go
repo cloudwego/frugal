@@ -161,7 +161,6 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, maxpc int, ve
 }
 
 func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type, maxpc int) {
-    var off int
     var err error
     var fvs []defs.Field
 
@@ -173,9 +172,9 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type, maxpc int)
     /* compile every field */
     for _, fv := range fvs {
         p.tag(sp)
-        p.i64(OP_seek, int64(fv.F - off))
+        p.i64(OP_seek, int64(fv.F))
         self.compileStructField(p, sp + 1, fv, maxpc)
-        off = fv.F
+        p.i64(OP_seek, -int64(fv.F))
     }
 
     /* add the STOP field */
