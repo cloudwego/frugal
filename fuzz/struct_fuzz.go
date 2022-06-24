@@ -85,50 +85,44 @@ type TypeConstructor struct {
 }
 
 func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSpec, length int, err error) {
+	var keySpec, valSpec *TypeSpec
 	switch fieldType {
 	case thrift.BOOL:
 		_, length, err = t.bp.ReadBool(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.BYTE:
 		_, length, err = t.bp.ReadByte(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.I16:
 		_, length, err = t.bp.ReadI16(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.I32:
 		_, length, err = t.bp.ReadI32(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.I64:
 		_, length, err = t.bp.ReadI64(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.DOUBLE:
 		_, length, err = t.bp.ReadDouble(buf)
 		if err != nil {
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.STRING:
 		_, length, err = t.bp.ReadString(buf)
 		if err != nil {
 			return
 		}
 		// FIXME: what about binary?
-		return GenerateTypeSpec(fieldType, nil, nil), length, nil
 	case thrift.STRUCT:
 		_, _, err = t.bp.ReadStructBegin(buf)
 		if err != nil {
@@ -167,7 +161,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			return
 		}
 		structType := reflect.StructOf(fields)
-		return TypeSpec{structType, "ANONYMOUS"}, length, nil
+		return TypeSpec{reflect.PointerTo(structType), "ANONYMOUS"}, length, nil
 	case thrift.MAP:
 		keyType, valueType, size, l, e := t.bp.ReadMapBegin(buf)
 		length += l
@@ -191,8 +185,8 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			kts = GenerateTypeSpec(keyType, nil, nil)
-			vts = GenerateTypeSpec(valueType, nil, nil)
+			kts = GenTypeSpec(keyType, nil, nil)
+			vts = GenTypeSpec(valueType, nil, nil)
 		}
 		l, e = t.bp.ReadMapEnd(buf[length:])
 		length += l
@@ -200,7 +194,8 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		return GenerateTypeSpec(fieldType, &kts, &vts), length, nil
+		keySpec = &kts
+		valSpec = &vts
 	case thrift.SET:
 		elemType, size, l, e := t.bp.ReadSetBegin(buf)
 		length += l
@@ -218,7 +213,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			ets = GenerateTypeSpec(elemType, nil, nil)
+			ets = GenTypeSpec(elemType, nil, nil)
 		}
 		l, e = t.bp.ReadSetEnd(buf[length:])
 		length += l
@@ -226,7 +221,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, &ets), length, nil
+		valSpec = &ets
 	case thrift.LIST:
 		elemType, size, l, e := t.bp.ReadListBegin(buf)
 		length += l
@@ -244,7 +239,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			ets = GenerateTypeSpec(elemType, nil, nil)
+			ets = GenTypeSpec(elemType, nil, nil)
 		}
 		l, e = t.bp.ReadListEnd(buf[length:])
 		length += l
@@ -252,19 +247,14 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		return GenerateTypeSpec(fieldType, nil, &ets), length, nil
+		valSpec = &ets
 	default:
 		return TypeSpec{}, 0, fmt.Errorf("unknown data type: %v", fieldType)
 	}
+	return GenTypeSpec(fieldType, keySpec, valSpec), length, nil
 }
 
-func GenerateTypeSpec(t thrift.TType, keySpec, valSpec *TypeSpec) TypeSpec {
-	if keySpec == nil {
-		keySpec = &TypeSpec{I64Type, "i64"}
-	}
-	if valSpec == nil {
-		valSpec = &TypeSpec{I64Type, "i64"}
-	}
+func GenTypeSpec(t thrift.TType, keySpec, valSpec *TypeSpec) TypeSpec {
 	switch t {
 	case thrift.BOOL:
 		return TypeSpec{BoolType, "bool"}
@@ -281,13 +271,25 @@ func GenerateTypeSpec(t thrift.TType, keySpec, valSpec *TypeSpec) TypeSpec {
 	case thrift.STRING:
 		return TypeSpec{StringType, "string"}
 	case thrift.MAP:
+		if keySpec == nil {
+			keySpec = &TypeSpec{I64Type, "i64"}
+		}
+		if valSpec == nil {
+			valSpec = &TypeSpec{I64Type, "i64"}
+		}
 		return TypeSpec{reflect.MapOf(keySpec.Type, valSpec.Type), fmt.Sprintf("map<%s:%s>", keySpec.TypeTag, valSpec.TypeTag)}
 	case thrift.SET:
+		if valSpec == nil {
+			valSpec = &TypeSpec{I64Type, "i64"}
+		}
 		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("set<%s>", valSpec.TypeTag)}
 	case thrift.LIST:
+		if valSpec == nil {
+			valSpec = &TypeSpec{I64Type, "i64"}
+		}
 		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("list<%s>", valSpec.TypeTag)}
-	case thrift.STRUCT:
-		return TypeSpec{reflect.StructOf(nil), "ANONYMOUS"}
+	case thrift.STRUCT: // unknown struct
+		return TypeSpec{reflect.PointerTo(reflect.StructOf(nil)), "ANONYMOUS"}
 	default:
 		panic("unreachable code" + t.String())
 	}

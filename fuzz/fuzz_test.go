@@ -105,6 +105,8 @@ func PrintStructTag(rt reflect.Type) {
 			strs = append(strs, "ptr<"+field.Type.Elem().Name()+">")
 		case reflect.Slice:
 			strs = append(strs, "slice<"+field.Type.Elem().Name()+">")
+		case reflect.Map:
+			strs = append(strs, "map<"+field.Type.Key().Name()+"("+field.Type.Key().Kind().String()+")"+", "+field.Type.Elem().Name()+"("+field.Type.Elem().Kind().String()+")"+">")
 		default:
 			strs = append(strs, field.Type.Kind().String())
 		}
