@@ -113,7 +113,8 @@ func main() {
 		builder := NewStructBuilder()
 		flow, err := builder.BuildThriftStruct(thrift)
 		if err != nil {
-			log.Fatal(fmt.Errorf("build struct for %s failed: %w", thrift, err))
+			log.Println(fmt.Errorf("build struct for %s failed: %w", thrift, err))
+			continue
 		}
 		for st := range flow {
 			data := reflect.New(st.Elem()).Interface()
