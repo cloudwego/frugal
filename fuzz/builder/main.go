@@ -33,14 +33,15 @@ import (
 )
 
 var (
-	OutputDir string
-	ThriftDir string
-	newDir    *string
+	OutputDir  string
+	ThriftDir  string
+	MaxFileNum int64
 )
 
 func init() {
 	flag.StringVar(&OutputDir, "out", "testdata", "output directory")
 	flag.StringVar(&ThriftDir, "search", ".", "directory of thrift files")
+	flag.Int64Var(&MaxFileNum, "max-file-num", 0, "max number of files to generate")
 }
 
 func checkArgs() {
@@ -130,6 +131,10 @@ func main() {
 			err = ioutil.WriteFile(filepath.Join(OutputDir, strconv.FormatInt(no, 10)), buf[:length], 0o644)
 			if err != nil {
 				log.Fatal(fmt.Errorf("write struct %s for %s failed: %w", st.Name(), thrift, err))
+			}
+			if no >= MaxFileNum {
+				log.Println("reach max file num, stop")
+				return
 			}
 		}
 	}
