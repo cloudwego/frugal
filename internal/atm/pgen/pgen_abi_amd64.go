@@ -358,7 +358,7 @@ func (self *CodeGen) abiCallNative(p *x86_64.Program, v *hir.Ir) {
 func (self *CodeGen) abiCallMethod(p *x86_64.Program, v *hir.Ir) {
     self.internalCallFunction(p, v, v.Pd, func(fp *hir.CallHandle) {
         p.MOVQ(self.ctxt.slot(v.Ps), R12)
-        p.CALLQ(Ptr(R12, int32(rt.GoItabFuncBase) + int32(fp.Slot) *abi.PtrSize))
+        p.CALLQ(Ptr(R12, int32(rt.GoItabFuncBase) + int32(fp.Slot) * abi.PtrSize))
     })
 }
 
