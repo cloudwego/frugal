@@ -47,7 +47,7 @@ func (ABILowering) abiCallFunc(_ *CFG, bb *BasicBlock, p *IrCallFunc) {
     /* store each argument */
     for i, r := range p.In {
         if v := p.Func.Args[i]; v.InRegister {
-            argv = append(argv, IrSetArch(r.Ptr(), v.Reg))
+            argv = append(argv, IrSetArch(r, v.Reg))
             bb.Ins = append(bb.Ins, IrArchCopy(argv[i], r))
         } else {
             argv = append(argv, Rz)
@@ -60,7 +60,7 @@ func (ABILowering) abiCallFunc(_ *CFG, bb *BasicBlock, p *IrCallFunc) {
         if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
             retv = append(retv, Rz)
         } else {
-            retv = append(retv, IrSetArch(r.Ptr(), v.Reg))
+            retv = append(retv, IrSetArch(r, v.Reg))
         }
     }
 
@@ -96,13 +96,13 @@ func (ABILowering) abiCallNative(_ *CFG, bb *BasicBlock, p *IrCallNative) {
 
     /* convert each argument */
     for i, r := range p.In {
-        argv = append(argv, IrSetArch(r.Ptr(), _NativeArgsOrder[i]))
+        argv = append(argv, IrSetArch(r, _NativeArgsOrder[i]))
         bb.Ins = append(bb.Ins, IrArchCopy(argv[i], r))
     }
 
     /* allocate register for return value if needed */
     if p.Out.Kind() != K_zero {
-        retv = IrSetArch(p.Out.Ptr(), x86_64.RAX)
+        retv = IrSetArch(p.Out, x86_64.RAX)
     }
 
     /* add the call instruction */
@@ -134,17 +134,17 @@ func (ABILowering) abiCallMethod(_ *CFG, bb *BasicBlock, p *IrCallMethod) {
 
     /* store the receiver */
     if rx := p.Func.Args[0]; rx.InRegister {
-        argv = append(argv, IrSetArch(true, rx.Reg))
+        argv = append(argv, IrSetArch(p.V, rx.Reg))
         bb.Ins = append(bb.Ins, IrArchCopy(argv[0], p.V))
     } else {
         argv = append(argv, Rz)
-        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, rx.Mem, IrSlotCall))
+        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, p.Func.Args[0].Mem, IrSlotCall))
     }
 
     /* store each argument */
     for i, r := range p.In {
         if v := p.Func.Args[i + 1]; v.InRegister {
-            argv = append(argv, IrSetArch(r.Ptr(), v.Reg))
+            argv = append(argv, IrSetArch(r, v.Reg))
             bb.Ins = append(bb.Ins, IrArchCopy(argv[i + 1], r))
         } else {
             argv = append(argv, Rz)
@@ -157,7 +157,7 @@ func (ABILowering) abiCallMethod(_ *CFG, bb *BasicBlock, p *IrCallMethod) {
         if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
             retv = append(retv, Rz)
         } else {
-            retv = append(retv, IrSetArch(r.Ptr(), v.Reg))
+            retv = append(retv, IrSetArch(r, v.Reg))
         }
     }
 

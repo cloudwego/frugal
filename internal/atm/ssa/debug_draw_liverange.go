@@ -59,6 +59,11 @@ func draw_liverange(fn string, bb []*BasicBlock, lr map[Reg]*_LiveRange) {
         n1, n2 := regs[i].Name(), regs[j].Name()
         return k1 < k2 || (k1 == k2 && n1 < n2) || (k1 == k2 && n1 == n2 && regs[i] < regs[j])
     })
+    sort.SliceStable(regs, func(i, j int) bool {
+        p1 := lr[regs[i]].p
+        p2 := lr[regs[j]].p
+        return p1[0].isPrior(p2[0])
+    })
     for _, b := range bb {
         leni += len(b.Ins) + 1
     }

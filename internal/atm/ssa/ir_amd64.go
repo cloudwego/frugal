@@ -80,13 +80,13 @@ var ArchRegNames = map[x86_64.Register64]string {
     x86_64.R15 : "r15",
 }
 
-func IrSetArch(ptr bool, reg x86_64.Register64) Reg {
+func IrSetArch(rr Reg, reg x86_64.Register64) Reg {
     if id, ok := ArchRegIds[reg]; !ok {
         panic("invalid arch-specific register: " + reg.String())
-    } else if ptr {
-        return mkreg(1, K_arch, id)
+    } else if rr.Ptr() {
+        return mkreg(1, K_arch, id).Derive(rr.Index())
     } else {
-        return mkreg(0, K_arch, id)
+        return mkreg(0, K_arch, id).Derive(rr.Index())
     }
 }
 

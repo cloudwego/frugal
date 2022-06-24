@@ -73,10 +73,10 @@ const (
 )
 
 func (self Likeliness) String() string {
-    if self == Likely {
-        return "likely"
-    } else {
-        return "unlikely"
+    switch self {
+        case Likely   : return "likely"
+        case Unlikely : return "unlikely"
+        default       : return "???"
     }
 }
 

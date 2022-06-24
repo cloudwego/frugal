@@ -36,7 +36,7 @@ func (self ABILowering) Apply(cfg *CFG) {
         } else if rr[iv.I] != 0 {
             panic("abi: second load of the same argument: " + v.String())
         } else if a := cfg.Layout.Args[iv.I]; a.InRegister {
-            rr[iv.I] = IrSetArch(iv.R.Ptr(), a.Reg)
+            rr[iv.I] = IrSetArch(iv.R, a.Reg)
             cfg.Root.Ins[i] = IrArchCopy(iv.R, rr[iv.I])
         } else {
             rr[iv.I] = Rz
@@ -88,7 +88,7 @@ func (self ABILowering) Apply(cfg *CFG) {
             /* copy return values */
             for i, rv := range p.R {
                 if r := cfg.Layout.Rets[i]; r.InRegister {
-                    rr[i] = IrSetArch(rv.Ptr(), r.Reg)
+                    rr[i] = IrSetArch(rv, r.Reg)
                     bb.Ins = append(bb.Ins, IrArchCopy(rr[i], rv))
                 } else {
                     rr[i] = Rz

@@ -144,12 +144,20 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* leaq {mem}, %r0; movx (%r0), %r1 --> movx {mem}, %r1 */
+                    /* leaq {mem}, %r0; movx (%r0), %r1                      --> movx {mem}, %r1
+                     * movq {i32}, %r0; movx {disp}({base},%r0,{scale}), %r1 --> movx {disp}+{i32}*{scale}({base}), %r1 */
                     case *IrAMD64_MOV_load: {
                         if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
                             if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
                                 p.M = ins.M
                                 done = false
+                                p.M.D = int32(x)
+                            }
+                        } else if ins, ok := defs[p.M.I].(*IrAMD64_MOV_abs); ok && p.M.I != Rz {
+                            if x = int64(p.M.D) + ins.V * int64(p.M.S); isi32(x) {
+                                done = false
+                                p.M.S = 1
+                                p.M.I = Rz
                                 p.M.D = int32(x)
                             }
                         }

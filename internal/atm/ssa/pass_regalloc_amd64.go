@@ -70,10 +70,20 @@ func liverangemark(regs map[Reg]*_LiveRange, refs []*Reg, b int, i int) {
    }
 }
 
+func blockIsWriteBarrier(bb *BasicBlock) bool {
+    for _, v := range bb.Ins { if _, ok := v.(*IrAMD64_CALL_gcwb); ok { return true } }
+    return false
+}
+
+func blockIsDomimatedReturn(bb *BasicBlock) bool {
+    _, ok := bb.Term.(*IrAMD64_RET)
+    return ok && len(bb.Pred) == 1
+}
+
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
-func (self RegAlloc) Apply(cfg *CFG) {
+func (RegAlloc) Apply(cfg *CFG) {
     st := lane.NewStack()
     vis := make(map[int]bool)
     buf := make([]IrBranch, 0, 16)
@@ -82,8 +92,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* Phase 1: Serialize all the basic blocks with heuristics */
     for st.Push(cfg.Root); !st.Empty(); {
-        v := st.Pop()
-        bb := v.(*BasicBlock)
+        i := 0
+        wb := false
+        bb := st.Pop().(*BasicBlock)
 
         /* check if it's visited */
         if vis[bb.Id] {
@@ -109,18 +120,33 @@ func (self RegAlloc) Apply(cfg *CFG) {
             return buf[i].Likeliness > buf[j].Likeliness
         })
 
-        /* force all "return" blocks that has a single predecessor to act as "likely"
-         * by removing them to the end, in order to shorten register live ranges */
-        for i := len(buf) - 1; i >= 0; i-- {
-            if _, ok := buf[i].To.Term.(*IrAMD64_RET); !ok || len(buf[i].To.Pred) != 1 {
-                st.Push(buf[i].To)
+        /* force all "write barrier" blocks and "return" blocks that has a single
+         * predecessor to act as "likely" by removing them to the end, in order to
+         * shorten register live ranges */
+        for i = len(buf) - 1; !wb && i >= 0; i-- {
+            if p := buf[i].To; blockIsWriteBarrier(p) {
+                wb = true
+            } else if !blockIsDomimatedReturn(p) {
+                st.Push(p)
             }
         }
 
-        /* make all "return" blocks that has a single predecessor appear at stack top */
-        for i := len(buf) - 1; i >= 0; i-- {
-            if _, ok := buf[i].To.Term.(*IrAMD64_RET); ok && len(buf[i].To.Pred) == 1 {
-                st.Push(buf[i].To)
+        /* we can add those blocks directly to output since:
+         *   1. write barrier blocks and their counterpart always have the same successors;
+         *   2. return blocks are terminating blocks, they do not have any successors. */
+        if !wb {
+            for i = len(buf) - 1; i >= 0; i-- {
+                if p := buf[i].To; blockIsDomimatedReturn(p) {
+                    bbs, vis[p.Id] = append(bbs, p), true
+                }
+            }
+        } else {
+            if len(buf) != 2 {
+                panic("invalid write barrier blocks")
+            } else if p, q := buf[0].To, buf[1].To; i == 0 {
+                bbs, vis[p.Id], vis[q.Id] = append(bbs, p, q), true, true
+            } else {
+                bbs, vis[p.Id], vis[q.Id] = append(bbs, q, p), true, true
             }
         }
     }
