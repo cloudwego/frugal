@@ -73,6 +73,7 @@ func FuzzMain(f *testing.F) {
 				t.Fatal(err)
 			}
 			object := reflect.New(rt).Interface()
+			PrintStructTag(rt)
 			// wrap base types or container types with struct
 			wrappedData := make([]byte, 0, len(data)+3)
 			wrappedData = append(wrappedData, []byte{byte(i), 0x0, 0x0}...)

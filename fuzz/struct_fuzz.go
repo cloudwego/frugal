@@ -38,16 +38,6 @@ var RequirednessString = [...]string{
 	Optional: "optional",
 }
 
-var (
-	BoolType   = reflect.TypeOf(bool(true))
-	ByteType   = reflect.TypeOf(int8(0))
-	I16Type    = reflect.TypeOf(int16(0))
-	I32Type    = reflect.TypeOf(int32(0))
-	I64Type    = reflect.TypeOf(int64(0))
-	DoubleType = reflect.TypeOf(float64(0))
-	StringType = reflect.TypeOf(string("str"))
-)
-
 var PointerMap = map[Requiredness]map[reflect.Kind]bool{
 	Default: {
 		reflect.Struct: true,
@@ -56,6 +46,7 @@ var PointerMap = map[Requiredness]map[reflect.Kind]bool{
 		reflect.Struct: true,
 	},
 	Optional: {
+		reflect.Bool:    true,
 		reflect.Int8:    true,
 		reflect.Int16:   true,
 		reflect.Int32:   true,
@@ -66,13 +57,27 @@ var PointerMap = map[Requiredness]map[reflect.Kind]bool{
 	},
 }
 
+type Enum int64
+
+var (
+	BoolType   = reflect.TypeOf(bool(true))
+	ByteType   = reflect.TypeOf(int8(0))
+	I16Type    = reflect.TypeOf(int16(0))
+	I32Type    = reflect.TypeOf(int32(0))
+	I64Type    = reflect.TypeOf(int64(0))
+	DoubleType = reflect.TypeOf(float64(0))
+	StringType = reflect.TypeOf(string("str"))
+	BinaryType = reflect.TypeOf([]byte{0})
+	EnumType   = reflect.TypeOf(Enum(0))
+)
+
 func fuzzDynamicStruct(data []byte, tt thrift.TType) (reflect.Type, error) {
 	tc := &TypeConstructor{bthrift.Binary}
 	ts, _, err := tc.GetType(data, tt)
 	if err != nil {
 		return nil, err
 	}
-	return reflect.StructOf([]reflect.StructField{GenerateStructFields(0, Default, ts)}), nil
+	return reflect.StructOf([]reflect.StructField{BuildStructField(0, Default, ts)}), nil
 }
 
 type TypeSpec struct {
@@ -84,7 +89,7 @@ type TypeConstructor struct {
 	bp bthrift.BTProtocol
 }
 
-func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSpec, length int, err error) {
+func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts *TypeSpec, length int, err error) {
 	var keySpec, valSpec *TypeSpec
 	switch fieldType {
 	case thrift.BOOL:
@@ -151,7 +156,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 				err = e
 				return
 			}
-			gsf := GenerateStructFields(fieldID, Default, fts)
+			gsf := BuildStructField(fieldID, Default, fts)
 			fields = append(fields, gsf)
 		}
 		l, e := t.bp.ReadStructEnd(buf[length:])
@@ -161,7 +166,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			return
 		}
 		structType := reflect.StructOf(fields)
-		return TypeSpec{reflect.PointerTo(structType), "ANONYMOUS"}, length, nil
+		return &TypeSpec{reflect.PointerTo(structType), "ANONYMOUS"}, length, nil
 	case thrift.MAP:
 		keyType, valueType, size, l, e := t.bp.ReadMapBegin(buf)
 		length += l
@@ -169,15 +174,14 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		var kts, vts TypeSpec
 		for i := 0; i < size; i++ {
-			kts, l, e = t.GetType(buf[length:], keyType)
+			keySpec, l, e = t.GetType(buf[length:], keyType)
 			length += l
 			if e != nil {
 				err = e
 				return
 			}
-			vts, l, e = t.GetType(buf[length:], valueType)
+			valSpec, l, e = t.GetType(buf[length:], valueType)
 			length += l
 			if e != nil {
 				err = e
@@ -185,8 +189,8 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			kts = GenTypeSpec(keyType, nil, nil)
-			vts = GenTypeSpec(valueType, nil, nil)
+			keySpec = BuildTypeSpec(keyType, Default, nil, nil)
+			valSpec = BuildTypeSpec(valueType, Default, nil, nil)
 		}
 		l, e = t.bp.ReadMapEnd(buf[length:])
 		length += l
@@ -194,8 +198,6 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		keySpec = &kts
-		valSpec = &vts
 	case thrift.SET:
 		elemType, size, l, e := t.bp.ReadSetBegin(buf)
 		length += l
@@ -203,9 +205,8 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		var ets TypeSpec
 		for i := 0; i < size; i++ {
-			ets, l, e = t.GetType(buf[length:], elemType)
+			valSpec, l, e = t.GetType(buf[length:], elemType)
 			length += l
 			if e != nil {
 				err = e
@@ -213,7 +214,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			ets = GenTypeSpec(elemType, nil, nil)
+			valSpec = BuildTypeSpec(elemType, Default, nil, nil)
 		}
 		l, e = t.bp.ReadSetEnd(buf[length:])
 		length += l
@@ -221,7 +222,6 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		valSpec = &ets
 	case thrift.LIST:
 		elemType, size, l, e := t.bp.ReadListBegin(buf)
 		length += l
@@ -229,9 +229,8 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		var ets TypeSpec
 		for i := 0; i < size; i++ {
-			ets, l, e = t.GetType(buf[length:], elemType)
+			valSpec, l, e = t.GetType(buf[length:], elemType)
 			length += l
 			if e != nil {
 				err = e
@@ -239,7 +238,7 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			}
 		}
 		if size == 0 {
-			ets = GenTypeSpec(elemType, nil, nil)
+			valSpec = BuildTypeSpec(elemType, Default, nil, nil)
 		}
 		l, e = t.bp.ReadListEnd(buf[length:])
 		length += l
@@ -247,55 +246,71 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts TypeSp
 			err = e
 			return
 		}
-		valSpec = &ets
 	default:
-		return TypeSpec{}, 0, fmt.Errorf("unknown data type: %v", fieldType)
+		return nil, 0, fmt.Errorf("unknown data type: %v", fieldType)
 	}
-	return GenTypeSpec(fieldType, keySpec, valSpec), length, nil
+	return BuildTypeSpec(fieldType, Default, keySpec, valSpec), length, nil
 }
 
-func GenTypeSpec(t thrift.TType, keySpec, valSpec *TypeSpec) TypeSpec {
+func BuildTypeSpec(t thrift.TType, requiredness Requiredness, keySpec, valSpec *TypeSpec) *TypeSpec {
+	var typ reflect.Type
+	var tag string
 	switch t {
 	case thrift.BOOL:
-		return TypeSpec{BoolType, "bool"}
+		typ = BoolType
+		tag = "bool"
 	case thrift.BYTE:
-		return TypeSpec{ByteType, "byte"}
+		typ = ByteType
+		tag = "byte"
 	case thrift.I16:
-		return TypeSpec{I16Type, "i16"}
+		typ = I16Type
+		tag = "i16"
 	case thrift.I32:
-		return TypeSpec{I32Type, "i32"}
+		typ = I32Type
+		tag = "i32"
 	case thrift.I64:
-		return TypeSpec{I64Type, "i64"}
+		typ = I64Type
+		tag = "i64"
 	case thrift.DOUBLE:
-		return TypeSpec{DoubleType, "double"}
+		typ = DoubleType
+		tag = "double"
 	case thrift.STRING:
-		return TypeSpec{StringType, "string"}
+		typ = StringType
+		tag = "string"
 	case thrift.MAP:
 		if keySpec == nil {
-			keySpec = &TypeSpec{I64Type, "i64"}
+			keySpec = &TypeSpec{Type: I64Type, TypeTag: "i64"}
 		}
 		if valSpec == nil {
-			valSpec = &TypeSpec{I64Type, "i64"}
+			valSpec = &TypeSpec{Type: I64Type, TypeTag: "i64"}
 		}
-		return TypeSpec{reflect.MapOf(keySpec.Type, valSpec.Type), fmt.Sprintf("map<%s:%s>", keySpec.TypeTag, valSpec.TypeTag)}
+		typ = reflect.MapOf(keySpec.Type, valSpec.Type)
+		tag = fmt.Sprintf("map<%s:%s>", keySpec.TypeTag, valSpec.TypeTag)
 	case thrift.SET:
 		if valSpec == nil {
-			valSpec = &TypeSpec{I64Type, "i64"}
+			valSpec = &TypeSpec{Type: I64Type, TypeTag: "i64"}
 		}
-		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("set<%s>", valSpec.TypeTag)}
+		typ = reflect.SliceOf(valSpec.Type)
+		tag = fmt.Sprintf("set<%s>", valSpec.TypeTag)
 	case thrift.LIST:
 		if valSpec == nil {
-			valSpec = &TypeSpec{I64Type, "i64"}
+			valSpec = &TypeSpec{Type: I64Type, TypeTag: "i64"}
 		}
-		return TypeSpec{reflect.SliceOf(valSpec.Type), fmt.Sprintf("list<%s>", valSpec.TypeTag)}
+		typ = reflect.SliceOf(valSpec.Type)
+		tag = fmt.Sprintf("list<%s>", valSpec.TypeTag)
 	case thrift.STRUCT: // unknown struct
-		return TypeSpec{reflect.PointerTo(reflect.StructOf(nil)), "ANONYMOUS"}
+		typ = reflect.StructOf(nil)
+		tag = "ANONYMOUS"
 	default:
 		panic("unreachable code" + t.String())
 	}
+	if PointerMap[requiredness][typ.Kind()] {
+		typ = reflect.PointerTo(typ)
+	}
+	return &TypeSpec{Type: typ, TypeTag: tag}
 }
 
-func GenerateStructFields(id int16, requiredness Requiredness, ts TypeSpec) (ret reflect.StructField) {
+func BuildStructField(id int16, requiredness Requiredness, ts *TypeSpec) (ret reflect.StructField) {
 	tag := fmt.Sprintf("frugal:\"%d,%s,%s\"", id, RequirednessString[requiredness], ts.TypeTag)
 	typ := ts.Type
 	if PointerMap[requiredness][typ.Kind()] {

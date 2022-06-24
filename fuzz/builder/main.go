@@ -18,23 +18,41 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+	"sync/atomic"
+
+	"github.com/cloudwego/frugal"
+	gofakeit "github.com/simon0-o/gofakeit/v6"
 )
 
 var (
 	OutputDir string
 	ThriftDir string
+	newDir    *string
 )
 
 func init() {
 	flag.StringVar(&OutputDir, "out", "testdata", "output directory")
-	flag.StringVar(&ThriftDir, "thrift_dir", "", "directory of thrift files")
+	flag.StringVar(&ThriftDir, "search", ".", "directory of thrift files")
+}
+
+func checkArgs() {
+	if ThriftDir == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 }
 
 func ThriftSearcher() <-chan (string) {
 	out := make(chan (string))
+	// read file path from stdin
 	if ThriftDir == "" {
 		br := bufio.NewReader(os.Stdin)
 		go func() {
@@ -42,24 +60,15 @@ func ThriftSearcher() <-chan (string) {
 			for ; err == nil; str, err = br.ReadString('\n') {
 				out <- str
 			}
+			if err == io.EOF {
+				close(out)
+			}
 			log.Fatalln(fmt.Errorf("read from stdin failed: %w", err))
 		}()
 		return out
 	}
+	// search ThriftDir to find thrift files
 	dirs := make(chan (string))
-	go func() {
-		for dir := range dirs {
-			files, err := ioutil.ReadDir(dir)
-			if err != nil {
-				log.Println(fmt.Errorf("read directory %s failed: %w", dir, err))
-			}
-			for _, file := range files {
-				if !file.IsDir() {
-					out <- file.Name()
-				}
-			}
-		}
-	}()
 	var searchDir func(string)
 	searchDir = func(dir string) {
 		files, err := ioutil.ReadDir(dir)
@@ -69,14 +78,59 @@ func ThriftSearcher() <-chan (string) {
 		dirs <- dir
 		for _, file := range files {
 			if file.IsDir() {
-				searchDir(file.Name())
+				searchDir(filepath.Join(ThriftDir, file.Name()))
 			}
 		}
 	}
-	go searchDir(ThriftDir)
+	go func() {
+		searchDir(ThriftDir)
+		close(dirs)
+	}()
+	go func() {
+		for dir := range dirs {
+			files, err := ioutil.ReadDir(dir)
+			if err != nil {
+				log.Println(fmt.Errorf("read directory %s failed: %w", dir, err))
+			}
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(file.Name(), ".thrift") {
+					out <- filepath.Join(dir, file.Name())
+				}
+			}
+		}
+		close(out)
+	}()
 	return out
 }
 
+var fileCounter int64
+
 func main() {
 	flag.Parse()
+	checkArgs()
+	for thrift := range ThriftSearcher() {
+		builder := NewStructBuilder()
+		flow, err := builder.BuildThriftStruct(thrift)
+		if err != nil {
+			log.Fatal(fmt.Errorf("build struct for %s failed: %w", thrift, err))
+		}
+		for st := range flow {
+			data := reflect.New(st.Elem()).Interface()
+			// FIXME: prevent duplicate elements in sets
+			err = gofakeit.Struct(data)
+			if err != nil {
+				log.Fatal(fmt.Errorf("fake struct %s for %s failed: %w", st.Name(), thrift, err))
+			}
+			buf := make([]byte, frugal.EncodedSize(data))
+			length, err := frugal.EncodeObject(buf, nil, data)
+			if err != nil {
+				log.Fatal(fmt.Errorf("encode struct %s for %s failed: %w", st.Name(), thrift, err))
+			}
+			no := atomic.AddInt64(&fileCounter, 1)
+			err = ioutil.WriteFile(filepath.Join(OutputDir, strconv.FormatInt(no, 10)), buf[:length], 0o644)
+			if err != nil {
+				log.Fatal(fmt.Errorf("write struct %s for %s failed: %w", st.Name(), thrift, err))
+			}
+		}
+	}
 }
