@@ -1,5 +1,3 @@
-// +build go1.17
-
 /*
  * Copyright 2022 ByteDance Inc.
  *
@@ -19,105 +17,174 @@
 package ssa
 
 import (
-    `fmt`
-
+    `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/abi`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
-// ABILowering lowers ABI-specific instructions to
-type ABILowering struct{}
-
-func (ABILowering) lower(cfg *CFG) {
-    cfg.PostOrder(func(bb *BasicBlock) {
-        ins := bb.Ins
-        bb.Ins = make([]IrNode, 0, len(ins))
-
-        /* scan every instruction */
-        for _, v := range ins {
-            switch p := v.(type) {
-                default: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* load argument by index */
-                case *IrLoadArg: {
-                    if p.I < 0 || p.I >= len(cfg.Layout.Args) {
-                        panic(fmt.Sprintf("abi: argument %d out of bound", p.I))
-                    } else if arg := cfg.Layout.Args[p.I]; arg.InRegister {
-                        bb.Ins = append(bb.Ins, &IrAMD64_MOV_reg { R: p.R, V: IrSetArch(Ra, arg.Reg) })
-                    } else {
-                        bb.Ins = append(bb.Ins, &IrAMD64_MOV_load_stack { R: p.R, S: arg.Mem, K: IrSlotArgs })
-                    }
-                }
-
-                /* subroutine call */
-                case *IrCallFunc: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* native subroutine call */
-                case *IrCallNative: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* interface method call */
-                case *IrCallMethod: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-
-                /* write-barrier special call */
-                case *IrWriteBarrier: {
-                    bb.Ins = append(bb.Ins, p)
-                }
-            }
-        }
-
-        /* scan the terminator */
-        if p, ok := bb.Term.(*IrReturn); ok {
-            var i int
-            var r Reg
-            var b []Reg
-
-            /* copy return values */
-            for i, r = range p.R {
-                if i >= len(cfg.Layout.Args) {
-                    panic(fmt.Sprintf("abi: return value %d out of bound", i))
-                } else if ret := cfg.Layout.Rets[i]; ret.InRegister {
-                    b = append(b, IrSetArch(r, ret.Reg))
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_reg { R: IrSetArch(r, ret.Reg), V: r })
-                } else {
-                    b = append(b, r)
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_store_stack { R: r, S: ret.Mem, K: IrSlotArgs })
-                }
-            }
-
-            /* replace the terminator */
-            bb.Term = &IrAMD64_RET {
-                R: b,
-            }
-        }
-    })
+var _NativeArgsOrder = [...]x86_64.Register64 {
+    x86_64.RDI,
+    x86_64.RSI,
+    x86_64.RDX,
+    x86_64.RCX,
+    x86_64.R8,
+    x86_64.R9,
 }
 
-func (ABILowering) entry(cfg *CFG) {
-    var r []Reg
-    var p abi.Parameter
+func (ABILowering) abiCallFunc(_ *CFG, bb *BasicBlock, p *IrCallFunc) {
+    argc := len(p.In)
+    retc := len(p.Out)
 
-    /* extract all the args */
-    for _, p = range cfg.Layout.Args {
-        if p.InRegister {
-            r = append(r, IrSetArch(Ra, p.Reg))
+    /* check argument & return value count */
+    if argc != len(p.Func.Args) || retc != len(p.Func.Rets) {
+        panic("abi: gcall argument count mismatch: " + p.String())
+    }
+
+    /* register buffer */
+    argv := make([]Reg, 0, argc)
+    retv := make([]Reg, 0, retc)
+
+    /* store each argument */
+    for i, r := range p.In {
+        if v := p.Func.Args[i]; v.InRegister {
+            argv = append(argv, IrSetArch(r.Ptr(), v.Reg))
+            bb.Ins = append(bb.Ins, IrArchCopy(argv[i], r))
+        } else {
+            argv = append(argv, Rz)
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, v.Mem, IrSlotCall))
         }
     }
 
-    /* insert an entry point node */
-    cfg.Root.Ins = append(
-        []IrNode { &IrEntry { r } },
-        cfg.Root.Ins...
-    )
+    /* convert each return register */
+    for i, r := range p.Out {
+        if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
+            retv = append(retv, Rz)
+        } else {
+            retv = append(retv, IrSetArch(r.Ptr(), v.Reg))
+        }
+    }
+
+    /* add the call instruction */
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
+        Fn  : p.R,
+        In  : argv,
+        Out : retv,
+        Abi : IrAbiGo,
+    })
+
+    /* load each return value */
+    for i, r := range p.Out {
+        if r.Kind() != K_zero {
+            if v := p.Func.Args[i]; v.InRegister {
+                bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
+            } else {
+                bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))
+            }
+        }
+    }
 }
 
-func (self ABILowering) Apply(cfg *CFG) {
-    self.lower(cfg)
-    self.entry(cfg)
+func (ABILowering) abiCallNative(_ *CFG, bb *BasicBlock, p *IrCallNative) {
+    retv := Rz
+    argc := len(p.In)
+    argv := make([]Reg, 0, argc)
+
+    /* check for argument count */
+    if argc > len(_NativeArgsOrder) {
+        panic("abi: too many native arguments: " + p.String())
+    }
+
+    /* convert each argument */
+    for i, r := range p.In {
+        argv = append(argv, IrSetArch(r.Ptr(), _NativeArgsOrder[i]))
+        bb.Ins = append(bb.Ins, IrArchCopy(argv[i], r))
+    }
+
+    /* allocate register for return value if needed */
+    if p.Out.Kind() != K_zero {
+        retv = IrSetArch(p.Out.Ptr(), x86_64.RAX)
+    }
+
+    /* add the call instruction */
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
+        Fn  : p.R,
+        In  : argv,
+        Out : []Reg { retv },
+        Abi : IrAbiC,
+    })
+
+    /* copy the return value if needed */
+    if p.Out.Kind() != K_zero {
+        bb.Ins = append(bb.Ins, IrArchCopy(p.Out, retv))
+    }
+}
+
+func (ABILowering) abiCallMethod(_ *CFG, bb *BasicBlock, p *IrCallMethod) {
+    argc := len(p.In) + 1
+    retc := len(p.Out)
+
+    /* check argument & return value count */
+    if argc != len(p.Func.Args) || retc != len(p.Func.Rets) {
+        panic("abi: icall argument count mismatch: " + p.String())
+    }
+
+    /* register buffer */
+    argv := make([]Reg, 0, argc)
+    retv := make([]Reg, 0, retc)
+
+    /* store the receiver */
+    if rx := p.Func.Args[0]; rx.InRegister {
+        argv = append(argv, IrSetArch(true, rx.Reg))
+        bb.Ins = append(bb.Ins, IrArchCopy(argv[0], p.V))
+    } else {
+        argv = append(argv, Rz)
+        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, rx.Mem, IrSlotCall))
+    }
+
+    /* store each argument */
+    for i, r := range p.In {
+        if v := p.Func.Args[i + 1]; v.InRegister {
+            argv = append(argv, IrSetArch(r.Ptr(), v.Reg))
+            bb.Ins = append(bb.Ins, IrArchCopy(argv[i + 1], r))
+        } else {
+            argv = append(argv, Rz)
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, v.Mem, IrSlotCall))
+        }
+    }
+
+    /* convert each return register */
+    for i, r := range p.Out {
+        if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
+            retv = append(retv, Rz)
+        } else {
+            retv = append(retv, IrSetArch(r.Ptr(), v.Reg))
+        }
+    }
+
+    /* construct the memory reference for the method */
+    fn := Mem {
+        M: p.T,
+        I: Rz,
+        S: 1,
+        D: int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize,
+    }
+
+    /* add the call instruction */
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_mem {
+        Fn  : fn,
+        In  : argv,
+        Out : retv,
+        Abi : IrAbiGo,
+    })
+
+    /* load each return value */
+    for i, r := range p.Out {
+        if r.Kind() != K_zero {
+            if v := p.Func.Args[i]; v.InRegister {
+                bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
+            } else {
+                bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))
+            }
+        }
+    }
 }

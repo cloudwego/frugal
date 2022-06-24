@@ -59,11 +59,10 @@ const (
 )
 
 const (
-    N_name = _M_name + 1
+    N_size = _M_name + 1
 )
 
 const (
-    Ra Reg = _R_index
     Rz Reg = (0 << _B_ptr) | (K_zero << _B_kind)
     Pn Reg = (1 << _B_ptr) | (K_zero << _B_kind)
 )
@@ -82,7 +81,7 @@ func (self Likeliness) String() string {
 }
 
 func mksys(ptr uint64, kind uint64) Reg {
-    if kind > N_name {
+    if kind > N_size {
         panic(fmt.Sprintf("invalid register kind: %d", kind))
     } else {
         return mkreg(ptr, K_sys, kind)
@@ -94,7 +93,7 @@ func mkreg(ptr uint64, kind uint64, name uint64) Reg {
 }
 
 func Tr(i int) Reg {
-    if i < 0 || i > N_name {
+    if i < 0 || i > N_size {
         panic("invalid generic temporary register index")
     } else {
         return mkreg(0, K_temp, uint64(i))
@@ -102,7 +101,7 @@ func Tr(i int) Reg {
 }
 
 func Pr(i int) Reg {
-    if i < 0 || i > N_name {
+    if i < 0 || i > N_size {
         panic("invalid generic temporary register index")
     } else {
         return mkreg(1, K_temp, uint64(i))
@@ -151,7 +150,7 @@ func (self Reg) String() string {
         case K_arch: {
             if i := self.Name(); i >= len(ArchRegs) {
                 panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
-            } else if self.Index() == _R_index {
+            } else if self.Index() == 0 {
                 return fmt.Sprintf("{%s}", ArchRegNames[ArchRegs[i]])
             } else if self.Ptr() {
                 return fmt.Sprintf("%%p%d{%s}", self.Index(), ArchRegNames[ArchRegs[i]])

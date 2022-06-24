@@ -80,13 +80,13 @@ var ArchRegNames = map[x86_64.Register64]string {
     x86_64.R15 : "r15",
 }
 
-func IrSetArch(r Reg, rr x86_64.Register64) Reg {
-    if id, ok := ArchRegIds[rr]; !ok {
-        panic("invalid arch-specific register: " + rr.String())
-    } else if r.Ptr() {
-        return mkreg(1, K_arch, id).Derive(r.Index())
+func IrSetArch(ptr bool, reg x86_64.Register64) Reg {
+    if id, ok := ArchRegIds[reg]; !ok {
+        panic("invalid arch-specific register: " + reg.String())
+    } else if ptr {
+        return mkreg(1, K_arch, id)
     } else {
-        return mkreg(0, K_arch, id).Derive(r.Index())
+        return mkreg(0, K_arch, id)
     }
 }
 
@@ -125,16 +125,15 @@ func (*IrAMD64_NEG)    irnode() {}
 func (*IrAMD64_BSWAP)  irnode() {}
 func (*IrAMD64_MOVSLQ) irnode() {}
 
-func (*IrAMD64_MOV_abs)        irnode() {}
-func (*IrAMD64_MOV_ptr)        irnode() {}
-func (*IrAMD64_MOV_reg)        irnode() {}
-func (*IrAMD64_MOV_load)       irnode() {}
-func (*IrAMD64_MOV_store_r)    irnode() {}
-func (*IrAMD64_MOV_store_i)    irnode() {}
-func (*IrAMD64_MOV_store_p)    irnode() {}
-func (*IrAMD64_MOV_wb)         irnode() {}
-func (*IrAMD64_MOV_load_be)    irnode() {}
-func (*IrAMD64_MOV_store_be)   irnode()  {}
+func (*IrAMD64_MOV_abs)         irnode() {}
+func (*IrAMD64_MOV_ptr)         irnode() {}
+func (*IrAMD64_MOV_reg)         irnode() {}
+func (*IrAMD64_MOV_load)        irnode() {}
+func (*IrAMD64_MOV_store_r)     irnode() {}
+func (*IrAMD64_MOV_store_i)     irnode() {}
+func (*IrAMD64_MOV_store_p)     irnode() {}
+func (*IrAMD64_MOV_load_be)     irnode() {}
+func (*IrAMD64_MOV_store_be)    irnode() {}
 func (*IrAMD64_MOV_load_stack)  irnode() {}
 func (*IrAMD64_MOV_store_stack) irnode() {}
 
@@ -156,6 +155,10 @@ func (*IrAMD64_CMPQ_mp) irnode() {}
 func (*IrAMD64_CMPQ_im) irnode() {}
 func (*IrAMD64_CMPQ_pm) irnode() {}
 
+func (*IrAMD64_CALL_reg)  irnode() {}
+func (*IrAMD64_CALL_mem)  irnode() {}
+func (*IrAMD64_CALL_gcwb) irnode() {}
+
 func (*IrAMD64_RET) irnode() {}
 func (*IrAMD64_JMP) irnode() {}
 func (*IrAMD64_JNC) irnode() {}
@@ -175,16 +178,18 @@ func (*IrAMD64_Jcc_pm) irnode() {}
 func (*IrAMD64_MOV_store_r)     irimpure() {}
 func (*IrAMD64_MOV_store_i)     irimpure() {}
 func (*IrAMD64_MOV_store_p)     irimpure() {}
-func (*IrAMD64_MOV_wb)          irimpure() {}
 func (*IrAMD64_MOV_store_be)    irimpure() {}
 func (*IrAMD64_MOV_load_stack)  irimpure() {}
 func (*IrAMD64_MOV_store_stack) irimpure() {}
+
+func (*IrAMD64_CALL_reg)  irimpure() {}
+func (*IrAMD64_CALL_mem)  irimpure() {}
+func (*IrAMD64_CALL_gcwb) irimpure() {}
 
 func (*IrAMD64_MOV_load)        irimmovable() {}
 func (*IrAMD64_MOV_store_r)     irimmovable() {}
 func (*IrAMD64_MOV_store_i)     irimmovable() {}
 func (*IrAMD64_MOV_store_p)     irimmovable() {}
-func (*IrAMD64_MOV_wb)          irimmovable() {}
 func (*IrAMD64_MOV_load_be)     irimmovable() {}
 func (*IrAMD64_MOV_store_be)    irimmovable() {}
 func (*IrAMD64_MOV_load_stack)  irimmovable() {}
@@ -196,6 +201,10 @@ func (*IrAMD64_CMPQ_mi) irimmovable() {}
 func (*IrAMD64_CMPQ_mp) irimmovable() {}
 func (*IrAMD64_CMPQ_im) irimmovable() {}
 func (*IrAMD64_CMPQ_pm) irimmovable() {}
+
+func (*IrAMD64_CALL_reg)  irimmovable() {}
+func (*IrAMD64_CALL_mem)  irimmovable() {}
+func (*IrAMD64_CALL_gcwb) irimmovable() {}
 
 func (*IrAMD64_RET)    irterminator() {}
 func (*IrAMD64_JMP)    irterminator() {}
@@ -339,7 +348,6 @@ func (self *IrAMD64_MOVSLQ) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
-
 type IrAMD64_MOV_abs struct {
     R Reg
     V int64
@@ -381,7 +389,7 @@ type IrAMD64_MOV_reg struct {
     V Reg
 }
 
-func IrCopyArch(r Reg, v Reg) *IrAMD64_MOV_reg {
+func IrArchCopy(r Reg, v Reg) *IrAMD64_MOV_reg {
     return &IrAMD64_MOV_reg {
         R: r,
         V: v,
@@ -500,25 +508,6 @@ func (self *IrAMD64_MOV_store_p) Usages() (r []*Reg) {
     return
 }
 
-type IrAMD64_MOV_wb struct {
-    R  Reg
-    M  Reg
-    Fn unsafe.Pointer
-}
-
-func (self *IrAMD64_MOV_wb) Clone() IrNode {
-    r := *self
-    return &r
-}
-
-func (self *IrAMD64_MOV_wb) String() string {
-    return fmt.Sprintf("scall *%p [%s], %s -> (%s)", self.Fn, funcname(self.Fn), self.R, self.M)
-}
-
-func (self *IrAMD64_MOV_wb) Usages() []*Reg {
-    return []*Reg { &self.R, &self.M }
-}
-
 type IrAMD64_MOV_load_be struct {
     R Reg
     M Mem
@@ -582,12 +571,14 @@ type (
 
 const (
     IrSlotArgs IrSlotKind = iota
+    IrSlotCall
     IrSlotLocal
 )
 
 func (self IrSlotKind) String() string {
     switch self {
         case IrSlotArgs  : return "args"
+        case IrSlotCall  : return "call"
         case IrSlotLocal : return "local"
         default          : return "???"
     }
@@ -597,6 +588,14 @@ type IrAMD64_MOV_load_stack struct {
     R Reg
     S uintptr
     K IrSlotKind
+}
+
+func IrArchLoadStack(reg Reg, slot uintptr, kind IrSlotKind) *IrAMD64_MOV_load_stack {
+    return &IrAMD64_MOV_load_stack {
+        R: reg,
+        S: slot,
+        K: kind,
+    }
 }
 
 func (self *IrAMD64_MOV_load_stack) Clone() IrNode {
@@ -616,6 +615,14 @@ type IrAMD64_MOV_store_stack struct {
     R Reg
     S uintptr
     K IrSlotKind
+}
+
+func IrArchStoreStack(reg Reg, slot uintptr, kind IrSlotKind) *IrAMD64_MOV_store_stack {
+    return &IrAMD64_MOV_store_stack {
+        R: reg,
+        S: slot,
+        K: kind,
+    }
 }
 
 func (self *IrAMD64_MOV_store_stack) Clone() IrNode {
@@ -1144,8 +1151,112 @@ func (self *IrAMD64_CMPQ_pm) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
+type (
+    IrAMD64_ABI uint8
+)
+
+const (
+    IrAbiC IrAMD64_ABI = iota
+    IrAbiGo
+)
+
+func (self IrAMD64_ABI) String() string {
+    switch self {
+        case IrAbiC  : return "c"
+        case IrAbiGo : return "go"
+        default      : return "???"
+    }
+}
+
+type IrAMD64_CALL_reg struct {
+    Fn  Reg
+    In  []Reg
+    Out []Reg
+    Abi IrAMD64_ABI
+}
+
+func (self *IrAMD64_CALL_reg) Clone() IrNode {
+    r := new(IrAMD64_CALL_reg)
+    r.Fn = self.Fn
+    r.In = make([]Reg, len(self.In))
+    r.Out = make([]Reg, len(self.Out))
+    r.Abi = self.Abi
+    copy(r.In, self.In)
+    copy(r.Out, self.Out)
+    return r
+}
+
+func (self *IrAMD64_CALL_reg) String() string {
+    return fmt.Sprintf("call.%s *%s", self.Abi, self.Fn)
+}
+
+func (self *IrAMD64_CALL_reg) Usages() []*Reg {
+    return append([]*Reg { &self.Fn }, regsliceref(self.In)...)
+}
+
+func (self *IrAMD64_CALL_reg) Definitions() []*Reg {
+    return regsliceref(self.Out)
+}
+
+type IrAMD64_CALL_mem struct {
+    Fn  Mem
+    In  []Reg
+    Out []Reg
+    Abi IrAMD64_ABI
+}
+
+func (self *IrAMD64_CALL_mem) Clone() IrNode {
+    r := new(IrAMD64_CALL_mem)
+    r.Fn = self.Fn
+    r.In = make([]Reg, len(self.In))
+    r.Out = make([]Reg, len(self.Out))
+    r.Abi = self.Abi
+    copy(r.In, self.In)
+    copy(r.Out, self.Out)
+    return r
+}
+
+func (self *IrAMD64_CALL_mem) String() string {
+    return fmt.Sprintf("call.%s *%s", self.Abi, self.Fn)
+}
+
+func (self *IrAMD64_CALL_mem) Usages() []*Reg {
+    if self.Fn.I == Rz {
+        return append([]*Reg { &self.Fn.M }, regsliceref(self.In)...)
+    } else {
+        return append([]*Reg { &self.Fn.M, &self.Fn.I }, regsliceref(self.In)...)
+    }
+}
+
+func (self *IrAMD64_CALL_mem) Definitions() []*Reg {
+    return regsliceref(self.Out)
+}
+
+type IrAMD64_CALL_gcwb struct {
+    R  Reg
+    M  Reg
+    Fn unsafe.Pointer
+}
+
+func (self *IrAMD64_CALL_gcwb) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrAMD64_CALL_gcwb) String() string {
+    return fmt.Sprintf("scall *%p [%s], %s -> (%s)", self.Fn, funcname(self.Fn), self.R, self.M)
+}
+
+func (self *IrAMD64_CALL_gcwb) Usages() []*Reg {
+    return []*Reg { &self.R, &self.M }
+}
+
 type IrAMD64_RET struct {
     R []Reg
+}
+
+func IrArchReturn(rr []Reg) *IrAMD64_RET {
+    return &IrAMD64_RET { rr }
 }
 
 func (self *IrAMD64_RET) Clone() IrNode {

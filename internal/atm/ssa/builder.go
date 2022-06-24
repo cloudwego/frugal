@@ -73,7 +73,7 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
 
     /* create the root block */
     ret.Root = ret.CreateBlock()
-    ret.Root.Ins = make([]IrNode, 0, len(_GenericRegs) + len(_PointerRegs) + N_name)
+    ret.Root.Ins = make([]IrNode, 0, len(_GenericRegs) + len(_PointerRegs) + N_size)
 
     /* implicit defination of all generic registers */
     for _, v := range _GenericRegs {
@@ -86,7 +86,7 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
     }
 
     /* implicitly define all the temporary registers */
-    for i := 0; i < N_name; i++ {
+    for i := 0; i < N_size; i++ {
         ret.Root.Ins = append(
             ret.Root.Ins,
             &IrConstInt { R: Tr(i), V: 0 },

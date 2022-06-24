@@ -126,7 +126,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
             ds.Pred = []*BasicBlock { p.bb }
 
             /* rewrite the write barrier instruction */
-            fn := &IrAMD64_MOV_wb {
+            fn := &IrAMD64_CALL_gcwb {
                 R  : ir.R,
                 M  : ir.M,
                 Fn : ptrs[ir.Fn],

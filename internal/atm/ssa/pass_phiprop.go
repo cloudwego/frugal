@@ -29,7 +29,7 @@ func (PhiProp) Apply(cfg *CFG) {
         /* process each Phi node */
         for _, p := range vv {
             for b, r := range p.V {
-                b.Ins = append(b.Ins, IrCopyArch(p.R, *r))
+                b.Ins = append(b.Ins, IrArchCopy(p.R, *r))
             }
         }
     })

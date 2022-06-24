@@ -56,9 +56,9 @@ func (Fusion) flagsafe(bb *BasicBlock, ins IrNode) bool {
             case *IrAMD64_MOV_load     : break
             case *IrAMD64_MOV_store_r  : break
             case *IrAMD64_MOV_store_i  : break
-            case *IrAMD64_MOV_wb       : break
             case *IrAMD64_MOV_load_be  : break
             case *IrAMD64_MOV_store_be : break
+            case *IrAMD64_CALL_gcwb    : break
             default                    : return false
         }
     }
