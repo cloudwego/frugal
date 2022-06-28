@@ -45,7 +45,7 @@ func isValidType(t thrift.TType) bool {
 }
 
 // Check checks if buf is valid thrift binary-buffered binary.
-func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
+func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err error) {
 	defer func() {
 		if panic_err := recover(); panic_err != nil {
 			if strings.Contains(fmt.Sprint(panic_err), "slice bounds out of range") {
@@ -54,7 +54,8 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		}
 	}()
 	var l int
-	switch fieldType {
+	typ = &Type{TypeID: fieldTypeID}
+	switch fieldTypeID {
 	case thrift.BOOL:
 		_, l, err = bthrift.Binary.ReadBool(buf)
 		length += l
@@ -89,7 +90,7 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if err != nil {
 			return
 		}
-		ids := make([]int16, 0, 16)
+		fields := make(map[int16]*Type)
 		for {
 			_, typeID, id, l, e := bthrift.Binary.ReadFieldBegin(buf[length:])
 			length += l
@@ -100,18 +101,17 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 			if typeID == thrift.STOP {
 				break
 			}
-			for _, old := range ids {
-				if old == id {
-					return 0, fmt.Errorf("duplicated field id")
-				}
-			}
-			ids = append(ids, id)
-			l, e = Check(buf[length:], typeID)
-			length += l
+			fType, l, e := Check(buf[length:], typeID)
 			if e != nil {
 				err = e
 				return
 			}
+			length += l
+			if _, ok := fields[id]; ok {
+				err = fmt.Errorf("duplicate field id: %d", id)
+				return
+			}
+			fields[id] = fType
 			l, e = bthrift.Binary.ReadFieldEnd(buf[length:])
 			length += l
 			if e != nil {
@@ -124,122 +124,160 @@ func Check(buf []byte, fieldType thrift.TType) (length int, err error) {
 		if e != nil {
 			err = e
 		}
+		typ.Fields = fields
 		return
 	case thrift.MAP:
-		keyType, valueType, size, l, e := bthrift.Binary.ReadMapBegin(buf)
+		keyTypeID, valTypeID, size, l, e := bthrift.Binary.ReadMapBegin(buf)
 		length += l
 		if e != nil {
 			err = e
 			return
 		}
-		if !isValidType(keyType) {
-			return 0, fmt.Errorf("unknown data type %d", keyType)
+		if !isValidType(keyTypeID) {
+			return nil, 0, fmt.Errorf("unknown data type %d", keyTypeID)
 		}
-		if !isValidType(valueType) {
-			return 0, fmt.Errorf("unknown data type %d", keyType)
+		if !isValidType(valTypeID) {
+			return nil, 0, fmt.Errorf("unknown data type %d", keyTypeID)
 		}
-		if keyType == thrift.LIST || keyType == thrift.SET || keyType == thrift.MAP {
-			return 0, fmt.Errorf("map key cannot be container")
+		if keyTypeID == thrift.LIST || keyTypeID == thrift.SET || keyTypeID == thrift.MAP {
+			return nil, 0, fmt.Errorf("map key cannot be container")
 		}
-		if length+size*(TypeSize[keyType]+TypeSize[valueType]) >= len(buf) {
-			return 0, fmt.Errorf("size not enough")
+		if length+size*(TypeSize[keyTypeID]+TypeSize[valTypeID]) >= len(buf) {
+			return nil, 0, fmt.Errorf("size not enough")
 		}
+		var keyTypes, valTypes Types
 		for i := 0; i < size; i++ {
-			l, e := Check(buf[length:], keyType)
+			keyType, l, e := Check(buf[length:], keyTypeID)
+			if e != nil {
+				err = e
+				return
+			}
+			length += l
+			keyTypes = append(keyTypes, keyType)
+			valType, l, e := Check(buf[length:], valTypeID)
 			length += l
 			if e != nil {
 				err = e
 				return
 			}
-			l, e = Check(buf[length:], valueType)
-			length += l
-			if e != nil {
-				err = e
-				return
-			}
+			valTypes = append(valTypes, valType)
+		}
+		if size == 0 {
+			keyTypes = append(keyTypes, &Type{TypeID: keyTypeID})
+			valTypes = append(valTypes, &Type{TypeID: valTypeID})
+		}
+		if keyTypes.Conflict() {
+			return nil, 0, fmt.Errorf("map key type conflict")
+		}
+		if valTypes.Conflict() {
+			return nil, 0, fmt.Errorf("map value type conflict")
 		}
 		l, e = bthrift.Binary.ReadMapEnd(buf[length:])
 		length += l
 		if e != nil {
 			err = e
 		}
+		// NOTE: considering combine types to one complete type
+		typ.KeyType = keyTypes[0]
+		typ.ValType = valTypes[0]
 		return
 	case thrift.SET:
-		elemType, size, l, e := bthrift.Binary.ReadSetBegin(buf)
+		elemTypeID, size, l, e := bthrift.Binary.ReadSetBegin(buf)
 		length += l
 		if e != nil {
 			err = e
 			return
 		}
-		if !isValidType(elemType) {
-			return 0, fmt.Errorf("unknown data type %d", elemType)
+		if !isValidType(elemTypeID) {
+			return nil, 0, fmt.Errorf("unknown data type %d", elemTypeID)
 		}
-		if length+size*TypeSize[elemType] >= len(buf) {
-			return 0, fmt.Errorf("size not enough")
+		if length+size*TypeSize[elemTypeID] >= len(buf) {
+			return nil, 0, fmt.Errorf("size not enough")
 		}
 		strs := make([]string, size)
+		var elemTypes Types
 		for i := 0; i < size; i++ {
-			l, e = Check(buf[length:], elemType)
-			strs[i] = string(buf[length : length+l])
-			length += l
+			elemType, l, e := Check(buf[length:], elemTypeID)
 			if e != nil {
 				err = e
 				return
 			}
+			strs[i] = string(buf[length : length+l])
+			length += l
+			elemTypes = append(elemTypes, elemType)
 		}
+		// set element check
 		if size >= 2 {
 			sort.Strings(strs)
-			if elemType == thrift.BOOL {
+			if elemTypeID == thrift.BOOL {
 				for i := 0; i < len(strs)-1; i++ {
 					if strs[i] == string([]byte{1}) && strs[i+1] == string([]byte{1}) {
-						return 0, fmt.Errorf("set element duplicated")
+						return nil, 0, fmt.Errorf("set element duplicated")
 					}
 					if strs[i] != string([]byte{1}) && strs[i+1] != string([]byte{1}) {
-						return 0, fmt.Errorf("set element duplicated")
+						return nil, 0, fmt.Errorf("set element duplicated")
 					}
 				}
 			} else {
 				for i := 0; i < len(strs)-1; i++ {
 					if strs[i] == strs[i+1] {
-						return 0, fmt.Errorf("set element duplicated")
+						return nil, 0, fmt.Errorf("set element duplicated")
 					}
 				}
 			}
+		}
+		if size == 0 {
+			elemTypes = append(elemTypes, &Type{TypeID: elemTypeID})
+		}
+		if elemTypes.Conflict() {
+			return nil, 0, fmt.Errorf("set element type conflict")
 		}
 		l, e = bthrift.Binary.ReadSetEnd(buf[length:])
 		length += l
 		if e != nil {
 			err = e
 		}
+		// NOTE: considering combine types to one complete type
+		typ.ValType = elemTypes[0]
 		return
 	case thrift.LIST:
-		elemType, size, l, e := bthrift.Binary.ReadListBegin(buf)
+		elemTypeID, size, l, e := bthrift.Binary.ReadListBegin(buf)
 		length += l
 		if e != nil {
 			err = e
 			return
 		}
-		if !isValidType(elemType) {
-			return 0, fmt.Errorf("unknown data type %d", elemType)
+		if !isValidType(elemTypeID) {
+			return nil, 0, fmt.Errorf("unknown data type %d", elemTypeID)
 		}
-		if length+size*TypeSize[elemType] >= len(buf) {
-			return 0, fmt.Errorf("size not enough")
+		if length+size*TypeSize[elemTypeID] >= len(buf) {
+			return nil, 0, fmt.Errorf("size not enough")
 		}
+		var elemTypes Types
 		for i := 0; i < size; i++ {
-			l, e = Check(buf[length:], elemType)
-			length += l
+			elemType, l, e := Check(buf[length:], elemTypeID)
 			if e != nil {
 				err = e
 				return
 			}
+			length += l
+			elemTypes = append(elemTypes, elemType)
+		}
+		if size == 0 {
+			elemTypes = append(elemTypes, &Type{TypeID: elemTypeID})
+		}
+		if elemTypes.Conflict() {
+			return nil, 0, fmt.Errorf("list element type conflict")
 		}
 		l, e = bthrift.Binary.ReadListEnd(buf[length:])
 		length += l
 		if e != nil {
 			err = e
 		}
+		// NOTE: considering combine types to one complete type
+		typ.ValType = elemTypes[0]
 		return
 	default:
-		return 0, fmt.Errorf("unknown data type %d", fieldType)
+		return nil, 0, fmt.Errorf("unknown data type %d", fieldTypeID)
 	}
 }

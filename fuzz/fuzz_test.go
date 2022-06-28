@@ -61,7 +61,7 @@ func FuzzMain(f *testing.F) {
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
-			length, err := Check(data, thrift.TType(i))
+			_, length, err := Check(data, thrift.TType(i))
 			if err != nil {
 				continue
 			}
