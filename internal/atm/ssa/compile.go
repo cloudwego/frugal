@@ -33,11 +33,12 @@ type PassDescriptor struct {
 }
 
 var Passes = [...]PassDescriptor {
-    { Name: "Constant Propagation"       , Pass: new(ConstProp) },
+    { Name: "Early Constant Propagation" , Pass: new(ConstProp) },
     { Name: "Early Reduction"            , Pass: new(Reduce) },
     { Name: "Branch Elimination"         , Pass: new(BranchElim) },
     { Name: "Return Spreading"           , Pass: new(ReturnSpread) },
     { Name: "Value Reordering"           , Pass: new(Reorder) },
+    { Name: "Late Constant Propagation"  , Pass: new(ConstProp) },
     { Name: "Late Reduction"             , Pass: new(Reduce) },
     { Name: "Zero Register Substitution" , Pass: new(ZeroReg) },
     { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },

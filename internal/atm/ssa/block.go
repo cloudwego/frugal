@@ -50,6 +50,11 @@ var _BinaryOps = [...]IrBinaryOp {
     hir.OP_shri : IrOpShr,
 }
 
+var _ConstnessMap = [...]Constness {
+    hir.Const    : Const,
+    hir.Volatile : Volatile,
+}
+
 type BasicBlock struct {
     Id   int
     Phi  []*IrPhi
@@ -81,6 +86,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                 &IrConstPtr {
                     P: p.Pr,
                     R: Rv(p.Pd),
+                    M: _ConstnessMap[p.Constness()],
                 },
             )
         }
@@ -164,6 +170,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                 &IrConstPtr {
                     R: Pr(1),
                     P: rtx.V_pWriteBarrier,
+                    M: Volatile,
                 },
                 &IrConstPtr {
                     R: Pr(2),

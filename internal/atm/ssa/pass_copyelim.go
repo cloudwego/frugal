@@ -25,7 +25,7 @@ func (CopyElim) Apply(cfg *CFG) {
 
     /* constant zero registers */
     consts[Rz] = constint(0)
-    consts[Pn] = constptr(nil)
+    consts[Pn] = constptr(nil, Const)
 
     /* register replacement func */
     replacereg := func(rr *Reg) {
@@ -57,7 +57,7 @@ func (CopyElim) Apply(cfg *CFG) {
         for _, v := range bb.Ins {
             switch p := v.(type) {
                 case *IrConstInt: consts[p.R] = constint(p.V)
-                case *IrConstPtr: consts[p.R] = constptr(p.P)
+                case *IrConstPtr: consts[p.R] = constptr(p.P, p.M)
             }
         }
     })

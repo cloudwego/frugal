@@ -60,9 +60,9 @@ func (self *CFG) CreateBlock() (r *BasicBlock) {
 
 func (self *CFG) CreateRegister(ptr bool) Reg {
     if i := self.allocreg(); ptr {
-        return mkreg(0, K_norm, 0).Derive(i)
-    } else {
         return mkreg(1, K_norm, 0).Derive(i)
+    } else {
+        return mkreg(0, K_norm, 0).Derive(i)
     }
 }
 

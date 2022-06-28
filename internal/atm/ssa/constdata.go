@@ -24,6 +24,7 @@ import (
 type _ConstData struct {
     i bool
     v int64
+    c Constness
     p unsafe.Pointer
 }
 
@@ -31,7 +32,7 @@ func (self _ConstData) String() string {
     if self.i {
         return fmt.Sprintf("(i64) %d", self.v)
     } else {
-        return fmt.Sprintf("(ptr) %p", self.p)
+        return fmt.Sprintf("(%s ptr) %p", self.c, self.p)
     }
 }
 
@@ -42,9 +43,10 @@ func constint(v int64) _ConstData {
     }
 }
 
-func constptr(p unsafe.Pointer) _ConstData {
+func constptr(p unsafe.Pointer, cc Constness) _ConstData {
     return _ConstData {
         p: p,
+        c: cc,
         i: false,
     }
 }

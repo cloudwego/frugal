@@ -389,10 +389,11 @@ type IrAMD64_MOV_reg struct {
     V Reg
 }
 
-func IrArchCopy(r Reg, v Reg) *IrAMD64_MOV_reg {
-    return &IrAMD64_MOV_reg {
-        R: r,
-        V: v,
+func IrArchCopy(r Reg, v Reg) IrNode {
+    if r.Ptr() != v.Ptr() {
+        panic("copy between different kind of registers")
+    } else {
+        return &IrAMD64_MOV_reg { R: r, V: v }
     }
 }
 

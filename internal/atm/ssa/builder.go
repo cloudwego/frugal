@@ -82,7 +82,7 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
 
     /* implicit defination of all pointer registers */
     for _, v := range _PointerRegs {
-        ret.Root.Ins = append(ret.Root.Ins, &IrConstPtr { R: Rv(v), P: nil })
+        ret.Root.Ins = append(ret.Root.Ins, &IrConstPtr { R: Rv(v), P: nil, M: Volatile })
     }
 
     /* implicitly define all the temporary registers */
@@ -90,7 +90,7 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
         ret.Root.Ins = append(
             ret.Root.Ins,
             &IrConstInt { R: Tr(i), V: 0 },
-            &IrConstPtr { R: Pr(i), P: nil },
+            &IrConstPtr { R: Pr(i), P: nil, M: Volatile },
         )
     }
 

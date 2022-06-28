@@ -19,6 +19,9 @@ package ssa
 import (
     `fmt`
     `math/bits`
+    `unsafe`
+
+    `github.com/cloudwego/frugal/internal/atm/abi`
 )
 
 // ConstProp propagates constant through the expression tree.
@@ -67,7 +70,7 @@ func (self ConstProp) Apply(cfg *CFG) {
 
     /* constant zero registers */
     consts[Rz] = constint(0)
-    consts[Pn] = constptr(nil)
+    consts[Pn] = constptr(nil, Const)
 
     /* const adder */
     addconst := func(r Reg, v _ConstData) {
@@ -125,7 +128,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                 if cdata.i {
                     ins = append(ins, &IrConstInt { R: p.R, V: cdata.v })
                 } else {
-                    ins = append(ins, &IrConstPtr { R: p.R, P: cdata.p })
+                    ins = append(ins, &IrConstPtr { R: p.R, P: cdata.p, M: cdata.c })
                 }
 
                 /* mark as constant */
@@ -140,6 +143,56 @@ func (self ConstProp) Apply(cfg *CFG) {
                         ins = append(ins, p)
                     }
 
+                    /* value loads */
+                    case *IrLoad: {
+                        var ok bool
+                        var iv int64
+                        var cc _ConstData
+                        var pv unsafe.Pointer
+
+                        /* must be constant memory address */
+                        if cc, ok = consts[p.Mem]; !ok {
+                            ins = append(ins, p)
+                            break
+                        }
+
+                        /* address must be a pointer */
+                        if cc.i {
+                            panic(fmt.Sprintf("constprop: value load on integer value %#x: %s", cc.v, p))
+                        }
+
+                        /* do not load a volatile pointer */
+                        if cc.c != Const {
+                            ins = append(ins, p)
+                            break
+                        }
+
+                        /* constant pointer */
+                        if p.R.Ptr() {
+                            if p.Size != abi.PtrSize {
+                                panic("constprop: pointer load of invalid size: " + p.String())
+                            } else {
+                                pv = *(*unsafe.Pointer)(cc.p)
+                                ins = append(ins, &IrConstPtr { R: p.R, P: pv, M: Volatile })
+                                addconst(p.R, constptr(*(*unsafe.Pointer)(cc.p), Volatile))
+                                break
+                            }
+                        }
+
+                        /* read the integer */
+                        switch p.Size {
+                            case 1  : iv = int64(*(*uint8)(cc.p))
+                            case 2  : iv = int64(*(*uint16)(cc.p))
+                            case 4  : iv = int64(*(*uint32)(cc.p))
+                            case 8  : iv = int64(*(*uint64)(cc.p))
+                            default : panic("constprop: integer load of invalid size: " + p.String())
+                        }
+
+                        /* replace the instruction */
+                        ins = append(ins, &IrConstInt { R: p.R, V: iv })
+                        addconst(p.R, constint(iv))
+                    }
+
                     /* integer constant */
                     case *IrConstInt: {
                         ins = append(ins, p)
@@ -149,7 +202,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                     /* pointer constant */
                     case *IrConstPtr: {
                         ins = append(ins, p)
-                        addconst(p.R, constptr(p.P))
+                        addconst(p.R, constptr(p.P, p.M))
                     }
 
                     /* pointer arithmetics */
@@ -164,8 +217,8 @@ func (self ConstProp) Apply(cfg *CFG) {
                             panic(fmt.Sprintf("constprop: pointer operation with pointer offset %p: %s", off.p, p))
                         } else {
                             r := addptr(mem.p, off.v)
-                            ins = append(ins, &IrConstPtr { R: p.R, P: r })
-                            addconst(p.R, constptr(r))
+                            ins = append(ins, &IrConstPtr { R: p.R, P: r, M: Volatile })
+                            addconst(p.R, constptr(r, mem.c))
                         }
                     }
 
@@ -177,7 +230,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                             panic(fmt.Sprintf("constprop: integer operation on pointer value %p: %s", cc.p, p))
                         } else {
                             r := self.unary(cc.v, p.Op)
-                            ins = append(ins, &IrConstInt { R: p.R, V: r})
+                            ins = append(ins, &IrConstInt { R: p.R, V: r })
                             addconst(p.R, constint(r))
                         }
                     }

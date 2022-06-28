@@ -28,6 +28,7 @@ import (
 
 type (
     Reg        uint64
+    Constness  uint8
 	Likeliness uint8
 )
 
@@ -68,9 +69,22 @@ const (
 )
 
 const (
-    Unlikely Likeliness = iota
-    Likely
+    Const Constness = iota
+    Volatile
 )
+
+const (
+    Likely Likeliness = iota
+    Unlikely
+)
+
+func (self Constness) String() string {
+    switch self {
+        case Const    : return "const"
+        case Volatile : return "volatile"
+        default       : return "???"
+    }
+}
 
 func (self Likeliness) String() string {
     switch self {
@@ -672,6 +686,7 @@ func (self *IrConstInt) Definitions() []*Reg {
 type IrConstPtr struct {
     R Reg
     P unsafe.Pointer
+    M Constness
 }
 
 func (self *IrConstPtr) Clone() IrNode {
@@ -680,7 +695,7 @@ func (self *IrConstPtr) Clone() IrNode {
 }
 
 func (self *IrConstPtr) String() string {
-    return fmt.Sprintf("%s = const.ptr %p [%s]", self.R, self.P, funcname(self.P))
+    return fmt.Sprintf("%s = const.ptr (%s)%p [%s]", self.R, self.M, self.P, funcname(self.P))
 }
 
 func (self *IrConstPtr) Definitions() []*Reg {
@@ -797,12 +812,11 @@ type IrBinaryExpr struct {
     Op IrBinaryOp
 }
 
-func IrCopy(r Reg, v Reg) *IrBinaryExpr {
-    return &IrBinaryExpr {
-        R  : r,
-        X  : v,
-        Y  : Rz,
-        Op : IrOpAdd,
+func IrCopy(r Reg, v Reg) IrNode {
+    switch {
+        case  r.Ptr() &&  v.Ptr() : return &IrLEA { R: r, Mem: v, Off: Rz }
+        case !r.Ptr() && !v.Ptr() : return &IrBinaryExpr { R: r, X: v, Y: Rz, Op: IrOpAdd }
+        default                   : panic("copy between different kind of registers")
     }
 }
 

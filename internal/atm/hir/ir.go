@@ -26,6 +26,7 @@ import (
 
 type (
 	OpCode     byte
+    Constness  byte
     Likeliness byte
 )
 
@@ -79,8 +80,13 @@ const (
 )
 
 const (
-    Unlikely Likeliness = iota
-    Likely
+    Const Constness = iota
+    Volatile
+)
+
+const (
+    Likely Likeliness = iota
+    Unlikely
 )
 
 type Ir struct {
@@ -108,9 +114,18 @@ func (self *Ir) rz(v GenericRegister) *Ir { self.Rz = v; return self }
 func (self *Ir) ps(v PointerRegister) *Ir { self.Ps = v; return self }
 func (self *Ir) pd(v PointerRegister) *Ir { self.Pd = v; return self }
 
-func (self *Ir) lr(p Likeliness) *Ir {
+func (self *Ir) constness(c Constness) *Ir {
+    if self.Op != OP_ip {
+        panic("constness only applicable to `OP_ip` instruction")
+    } else {
+        self.An = uint8(c)
+        return self
+    }
+}
+
+func (self *Ir) likeliness(p Likeliness) *Ir {
     if !self.IsBranch() {
-        panic("only applicable to branch instructions")
+        panic("likeliness only applicable to branch instructions")
     } else if self.Op == OP_bsw {
         panic("cannot specify likeliness for `OP_bsw`")
     } else {
@@ -137,8 +152,11 @@ func (self *Ir) R5(v Register) *Ir { self.Rn, self.Rr[5] = 6, v.A(); return self
 func (self *Ir) R6(v Register) *Ir { self.Rn, self.Rr[6] = 7, v.A(); return self }
 func (self *Ir) R7(v Register) *Ir { self.Rn, self.Rr[7] = 8, v.A(); return self }
 
-func (self *Ir) Likely()   *Ir { return self.lr(Likely) }
-func (self *Ir) Unlikely() *Ir { return self.lr(Unlikely) }
+func (self *Ir) Const()    *Ir { return self.constness(Const) }
+func (self *Ir) Volatile() *Ir { return self.constness(Volatile) }
+
+func (self *Ir) Likely()   *Ir { return self.likeliness(Likely) }
+func (self *Ir) Unlikely() *Ir { return self.likeliness(Unlikely) }
 
 func (self *Ir) Free() {
     freeInstr(self)
@@ -155,9 +173,17 @@ func (self *Ir) IsBranch() bool {
     return self.Op >= OP_beq && self.Op <= OP_jmp
 }
 
+func (self *Ir) Constness() Constness {
+    if self.Op != OP_ip {
+        panic("constness only applicable to `OP_ip` instruction")
+    } else {
+        return Constness(self.An)
+    }
+}
+
 func (self *Ir) Likeliness() Likeliness {
     if !self.IsBranch() {
-        panic("only applicable to branch instructions")
+        panic("likeliness only applicable to branch instructions")
     } else if self.Op == OP_bsw {
         panic("`OP_bsw` does not have likeliness assigned")
     } else {
