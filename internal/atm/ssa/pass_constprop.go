@@ -174,7 +174,7 @@ func (self ConstProp) Apply(cfg *CFG) {
                             } else {
                                 pv = *(*unsafe.Pointer)(cc.p)
                                 ins = append(ins, &IrConstPtr { R: p.R, P: pv, M: Volatile })
-                                addconst(p.R, constptr(*(*unsafe.Pointer)(cc.p), Volatile))
+                                addconst(p.R, constptr(pv, Volatile))
                                 break
                             }
                         }
