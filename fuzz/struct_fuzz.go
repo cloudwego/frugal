@@ -71,9 +71,9 @@ var (
 	EnumType   = reflect.TypeOf(Enum(0))
 )
 
-func fuzzDynamicStruct(data []byte, tt thrift.TType) (reflect.Type, error) {
+func fuzzDynamicStruct(typ *Type) (reflect.Type, error) {
 	tc := &TypeConstructor{bthrift.Binary}
-	ts, _, err := tc.GetType(data, tt)
+	ts, err := tc.GetType(typ)
 	if err != nil {
 		return nil, err
 	}
@@ -89,69 +89,16 @@ type TypeConstructor struct {
 	bp bthrift.BTProtocol
 }
 
-func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts *TypeSpec, length int, err error) {
+func (t *TypeConstructor) GetType(typ *Type) (ts *TypeSpec, err error) {
 	var keySpec, valSpec *TypeSpec
-	switch fieldType {
-	case thrift.BOOL:
-		_, length, err = t.bp.ReadBool(buf)
-		if err != nil {
-			return
-		}
-	case thrift.BYTE:
-		_, length, err = t.bp.ReadByte(buf)
-		if err != nil {
-			return
-		}
-	case thrift.I16:
-		_, length, err = t.bp.ReadI16(buf)
-		if err != nil {
-			return
-		}
-	case thrift.I32:
-		_, length, err = t.bp.ReadI32(buf)
-		if err != nil {
-			return
-		}
-	case thrift.I64:
-		_, length, err = t.bp.ReadI64(buf)
-		if err != nil {
-			return
-		}
-	case thrift.DOUBLE:
-		_, length, err = t.bp.ReadDouble(buf)
-		if err != nil {
-			return
-		}
+	switch typ.TypeID {
+	case thrift.BOOL, thrift.BYTE, thrift.I16, thrift.I32, thrift.I64, thrift.DOUBLE:
 	case thrift.STRING:
-		_, length, err = t.bp.ReadString(buf)
-		if err != nil {
-			return
-		}
 		// FIXME: what about binary?
 	case thrift.STRUCT:
-		_, _, err = t.bp.ReadStructBegin(buf)
-		if err != nil {
-			return
-		}
 		fields := make([]reflect.StructField, 0)
-		for {
-			_, typeID, fieldID, l, e := t.bp.ReadFieldBegin(buf[length:])
-			length += l
-			if e != nil {
-				err = e
-				return
-			}
-			if typeID == thrift.STOP {
-				break
-			}
-			fts, l, e := t.GetType(buf[length:], typeID)
-			length += l
-			if e != nil {
-				err = e
-				return
-			}
-			l, e = t.bp.ReadFieldEnd(buf[length:])
-			length += l
+		for fieldID, fieldTyp := range typ.Fields {
+			fts, e := t.GetType(fieldTyp)
 			if e != nil {
 				err = e
 				return
@@ -159,97 +106,32 @@ func (t *TypeConstructor) GetType(buf []byte, fieldType thrift.TType) (ts *TypeS
 			gsf := BuildStructField(fieldID, Default, fts)
 			fields = append(fields, gsf)
 		}
-		l, e := t.bp.ReadStructEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
 		structType := reflect.StructOf(fields)
-		return &TypeSpec{reflect.PointerTo(structType), "ANONYMOUS"}, length, nil
+		return &TypeSpec{reflect.PointerTo(structType), "ANONYMOUS"}, nil
 	case thrift.MAP:
-		keyType, valueType, size, l, e := t.bp.ReadMapBegin(buf)
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
-		for i := 0; i < size; i++ {
-			keySpec, l, e = t.GetType(buf[length:], keyType)
-			length += l
-			if e != nil {
-				err = e
-				return
-			}
-			valSpec, l, e = t.GetType(buf[length:], valueType)
-			length += l
-			if e != nil {
-				err = e
+		if typ.KeyType != nil {
+			keySpec, err = t.GetType(typ.KeyType)
+			if err != nil {
 				return
 			}
 		}
-		if size == 0 {
-			keySpec = BuildTypeSpec(keyType, Default, nil, nil)
-			valSpec = BuildTypeSpec(valueType, Default, nil, nil)
-		}
-		l, e = t.bp.ReadMapEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
-	case thrift.SET:
-		elemType, size, l, e := t.bp.ReadSetBegin(buf)
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
-		for i := 0; i < size; i++ {
-			valSpec, l, e = t.GetType(buf[length:], elemType)
-			length += l
-			if e != nil {
-				err = e
+		if typ.ValType != nil {
+			valSpec, err = t.GetType(typ.ValType)
+			if err != nil {
 				return
 			}
 		}
-		if size == 0 {
-			valSpec = BuildTypeSpec(elemType, Default, nil, nil)
-		}
-		l, e = t.bp.ReadSetEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
-	case thrift.LIST:
-		elemType, size, l, e := t.bp.ReadListBegin(buf)
-		length += l
-		if e != nil {
-			err = e
-			return
-		}
-		for i := 0; i < size; i++ {
-			valSpec, l, e = t.GetType(buf[length:], elemType)
-			length += l
-			if e != nil {
-				err = e
+	case thrift.SET, thrift.LIST:
+		if typ.ValType != nil {
+			valSpec, err = t.GetType(typ.ValType)
+			if err != nil {
 				return
 			}
-		}
-		if size == 0 {
-			valSpec = BuildTypeSpec(elemType, Default, nil, nil)
-		}
-		l, e = t.bp.ReadListEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-			return
 		}
 	default:
-		return nil, 0, fmt.Errorf("unknown data type: %v", fieldType)
+		return nil, fmt.Errorf("unknown data type: %v", typ.TypeID)
 	}
-	return BuildTypeSpec(fieldType, Default, keySpec, valSpec), length, nil
+	return BuildTypeSpec(typ.TypeID, Default, keySpec, valSpec), nil
 }
 
 func BuildTypeSpec(t thrift.TType, requiredness Requiredness, keySpec, valSpec *TypeSpec) *TypeSpec {

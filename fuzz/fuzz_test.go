@@ -61,14 +61,14 @@ func FuzzMain(f *testing.F) {
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
-			_, length, err := Check(data, thrift.TType(i))
+			typ, length, err := Check(data, thrift.TType(i))
 			if err != nil {
 				continue
 			}
 			if length != len(data) {
 				continue
 			}
-			rt, err := fuzzDynamicStruct(data, thrift.TType(i))
+			rt, err := fuzzDynamicStruct(typ)
 			if err != nil {
 				t.Fatal(err)
 			}
