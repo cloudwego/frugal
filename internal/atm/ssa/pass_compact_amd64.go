@@ -41,7 +41,7 @@ func (Compaction) Apply(cfg *CFG) {
             rt.MapClear(mems)
             rt.MapClear(vals)
 
-            /* check every instructions, reuse memory loads as much as possible */
+            /* check every instructions, reuse memory addresses as much as possible */
             for i, v := range bb.Ins {
                 switch p := v.(type) {
                     default: {
@@ -71,6 +71,34 @@ func (Compaction) Apply(cfg *CFG) {
                             p.M, next = Mem { M: m, I: Rz, S: 1, D: 0 }, true
                         } else if r, ok := vals[_LoadMem {p.M, p.N }]; ok {
                             bb.Ins[i], next = &IrAMD64_BSWAP { R: p.R, V: r, N: p.N }, true
+                        }
+                    }
+
+                    /* lea {mem}, %r0; movx %r1, {mem} --> lea {mem}, %r0; movx %r1, (%r0) */
+                    case *IrAMD64_MOV_store_r: {
+                        if m, ok := mems[p.M]; ok {
+                            p.M, next = Mem { M: m, I: Rz, S: 1, D: 0 }, true
+                        }
+                    }
+
+                    /* lea {mem}, %r0; movx {imm}, {mem} --> lea {mem}, %r0; movx {imm}, (%r0) */
+                    case *IrAMD64_MOV_store_i: {
+                        if m, ok := mems[p.M]; ok {
+                            p.M, next = Mem { M: m, I: Rz, S: 1, D: 0 }, true
+                        }
+                    }
+
+                    /* lea {mem}, %r0; movx {ptr}, {mem} --> lea {mem}, %r0; movx {ptr}, (%r0) */
+                    case *IrAMD64_MOV_store_p: {
+                        if m, ok := mems[p.M]; ok {
+                            p.M, next = Mem { M: m, I: Rz, S: 1, D: 0 }, true
+                        }
+                    }
+
+                    /* lea {mem}, %r0; movbex %r1, {mem} --> lea {mem}, %r0; movbex %r1, (%r0) */
+                    case *IrAMD64_MOV_store_be: {
+                        if m, ok := mems[p.M]; ok {
+                            p.M, next = Mem { M: m, I: Rz, S: 1, D: 0 }, true
                         }
                     }
 

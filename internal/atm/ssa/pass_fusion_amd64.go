@@ -197,6 +197,17 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
+                    /* leaq {mem}, %r0; movx {ptr}, (%r0) --> movx {ptr}, {mem} */
+                    case *IrAMD64_MOV_store_p: {
+                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
+                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
+                                p.M = ins.M
+                                done = false
+                                p.M.D = int32(x)
+                            }
+                        }
+                    }
+
                     /* leaq {mem}, %r0; movbex (%r0), %r1 --> movbex {mem}, %r1 */
                     case *IrAMD64_MOV_load_be: {
                         if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {

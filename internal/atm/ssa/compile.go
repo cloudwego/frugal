@@ -46,6 +46,8 @@ var Passes = [...]PassDescriptor {
     { Name: "Instruction Fusion"         , Pass: new(Fusion) },
     { Name: "Instruction Compaction"     , Pass: new(Compaction) },
     { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering) },
+    { Name: "Value Rematerialize"        , Pass: new(Rematerialize) },
+    { Name: "Final TDCE"                 , Pass: new(TDCE) },
     { Name: "Instruction Simplify"       , Pass: new(Simplify) },
     { Name: "Register Allocation"        , Pass: new(RegAlloc) },
 }
