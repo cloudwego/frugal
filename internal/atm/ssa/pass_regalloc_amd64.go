@@ -22,166 +22,142 @@ import (
     `strings`
 
     `github.com/davecgh/go-spew/spew`
-    `github.com/oleiade/lane`
 )
 
-type _LivePoint struct {
-    b int
-    i int
+type _LiveIntv struct {
+    bb    *BasicBlock
+    last  int
+    first int
 }
 
-func (self _LivePoint) String() string {
-    return fmt.Sprintf("%d:%d", self.b, self.i)
-}
-
-func (self _LivePoint) isPrior(other _LivePoint) bool {
-    return self.b < other.b || (self.b == other.b && self.i < other.i)
+func (self _LiveIntv) String() string {
+    if self.first == self.last {
+        return fmt.Sprintf("bb_%d:{%d}", self.bb.Id, self.first)
+    } else {
+        return fmt.Sprintf("bb_%d:{%d~%d}", self.bb.Id, self.first, self.last)
+    }
 }
 
 type _LiveRange struct {
-    p []_LivePoint
+    r []_LiveIntv
+}
+
+func (self *_LiveRange) mark(bb *BasicBlock, i int) {
+    v := bb.Id
+    p := sort.Search(len(self.r), func(i int) bool { return self.r[i].bb.Id >= v })
+
+    /* not found, insert a new one */
+    if p >= len(self.r) || self.r[p].bb.Id != v {
+        self.r = append(self.r, _LiveIntv{})
+        copy(self.r[p + 1:], self.r[p:])
+        self.r[p] = _LiveIntv { bb: bb, first: i, last: i }
+    }
+
+    /* extend live range if needed */
+    if self.r[p].last < i {
+        self.r[p].last = i
+    }
 }
 
 func (self *_LiveRange) String() string {
-    nb := len(self.p)
-    buf := make([]string, 0, nb)
+    var s []string
+    for _, v := range self.r { s = append(s, v.String()) }
+    return strings.Join(s, ", ")
+}
 
-    /* add usages */
-    for _, u := range self.p {
-        buf = append(buf, u.String())
+type _LiveRanges struct {
+    r map[Reg]*_LiveRange
+}
+
+func (self *_LiveRanges) dlr(rr Reg) *_LiveRange {
+    var ok bool
+    var lr *_LiveRange
+
+    /* check for existing ranges */
+    if lr, ok = self.r[rr]; ok {
+        return lr
     }
 
-    /* join them together */
-    return fmt.Sprintf(
-        "{%s}",
-        strings.Join(buf, ", "),
-    )
+    /* check for uninitialized map */
+    if self.r == nil {
+        self.r = make(map[Reg]*_LiveRange)
+    }
+
+    /* create a new one if not exists */
+    lr = new(_LiveRange)
+    self.r[rr] = lr
+    return lr
 }
 
-func liverangemark(regs map[Reg]*_LiveRange, refs []*Reg, b int, i int) {
-   for _, r := range refs {
-        if r.Kind() != K_zero {
-            if lr, ok := regs[*r]; ok {
-                lr.p = append(lr.p, _LivePoint { b, i })
-            } else {
-                regs[*r] = &_LiveRange { p: []_LivePoint {{ b, i }} }
-            }
-        }
-   }
+func (self *_LiveRanges) markphi(rr Reg, bb *BasicBlock, i int) {
+    if i < 0 || i >= len(bb.Phi) {
+        panic("invalid Phi node index")
+    } else {
+        self.dlr(rr).mark(bb, i - len(bb.Phi))
+    }
 }
 
-func blockIsWriteBarrier(bb *BasicBlock) bool {
-    for _, v := range bb.Ins { if _, ok := v.(*IrAMD64_CALL_gcwb); ok { return true } }
-    return false
+func (self *_LiveRanges) markins(rr Reg, bb *BasicBlock, i int) {
+    if i < 0 || i >= len(bb.Ins) {
+        panic("invalid instruction index")
+    } else {
+        self.dlr(rr).mark(bb, i)
+    }
 }
 
-func blockIsDomimatedReturn(bb *BasicBlock) bool {
-    _, ok := bb.Term.(*IrAMD64_RET)
-    return ok && len(bb.Pred) == 1
+func (self *_LiveRanges) markterm(rr Reg, bb *BasicBlock) {
+    self.dlr(rr).mark(bb, len(bb.Ins))
 }
 
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
-func (RegAlloc) Apply(cfg *CFG) {
-    st := lane.NewStack()
-    vis := make(map[int]bool)
-    buf := make([]IrBranch, 0, 16)
-    bbs := make([]*BasicBlock, 0, 16)
-    regs := make(map[Reg]*_LiveRange)
+func (self RegAlloc) liverange(lr *_LiveRanges, bb *BasicBlock, visited map[int]bool) {
+    id := bb.Id
+    tr := bb.Term
 
-    /* Phase 1: Serialize all the basic blocks with heuristics */
-    for st.Push(cfg.Root); !st.Empty(); {
-        i := 0
-        wb := false
-        bb := st.Pop().(*BasicBlock)
+    /* already visited */
+    if visited[id] {
+        return
+    }
 
-        /* check if it's visited */
-        if vis[bb.Id] {
-            continue
-        }
+    /* mark as visited */
+    it := tr.Successors()
+    visited[bb.Id] = true
 
-        /* add to basic blocks */
-        bbs = append(bbs, bb)
-        buf, vis[bb.Id] = buf[:0], true
+    /* scan Phi nodes */
+    for i, p := range bb.Phi {
+        for _, v := range p.Usages()      { lr.markphi(*v, bb, i) }
+        for _, v := range p.Definitions() { lr.markphi(*v, bb, i) }
+    }
 
-        /* get all it's successors that are not visited yet */
-        for it := bb.Term.Successors(); it.Next(); {
-            if !vis[it.Block().Id] {
-                buf = append(buf, IrBranch {
-                    To         : it.Block(),
-                    Likeliness : it.Likeliness(),
-                })
-            }
-        }
+    /* scan instructions */
+    for i, p := range bb.Ins {
+        if u, ok := p.(IrUsages)      ; ok { for _, v := range u.Usages()      { lr.markins(*v, bb, i) } }
+        if d, ok := p.(IrDefinitions) ; ok { for _, v := range d.Definitions() { lr.markins(*v, bb, i) } }
+    }
 
-        /* sort them with likeliness */
-        sort.SliceStable(buf, func(i int, j int) bool {
-            return buf[i].Likeliness > buf[j].Likeliness
-        })
-
-        /* force all "write barrier" blocks and "return" blocks that has a single
-         * predecessor to act as "likely" by removing them to the end, in order to
-         * shorten register live ranges */
-        for i = len(buf) - 1; !wb && i >= 0; i-- {
-            if p := buf[i].To; blockIsWriteBarrier(p) {
-                wb = true
-            } else if !blockIsDomimatedReturn(p) {
-                st.Push(p)
-            }
-        }
-
-        /* we can add those blocks directly to output since:
-         *   1. write barrier blocks and their counterpart always have the same successors;
-         *   2. return blocks are terminating blocks, they do not have any successors. */
-        if !wb {
-            for i = len(buf) - 1; i >= 0; i-- {
-                if p := buf[i].To; blockIsDomimatedReturn(p) {
-                    bbs, vis[p.Id] = append(bbs, p), true
-                }
-            }
-        } else {
-            if len(buf) != 2 {
-                panic("invalid write barrier blocks")
-            } else if p, q := buf[0].To, buf[1].To; i == 0 {
-                bbs, vis[p.Id], vis[q.Id] = append(bbs, p, q), true, true
-            } else {
-                bbs, vis[p.Id], vis[q.Id] = append(bbs, q, p), true, true
-            }
+    /* scan terminator */
+    if u, ok := bb.Term.(IrUsages); ok {
+        for _, v := range u.Usages() {
+            lr.markterm(*v, bb)
         }
     }
 
-    /* Phase 2: Scan all the instructions to determain live ranges */
-    for b, bb := range bbs {
-        var ok bool
-        var use IrUsages
-        var def IrDefinitions
-
-        /* should not contain Phi nodes */
-        if len(bb.Phi) != 0 {
-            panic(fmt.Sprintf("non-empty Phi nodes in bb_%d", bb.Id))
-        }
-
-        /* scan instructions */
-        for i, v := range bb.Ins {
-            if use, ok = v.(IrUsages)      ; ok { liverangemark(regs, use.Usages(), b, i) }
-            if def, ok = v.(IrDefinitions) ; ok { liverangemark(regs, def.Definitions(), b, i) }
-        }
-
-        /* scan terminators */
-        if use, ok = bb.Term.(IrUsages); ok {
-            liverangemark(regs, use.Usages(), b, len(bb.Ins))
-        }
+    /* visit all the successors */
+    for it.Next() {
+        self.liverange(lr, it.Block(), visited)
     }
+}
 
-    /* sort live ranges by usage position */
-    for _, rr := range regs {
-        sort.Slice(rr.p, func(i int, j int) bool {
-            return rr.p[i].isPrior(rr.p[j])
-        })
-    }
+func (self RegAlloc) Apply(cfg *CFG) {
+    root := cfg.Root
+    visited := make(map[int]bool, cfg.MaxBlock())
+
+    /* Phase 1: Calculate register live ranges */
+    dlr := new(_LiveRanges)
+    self.liverange(dlr, root, visited)
 
     spew.Config.SortKeys = true
-    spew.Dump(regs)
-    draw_liverange("/tmp/live_ranges.svg", bbs, regs)
+    spew.Dump(dlr)
 }

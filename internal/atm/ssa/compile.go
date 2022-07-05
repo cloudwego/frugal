@@ -46,7 +46,7 @@ var Passes = [...]PassDescriptor {
     { Name: "Instruction Fusion"         , Pass: new(Fusion) },
     { Name: "Instruction Compaction"     , Pass: new(Compaction) },
     { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering) },
-    { Name: "Phi Propagation"            , Pass: new(PhiProp) },    // The CFG is no longer in SSA form after this pass.
+    { Name: "Instruction Simplify"       , Pass: new(Simplify) },
     { Name: "Register Allocation"        , Pass: new(RegAlloc) },
 }
 

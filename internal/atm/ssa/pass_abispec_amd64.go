@@ -57,7 +57,7 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
 
     /* convert each return register */
     for i, r := range p.Out {
-        if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
+        if v := p.Func.Rets[i]; !v.InRegister || r.Kind() == K_zero {
             retv = append(retv, Rz)
         } else {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
@@ -75,7 +75,7 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
     /* load each return value */
     for i, r := range p.Out {
         if r.Kind() != K_zero {
-            if v := p.Func.Args[i]; v.InRegister {
+            if v := p.Func.Rets[i]; v.InRegister {
                 bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
             } else {
                 bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))
@@ -154,7 +154,7 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
 
     /* convert each return register */
     for i, r := range p.Out {
-        if v := p.Func.Args[i]; !v.InRegister || r.Kind() == K_zero {
+        if v := p.Func.Rets[i]; !v.InRegister || r.Kind() == K_zero {
             retv = append(retv, Rz)
         } else {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
@@ -180,7 +180,7 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     /* load each return value */
     for i, r := range p.Out {
         if r.Kind() != K_zero {
-            if v := p.Func.Args[i]; v.InRegister {
+            if v := p.Func.Rets[i]; v.InRegister {
                 bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
             } else {
                 bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))

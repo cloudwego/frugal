@@ -843,7 +843,11 @@ func (self *IrAMD64_CMPQ_rr) Clone() IrNode {
 }
 
 func (self *IrAMD64_CMPQ_rr) String() string {
-    return fmt.Sprintf("cmpq %s, %s; set%s %s", self.X, self.Y, self.Op, self.R)
+    if self.R == Rz {
+        return fmt.Sprintf("cmpq %s, %s", self.X, self.Y)
+    } else {
+        return fmt.Sprintf("cmpq %s, %s; set%s %s", self.X, self.Y, self.Op, self.R)
+    }
 }
 
 func (self *IrAMD64_CMPQ_rr) Usages() []*Reg {
@@ -1165,7 +1169,7 @@ func (self IrAMD64_ABI) String() string {
     switch self {
         case IrAbiC  : return "c"
         case IrAbiGo : return "go"
-        default      : return "???"
+        default      : panic("unreachable")
     }
 }
 

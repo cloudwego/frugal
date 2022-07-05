@@ -52,6 +52,10 @@ func (self *CFG) Rebuild() {
     updateDominatorFrontier(self)
 }
 
+func (self *CFG) MaxBlock() int {
+    return int(self.block)
+}
+
 func (self *CFG) CreateBlock() (r *BasicBlock) {
     r = new(BasicBlock)
     r.Id = self.allocblock()
