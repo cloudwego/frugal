@@ -40,15 +40,15 @@ var Passes = [...]PassDescriptor {
     { Name: "Value Reordering"           , Pass: new(Reorder) },
     { Name: "Late Constant Propagation"  , Pass: new(ConstProp) },
     { Name: "Late Reduction"             , Pass: new(Reduce) },
-    { Name: "Zero Register Substitution" , Pass: new(ZeroReg) },
     { Name: "Machine Dependent Lowering" , Pass: new(Lowering) },
     { Name: "Write Barrier Insertion"    , Pass: new(WriteBarrier) },
+    { Name: "Zero Register Substitution" , Pass: new(ZeroReg) },
     { Name: "Instruction Fusion"         , Pass: new(Fusion) },
     { Name: "Instruction Compaction"     , Pass: new(Compaction) },
     { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering) },
     { Name: "Value Rematerialize"        , Pass: new(Rematerialize) },
     { Name: "Final TDCE"                 , Pass: new(TDCE) },
-    { Name: "Instruction Simplify"       , Pass: new(Simplify) },
+    { Name: "Operand Allocation"         , Pass: new(OperandAlloc) },
     { Name: "Register Allocation"        , Pass: new(RegAlloc) },
 }
 

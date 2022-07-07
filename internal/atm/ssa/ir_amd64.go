@@ -97,6 +97,15 @@ type Mem struct {
     D int32
 }
 
+func Ptr(r Reg, d int32) Mem {
+    return Mem {
+        M: r,
+        I: Rz,
+        S: 1,
+        D: d,
+    }
+}
+
 func (self Mem) String() string {
     if self.I.Kind() == K_zero {
         if self.D == 0 {
@@ -382,6 +391,14 @@ func (self *IrAMD64_MOV_ptr) String() string {
 
 func (self *IrAMD64_MOV_ptr) Definitions() []*Reg {
     return []*Reg { &self.R }
+}
+
+func IrArchZero(r Reg) IrNode {
+    if r.Ptr() {
+        return &IrAMD64_MOV_ptr { R: r }
+    } else {
+        return &IrAMD64_MOV_abs { R: r }
+    }
 }
 
 type IrAMD64_MOV_reg struct {
@@ -1262,6 +1279,14 @@ type IrAMD64_RET struct {
 
 func IrArchReturn(rr []Reg) *IrAMD64_RET {
     return &IrAMD64_RET { rr }
+}
+
+func IrTryIntoArchReturn(p IrNode) ([]Reg, bool) {
+    if r, ok := p.(*IrAMD64_RET); ok {
+        return r.R, true
+    } else {
+        return nil, false
+    }
 }
 
 func (self *IrAMD64_RET) Clone() IrNode {

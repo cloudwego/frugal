@@ -120,7 +120,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
             /* rewrite the direct store instruction */
             st := &IrAMD64_MOV_store_r {
                 R: ir.R,
-                M: Mem { M: ir.M, I: Rz, S: 1, D: 0 },
+                M: Ptr(ir.M, 0),
                 N: abi.PtrSize,
             }
 
@@ -149,7 +149,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
             /* rewrite the terminator to check for write barrier */
             p.bb.Ins  = p.bb.Ins[:p.i]
             p.bb.Term = &IrAMD64_Jcc_mi {
-                X  : Mem { M: ir.Var, I: Rz, S: 1, D: 0 },
+                X  : Ptr(ir.Var, 0),
                 Y  : 0,
                 N  : 1,
                 To : IrUnlikely(wb),

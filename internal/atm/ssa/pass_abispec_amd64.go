@@ -161,17 +161,9 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
         }
     }
 
-    /* construct the memory reference for the method */
-    fn := Mem {
-        M: p.T,
-        I: Rz,
-        S: 1,
-        D: int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize,
-    }
-
     /* add the call instruction */
     bb.Ins = append(bb.Ins, &IrAMD64_CALL_mem {
-        Fn  : fn,
+        Fn  : Ptr(p.T, int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize),
         In  : argv,
         Out : retv,
         Abi : IrAbiGo,

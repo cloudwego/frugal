@@ -16,11 +16,11 @@
 
 package ssa
 
-// Simplify for AMD64 converts 3-operand or 2-operand pseudo-instructions
+// OperandAlloc for AMD64 converts 3-operand or 2-operand pseudo-instructions
 // to 2-operand or one-operand real instructions.
-type Simplify struct{}
+type OperandAlloc struct{}
 
-func (Simplify) Apply(cfg *CFG) {
+func (OperandAlloc) Apply(cfg *CFG) {
     cfg.PostOrder(func(bb *BasicBlock) {
         ins := bb.Ins
         bb.Ins = make([]IrNode, 0, len(ins))

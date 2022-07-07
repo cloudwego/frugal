@@ -28,6 +28,7 @@ type ZeroReg struct{}
 func (ZeroReg) replace(cfg *CFG) {
     cfg.PostOrder(func(bb *BasicBlock) {
         var ok bool
+        var rr *Reg
         var use IrUsages
 
         /* create the instruction buffer */
@@ -35,35 +36,50 @@ func (ZeroReg) replace(cfg *CFG) {
         bb.Ins = make([]IrNode, 0, len(ins))
 
         /* zero register replacer */
-        replacez := func(v IrUsages, ins *[]IrNode) {
+        replacez := func(v IrUsages, ins *[]IrNode, tail IrNode) {
             var z Reg
-            var n Reg
+            var r *Reg
 
-            /* check for every usage of zero registers */
-            for _, r := range use.Usages() {
+            /* insert an zeroing instruction if needed */
+            for _, r = range v.Usages() {
                 if r.Kind() == K_zero {
-                    if r.Ptr() {
-                        if n == 0 {
-                            n = cfg.CreateRegister(true)
-                            *ins = append(*ins, &IrConstPtr { R: n })
-                        }
-                    } else {
-                        if z == 0 {
-                            z = cfg.CreateRegister(false)
-                            *ins = append(*ins, &IrConstInt { R: z })
-                        }
-                    }
+                    z = cfg.CreateRegister(false)
+                    *ins = append(*ins, IrArchZero(z))
+                    break
                 }
             }
 
             /* substitute all the zero register usages */
-            for _, r := range use.Usages() {
+            for _, r = range v.Usages() {
                 if r.Kind() == K_zero {
-                    if r.Ptr() {
-                        *r = n
-                    } else {
-                        *r = z
-                    }
+                    *r = z
+                }
+            }
+
+            /* add the instruction if needed */
+            if tail != nil {
+                *ins = append(*ins, tail)
+            }
+        }
+
+        /* scan all the Phi nodes */
+        for _, p := range bb.Pred {
+            var z Reg
+            var v *IrPhi
+
+            /* insert an zeroing instruction to it's predecessor if needed */
+            for _, v = range bb.Phi {
+                if v.V[p].Kind() == K_zero {
+                    z = cfg.CreateRegister(false)
+                    p.Ins = append(p.Ins, IrArchZero(z))
+                    break
+                }
+            }
+
+            /* substitute all the zero register usages */
+            for _, v = range bb.Phi {
+                if rr = v.V[p]; rr.Kind() == K_zero {
+                    *rr = z
                 }
             }
         }
@@ -71,14 +87,15 @@ func (ZeroReg) replace(cfg *CFG) {
         /* scan all the instructions */
         for _, v := range ins {
             if use, ok = v.(IrUsages); ok {
-                replacez(use, &bb.Ins)
+                replacez(use, &bb.Ins, v)
+            } else {
+                bb.Ins = append(bb.Ins, v)
             }
-            bb.Ins = append(bb.Ins, v)
         }
 
         /* scan the terminator */
         if use, ok = bb.Term.(IrUsages); ok {
-            replacez(use, &bb.Ins)
+            replacez(use, &bb.Ins, nil)
         }
     })
 }
