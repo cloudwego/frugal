@@ -29,6 +29,10 @@ type _SplitPair struct {
     bb *BasicBlock
 }
 
+func (self _SplitPair) isPriorTo(other _SplitPair) bool {
+    return self.bb.Id < other.bb.Id || (self.i < other.i && self.bb.Id == other.bb.Id)
+}
+
 // WriteBarrier inserts write barriers for pointer stores.
 type WriteBarrier struct{}
 
@@ -78,7 +82,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
         /* sort by block ID */
         sort.Slice(mb, func(i int, j int) bool {
-            return mb[i].bb.Id < mb[i].bb.Id
+            return mb[i].isPriorTo(mb[j])
         })
 
         /* Phase 2: Split basic block at write barrier */
