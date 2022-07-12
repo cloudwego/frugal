@@ -16,12 +16,22 @@ package fuzz
 
 import (
 	"fmt"
+	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/bytedance/gopkg/util/gctuner"
 	"github.com/cloudwego/frugal"
+)
+
+const (
+	MemoryLimitEnv        = "MemLimit"
+	KB             uint64 = 1024
+	MB             uint64 = 1024 * KB
+	GB             uint64 = 1024 * MB
 )
 
 type CompilerTest struct {
@@ -49,6 +59,17 @@ type CompilerTestSubStruct struct {
 }
 
 func FuzzMain(f *testing.F) {
+	// avoid OOM
+	var limit uint64 = 4 * GB
+	if os.Getenv(MemoryLimitEnv) != "" {
+		if memGB, err := strconv.ParseUint(os.Getenv(MemoryLimitEnv), 10, 64); err == nil {
+			limit = memGB * GB
+		}
+	}
+	threshold := uint64(float64(limit) * 0.7)
+	gctuner.Tuning(threshold)
+	f.Logf("Memory Limit: %d GB, Memory Threshold: %d MB\n", limit/GB, threshold/MB)
+
 	ct := &CompilerTest{
 		H: CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
 		I: &CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},

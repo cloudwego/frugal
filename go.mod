@@ -6,6 +6,7 @@ require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/apache/thrift v0.13.0
 	github.com/brianvoe/gofakeit/v6 v6.16.0 // indirect
+	github.com/bytedance/gopkg v0.0.0-20220509134931-d1878f638986
 	github.com/chenzhuoyu/iasm v0.0.0-20220407070608-915f5d279eca
 	github.com/cloudwego/kitex v0.3.2
 	github.com/cloudwego/thriftgo v0.1.2

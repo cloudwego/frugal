@@ -9,6 +9,7 @@ github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb
 github.com/brianvoe/gofakeit/v6 v6.16.0 h1:EelCqtfArd8ppJ0z+TpOxXH8sVWNPBadPNdCDSMMw7k=
 github.com/brianvoe/gofakeit/v6 v6.16.0/go.mod h1:Ow6qC71xtwm79anlwKRlWZW6zVq9D2XHE4QSSMP/rU8=
 github.com/bytedance/gopkg v0.0.0-20220413063733-65bf48ffb3a7/go.mod h1:2ZlV9BaUH4+NXIBF0aMdKKAnHTzqH+iMU4KUjAbL23Q=
+github.com/bytedance/gopkg v0.0.0-20220509134931-d1878f638986 h1:6RbXPuVEF5+jeTXrKY/UA+rcK2w6vNIA9vUZ9MKeopc=
 github.com/bytedance/gopkg v0.0.0-20220509134931-d1878f638986/go.mod h1:2ZlV9BaUH4+NXIBF0aMdKKAnHTzqH+iMU4KUjAbL23Q=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chenzhuoyu/iasm v0.0.0-20220407070608-915f5d279eca h1:zOX0dqt5KzAZfyt2tgxCZfZud+trZ5axOu8QcCkwxNY=
