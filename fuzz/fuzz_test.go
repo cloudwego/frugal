@@ -16,6 +16,8 @@ package fuzz
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -23,17 +25,30 @@ import (
 	"strings"
 	"testing"
 
+	_ "net/http/pprof"
+
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/bytedance/gopkg/util/gctuner"
 	"github.com/cloudwego/frugal"
 )
 
 const (
+	FuzzDebugEnv          = "FuzzDebug"
 	MemoryLimitEnv        = "MemLimit"
 	KB             uint64 = 1024
 	MB             uint64 = 1024 * KB
 	GB             uint64 = 1024 * MB
 )
+
+func init() {
+	file, _ := os.OpenFile("/tmp/fuzz-test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+	log.SetOutput(file)
+	go func() {
+		if os.Getenv(FuzzDebugEnv) == "on" {
+			log.Println(http.ListenAndServe("localhost:0", nil))
+		}
+	}()
+}
 
 type CompilerTest struct {
 	A bool                   `frugal:"0,default,bool"`
@@ -69,8 +84,8 @@ func FuzzMain(f *testing.F) {
 	}
 	threshold := uint64(float64(limit) * 0.7)
 	gctuner.Tuning(threshold / uint64(runtime.GOMAXPROCS(0)))
-	f.Logf("Memory Limit: %d GB, Memory Threshold: %d MB\n", limit/GB, threshold/MB)
-	f.Logf("Memory Threshold Per Worker: %d MB\n", threshold/4/MB)
+	log.Printf("[%d] Memory Limit: %d GB, Memory Threshold: %d MB\n", os.Getpid(), limit/GB, threshold/MB)
+	log.Printf("[%d] Memory Threshold Per Worker: %d MB\n", os.Getpid(), threshold/4/MB)
 
 	ct := &CompilerTest{
 		H: CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
