@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -67,8 +68,9 @@ func FuzzMain(f *testing.F) {
 		}
 	}
 	threshold := uint64(float64(limit) * 0.7)
-	gctuner.Tuning(threshold)
+	gctuner.Tuning(threshold / uint64(runtime.GOMAXPROCS(0)))
 	f.Logf("Memory Limit: %d GB, Memory Threshold: %d MB\n", limit/GB, threshold/MB)
+	f.Logf("Memory Threshold Per Worker: %d MB\n", threshold/4/MB)
 
 	ct := &CompilerTest{
 		H: CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
