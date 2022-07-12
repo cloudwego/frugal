@@ -21,9 +21,11 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -46,6 +48,12 @@ func init() {
 	go func() {
 		if os.Getenv(FuzzDebugEnv) == "on" {
 			log.Println(http.ListenAndServe("localhost:0", nil))
+		}
+	}()
+	go func() {
+		for range time.NewTicker(time.Minute * 10).C {
+			log.Printf("[%d] Free OS Memory\n", os.Getpid())
+			debug.FreeOSMemory()
 		}
 	}()
 }
