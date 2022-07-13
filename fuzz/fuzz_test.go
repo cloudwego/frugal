@@ -99,11 +99,6 @@ func FuzzMain(f *testing.F) {
 	}
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
-		m := &runtime.MemStats{}
-		runtime.ReadMemStats(m)
-		if m.Sys > threshold/numWorker {
-			os.Exit(0)
-		}
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
 			typ, length, err := Check(data, thrift.TType(i))
 			if err != nil {
