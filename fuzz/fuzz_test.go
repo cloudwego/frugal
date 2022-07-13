@@ -101,7 +101,7 @@ func FuzzMain(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		m := &runtime.MemStats{}
 		runtime.ReadMemStats(m)
-		if m.Sys > threshold {
+		if m.Sys > threshold/numWorker {
 			os.Exit(0)
 		}
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
