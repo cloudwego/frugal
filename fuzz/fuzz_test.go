@@ -21,11 +21,9 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	_ "net/http/pprof"
 
@@ -48,12 +46,6 @@ func init() {
 	go func() {
 		if os.Getenv(FuzzDebugEnv) == "on" {
 			log.Println(http.ListenAndServe("localhost:0", nil))
-		}
-	}()
-	go func() {
-		for range time.NewTicker(time.Minute * 10).C {
-			log.Printf("[%d] Free OS Memory\n", os.Getpid())
-			debug.FreeOSMemory()
 		}
 	}()
 }
@@ -91,9 +83,10 @@ func FuzzMain(f *testing.F) {
 		}
 	}
 	threshold := uint64(float64(limit) * 0.7)
-	gctuner.Tuning(threshold / uint64(runtime.GOMAXPROCS(0)))
+	numWorker := uint64(runtime.GOMAXPROCS(0))
+	gctuner.Tuning(threshold / numWorker)
 	log.Printf("[%d] Memory Limit: %d GB, Memory Threshold: %d MB\n", os.Getpid(), limit/GB, threshold/MB)
-	log.Printf("[%d] Memory Threshold Per Worker: %d MB\n", os.Getpid(), threshold/4/MB)
+	log.Printf("[%d] Memory Threshold Per Worker: %d MB\n", os.Getpid(), threshold/numWorker/MB)
 
 	ct := &CompilerTest{
 		H: CompilerTestSubStruct{Y: &CompilerTestSubStruct{}},
@@ -106,6 +99,11 @@ func FuzzMain(f *testing.F) {
 	}
 	f.Add(buf)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		m := &runtime.MemStats{}
+		runtime.ReadMemStats(m)
+		if m.Sys > threshold {
+			os.Exit(0)
+		}
 		for i := thrift.BOOL; i < thrift.UTF16; i++ {
 			typ, length, err := Check(data, thrift.TType(i))
 			if err != nil {
