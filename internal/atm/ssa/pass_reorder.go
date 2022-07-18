@@ -17,10 +17,25 @@
 package ssa
 
 import (
+    `fmt`
     `sort`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
+
+type _ValueId struct {
+    i int
+    v IrNode
+    d bool
+}
+
+func mkvid(i int, v IrNode) *_ValueId {
+    return &_ValueId {
+        i: i,
+        v: v,
+        d: false,
+    }
+}
 
 type _ValuePos struct {
     i  int
@@ -54,7 +69,7 @@ func (self *_BlockRef) update(cfg *CFG, bb *BasicBlock) {
     if u != nil {
         self.bb = u
     } else {
-        panic("invalid CFG dominator tree")
+        panic("reorder: invalid CFG dominator tree")
     }
 }
 
@@ -207,8 +222,90 @@ func (Reorder) moveInterblock(cfg *CFG) {
     })
 }
 
+func (Reorder) moveIntrablock(cfg *CFG) {
+    var rbuf []IrNode
+    var vbuf []*_ValueId
+    var addval func(*_ValueId, bool)
+
+    /* reusable states */
+    adds := make(map[int]struct{})
+    defs := make(map[Reg]*_ValueId)
+
+    /* topology sorter */
+    addval = func(v *_ValueId, depsOnly bool) {
+        var ok bool
+        var use IrUsages
+        var val *_ValueId
+
+        /* check if it's been added */
+        if _, ok = adds[v.i]; ok {
+            return
+        }
+
+        /* add all the dependencies recursively */
+        if use, ok = v.v.(IrUsages); ok {
+            for _, r := range use.Usages() {
+                if val, ok = defs[*r]; ok {
+                    addval(val, false)
+                }
+            }
+        }
+
+        /* add the instruction if needed */
+        if !depsOnly {
+            rbuf = append(rbuf, v.v)
+            adds[v.i] = struct{}{}
+        }
+    }
+
+    /* process every block */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        rbuf = rbuf[:0]
+        vbuf = vbuf[:0]
+        rt.MapClear(adds)
+        rt.MapClear(defs)
+
+        /* number all instructions */
+        for i, v := range bb.Ins {
+            vbuf = append(vbuf, mkvid(i, v))
+        }
+
+        /* mark all non-Phi definitions in this block */
+        for _, v := range vbuf {
+            if def, ok := v.v.(IrDefinitions); ok {
+                for _, r := range def.Definitions() {
+                    if _, ok = defs[*r]; ok {
+                        panic(fmt.Sprintf("reorder: multiple definitions for %s in bb_%d", r, bb.Id))
+                    } else {
+                        v.d, defs[*r] = true, v
+                    }
+                }
+            }
+        }
+
+        /* add all the non-definitive instructions */
+        for _, v := range vbuf {
+            if !v.d {
+                addval(v, false)
+            }
+        }
+
+        /* add remaining instructions */
+        for _, v := range vbuf {
+            if _, ok := adds[v.i]; !ok {
+                addval(v, false)
+            }
+        }
+
+        /* add the terminator */
+        addval(mkvid(-1, bb.Term), true)
+        bb.Ins = append(bb.Ins[:0], rbuf...)
+    })
+}
+
 func (self Reorder) Apply(cfg *CFG) {
     self.moveLoadArgs(cfg)
     self.moveInterblock(cfg)
+    self.moveIntrablock(cfg)
 }
 

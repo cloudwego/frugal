@@ -320,8 +320,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
         rt.MapClear(liveset)
 
         /* Phase 1: Calculate live ranges with sanity check: no registers live at the entry point */
-        if len(self.livein(rpool, liveset, cfg.Root, livein, liveout)) != 0 {
-            panic("regalloc: live registers at entry")
+        if lr := self.livein(rpool, liveset, cfg.Root, livein, liveout); len(lr) != 0 {
+            panic("regalloc: live registers at entry: " + lr.String())
         }
 
         /* Phase 2: Build register interference graph */
@@ -347,19 +347,14 @@ func (self RegAlloc) Apply(cfg *CFG) {
                     continue
                 }
 
-                /* degree of both nodes (registers) */
-                dx := len(adjtab.m[rx])
-                dy := len(adjtab.m[ry])
-
                 /* make sure Y is the node with a lower degree */
-                if dx < dy {
-                    dx, dy = dy, dx
+                if len(adjtab.m[rx]) < len(adjtab.m[ry]) {
                     rx, ry = ry, rx
                 }
 
                 /* determain whether it's safe to coalesce using George's heuristic */
                 for t := range adjtab.m[ry] {
-                    if t == rx || len(ravail) <= len(adjtab.m[t]) && !adjtab.m[t].contains(rx) && !adjtab.m[rx].contains(t) {
+                    if t == rx || len(ravail) <= len(adjtab.m[t]) && !adjtab.m[t].contains(rx) {
                         ok = false
                         break
                     }
@@ -378,8 +373,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
                     case kx == K_arch && ky == K_arch: panic(fmt.Sprintf("regalloc: arch-specific register confliction: %s and %s", rx, ry))
                 }
 
-                // TODO: remove this
-                println(rx.String(), ry.String())
                 /* replace all the register references */
                 cfg.PostOrder().ForEach(func(bb *BasicBlock) {
                     var use IrUsages
@@ -421,12 +414,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        // TODO: remove this
-        drawrig(adjtab.m)
         /* try again if coalescing occured */
         if next {
             continue
         }
+
+        // TODO: remove this
+        drawrig(adjtab.m)
     }
 }
 
