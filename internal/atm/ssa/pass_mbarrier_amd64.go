@@ -42,7 +42,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
     ptrs := make(map[Reg]unsafe.Pointer)
 
     /* find all constant pointers */
-    cfg.PostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         for _, v := range bb.Ins {
             if p, ok := v.(*IrAMD64_MOV_ptr); ok {
                 ptrs[p.R] = p.P
@@ -56,7 +56,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
         rt.MapClear(mbir)
 
         /* Phase 1: Find all the memory barriers and pointer constants */
-        cfg.PostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
             for i, v := range bb.Ins {
                 if _, ok := v.(*IrWriteBarrier); ok {
                     if _, ok = mbir[bb]; ok {
@@ -126,7 +126,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
             /* construct the direct store block */
             ds.Ins  = []IrNode { st }
-            ds.Term = &IrSwitch { Ln: IrLikely(bb) }
+            ds.Term = &IrAMD64_JMP { To: IrLikely(bb) }
             ds.Pred = []*BasicBlock { p.bb }
 
             /* rewrite the write barrier instruction */
@@ -143,7 +143,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
             /* construct the write barrier block */
             wb.Ins  = []IrNode { fn }
-            wb.Term = &IrSwitch { Ln: IrLikely(bb) }
+            wb.Term = &IrAMD64_JMP { To: IrLikely(bb) }
             wb.Pred = []*BasicBlock { p.bb }
 
             /* rewrite the terminator to check for write barrier */

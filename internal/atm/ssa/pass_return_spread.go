@@ -56,12 +56,12 @@ func (ReturnSpread) Apply(cfg *CFG) {
         rets = rets[:0]
 
         /* Phase 1: Find the return blocks that has more than one predecessors */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        for _, bb := range cfg.PostOrder().Reversed() {
             if _, ok := bb.Term.(*IrReturn); ok && len(bb.Pred) > 1 {
                 more = true
                 rets = append(rets, bb)
             }
-        })
+        }
 
         /* Phase 2: Spread the blocks to it's predecessors */
         for _, bb := range rets {

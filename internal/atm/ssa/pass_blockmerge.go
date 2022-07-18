@@ -27,7 +27,7 @@ func (BlockMerge) Apply(cfg *CFG) {
         var sw *IrSwitch
 
         /* check every block */
-        cfg.PostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
             if sw, ok = bb.Term.(*IrSwitch); ok && len(sw.Br) == 0 && len(sw.Ln.To.Pred) == 1 {
                 rt = true
                 bb.Ins = append(bb.Ins, sw.Ln.To.Ins...)

@@ -18,12 +18,13 @@ package ssa
 
 import (
     `fmt`
+    `io/ioutil`
     `math`
     `sort`
     `strings`
 
+    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
-    `github.com/davecgh/go-spew/spew`
 )
 
 const (
@@ -45,32 +46,18 @@ func pos(bb *BasicBlock, i int) _Pos {
 func (self _Pos) String() string {
     if self.i == _P_term {
         return fmt.Sprintf("bb_%d.term", self.b)
-    } else if self.i >= 0 {
-        return fmt.Sprintf("bb_%d.ins[%d]", self.b, self.i)
     } else {
-        return fmt.Sprintf("bb_%d.phi[bb_%d]", self.b, -self.i)
+        return fmt.Sprintf("bb_%d.ins[%d]", self.b, self.i)
     }
 }
 
 type (
-	_RegSet   map[Reg]struct{}
-    _LiveRegs map[_Pos]_RegSet
+	_RegSet map[Reg]struct{}
 )
 
-func regset(rr ...Reg) (rs _RegSet) {
-    rs = make(_RegSet, len(rr))
-    for _, r := range rr { rs.add(r) }
-    return
-}
-
-func regsetp(rr []*Reg) (rs _RegSet) {
-    rs = make(_RegSet, len(rr))
-    for _, r := range rr { rs.add(*r) }
-    return
-}
-
-func (self _RegSet) add(r Reg) {
+func (self _RegSet) add(r Reg) _RegSet {
     self[r] = struct{}{}
+    return self
 }
 
 func (self _RegSet) union(rs _RegSet) {
@@ -89,12 +76,6 @@ func (self _RegSet) subtract(rs _RegSet) {
     }
 }
 
-func (self _RegSet) clone() (rs _RegSet) {
-    rs = make(_RegSet, len(self))
-    for r := range self { rs.add(r) }
-    return
-}
-
 func (self _RegSet) toslice() []Reg {
     nb := len(self)
     rr := make([]Reg, 0, nb)
@@ -109,10 +90,15 @@ func (self _RegSet) toslice() []Reg {
     return rr
 }
 
+func (self _RegSet) contains(r Reg) (ret bool) {
+    _, ret = self[r]
+    return
+}
+
 func (self _RegSet) hasoverlap(rs _RegSet) bool {
     p, q := self, rs
     if len(q) < len(p) { p, q = q, p }
-    for r := range p { if _, ok := q[r]; ok { return true } }
+    for r := range p { if q.contains(r) { return true } }
     return false
 }
 
@@ -132,77 +118,112 @@ func (self _RegSet) String() string {
     )
 }
 
+type _RegTab struct {
+    p []_RegSet
+    m map[Reg]_RegSet
+}
+
+func mkregtab() *_RegTab {
+    return &_RegTab {
+        p: make([]_RegSet, 0, 16),
+        m: make(map[Reg]_RegSet, len(ArchRegs)),
+    }
+}
+
+func (self *_RegTab) reset() {
+    for k, s := range self.m {
+        self.p = append(self.p, s)
+        delete(self.m, k)
+        rt.MapClear(s)
+    }
+}
+
+func (self *_RegTab) alloc(n int) (rs _RegSet) {
+    if p := len(self.p); p == 0 {
+        rs = make(_RegSet, n)
+        return
+    } else {
+        rs, self.p = self.p[p - 1], self.p[:p - 1]
+        return
+    }
+}
+
+func (self *_RegTab) clone(s _RegSet) (rs _RegSet) {
+    rs = self.alloc(len(s))
+    for r := range s { rs.add(r) }
+    return
+}
+
+func (self *_RegTab) mkset(r ...Reg) (rs _RegSet) {
+    rs = self.alloc(len(r))
+    for _, v := range r { rs.add(v) }
+    return
+}
+
+func (self *_RegTab) mksetp(r []*Reg) (rs _RegSet) {
+    rs = self.alloc(len(r))
+    for _, v := range r { rs.add(*v) }
+    return
+}
+
+func (self *_RegTab) relate(k Reg, v Reg) {
+    if p, ok := self.m[k]; ok {
+        p.add(v)
+    } else {
+        self.m[k] = self.alloc(1).add(v)
+    }
+}
+
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
-func (self RegAlloc) livein(lr _LiveRegs, bb *BasicBlock, pred *BasicBlock, in map[_Pos]_RegSet, out map[int]_RegSet) _RegSet {
+func (self RegAlloc) livein(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
     var ok bool
     var rs _RegSet
     var use IrUsages
     var def IrDefinitions
 
     /* check for cached live-in sets */
-    if rs, ok = in[pos(bb, pred.Id)]; ok {
-        return rs
+    if rs, ok = in[bb.Id]; ok {
+        return p.clone(rs)
     }
 
     /* calculate the live-out set of current block */
     tr := bb.Term
-    regs := self.liveout(lr, bb, in, out).clone()
+    regs := p.clone(self.liveout(p, lr, bb, in, out))
 
     /* assume all terminators are non-definitive */
     if _, ok = tr.(IrDefinitions); ok {
         panic("regalloc: definitions within terminators")
     }
 
-    /* scan the terminator */
+    /* add the terminator usages if any */
     if use, ok = tr.(IrUsages); ok {
-        regs.union(regsetp(use.Usages()))
-        lr[pos(bb, _P_term)] = regs.clone()
+        regs.union(p.mksetp(use.Usages()))
     }
 
-    /* scan all instructions backwards */
+    /* mark live range of the terminator */
+    rr := p.clone(regs)
+    lr[pos(bb, _P_term)] = rr
+
+    /* live(i-1) = use(i) ∪ (live(i) - { def(i) }) */
     for i := len(bb.Ins) - 1; i >= 0; i-- {
-        if def, ok = bb.Ins[i].(IrDefinitions) ; ok { regs.subtract(regsetp(def.Definitions())) }
-        if use, ok = bb.Ins[i].(IrUsages)      ; ok { regs.union(regsetp(use.Usages())) }
-        lr[pos(bb, i)] = regs.clone()
+        if def, ok = bb.Ins[i].(IrDefinitions) ; ok { regs.subtract(p.mksetp(def.Definitions())) }
+        if use, ok = bb.Ins[i].(IrUsages)      ; ok { regs.union(p.mksetp(use.Usages())) }
+        lr[pos(bb, i)] = p.clone(regs)
     }
 
-    /* Phi register definitions and usages */
-    pdef := make([]Reg, 0, len(bb.Phi))
-    puse := make(map[int][]Reg, len(bb.Phi))
-
-    /* scan all Phi nodes */
-    for _, v := range bb.Phi {
-        pv := v.V
-        pdef = append(pdef, v.R)
-
-        /* add all the Phi selections */
-        for b, r := range pv {
-            puse[b.Id] = append(puse[b.Id], *r)
-        }
+    /* should not have any Phi nodes */
+    if len(bb.Phi) != 0 {
+        panic("regalloc: unexpected Phi nodes")
     }
 
-    /* update the register set with Phi definitions */
-    id := -pred.Id - 1
-    regs.subtract(regset(pdef...))
-
-    /* update cache for all predecessors */
-    for b, r := range puse {
-        rs = regs.clone()
-        rs.union(regset(r...))
-        in[pos(bb, -b - 1)] = rs
-    }
-
-    /* should have the register set in cache */
-    if rs, ok = in[pos(bb, id)]; ok {
-        return rs
-    } else {
-        return regs
-    }
+    /* update the cache */
+    in[bb.Id] = p.clone(regs)
+    return regs
 }
 
-func (self RegAlloc) liveout(lr _LiveRegs, bb *BasicBlock, in map[_Pos]_RegSet, out map[int]_RegSet) _RegSet {
+func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
     var ok bool
     var rr []Reg
     var rs _RegSet
@@ -214,18 +235,18 @@ func (self RegAlloc) liveout(lr _LiveRegs, bb *BasicBlock, in map[_Pos]_RegSet, 
 
     /* check for return blocks */
     if rr, ok = IrTryIntoArchReturn(bb.Term); ok {
-        rs = regset(rr...)
+        rs = p.mkset(rr...)
         out[bb.Id] = rs
         return rs
     }
 
     /* create a new register set */
-    rs = make(_RegSet)
+    rs = p.alloc(0)
     it := bb.Term.Successors()
 
-    /* live-out{p} = ∑(live-in{succ(p)}) */
+    /* live-out(p) = ∑(live-in(succ(p))) */
     for out[bb.Id] = nil; it.Next(); {
-        rs.union(self.livein(lr, it.Block(), bb, in, out))
+        rs.union(self.livein(p, lr, it.Block(), in, out))
     }
 
     /* update cache */
@@ -235,35 +256,226 @@ func (self RegAlloc) liveout(lr _LiveRegs, bb *BasicBlock, in map[_Pos]_RegSet, 
 
 func (self RegAlloc) Apply(cfg *CFG) {
     next := true
-    regs := make(_LiveRegs)
+    rpool := mkregtab()
+    adjtab := mkregtab()
+    ravail := make([]Reg, 0, len(ArchRegs))
     blocks := make(map[int]*BasicBlock, cfg.MaxBlock())
-    livein := make(map[_Pos]_RegSet)
+    livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
+    liveset := make(map[_Pos]_RegSet)
 
-    /* collect all basic blocks */
-    cfg.PostOrder(func(bb *BasicBlock) {
-        blocks[bb.Id] = bb
-    })
-
-    /* dummy start block */
-    start := &BasicBlock {
-        Id   : -1,
-        Term : &IrSwitch { Ln: IrLikely(cfg.Root) },
+    /* register precolorer */
+    precolor := func(rr []*Reg) {
+        for _, r := range rr {
+            if r.Kind() == K_arch {
+                *r = IrSetArch(Rz, ArchRegs[r.Name()])
+            }
+        }
     }
+
+    /* register coalescer */
+    coalesce := func(rr []*Reg, rs Reg, rd Reg) {
+        for _, r := range rr {
+            if *r == rs {
+                *r = rd
+            }
+        }
+    }
+
+    /* calculate allocatable registers */
+    for _, r := range ArchRegs {
+        if _, ok := abi.ABI.Reserved()[r]; !ok && !ArchRegReserved[r] {
+            ravail = append(ravail, IrSetArch(Rz, r))
+        }
+    }
+
+    /* collect all basic blocks, precolor all arch-specific registers */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var use IrUsages
+        var def IrDefinitions
+
+        /* collect the block */
+        ok := false
+        blocks[bb.Id] = bb
+
+        /* scan all the instructions */
+        for _, v := range bb.Ins {
+            if use, ok = v.(IrUsages)      ; ok { precolor(use.Usages()) }
+            if def, ok = v.(IrDefinitions) ; ok { precolor(def.Definitions()) }
+        }
+
+        /* scan the terminator */
+        if use, ok = bb.Term.(IrUsages); ok {
+            precolor(use.Usages())
+        }
+    })
 
     /* loop until no more retries */
     for next {
         next = false
-        rt.MapClear(regs)
+        rpool.reset()
+        adjtab.reset()
         rt.MapClear(livein)
         rt.MapClear(liveout)
+        rt.MapClear(liveset)
 
-        /* Phase 1: Calculate live ranges */
-        root := cfg.Root
-        self.livein(regs, root, start, livein, liveout)
+        /* Phase 1: Calculate live ranges with sanity check: no registers live at the entry point */
+        if len(self.livein(rpool, liveset, cfg.Root, livein, liveout)) != 0 {
+            panic("regalloc: live registers at entry")
+        }
 
-        spew.Config.SortKeys = true
-        spew.Config.DisablePointerMethods = true
-        spew.Dump(regs)
+        /* Phase 2: Build register interference graph */
+        for _, rs := range liveset {
+            for r0 := range rs {
+                for r1 := range rs {
+                    if r0 != r1 {
+                        adjtab.relate(r0, r1)
+                    }
+                }
+            }
+        }
+
+        /* Phase 3: Coalescing one pair of register */
+        for it := cfg.PostOrder(); !next && it.Next(); {
+            for _, v := range it.Block().Ins {
+                var rx Reg
+                var ry Reg
+                var ok bool
+
+                /* only look for copy instructions */
+                if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry {
+                    continue
+                }
+
+                /* degree of both nodes (registers) */
+                dx := len(adjtab.m[rx])
+                dy := len(adjtab.m[ry])
+
+                /* make sure Y is the node with a lower degree */
+                if dx < dy {
+                    dx, dy = dy, dx
+                    rx, ry = ry, rx
+                }
+
+                /* determain whether it's safe to coalesce using George's heuristic */
+                for t := range adjtab.m[ry] {
+                    if t == rx || len(ravail) <= len(adjtab.m[t]) && !adjtab.m[t].contains(rx) && !adjtab.m[rx].contains(t) {
+                        ok = false
+                        break
+                    }
+                }
+
+                /* check if it can be coalesced */
+                if !ok {
+                    continue
+                }
+
+                /* check for pre-colored registers */
+                switch kx, ky := rx.Kind(), ry.Kind(); {
+                    case kx != K_arch && ky != K_arch: break
+                    case kx != K_arch && ky == K_arch: break
+                    case kx == K_arch && ky != K_arch: rx, ry = ry, rx
+                    case kx == K_arch && ky == K_arch: panic(fmt.Sprintf("regalloc: arch-specific register confliction: %s and %s", rx, ry))
+                }
+
+                // TODO: remove this
+                println(rx.String(), ry.String())
+                /* replace all the register references */
+                cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+                    var use IrUsages
+                    var def IrDefinitions
+
+                    /* should not have Phi nodes here */
+                    if len(bb.Phi) != 0 {
+                        panic("regalloc: unexpected Phi node")
+                    }
+
+                    /* scan every instruction */
+                    for _, p := range bb.Ins {
+                        if use, ok = p.(IrUsages)      ; ok { coalesce(use.Usages(), rx, ry) }
+                        if def, ok = p.(IrDefinitions) ; ok { coalesce(def.Definitions(), rx, ry) }
+                    }
+
+                    /* scan the terminator */
+                    if use, ok = bb.Term.(IrUsages); ok {
+                        coalesce(use.Usages(), rx, ry)
+                    }
+                })
+
+                /* remove register copies to itself */
+                cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+                    ins := bb.Ins
+                    bb.Ins = bb.Ins[:0]
+
+                    /* filter the instructions */
+                    for _, p := range ins {
+                        if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
+                            bb.Ins = append(bb.Ins, p)
+                        }
+                    }
+                })
+
+                /* need to start over */
+                next = true
+                break
+            }
+        }
+
+        // TODO: remove this
+        drawrig(adjtab.m)
+        /* try again if coalescing occured */
+        if next {
+            continue
+        }
+    }
+}
+
+func drawrig(adjtab map[Reg]_RegSet) {
+    buf := []string {
+        "graph RIG {",
+        `    xdotversion = "15"`,
+        `    layout = "circo"`,
+        `    graph [ fontname = "monospace" ]`,
+        `    node [ fontname = "monospace" fontsize = "16" shape = "circle" ]`,
+        `    edge [ fontname = "monospace" ]`,
+    }
+    adjmat := map[[2]Reg]struct{}{}
+    for r, s := range adjtab {
+        for t := range s {
+            adjmat[[2]Reg { r, t }] = struct{}{}
+        }
+    }
+    rr := make([]Reg, 0, len(adjtab))
+    ee := make([][2]Reg, 0, len(adjmat))
+    edge := make(map[[2]Reg]bool)
+    for r := range adjtab {
+        rr = append(rr, r)
+    }
+    for p := range adjmat {
+        ee = append(ee, p)
+    }
+    sort.Slice(rr, func(i, j int) bool {
+        return rr[i] < rr[j]
+    })
+    sort.Slice(ee, func(i, j int) bool {
+        return ee[i][0] < ee[j][0] || (ee[i][1] < ee[j][1] && ee[i][0] == ee[j][0])
+    })
+    regid := func(r Reg) string {
+        return fmt.Sprintf("r%d_%d_%d", r.Kind(), r.Name(), r.Index())
+    }
+    for _, r := range rr {
+        buf = append(buf, fmt.Sprintf(`    %s [ label = "%s\nd=%d" ]`, regid(r), r, len(adjtab[r])))
+    }
+    for _, p := range ee {
+        if edge[p] || edge[[2]Reg { p[1], p[0] }] {
+            continue
+        }
+        edge[p] = true
+        buf = append(buf, fmt.Sprintf(`    %s -- %s`, regid(p[0]), regid(p[1])))
+    }
+    buf = append(buf, "}")
+    err := ioutil.WriteFile("/tmp/rig.gv", []byte(strings.Join(buf, "\n")), 0644)
+    if err != nil {
+        panic(err)
     }
 }

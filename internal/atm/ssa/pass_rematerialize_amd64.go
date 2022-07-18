@@ -25,19 +25,19 @@ func (Rematerialize) Apply(cfg *CFG) {
     consts[Pn] = constptr(nil, Const)
 
     /* Phase 1: Scan all the constants */
-    cfg.ReversePostOrder(func(bb *BasicBlock) {
+    for _, bb := range cfg.PostOrder().Reversed() {
         for _, v := range bb.Ins {
             switch p := v.(type) {
                 case *IrAMD64_MOV_abs: consts[p.R] = constint(p.V)
                 case *IrAMD64_MOV_ptr: consts[p.R] = constptr(p.P, Volatile)
             }
         }
-    })
+    }
 
-    /* Phase 2: Replace copy to arch-specific registers with const loads if possible */
-    cfg.PostOrder(func(bb *BasicBlock) {
+    /* Phase 2: Replace register copies with consts if possible */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         for i, v := range bb.Ins {
-            if p, ok := v.(*IrAMD64_MOV_reg); ok && p.R.Kind() == K_arch {
+            if p, ok := v.(*IrAMD64_MOV_reg); ok {
                 if cc, ok := consts[p.V]; ok {
                     if cc.i {
                         bb.Ins[i] = &IrAMD64_MOV_abs { R: p.R, V: cc.v }

@@ -89,7 +89,7 @@ func cfgdot(cfg *CFG, fn string) {
         `    START [ shape = "circle" ]`,
         fmt.Sprintf(`    START -> bb_%d`, cfg.Root.Id),
     }
-    cfg.ReversePostOrder(func(p *BasicBlock) {
+    for _, p := range cfg.PostOrder().Reversed() {
         f := true
         it := p.Term.Successors()
         buf = append(buf, fmt.Sprintf(`    bb_%d [ label = < %s > ]`, p.Id, dumpbb(p)))
@@ -108,7 +108,7 @@ func cfgdot(cfg *CFG, fn string) {
                 }
             }
         }
-    })
+    }
     buf = append(buf, "}")
     err := ioutil.WriteFile(fn, []byte(strings.Join(buf, "\n")), 0644)
     if err != nil {

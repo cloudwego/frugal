@@ -20,7 +20,6 @@ import (
     `sync/atomic`
 
     `github.com/cloudwego/frugal/internal/atm/abi`
-    `github.com/oleiade/lane`
 )
 
 type _CFGPrivate struct {
@@ -56,6 +55,10 @@ func (self *CFG) MaxBlock() int {
     return int(self.block)
 }
 
+func (self *CFG) PostOrder() *BasicBlockIter {
+    return newBasicBlockIter(self)
+}
+
 func (self *CFG) CreateBlock() (r *BasicBlock) {
     r = new(BasicBlock)
     r.Id = self.allocblock()
@@ -76,49 +79,4 @@ func (self *CFG) CreateUnreachable(bb *BasicBlock) (ret *BasicBlock) {
     ret.Term = &IrSwitch { Ln: IrLikely(ret) }
     ret.Pred = []*BasicBlock { bb, ret }
     return
-}
-
-func (self *CFG) PostOrder(action func(bb *BasicBlock)) {
-    stack := lane.NewStack()
-    visited := make(map[int]bool)
-
-    /* add root node */
-    visited[self.Root.Id] = true
-    stack.Push(self.Root)
-
-    /* traverse the graph */
-    for !stack.Empty() {
-        tail := true
-        this := stack.Head().(*BasicBlock)
-
-        /* add all the successors */
-        for _, p := range self.DominatorOf[this.Id] {
-            if !visited[p.Id] {
-                tail = false
-                visited[p.Id] = true
-                stack.Push(p)
-                break
-            }
-        }
-
-        /* all the successors are visited, pop the current node */
-        if tail {
-            action(stack.Pop().(*BasicBlock))
-        }
-    }
-}
-
-func (self *CFG) ReversePostOrder(action func(bb *BasicBlock)) {
-    var i int
-    var bb []*BasicBlock
-
-    /* traverse as post-order */
-    self.PostOrder(func(p *BasicBlock) {
-        bb = append(bb, p)
-    })
-
-    /* reverse post-order */
-    for i = len(bb) - 1; i >= 0; i-- {
-        action(bb[i])
-    }
 }

@@ -80,6 +80,11 @@ var ArchRegNames = map[x86_64.Register64]string {
     x86_64.R15 : "r15",
 }
 
+var ArchRegReserved = map[x86_64.Register64]bool {
+    x86_64.RSP: true,
+    x86_64.RBP: true,
+}
+
 func IrSetArch(rr Reg, reg x86_64.Register64) Reg {
     if id, ok := ArchRegIds[reg]; !ok {
         panic("invalid arch-specific register: " + reg.String())
@@ -407,10 +412,14 @@ type IrAMD64_MOV_reg struct {
 }
 
 func IrArchCopy(r Reg, v Reg) IrNode {
-    if r.Ptr() != v.Ptr() {
-        panic("copy between different kind of registers")
+    return &IrAMD64_MOV_reg { R: r, V: v }
+}
+
+func IrArchTryIntoCopy(v IrNode) (Reg, Reg, bool) {
+    if p, ok := v.(*IrAMD64_MOV_reg); ok {
+        return p.R, p.V, true
     } else {
-        return &IrAMD64_MOV_reg { R: r, V: v }
+        return 0, 0, false
     }
 }
 

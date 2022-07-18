@@ -83,7 +83,7 @@ func (self ConstProp) Apply(cfg *CFG) {
     /* evaluate const expression until no modifications were made */
     for !done {
         done = true
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        for _, bb := range cfg.PostOrder().Reversed() {
             phi := make([]*IrPhi, 0, len(bb.Phi))
             ins := make([]IrNode, 0, len(bb.Ins))
             isconst := false
@@ -275,6 +275,6 @@ func (self ConstProp) Apply(cfg *CFG) {
             /* rebuild the basic block */
             bb.Phi = phi
             bb.Ins = ins
-        })
+        }
     }
 }

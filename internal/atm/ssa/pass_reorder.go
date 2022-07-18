@@ -67,7 +67,7 @@ func (Reorder) moveLoadArgs(cfg *CFG) {
     var vv *IrLoadArg
 
     /* extract all the argument loads */
-    cfg.PostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         ins := bb.Ins
         bb.Ins = bb.Ins[:0]
 
@@ -114,7 +114,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
         rt.MapClear(uses)
 
         /* Phase 1: Find all movable value definitions */
-        cfg.PostOrder(func(bb *BasicBlock) {
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
             for i, v := range bb.Ins {
                 var f bool
                 var p *_BlockRef
@@ -146,7 +146,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
         })
 
         /* Phase 2: Identify the earliest usage locations */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        for _, bb := range cfg.PostOrder().Reversed() {
             var ok bool
             var use IrUsages
 
@@ -172,7 +172,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
                     updateUsage(*r, bb)
                 }
             }
-        })
+        }
 
         /* Phase 3: Move value definitions to their usage block */
         for p, m := range uses {
@@ -194,7 +194,7 @@ func (Reorder) moveInterblock(cfg *CFG) {
     }
 
     /* Phase 5: Remove all the placeholder NOP instructions */
-    cfg.PostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         ins := bb.Ins
         bb.Ins = bb.Ins[:0]
 

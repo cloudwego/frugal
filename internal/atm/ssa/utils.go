@@ -24,6 +24,7 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/oleiade/lane`
 )
 
 func isu8(v int64) bool {
@@ -92,6 +93,12 @@ func memsizec(n uint8) rune {
     }
 }
 
+func stacknew(v interface{}) (r *lane.Stack) {
+    r = lane.NewStack()
+    r.Push(v)
+    return
+}
+
 func funcname(p unsafe.Pointer) string {
     if fn := runtime.FuncForPC(uintptr(p)); fn == nil {
         return "???"
@@ -118,4 +125,10 @@ func regslicerepr(v []Reg) string {
     ret := make([]string, 0, len(v))
     for _, r := range v  { ret = append(ret, r.String()) }
     return strings.Join(ret, ", ")
+}
+
+func blockreverse(s []*BasicBlock) {
+    for i, j := 0, len(s) - 1; i < j; i, j = i + 1, j - 1 {
+        s[i], s[j] = s[j], s[i]
+    }
 }

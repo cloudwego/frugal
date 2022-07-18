@@ -60,7 +60,7 @@ func (self ABILowering) Apply(cfg *CFG) {
     }
 
     /* lower the entire program */
-    cfg.PostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         ins := bb.Ins
         bb.Ins = make([]IrNode, 0, len(ins))
 

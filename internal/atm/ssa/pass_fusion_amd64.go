@@ -81,7 +81,7 @@ func (self Fusion) Apply(cfg *CFG) {
         defs[Pn] = &IrAMD64_MOV_ptr { R: Rz, P: nil }
 
         /* check every block */
-        cfg.ReversePostOrder(func(bb *BasicBlock) {
+        for _, bb := range cfg.PostOrder().Reversed() {
             var r *Reg
             var ok bool
 
@@ -413,7 +413,7 @@ func (self Fusion) Apply(cfg *CFG) {
                     }
                 }
             }
-        })
+        }
 
         /* perform reorder & TDCE after each round */
         new(Reorder).Apply(cfg)

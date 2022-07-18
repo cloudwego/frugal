@@ -26,7 +26,7 @@ import (
 type ZeroReg struct{}
 
 func (ZeroReg) replace(cfg *CFG) {
-    cfg.PostOrder(func(bb *BasicBlock) {
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var ok bool
         var rr *Reg
         var use IrUsages
