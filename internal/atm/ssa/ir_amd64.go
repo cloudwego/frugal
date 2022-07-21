@@ -153,6 +153,7 @@ func (*IrAMD64_MOV_store_stack) irnode() {}
 
 func (*IrAMD64_BinOp_rr) irnode() {}
 func (*IrAMD64_BinOp_ri) irnode() {}
+func (*IrAMD64_BinOp_rm) irnode() {}
 
 func (*IrAMD64_BTSQ_rr) irnode() {}
 func (*IrAMD64_BTSQ_ri) irnode() {}
@@ -784,6 +785,38 @@ func (self *IrAMD64_BinOp_ri) Definitions() []*Reg {
     return []*Reg { &self.R }
 }
 
+type IrAMD64_BinOp_rm struct {
+    R  Reg
+    X  Reg
+    Y  Mem
+    Op IrAMD64_BinOp
+}
+
+func (self *IrAMD64_BinOp_rm) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrAMD64_BinOp_rm) String() string {
+    if self.R == self.X {
+        return fmt.Sprintf("%s %s, %s", self.Op, self.Y, self.X)
+    } else {
+        return fmt.Sprintf("movq %s, %s; %s %s, %s", self.X, self.R, self.Op, self.Y, self.R)
+    }
+}
+
+func (self *IrAMD64_BinOp_rm) Usages() []*Reg {
+    if self.Y.I == Rz {
+        return []*Reg { &self.X, &self.Y.M }
+    } else {
+        return []*Reg { &self.X, &self.Y.M, &self.Y.I }
+    }
+}
+
+func (self *IrAMD64_BinOp_rm) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
+
 type IrAMD64_BTSQ_rr struct {
     T Reg
     S Reg
@@ -1191,10 +1224,49 @@ const (
     IrAbiGo
 )
 
+var _abiClobbersC = []Reg {
+    IrSetArch(Rz, x86_64.RAX),
+    IrSetArch(Rz, x86_64.RCX),
+    IrSetArch(Rz, x86_64.RDX),
+    IrSetArch(Rz, x86_64.RSI),
+    IrSetArch(Rz, x86_64.RDI),
+    IrSetArch(Rz, x86_64.R8),
+    IrSetArch(Rz, x86_64.R9),
+    IrSetArch(Rz, x86_64.R10),
+    IrSetArch(Rz, x86_64.R11),
+}
+
+var _abiClobbersGo = []Reg {
+    IrSetArch(Rz, x86_64.RAX),
+    IrSetArch(Rz, x86_64.RCX),
+    IrSetArch(Rz, x86_64.RDX),
+    IrSetArch(Rz, x86_64.RBX),
+    IrSetArch(Rz, x86_64.RSP),
+    IrSetArch(Rz, x86_64.RBP),
+    IrSetArch(Rz, x86_64.RSI),
+    IrSetArch(Rz, x86_64.RDI),
+    IrSetArch(Rz, x86_64.R8),
+    IrSetArch(Rz, x86_64.R9),
+    IrSetArch(Rz, x86_64.R10),
+    IrSetArch(Rz, x86_64.R11),
+    IrSetArch(Rz, x86_64.R12),
+    IrSetArch(Rz, x86_64.R13),
+    IrSetArch(Rz, x86_64.R14),
+    IrSetArch(Rz, x86_64.R15),
+}
+
 func (self IrAMD64_ABI) String() string {
     switch self {
         case IrAbiC  : return "c"
         case IrAbiGo : return "go"
+        default      : panic("unreachable")
+    }
+}
+
+func (self IrAMD64_ABI) Clobbers() []Reg {
+    switch self {
+        case IrAbiC  : return regsliceclone(_abiClobbersC)
+        case IrAbiGo : return regsliceclone(_abiClobbersGo)
         default      : panic("unreachable")
     }
 }
@@ -1222,7 +1294,11 @@ func (self *IrAMD64_CALL_reg) String() string {
 }
 
 func (self *IrAMD64_CALL_reg) Usages() []*Reg {
-    return append([]*Reg { &self.Fn }, regsliceref(self.In)...)
+    return append(regsliceref(self.In), &self.Fn)
+}
+
+func (self *IrAMD64_CALL_reg) Clobbers() []*Reg {
+    return regsliceref(self.Abi.Clobbers())
 }
 
 func (self *IrAMD64_CALL_reg) Definitions() []*Reg {
@@ -1253,10 +1329,14 @@ func (self *IrAMD64_CALL_mem) String() string {
 
 func (self *IrAMD64_CALL_mem) Usages() []*Reg {
     if self.Fn.I == Rz {
-        return append([]*Reg { &self.Fn.M }, regsliceref(self.In)...)
+        return append(regsliceref(self.In), &self.Fn.M)
     } else {
-        return append([]*Reg { &self.Fn.M, &self.Fn.I }, regsliceref(self.In)...)
+        return append(regsliceref(self.In), &self.Fn.M, &self.Fn.I)
     }
+}
+
+func (self *IrAMD64_CALL_mem) Clobbers() []*Reg {
+    return regsliceref(self.Abi.Clobbers())
 }
 
 func (self *IrAMD64_CALL_mem) Definitions() []*Reg {

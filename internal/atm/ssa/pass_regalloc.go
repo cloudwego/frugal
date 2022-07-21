@@ -25,6 +25,7 @@ import (
 
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/oleiade/lane`
 )
 
 const (
@@ -118,6 +119,11 @@ func (self _RegSet) String() string {
     )
 }
 
+type _RegTabPair struct {
+    rr Reg
+    rs _RegSet
+}
+
 type _RegTab struct {
     p []_RegSet
     m map[Reg]_RegSet
@@ -131,11 +137,16 @@ func mkregtab() *_RegTab {
 }
 
 func (self *_RegTab) reset() {
-    for k, s := range self.m {
-        self.p = append(self.p, s)
-        delete(self.m, k)
-        rt.MapClear(s)
+    for k := range self.m {
+        self.release(k)
     }
+}
+
+func (self *_RegTab) pairs() (r []_RegTabPair) {
+    r = make([]_RegTabPair, 0, len(self.m))
+    for rr, rs := range self.m { r = append(r, _RegTabPair { rr, rs }) }
+    sort.Slice(r, func(i int, j int) bool { return r[i].rr < r[j].rr })
+    return
 }
 
 func (self *_RegTab) alloc(n int) (rs _RegSet) {
@@ -171,6 +182,14 @@ func (self *_RegTab) relate(k Reg, v Reg) {
         p.add(v)
     } else {
         self.m[k] = self.alloc(1).add(v)
+    }
+}
+
+func (self *_RegTab) release(r Reg) {
+    if s, ok := self.m[r]; ok {
+        self.p = append(self.p, s)
+        delete(self.m, r)
+        rt.MapClear(s)
     }
 }
 
@@ -258,6 +277,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     next := true
     rpool := mkregtab()
     adjtab := mkregtab()
+    ralloc := lane.NewStack()
     ravail := make([]Reg, 0, len(ArchRegs))
     blocks := make(map[int]*BasicBlock, cfg.MaxBlock())
     livein := make(map[int]_RegSet)
@@ -419,8 +439,42 @@ func (self RegAlloc) Apply(cfg *CFG) {
             continue
         }
 
-        // TODO: remove this
-        drawrig(adjtab.m)
+        /* Phase 3: Color each node */
+        for len(adjtab.m) != 0 {
+            rr := Rz
+            dr := math.MaxUint32
+
+            /* find a node with the minimal degree */
+            for _, p := range adjtab.pairs() {
+                if len(p.rs) < dr {
+                    rr = p.rr
+                    dr = len(p.rs)
+                }
+            }
+
+            /* graph is not colrable with len(ravail) colors */
+            if dr > len(ravail) {
+                break
+            }
+
+            /* add to allocation stack */
+            ralloc.Push(rr)
+            adjtab.release(rr)
+
+            /* erase from adjacency table */
+            for _, v := range adjtab.m {
+                v.remove(rr)
+            }
+        }
+
+        /* check if the graph can be colored */
+        if len(adjtab.m) == 0 {
+            for !ralloc.Empty() {
+                println(ralloc.Pop().(Reg).String())
+            }
+            // TODO: remove this
+            drawrig(adjtab.m)
+        }
     }
 }
 

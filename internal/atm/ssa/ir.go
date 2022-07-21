@@ -262,12 +262,18 @@ func (*IrWriteBarrier) irimpure() {}
 
 func (*IrLoad)         irimmovable() {}
 func (*IrStore)        irimmovable() {}
+func (*IrEntry)        irimmovable() {}
 func (*IrLoadArg)      irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
 
 type IrUsages interface {
     IrNode
     Usages() []*Reg
+}
+
+type IrClobbers interface {
+    IrNode
+    Clobbers() []*Reg
 }
 
 type IrDefinitions interface {
@@ -888,7 +894,7 @@ func (self *IrCallFunc) String() string {
 }
 
 func (self *IrCallFunc) Usages() []*Reg {
-    return append([]*Reg { &self.R }, regsliceref(self.In)...)
+    return append(regsliceref(self.In), &self.R)
 }
 
 func (self *IrCallFunc) Definitions() []*Reg {
@@ -919,7 +925,7 @@ func (self *IrCallNative) String() string {
 }
 
 func (self *IrCallNative) Usages() []*Reg {
-    return append([]*Reg { &self.R }, regsliceref(self.In)...)
+    return append(regsliceref(self.In), &self.R)
 }
 
 func (self *IrCallNative) Definitions() []*Reg {
@@ -961,7 +967,7 @@ func (self *IrCallMethod) String() string {
 }
 
 func (self *IrCallMethod) Usages() []*Reg {
-    return append([]*Reg { &self.T, &self.V }, regsliceref(self.In)...)
+    return append(regsliceref(self.In), &self.T, &self.V)
 }
 
 func (self *IrCallMethod) Definitions() []*Reg {

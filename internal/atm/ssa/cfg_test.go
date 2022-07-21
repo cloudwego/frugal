@@ -77,7 +77,6 @@ func dumpbb(bb *BasicBlock) string {
     return strings.Join(buf, "")
 }
 
-
 func cfgdot(cfg *CFG, fn string) {
     e := make(map[[2]int]bool)
     buf := []string {
@@ -116,6 +115,10 @@ func cfgdot(cfg *CFG, fn string) {
     }
 }
 
+var (
+    ftest = hir.RegisterGCall(func (i int) int { return i + 1 }, nil)
+)
+
 func TestCFG_Build(t *testing.T) {
     p := hir.CreateBuilder()
     p.LDAP  (0, hir.P0)
@@ -123,7 +126,8 @@ func TestCFG_Build(t *testing.T) {
     p.Label ("loop")
     p.LQ    (hir.P0, 8, hir.R0)
     p.SUBI  (hir.R0, 1, hir.R0)
-    p.SQ    (hir.R0, hir.P0, 8)
+    p.GCALL (ftest).A0(hir.R0).R0(hir.R2)
+    p.SQ    (hir.R2, hir.P0, 8)
     p.BNE   (hir.R0, hir.Rz, "loop")
     p.LQ    (hir.P1, 8, hir.R1)
     p.RET   ().R0(hir.R0).R1(hir.R1)

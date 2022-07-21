@@ -230,11 +230,27 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* movq {i32}, %r0; binop %r0, %r1 --> binop {i32}, %r1 */
+                    /* movq {i32}, %r0; binop %r0, %r1 --> binop {i32}, %r1
+                     * movq {mem}, %r0; binop %r0, %r1 --> binop {mem}, %r1 */
                     case *IrAMD64_BinOp_rr: {
                         if ins, ok := defs[p.Y].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
                             bb.Ins[i] = &IrAMD64_BinOp_ri { R: p.R, X: p.X, Y: int32(ins.V), Op: p.Op }
+                        } else if ins, ok := defs[p.Y].(*IrAMD64_MOV_load); ok && ins.N == abi.PtrSize {
+                            done = false
+                            bb.Ins[i] = &IrAMD64_BinOp_rm { R: p.R, X: p.X, Y: ins.M, Op: p.Op }
+                        }
+                    }
+
+                    /* movq {i32}, %r0; binop {disp}({base},%r0,{scale}), %r1 --> binop {disp}+{i32}*{scale}({base}), %r1 */
+                    case *IrAMD64_BinOp_rm: {
+                        if ins, ok := defs[p.Y.I].(*IrAMD64_MOV_abs); ok && p.Y.I != Rz {
+                            if x = int64(p.Y.D) + ins.V * int64(p.Y.S); isi32(x) {
+                                done = false
+                                p.Y.S = 1
+                                p.Y.I = Rz
+                                p.Y.D = int32(x)
+                            }
                         }
                     }
 

@@ -122,9 +122,15 @@ func regsliceref(v []Reg) (r []*Reg) {
 }
 
 func regslicerepr(v []Reg) string {
-    ret := make([]string, 0, len(v))
-    for _, r := range v  { ret = append(ret, r.String()) }
-    return strings.Join(ret, ", ")
+    r := make([]string, 0, len(v))
+    for _, x := range v  { r = append(r, x.String()) }
+    return strings.Join(r, ", ")
+}
+
+func regsliceclone(v []Reg) (r []Reg) {
+    r = make([]Reg, len(v))
+    copy(r, v)
+    return
 }
 
 func blockreverse(s []*BasicBlock) {
