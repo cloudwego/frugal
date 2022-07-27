@@ -56,6 +56,7 @@ const (
     OP_make_state
     OP_drop_state
     OP_construct
+    OP_initialize
     OP_defer
     OP_goto
     OP_halt
@@ -95,6 +96,7 @@ var _OpNames = [256]string {
     OP_make_state        : "make_state",
     OP_drop_state        : "drop_state",
     OP_construct         : "construct",
+    OP_initialize        : "initialize",
     OP_defer             : "defer",
     OP_goto              : "goto",
     OP_halt              : "halt",

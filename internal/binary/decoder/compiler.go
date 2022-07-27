@@ -37,10 +37,11 @@ type Instr struct {
     Iv int64
     Sw *int
     Vt *rt.GoType
+    Fn unsafe.Pointer
 }
 
 func (self Instr) stab() string {
-    t := mkstab(self.Sw, self.Iv)
+    t := self.IntSeq()
     s := make([]string, 0, self.Iv)
 
     /* convert to strings */
@@ -58,7 +59,7 @@ func (self Instr) stab() string {
 }
 
 func (self Instr) rtab() string {
-    t := mkstab(self.Sw, self.Iv)
+    t := self.IntSeq()
     s := make([]string, 0, self.Iv)
 
     /* convert to strings */
@@ -68,6 +69,13 @@ func (self Instr) rtab() string {
 
     /* join with ',' */
     return strings.Join(s, ", ")
+}
+
+func (self Instr) IntSeq() (p []int) {
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(self.Iv)
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(self.Iv)
+    (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = unsafe.Pointer(self.Sw)
+    return
 }
 
 func (self Instr) Disassemble() string {
@@ -96,16 +104,18 @@ func (self Instr) Disassemble() string {
         case OP_struct_require    : return fmt.Sprintf("%-18s%s", self.Op, self.rtab())
         case OP_struct_switch     : return fmt.Sprintf("%-18s%s", self.Op, self.stab())
         case OP_struct_check_type : return fmt.Sprintf("%-18s%d, L_%d", self.Op, self.Tx, self.To)
+        case OP_initialize        : return fmt.Sprintf("%-18s*%p [%s]", self.Op, self.Fn, rt.FuncName(self.Fn))
         default                   : return self.Op.String()
     }
 }
 
-func mkins(op OpCode, dt defs.Tag, id uint16, to int, iv int64, sw []int, vt reflect.Type) Instr {
+func mkins(op OpCode, dt defs.Tag, id uint16, to int, iv int64, sw []int, vt reflect.Type, fn unsafe.Pointer) Instr {
     return Instr {
         Op: op,
         Tx: dt,
         Id: id,
         To: to,
+        Fn: fn,
         Vt: rt.UnpackType(vt),
         Iv: int64(len(sw)) | iv,
         Sw: (*int)((*rt.GoSlice)(unsafe.Pointer(&sw)).Ptr),
@@ -125,21 +135,22 @@ func (self Program) pin(i int) {
     self[i].To = self.pc()
 }
 
-func (self Program) def(n int) {
+func (self Program) use(n int) {
     if n >= defs.StackSize {
         panic("type nesting too deep")
     }
 }
 
 func (self *Program) ins(iv Instr)                             { *self = append(*self, iv) }
-func (self *Program) add(op OpCode)                            { self.ins(mkins(op, 0, 0, 0, 0, nil, nil)) }
-func (self *Program) jmp(op OpCode, to int)                    { self.ins(mkins(op, 0, 0, to, 0, nil, nil)) }
-func (self *Program) i64(op OpCode, iv int64)                  { self.ins(mkins(op, 0, 0, 0, iv, nil, nil)) }
-func (self *Program) tab(op OpCode, tv []int)                  { self.ins(mkins(op, 0, 0, 0, 0, tv, nil)) }
-func (self *Program) tag(op OpCode, vt defs.Tag)               { self.ins(mkins(op, vt, 0, 0, 0, nil, nil)) }
-func (self *Program) rtt(op OpCode, vt reflect.Type)           { self.ins(mkins(op, 0, 0, 0, 0, nil, vt)) }
-func (self *Program) jcc(op OpCode, vt defs.Tag, to int)       { self.ins(mkins(op, vt, 0, to, 0, nil, nil)) }
-func (self *Program) req(op OpCode, vt reflect.Type, fv []int) { self.ins(mkins(op, 0, 0, 0, 0, fv, vt)) }
+func (self *Program) add(op OpCode)                            { self.ins(mkins(op, 0, 0, 0, 0, nil, nil, nil)) }
+func (self *Program) jmp(op OpCode, to int)                    { self.ins(mkins(op, 0, 0, to, 0, nil, nil, nil)) }
+func (self *Program) i64(op OpCode, iv int64)                  { self.ins(mkins(op, 0, 0, 0, iv, nil, nil, nil)) }
+func (self *Program) tab(op OpCode, tv []int)                  { self.ins(mkins(op, 0, 0, 0, 0, tv, nil, nil)) }
+func (self *Program) tag(op OpCode, vt defs.Tag)               { self.ins(mkins(op, vt, 0, 0, 0, nil, nil, nil)) }
+func (self *Program) rtt(op OpCode, vt reflect.Type)           { self.ins(mkins(op, 0, 0, 0, 0, nil, vt, nil)) }
+func (self *Program) jsr(op OpCode, fn unsafe.Pointer)         { self.ins(mkins(op, 0, 0, 0, 0, nil, nil, fn)) }
+func (self *Program) jcc(op OpCode, vt defs.Tag, to int)       { self.ins(mkins(op, vt, 0, to, 0, nil, nil, nil)) }
+func (self *Program) req(op OpCode, vt reflect.Type, fv []int) { self.ins(mkins(op, 0, 0, 0, 0, fv, vt, nil)) }
 
 func (self Program) Free() {
     freeProgram(self)
@@ -156,7 +167,7 @@ func (self Program) Disassemble() string {
             if ins.Op != OP_struct_switch {
                 tab[ins.To] = true
             } else {
-                for _, v := range mkstab(ins.Sw, ins.Iv) {
+                for _, v := range ins.IntSeq() {
                     if v >= 0 {
                         tab[v] = true
                     }
@@ -247,7 +258,7 @@ func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
 }
 
 func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
-    p.def(sp)
+    p.use(sp)
     p.i64(OP_size, 6)
     p.tag(OP_type, vt.K.Tag())
     p.tag(OP_type, vt.V.Tag())
@@ -301,6 +312,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     var err error
     var req []int
     var fvs []defs.Field
+    var ifn unsafe.Pointer
 
     /* resolve the fields */
     if fvs, err = defs.ResolveFields(vt.S); err != nil {
@@ -313,6 +325,16 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
         return
     }
 
+    /* find the default initializer */
+    if ifn, err = defs.GetDefaultInitializer(vt.S); err != nil {
+        panic(err)
+    }
+
+    /* call the initializer if any */
+    if ifn != nil {
+        p.jsr(OP_initialize, ifn)
+    }
+
     /* find the maximum field IDs */
     for _, fv := range fvs {
         if fid = utils.MaxInt(fid, int(fv.ID)); fv.Spec == defs.Required {
@@ -321,7 +343,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     }
 
     /* save the current state */
-    p.def(sp)
+    p.use(sp)
     p.add(OP_make_state)
 
     /* allocate bitmap for required fields, if needed */
@@ -378,7 +400,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
 }
 
 func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
-    p.def(sp)
+    p.use(sp)
     p.i64(OP_size, 5)
     p.tag(OP_type, et.Tag())
     p.add(OP_make_state)
@@ -413,7 +435,7 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     /* compile the actual type */
     self.compileOne(&ret, 0, vtp)
     ret.add(OP_halt)
-    return ret, nil
+    return Optimize(ret), nil
 }
 
 func (self Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {

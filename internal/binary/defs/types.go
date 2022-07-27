@@ -61,7 +61,7 @@ var wireTags = [256]bool {
 
 var keywordTab = [256]string {
     T_bool   : "bool",
-    T_i8     : "i8 or byte",
+    T_i8     : "i8 byte",
     T_double : "double",
     T_i16    : "i16",
     T_i32    : "i32",

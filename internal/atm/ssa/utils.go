@@ -17,9 +17,7 @@
 package ssa
 
 import (
-    `fmt`
     `math`
-    `runtime`
     `strings`
     `unsafe`
 
@@ -97,16 +95,6 @@ func stacknew(v interface{}) (r *lane.Stack) {
     r = lane.NewStack()
     r.Push(v)
     return
-}
-
-func funcname(p unsafe.Pointer) string {
-    if fn := runtime.FuncForPC(uintptr(p)); fn == nil {
-        return "???"
-    } else if fp := fn.Entry(); fp == uintptr(p) {
-        return fn.Name()
-    } else {
-        return fmt.Sprintf("%s+%#x", fn.Name(), uintptr(p) - fp)
-    }
 }
 
 func regnewref(v Reg) (r *Reg) {

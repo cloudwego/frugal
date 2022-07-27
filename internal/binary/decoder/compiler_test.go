@@ -31,7 +31,7 @@ type CompilerTest struct {
     E int32                  `frugal:"4,default,i32"`
     F int64                  `frugal:"5,default,i64"`
     G string                 `frugal:"6,default,string"`
-    H CompilerTestSubStruct  `frugal:"7,default,CompilerTestSubStruct"`
+    H *CompilerTest          `frugal:"7,default,CompilerTest"`
     I *CompilerTestSubStruct `frugal:"8,default,CompilerTestSubStruct"`
     J map[string]int         `frugal:"9,default,map<string:int>"`
     K []string               `frugal:"10,default,set<string>"`
@@ -42,13 +42,22 @@ type CompilerTest struct {
     P int64                  `frugal:"16,required,i64"`
 }
 
+func (self *CompilerTest) InitDefault() {
+    *self = CompilerTest{}
+}
+
 type CompilerTestSubStruct struct {
-    X int                    `frugal:"0,default,i64"`
-    Y *CompilerTestSubStruct `frugal:"1,default,CompilerTestSubStruct"`
+    X int                                      `frugal:"0,default,i64"`
+    Y *CompilerTestSubStruct                   `frugal:"1,default,CompilerTestSubStruct"`
+    Z map[*CompilerTest]*CompilerTestSubStruct `frugal:"2,default,map<CompilerTest:CompilerTestSubStruct>"`
+}
+
+func (self *CompilerTestSubStruct) InitDefault() {
+    *self = CompilerTestSubStruct{}
 }
 
 func TestCompiler_Compile(t *testing.T) {
-    p, err := CreateCompiler().Compile(reflect.TypeOf(CompilerTest{}))
+    p, err := CreateCompiler().Compile(reflect.TypeOf(&CompilerTest{}))
     require.NoError(t, err)
     println(p.Disassemble())
 }

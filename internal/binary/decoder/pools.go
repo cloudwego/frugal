@@ -23,9 +23,12 @@ import (
 )
 
 var (
-    programPool      sync.Pool
-    compilerPool     sync.Pool
-    runtimeStatePool sync.Pool
+    programPool        sync.Pool
+    compilerPool       sync.Pool
+    basicBlockPool     sync.Pool
+    graphBuilderPool   sync.Pool
+    runtimeStatePool   sync.Pool
+    optimizerStatePool sync.Pool
 )
 
 func newProgram() Program {
@@ -57,6 +60,43 @@ func resetCompiler(p Compiler) Compiler {
     return p
 }
 
+func newBasicBlock() *BasicBlock {
+    if v := basicBlockPool.Get(); v != nil {
+        return v.(*BasicBlock)
+    } else {
+        return new(BasicBlock)
+    }
+}
+
+func freeBasicBlock(p *BasicBlock) {
+    basicBlockPool.Put(p)
+}
+
+func newGraphBuilder() *GraphBuilder {
+    if v := graphBuilderPool.Get(); v == nil {
+        return allocGraphBuilder()
+    } else {
+        return resetGraphBuilder(v.(*GraphBuilder))
+    }
+}
+
+func freeGraphBuilder(p *GraphBuilder) {
+    graphBuilderPool.Put(p)
+}
+
+func allocGraphBuilder() *GraphBuilder {
+    return &GraphBuilder {
+        Pin   : make(map[int]bool),
+        Graph : make(map[int]*BasicBlock),
+    }
+}
+
+func resetGraphBuilder(p *GraphBuilder) *GraphBuilder {
+    rt.MapClear(p.Pin)
+    rt.MapClear(p.Graph)
+    return p
+}
+
 func newRuntimeState() *RuntimeState {
     if v := runtimeStatePool.Get(); v != nil {
         return v.(*RuntimeState)
@@ -67,4 +107,31 @@ func newRuntimeState() *RuntimeState {
 
 func freeRuntimeState(p *RuntimeState) {
     runtimeStatePool.Put(p)
+}
+
+func newOptimizerState() *_OptimizerState {
+    if v := optimizerStatePool.Get(); v == nil {
+        return allocOptimizerState()
+    } else {
+        return resetOptimizerState(v.(*_OptimizerState))
+    }
+}
+
+func freeOptimizerState(p *_OptimizerState) {
+    optimizerStatePool.Put(p)
+}
+
+func allocOptimizerState() *_OptimizerState {
+    return &_OptimizerState {
+        buf  : make([]*BasicBlock, 0, 16),
+        refs : make(map[int]int),
+        mask : make(map[*BasicBlock]bool),
+    }
+}
+
+func resetOptimizerState(p *_OptimizerState) *_OptimizerState {
+    p.buf = p.buf[:0]
+    rt.MapClear(p.refs)
+    rt.MapClear(p.mask)
+    return p
 }

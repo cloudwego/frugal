@@ -198,6 +198,7 @@ var translators = [256]func(*hir.Builder, Instr) {
     OP_make_state        : translate_OP_make_state,
     OP_drop_state        : translate_OP_drop_state,
     OP_construct         : translate_OP_construct,
+    OP_initialize        : translate_OP_initialize,
     OP_defer             : translate_OP_defer,
     OP_goto              : translate_OP_goto,
     OP_halt              : translate_OP_halt,
@@ -629,7 +630,7 @@ func translate_OP_struct_bitmap(p *hir.Builder, v Instr) {
     buf.Clear()
 
     /* add all the bits */
-    for _, i := range mkstab(v.Sw, v.Iv) {
+    for _, i := range v.IntSeq() {
         buf.Append(i)
     }
 
@@ -651,7 +652,7 @@ func translate_OP_struct_bitmap(p *hir.Builder, v Instr) {
 }
 
 func translate_OP_struct_switch(p *hir.Builder, v Instr) {
-    stab := mkstab(v.Sw, v.Iv)
+    stab := v.IntSeq()
     ptab := make([]string, v.Iv)
 
     /* convert the switch table */
@@ -674,7 +675,7 @@ func translate_OP_struct_require(p *hir.Builder, v Instr) {
     buf.Clear()
 
     /* add all the bits */
-    for _, i := range mkstab(v.Sw, v.Iv) {
+    for _, i := range v.IntSeq() {
         buf.Append(i)
     }
 
@@ -750,6 +751,11 @@ func translate_OP_construct(p *hir.Builder, v Instr) {
       A1    (TP).
       A2    (UR).
       R0    (WP)
+}
+
+func translate_OP_initialize(p *hir.Builder, v Instr) {
+    p.GCALL (addInitFn(v.Fn)).
+      A0    (WP)
 }
 
 func translate_OP_defer(p *hir.Builder, v Instr) {

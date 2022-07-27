@@ -14,28 +14,20 @@
  * limitations under the License.
  */
 
-package defs
+package rt
 
 import (
     `fmt`
-    `reflect`
-    `testing`
+    `runtime`
+    `unsafe`
 )
 
-func TestTypes_Parsing(t *testing.T) {
-    var v map[string][]reflect.SliceHeader
-    tt := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
-    fmt.Println(tt)
-}
-
-func TestTypes_MapKeyType(t *testing.T) {
-    var v map[*reflect.SliceHeader]int
-    tt := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
-    fmt.Println(tt)
-}
-
-func TestTypes_Constructor(t *testing.T) {
-    var v *CtorTestStruct
-    tt := ParseType(reflect.TypeOf(v), "CtorTestStruct")
-    fmt.Println(tt, tt.F)
+func FuncName(p unsafe.Pointer) string {
+    if fn := runtime.FuncForPC(uintptr(p)); fn == nil {
+        return "???"
+    } else if fp := fn.Entry(); fp == uintptr(p) {
+        return fn.Name()
+    } else {
+        return fmt.Sprintf("%s+%#x", fn.Name(), uintptr(p) - fp)
+    }
 }

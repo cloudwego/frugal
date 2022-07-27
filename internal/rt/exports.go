@@ -35,6 +35,21 @@ func growslice(et *GoType, old GoSlice, cap int) GoSlice
 //goland:noinspection GoUnusedParameter
 func mapiternext(it *GoMapIterator)
 
+//go:noescape
+//go:linkname resolveNameOff runtime.resolveNameOff
+//goland:noinspection GoUnusedParameter
+func resolveNameOff(p unsafe.Pointer, off GoNameOffset) GoName
+
+//go:noescape
+//go:linkname resolveTypeOff runtime.resolveTypeOff
+//goland:noinspection GoUnusedParameter
+func resolveTypeOff(p unsafe.Pointer, off GoTypeOffset) *GoType
+
+//go:noescape
+//go:linkname resolveTextOff reflect.resolveTextOff
+//goland:noinspection GoUnusedParameter
+func resolveTextOff(p unsafe.Pointer, off GoTextOffset) unsafe.Pointer
+
 //go:nosplit
 func MapClear(m interface{}) {
     v := UnpackEface(m)

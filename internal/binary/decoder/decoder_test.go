@@ -104,3 +104,24 @@ func TestDecoder_Simple(t *testing.T) {
     require.NoError(t, err)
     require.Equal(t, len(buf), pos)
 }
+
+type TestWithDefaultValue struct {
+    A int64 `frugal:"0,default,i64"`
+    B int64 `frugal:"1,default,i64"`
+    C int64 `frugal:"2,default,i64"`
+}
+
+func (self *TestWithDefaultValue) InitDefault() {
+    *self = TestWithDefaultValue { B: 100 }
+}
+
+func TestDecoder_WithDefaultValue(t *testing.T) {
+    var v TestWithDefaultValue
+    rs := new(RuntimeState)
+    buf := []byte { 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00 }
+    sl := (*rt.GoSlice)(unsafe.Pointer(&buf))
+    pos, err := decode(rt.UnpackEface(v).Type, sl.Ptr, sl.Len, 0, unsafe.Pointer(&v), rs, 0)
+    require.NoError(t, err)
+    require.Equal(t, len(buf), pos)
+    spew.Dump(v)
+}

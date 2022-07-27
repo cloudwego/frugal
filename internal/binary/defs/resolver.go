@@ -24,7 +24,9 @@ import (
     `strings`
 )
 
-type Requiredness uint
+type (
+	Requiredness uint8
+)
 
 const (
     Default Requiredness = iota
@@ -97,6 +99,11 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
             return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
         }
 
+        /* structs must be declared as pointers */
+        if rt.T == T_struct {
+            return nil, fmt.Errorf("structs must be declared as pointers: %s.%s", vt, sf.Name)
+        }
+
         /* check for nested pointers */
         if rt.T == T_pointer && rt.V.T == T_pointer {
             return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
@@ -106,8 +113,8 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
         ret = append(ret, Field {
             F    : int(sf.Offset),
             ID   : uint16(id),
-            Spec : rx,
             Type : rt,
+            Spec : rx,
         })
     }
 

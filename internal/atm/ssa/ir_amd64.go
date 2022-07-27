@@ -21,6 +21,7 @@ import (
     `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 var ArchRegs = [...]x86_64.Register64 {
@@ -392,7 +393,7 @@ func (self *IrAMD64_MOV_ptr) Clone() IrNode {
 }
 
 func (self *IrAMD64_MOV_ptr) String() string {
-    return fmt.Sprintf("movabsq $%p, %s  # %s", self.P, self.R, funcname(self.P))
+    return fmt.Sprintf("movabsq $%p, %s  # %s", self.P, self.R, rt.FuncName(self.P))
 }
 
 func (self *IrAMD64_MOV_ptr) Definitions() []*Reg {
@@ -527,7 +528,7 @@ func (self *IrAMD64_MOV_store_p) Clone() IrNode {
 }
 
 func (self *IrAMD64_MOV_store_p) String() string {
-    return fmt.Sprintf("movq $%p, %s  # %s", self.P, self.M, funcname(self.P))
+    return fmt.Sprintf("movq $%p, %s  # %s", self.P, self.M, rt.FuncName(self.P))
 }
 
 func (self *IrAMD64_MOV_store_p) Usages() (r []*Reg) {
@@ -1355,7 +1356,7 @@ func (self *IrAMD64_CALL_gcwb) Clone() IrNode {
 }
 
 func (self *IrAMD64_CALL_gcwb) String() string {
-    return fmt.Sprintf("scall *%p [%s], %s -> (%s)", self.Fn, funcname(self.Fn), self.R, self.M)
+    return fmt.Sprintf("scall *%p [%s], %s -> (%s)", self.Fn, rt.FuncName(self.Fn), self.R, self.M)
 }
 
 func (self *IrAMD64_CALL_gcwb) Usages() []*Reg {

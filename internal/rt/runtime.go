@@ -26,6 +26,10 @@ const (
 )
 
 const (
+    T_uncommon = 1 << 0
+)
+
+const (
     F_direct    = 1 << 5
     F_kind_mask = (1 << 5) - 1
 )
@@ -33,6 +37,68 @@ const (
 var (
     reflectRtypeItab = findReflectRtypeItab()
 )
+
+type (
+    GoNameOffset int32
+    GoTypeOffset int32
+    GoTextOffset int32
+)
+
+func (self GoNameOffset) Resolve(vt *GoType) GoName {
+    if self == -1 {
+        return GoName{}
+    } else {
+        return resolveNameOff(unsafe.Pointer(vt), self)
+    }
+}
+
+func (self GoTypeOffset) Resolve(vt *GoType) *GoType {
+    if self == -1 {
+        return nil
+    } else {
+        return resolveTypeOff(unsafe.Pointer(vt), self)
+    }
+}
+
+func (self GoTextOffset) Resolve(vt *GoType) unsafe.Pointer {
+    if self == -1 {
+        return nil
+    } else {
+        return resolveTextOff(unsafe.Pointer(vt), self)
+    }
+}
+
+type GoName struct {
+    b *[1 << 16]byte
+}
+
+func (self GoName) read(p int) (i int, v int) {
+    for i, v = 0, 0;; i++ {
+		if v += int(self.b[p + i] & 0x7f) << (7 * i); self.b[p + i] & 0x80 == 0 {
+			return i + 1, v
+		}
+    }
+}
+
+func (self GoName) mkstr(i int, n int) (s string) {
+    (*GoString)(unsafe.Pointer(&s)).Len = n
+    (*GoString)(unsafe.Pointer(&s)).Ptr = unsafe.Pointer(&self.b[i])
+    return
+}
+
+func (self GoName) Name() string {
+    if self.b == nil {
+        return ""
+    } else if i, n := self.read(1); n == 0 {
+        return ""
+    } else {
+        return self.mkstr(i + 1, n)
+    }
+}
+
+func (self GoName) IsExported() bool {
+    return self.b != nil && self.b[0] & (1 << 0) != 0
+}
 
 type GoType struct {
     Size       uintptr
@@ -44,8 +110,16 @@ type GoType struct {
     KindFlags  uint8
     Equal      func(unsafe.Pointer, unsafe.Pointer) bool
     GCData     *byte
-    Str        int32
-    PtrToSelf  int32
+    Str        GoNameOffset
+    PtrToSelf  GoTypeOffset
+}
+
+func (self *GoType) mtab() []GoMethod {
+    switch self.Kind() {
+        case reflect.Struct  : return (*struct { GoStructType ; GoUncommonType })(unsafe.Pointer(self)).Methods()
+        case reflect.Pointer : return (*struct { GoPtrType    ; GoUncommonType })(unsafe.Pointer(self)).Methods()
+        default              : return nil
+    }
 }
 
 func (self *GoType) Kind() reflect.Kind {
@@ -60,6 +134,18 @@ func (self *GoType) Pack() (t reflect.Type) {
 
 func (self *GoType) String() string {
     return self.Pack().String()
+}
+
+func (self *GoType) Methods() []GoMethod {
+    if !self.IsUncommon() {
+        return nil
+    } else {
+        return self.mtab()
+    }
+}
+
+func (self *GoType) IsUncommon() bool {
+    return (self.Flags & T_uncommon) != 0
 }
 
 func (self *GoType) IsIndirect() bool {
@@ -90,6 +176,45 @@ func (self *GoMapType) IsFastMap() bool {
 type GoSliceType struct {
     GoType
     Elem *GoType
+}
+
+type GoStructType struct {
+    GoType
+    PkgPath GoName
+    Fields  []GoStructField
+}
+
+type GoMethod struct {
+    Name  GoNameOffset
+    Type  GoTypeOffset
+    IFunc GoTextOffset
+    TFunc GoTextOffset
+}
+
+type GoStructField struct {
+    Name        GoName
+    Type        *GoType
+    OffsetEmbed uintptr
+}
+
+type GoUncommonType struct {
+    PkgPath      int32
+    NumMethod    uint16
+    NumExported  uint16
+    MethodOffset uint32
+    _            uint32
+}
+
+func (self *GoUncommonType) mbuf() unsafe.Pointer {
+    return unsafe.Pointer(uintptr(unsafe.Pointer(self)) + uintptr(self.MethodOffset))
+}
+
+func (self *GoUncommonType) Methods() []GoMethod {
+    if self.NumMethod == 0 {
+        return nil
+    } else {
+        return (*[1 << 16]GoMethod)(self.mbuf())[:self.NumMethod:self.NumMethod]
+    }
 }
 
 type GoItab struct {

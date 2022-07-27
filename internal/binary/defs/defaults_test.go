@@ -14,17 +14,37 @@
  * limitations under the License.
  */
 
-package decoder
+package defs
 
 import (
+    `reflect`
+    `testing`
     `unsafe`
 
-    `github.com/cloudwego/frugal/internal/rt`
+    `github.com/davecgh/go-spew/spew`
+    `github.com/stretchr/testify/require`
 )
 
-func mkstab(sw *int, iv int64) (p []int) {
-    (*rt.GoSlice)(unsafe.Pointer(&p)).Cap = int(iv)
-    (*rt.GoSlice)(unsafe.Pointer(&p)).Len = int(iv)
-    (*rt.GoSlice)(unsafe.Pointer(&p)).Ptr = unsafe.Pointer(sw)
-    return
+type CtorTestStruct struct {
+    X int
+    Y int
+    Z int
+}
+
+func (self *CtorTestStruct) InitDefault() {
+    *self = CtorTestStruct {
+        X: 1,
+        Y: 2,
+        Z: 3,
+    }
+}
+
+func TestDefaults_Resolve(t *testing.T) {
+    fp := (*CtorTestStruct).InitDefault
+    fa := **(**unsafe.Pointer)(unsafe.Pointer(&fp))
+    spew.Dump(fa)
+    fn, err := GetDefaultInitializer(reflect.TypeOf(CtorTestStruct{}))
+    require.NoError(t, err)
+    spew.Dump(fn)
+    require.Equal(t, fa, fn)
 }

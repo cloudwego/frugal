@@ -24,6 +24,7 @@ import (
 
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/atm/hir`
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type (
@@ -701,7 +702,7 @@ func (self *IrConstPtr) Clone() IrNode {
 }
 
 func (self *IrConstPtr) String() string {
-    return fmt.Sprintf("%s = const.ptr (%s)%p [%s]", self.R, self.M, self.P, funcname(self.P))
+    return fmt.Sprintf("%s = const.ptr (%s)%p [%s]", self.R, self.M, self.P, rt.FuncName(self.P))
 }
 
 func (self *IrConstPtr) Definitions() []*Reg {
