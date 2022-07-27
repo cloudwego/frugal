@@ -140,11 +140,15 @@ func buildvalue(t defs.Tag, v []byte, i int) (int, interface{}) {
     }
 }
 
-func comparestruct(t require.TestingT, a []byte, b []byte) {
-    require.Equal(t, len(a), len(b))
+func comparestruct(a []byte, b []byte) {
     _, x := buildvalue(defs.T_struct, a, 0)
     _, y := buildvalue(defs.T_struct, b, 0)
-    require.True(t, reflect.DeepEqual(x, y))
+    if !reflect.DeepEqual(x, y) {
+        println("================ DIFF ================")
+        spew.Config.SortKeys = true
+        spew.Dump(x, y)
+        println("======================================")
+    }
 }
 
 type EnumTestStruct struct {
@@ -179,7 +183,7 @@ func TestMarshalCompare(t *testing.T) {
     println("Encoded Size  :", ret)
     require.Equal(t, nb, ret)
     buf = buf[:ret]
-    comparestruct(t, mm.Bytes(), buf)
+    comparestruct(mm.Bytes(), buf)
 }
 
 func TestUnmarshalEnum(t *testing.T) {
