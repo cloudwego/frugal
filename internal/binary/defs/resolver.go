@@ -91,7 +91,7 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
     val := reflect.New(vt)
     ids := make(map[uint64]struct{}, vt.NumField())
 
-    /* construct a new instance */
+    /* check for default values */
     if def, ok := val.Interface().(DefaultInitializer); ok {
         mem = val.Elem()
         def.InitDefault()
