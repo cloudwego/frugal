@@ -332,6 +332,10 @@ func BytesFrom(p unsafe.Pointer, n int, c int) (r []byte) {
     return
 }
 
+func StringPtr(s string) unsafe.Pointer {
+    return (*GoString)(unsafe.Pointer(&s)).Ptr
+}
+
 func StringFrom(p unsafe.Pointer, n int) (r string) {
     (*GoString)(unsafe.Pointer(&r)).Ptr = p
     (*GoString)(unsafe.Pointer(&r)).Len = n

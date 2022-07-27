@@ -252,9 +252,9 @@ var _OperandMask = [256]Operands {
     hir.OP_blt   : Orx | Ory,
     hir.OP_bltu  : Orx | Ory,
     hir.OP_bgeu  : Orx | Ory,
+    hir.OP_beqp  : Ops | Opd,
+    hir.OP_bnep  : Ops | Opd,
     hir.OP_bsw   : Orx,
-    hir.OP_beqn  : Ops,
-    hir.OP_bnen  : Ops,
     hir.OP_jmp   : Ojmp,
     hir.OP_bzero : Opd,
     hir.OP_bcopy : Orx | Ops | Opd,
@@ -637,9 +637,9 @@ var translators = [256]func(*CodeGen, *x86_64.Program, *hir.Ir) {
     hir.OP_blt   : (*CodeGen).translate_OP_blt,
     hir.OP_bltu  : (*CodeGen).translate_OP_bltu,
     hir.OP_bgeu  : (*CodeGen).translate_OP_bgeu,
+    hir.OP_beqp  : (*CodeGen).translate_OP_beqp,
+    hir.OP_bnep  : (*CodeGen).translate_OP_bnep,
     hir.OP_bsw   : (*CodeGen).translate_OP_bsw,
-    hir.OP_beqn  : (*CodeGen).translate_OP_beqn,
-    hir.OP_bnen  : (*CodeGen).translate_OP_bnen,
     hir.OP_jmp   : (*CodeGen).translate_OP_jmp,
     hir.OP_bzero : (*CodeGen).translate_OP_bzero,
     hir.OP_bcopy : (*CodeGen).translate_OP_bcopy,
@@ -1135,6 +1135,36 @@ func (self *CodeGen) translate_OP_bgeu(p *x86_64.Program, v *hir.Ir) {
     }
 }
 
+func (self *CodeGen) translate_OP_beqp(p *x86_64.Program, v *hir.Ir) {
+    if v.Ps == v.Pd {
+        p.JMP(self.to(v.Br))
+    } else if v.Ps == hir.Pn {
+        p.TESTQ(self.r(v.Pd), self.r(v.Pd))
+        p.JZ(self.to(v.Br))
+    } else if v.Pd == hir.Pn {
+        p.TESTQ(self.r(v.Ps), self.r(v.Ps))
+        p.JZ(self.to(v.Br))
+    } else {
+        p.CMPQ(self.r(v.Pd), self.r(v.Ps))
+        p.JE(self.to(v.Br))
+    }
+}
+
+func (self *CodeGen) translate_OP_bnep(p *x86_64.Program, v *hir.Ir) {
+    if v.Ps != v.Pd {
+        if v.Ps == hir.Pn {
+            p.TESTQ(self.r(v.Pd), self.r(v.Pd))
+            p.JNZ(self.to(v.Br))
+        } else if v.Pd == hir.Pn {
+            p.TESTQ(self.r(v.Ps), self.r(v.Ps))
+            p.JNZ(self.to(v.Br))
+        } else {
+            p.CMPQ(self.r(v.Pd), self.r(v.Ps))
+            p.JNE(self.to(v.Br))
+        }
+    }
+}
+
 func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *hir.Ir) {
     nsw := v.Iv
     tab := v.Switch()
@@ -1168,22 +1198,6 @@ func (self *CodeGen) translate_OP_bsw(p *x86_64.Program, v *hir.Ir) {
     p.ADDQ   (RSI, RAX)
     p.JMPQ   (RAX)
     p.Link   (def)
-}
-
-func (self *CodeGen) translate_OP_beqn(p *x86_64.Program, v *hir.Ir) {
-    if v.Ps == hir.Pn {
-        p.JMP(self.to(v.Br))
-    } else {
-        p.TESTQ(self.r(v.Ps), self.r(v.Ps))
-        p.JZ(self.to(v.Br))
-    }
-}
-
-func (self *CodeGen) translate_OP_bnen(p *x86_64.Program, v *hir.Ir) {
-    if v.Ps != hir.Pn {
-        p.TESTQ(self.r(v.Ps), self.r(v.Ps))
-        p.JNZ(self.to(v.Br))
-    }
 }
 
 func (self *CodeGen) translate_OP_jmp(p *x86_64.Program, v *hir.Ir) {

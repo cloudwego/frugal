@@ -22,6 +22,7 @@ import (
     `sort`
     `strconv`
     `strings`
+    `sync`
 )
 
 type (
@@ -35,28 +36,76 @@ const (
 )
 
 type Field struct {
-    F    int
-    ID   uint16
-    Type *Type
-    Spec Requiredness
+    F       int
+    ID      uint16
+    Type    *Type
+    Spec    Requiredness
+    Default reflect.Value
 }
 
+var (
+    fieldsLock  = new(sync.RWMutex)
+    fieldsCache = make(map[reflect.Type][]Field)
+)
+
 func ResolveFields(vt reflect.Type) ([]Field, error) {
+    var ok bool
+    var ex error
+    var fv []Field
+
+    /* attempt to find in cache */
+    fieldsLock.RLock()
+    fv, ok = fieldsCache[vt]
+    fieldsLock.RUnlock()
+
+    /* check if it exists */
+    if ok {
+        return fv, nil
+    }
+
+    /* retry with write lock */
+    fieldsLock.Lock()
+    defer fieldsLock.Unlock()
+
+    /* try again */
+    if fv, ok = fieldsCache[vt]; ok {
+        return fv, nil
+    }
+
+    /* still not found, do the actual resolving */
+    if fv, ex = doResolveFields(vt); ex != nil {
+        return nil, ex
+    }
+
+    /* update cache */
+    fieldsCache[vt] = fv
+    return fv, nil
+}
+
+func doResolveFields(vt reflect.Type) ([]Field, error) {
     var err error
     var ret []Field
+    var mem reflect.Value
 
-    /* field ID map */
-    nfs := vt.NumField()
-    ids := make(map[uint64]bool)
+    /* field ID map and default values */
+    val := reflect.New(vt)
+    ids := make(map[uint64]struct{}, vt.NumField())
+
+    /* construct a new instance */
+    if def, ok := val.Interface().(DefaultInitializer); ok {
+        mem = val.Elem()
+        def.InitDefault()
+    }
 
     /* traverse all the fields */
-    for i := 0; i < nfs; i++ {
+    for i := 0; i < vt.NumField(); i++ {
         var ok bool
-        var rt *Type
+        var pt *Type
         var id uint64
         var tv string
         var ft []string
         var rx Requiredness
+        var rv reflect.Value
         var sf reflect.StructField
 
         /* extract the field, ignore anonymous or private fields */
@@ -88,33 +137,39 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
         }
 
         /* check for duplicates */
-        if !ids[id] {
-            ids[id] = true
+        if _, ok = ids[id]; !ok {
+            ids[id] = struct{}{}
         } else {
             return nil, fmt.Errorf("duplicated field ID %d for field %s.%s", id, vt, sf.Name)
         }
 
         /* only optional fields or structs can be pointers */
-        if rt = ParseType(sf.Type, strings.TrimSpace(ft[2])); rx != Optional && rt.T == T_pointer && rt.V.T != T_struct {
+        if pt = ParseType(sf.Type, strings.TrimSpace(ft[2])); rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
             return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
         }
 
         /* structs must be declared as pointers */
-        if rt.T == T_struct {
+        if pt.T == T_struct {
             return nil, fmt.Errorf("structs must be declared as pointers: %s.%s", vt, sf.Name)
         }
 
         /* check for nested pointers */
-        if rt.T == T_pointer && rt.V.T == T_pointer {
+        if pt.T == T_pointer && pt.V.T == T_pointer {
             return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
+        }
+
+        /* get the default value if any */
+        if mem.IsValid() {
+            rv = mem.FieldByIndex(sf.Index)
         }
 
         /* add to result */
         ret = append(ret, Field {
-            F    : int(sf.Offset),
-            ID   : uint16(id),
-            Type : rt,
-            Spec : rx,
+            F       : int(sf.Offset),
+            ID      : uint16(id),
+            Type    : pt,
+            Spec    : rx,
+            Default : rv,
         })
     }
 

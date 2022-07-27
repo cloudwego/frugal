@@ -53,6 +53,8 @@ const (
     OP_goto
     OP_if_nil
     OP_if_hasbuf
+    OP_if_eq_imm
+    OP_if_eq_str
     OP_make_state
     OP_drop_state
     OP_halt
@@ -89,6 +91,8 @@ var _OpNames = [256]string {
     OP_goto          : "goto",
     OP_if_nil        : "if_nil",
     OP_if_hasbuf     : "if_hasbuf",
+    OP_if_eq_imm     : "if_eq_imm",
+    OP_if_eq_str     : "if_eq_str",
     OP_make_state    : "make_state",
     OP_drop_state    : "drop_state",
     OP_halt          : "halt",
@@ -102,6 +106,8 @@ var _OpBranches = [256]bool {
     OP_goto          : true,
     OP_if_nil        : true,
     OP_if_hasbuf     : true,
+    OP_if_eq_imm     : true,
+    OP_if_eq_str     : true,
 }
 
 func (self OpCode) String() string {

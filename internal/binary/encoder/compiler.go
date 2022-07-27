@@ -20,6 +20,7 @@ import (
     `fmt`
     `reflect`
     `strings`
+    `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/rt`
@@ -30,13 +31,37 @@ type Instr struct {
     Uv int32
     Iv int64
     To int
-    Vt *rt.GoType
+    Pr unsafe.Pointer
 }
 
 type (
     Program  []Instr
     Compiler map[reflect.Type]bool
 )
+
+func (self Instr) Vt() *rt.GoType {
+    return (*rt.GoType)(self.Pr)
+}
+
+func (self Instr) Str() string {
+    return rt.StringFrom(self.Pr, int(self.Uv))
+}
+
+func (self Instr) Byte(i int64) int8 {
+    return *(*int8)(unsafe.Pointer(uintptr(self.Pr) + uintptr(i)))
+}
+
+func (self Instr) Word(i int64) int16 {
+    return *(*int16)(unsafe.Pointer(uintptr(self.Pr) + uintptr(i)))
+}
+
+func (self Instr) Long(i int64) int32 {
+    return *(*int32)(unsafe.Pointer(uintptr(self.Pr) + uintptr(i)))
+}
+
+func (self Instr) Quad(i int64) int64 {
+    return *(*int64)(unsafe.Pointer(uintptr(self.Pr) + uintptr(i)))
+}
 
 func (self Instr) Disassemble() string {
     switch self.Op {
@@ -51,7 +76,7 @@ func (self Instr) Disassemble() string {
         case OP_size_defer    : fallthrough
         case OP_defer         : fallthrough
         case OP_map_begin     : fallthrough
-        case OP_unique        : return fmt.Sprintf("%-18s%s", self.Op, self.Vt)
+        case OP_unique        : return fmt.Sprintf("%-18s%s", self.Op, self.Vt())
         case OP_byte          : return fmt.Sprintf("%-18s0x%02x", self.Op, self.Iv)
         case OP_word          : return fmt.Sprintf("%-18s0x%04x", self.Op, self.Iv)
         case OP_long          : return fmt.Sprintf("%-18s0x%08x", self.Op, self.Iv)
@@ -63,6 +88,8 @@ func (self Instr) Disassemble() string {
         case OP_goto          : fallthrough
         case OP_if_nil        : fallthrough
         case OP_if_hasbuf     : return fmt.Sprintf("%-18sL_%d", self.Op, self.To)
+        case OP_if_eq_imm     : return fmt.Sprintf("%-18s%d:%d, L_%d", self.Op, self.Iv, self.Uv, self.To)
+        case OP_if_eq_str     : return fmt.Sprintf("%-18s%q, L_%d", self.Op, self.Str(), self.To)
         default               : return self.Op.String()
     }
 }
@@ -77,11 +104,12 @@ func (self Program) tag(n int) {
 }
 
 func (self *Program) ins(iv Instr)                      { *self = append(*self, iv) }
-func (self *Program) add(op OpCode)                     { self.ins(Instr{Op: op}) }
-func (self *Program) jmp(op OpCode, to int)             { self.ins(Instr{Op: op, To: to})}
-func (self *Program) i64(op OpCode, iv int64)           { self.ins(Instr{Op: op, Iv: iv})}
-func (self *Program) rtt(op OpCode, vt reflect.Type)    { self.ins(Instr{Op: op, Vt: rt.UnpackType(vt)})}
-func (self *Program) dyn(op OpCode, uv int32, iv int64) { self.ins(Instr{Op: op, Uv: uv, Iv: iv})}
+func (self *Program) add(op OpCode)                     { self.ins(Instr { Op: op }) }
+func (self *Program) jmp(op OpCode, to int)             { self.ins(Instr { Op: op, To: to }) }
+func (self *Program) i64(op OpCode, iv int64)           { self.ins(Instr { Op: op, Iv: iv }) }
+func (self *Program) str(op OpCode, sv string)          { self.ins(Instr { Op: op, Iv: int64(len(sv)), Pr: rt.StringPtr(sv) }) }
+func (self *Program) rtt(op OpCode, vt reflect.Type)    { self.ins(Instr { Op: op, Pr: unsafe.Pointer(rt.UnpackType(vt)) }) }
+func (self *Program) dyn(op OpCode, uv int32, iv int64) { self.ins(Instr { Op: op, Uv: uv, Iv: iv }) }
 
 func (self Program) Free() {
     freeProgram(self)

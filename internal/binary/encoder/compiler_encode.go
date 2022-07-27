@@ -17,6 +17,8 @@
 package encoder
 
 import (
+    `math`
+
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
@@ -196,18 +198,28 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
         case defs.T_i32    : fallthrough
         case defs.T_i64    : fallthrough
         case defs.T_string : fallthrough
-        case defs.T_struct : fallthrough
         case defs.T_enum   : fallthrough
-        case defs.T_binary : self.compileStructRequired(p, sp, fv, maxpc)
+        case defs.T_binary : {
+            if fv.Default.IsValid() && fv.Spec == defs.Optional {
+                self.compileStructDefault(p, sp, fv, maxpc)
+            } else {
+                self.compileStructRequired(p, sp, fv, maxpc)
+            }
+        }
+
+        /* struct types, only available in hand-written structs */
+        case defs.T_struct : {
+            self.compileStructRequired(p, sp, fv, maxpc)
+        }
 
         /* sequencial types */
         case defs.T_map  : fallthrough
         case defs.T_set  : fallthrough
         case defs.T_list : {
-            if fv.Spec != defs.Optional {
-                self.compileStructRequired(p, sp, fv, maxpc)
-            } else {
+            if fv.Spec == defs.Optional {
                 self.compileStructIterable(p, sp, fv, maxpc)
+            } else {
+                self.compileStructRequired(p, sp, fv, maxpc)
             }
         }
 
@@ -222,6 +234,30 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
             }
         }
     }
+}
+
+func (self Compiler) compileStructDefault(p *Program, sp int, fv defs.Field, maxpc int) {
+    i := p.pc()
+    t := fv.Type.T
+
+    /* check for default values */
+    switch t {
+        case defs.T_bool   : p.dyn(OP_if_eq_imm, 1, bool2i64(fv.Default.Bool()))
+        case defs.T_i8     : p.dyn(OP_if_eq_imm, 1, fv.Default.Int())
+        case defs.T_double : p.dyn(OP_if_eq_imm, 8, int64(math.Float64bits(fv.Default.Float())))
+        case defs.T_i16    : p.dyn(OP_if_eq_imm, 2, fv.Default.Int())
+        case defs.T_i32    : p.dyn(OP_if_eq_imm, 4, fv.Default.Int())
+        case defs.T_i64    : p.dyn(OP_if_eq_imm, 8, fv.Default.Int())
+        case defs.T_string : p.str(OP_if_eq_str, fv.Default.String())
+        case defs.T_enum   : p.dyn(OP_if_eq_imm, 4, fv.Default.Int())
+        case defs.T_binary : p.str(OP_if_eq_str, mem2str(fv.Default.Bytes()))
+        default            : panic("unreachable")
+    }
+
+    /* compile if it's not the default value */
+    self.compileStructFieldBegin(p, fv, 3)
+    self.compile(p, sp, fv.Type, maxpc)
+    p.pin(i)
 }
 
 func (self Compiler) compileStructPointer(p *Program, sp int, fv defs.Field, maxpc int) {
@@ -240,6 +276,14 @@ func (self Compiler) compileStructPointer(p *Program, sp int, fv defs.Field, max
     p.pin(j)
 }
 
+func (self Compiler) compileStructIterable(p *Program, sp int, fv defs.Field, maxpc int) {
+    i := p.pc()
+    p.add(OP_if_nil)
+    self.compileStructFieldBegin(p, fv, 3)
+    self.compile(p, sp, fv.Type, maxpc)
+    p.pin(i)
+}
+
 func (self Compiler) compileStructOptional(p *Program, sp int, fv defs.Field, maxpc int) {
     i := p.pc()
     p.add(OP_if_nil)
@@ -254,14 +298,6 @@ func (self Compiler) compileStructOptional(p *Program, sp int, fv defs.Field, ma
 func (self Compiler) compileStructRequired(p *Program, sp int, fv defs.Field, maxpc int) {
     self.compileStructFieldBegin(p, fv, 3)
     self.compile(p, sp, fv.Type, maxpc)
-}
-
-func (self Compiler) compileStructIterable(p *Program, sp int, fv defs.Field, maxpc int) {
-    i := p.pc()
-    p.add(OP_if_nil)
-    self.compileStructFieldBegin(p, fv, 3)
-    self.compile(p, sp, fv.Type, maxpc)
-    p.pin(i)
 }
 
 func (self Compiler) compileStructFieldBegin(p *Program, fv defs.Field, nb int64) {

@@ -2698,3 +2698,2731 @@ func (p *Nesting2) Field11DeepEqual(src int32) bool {
 	}
 	return true
 }
+
+type DefaultValues struct {
+	ByteFieldWithDefault       int8               `thrift:"ByteFieldWithDefault,1" frugal:"1,default,byte" json:"ByteFieldWithDefault"`
+	I64FieldWithDefault        int64              `thrift:"I64FieldWithDefault,2" frugal:"2,default,i64" json:"I64FieldWithDefault"`
+	DoubleFieldWithDefault     float64            `thrift:"DoubleFieldWithDefault,3" frugal:"3,default,double" json:"DoubleFieldWithDefault"`
+	I32FieldWithDefault        int32              `thrift:"I32FieldWithDefault,4" frugal:"4,default,i32" json:"I32FieldWithDefault"`
+	StringFieldWithDefault     string             `thrift:"StringFieldWithDefault,5" frugal:"5,default,string" json:"StringFieldWithDefault"`
+	BinaryFieldWithDefault     []byte             `thrift:"BinaryFieldWithDefault,6" frugal:"6,default,binary" json:"BinaryFieldWithDefault"`
+	EnumFieldWithDefault       Enums              `thrift:"EnumFieldWithDefault,7" frugal:"7,default,Enums" json:"EnumFieldWithDefault"`
+	SimpleStructWithDefault    *Simple            `thrift:"SimpleStructWithDefault,8" frugal:"8,default,Simple" json:"SimpleStructWithDefault"`
+	ListFieldWithDefault       []int32            `thrift:"ListFieldWithDefault,9" frugal:"9,default,list<i32>" json:"ListFieldWithDefault"`
+	SetFieldWithDefault        []int32            `thrift:"SetFieldWithDefault,10" frugal:"10,default,set<i32>" json:"SetFieldWithDefault"`
+	MapI32I64WithDefault       map[int32]int64    `thrift:"MapI32I64WithDefault,11" frugal:"11,default,map<i32:i64>" json:"MapI32I64WithDefault"`
+	MapI64StringWithDefault    map[int64]string   `thrift:"MapI64StringWithDefault,12" frugal:"12,default,map<i64:string>" json:"MapI64StringWithDefault"`
+	MapStringStringWithDefault map[string]string  `thrift:"MapStringStringWithDefault,13" frugal:"13,default,map<string:string>" json:"MapStringStringWithDefault"`
+	MapStringSimpleWithDefault map[string]*Simple `thrift:"MapStringSimpleWithDefault,14" frugal:"14,default,map<string:Simple>" json:"MapStringSimpleWithDefault"`
+}
+
+func NewDefaultValues() *DefaultValues {
+	return &DefaultValues{
+
+		ByteFieldWithDefault:   1,
+		I64FieldWithDefault:    2,
+		DoubleFieldWithDefault: 3.0,
+		I32FieldWithDefault:    4,
+		StringFieldWithDefault: "string field default text",
+		BinaryFieldWithDefault: []byte("binary field default data"),
+		EnumFieldWithDefault:   Enums_ValueA,
+		SimpleStructWithDefault: &Simple{
+			ByteField:   10,
+			I64Field:    11,
+			DoubleField: 12.0,
+			I32Field:    13,
+			StringField: "simple string",
+			BinaryField: []byte("simple binary"),
+			EnumField:   Enums_ValueB,
+		},
+		ListFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		SetFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		MapI32I64WithDefault: map[int32]int64{
+			1: 2,
+			3: 4,
+		},
+		MapI64StringWithDefault: map[int64]string{
+			1: "aaa",
+			2: "bbb",
+		},
+		MapStringStringWithDefault: map[string]string{
+			"aaa": "xxx",
+			"bbb": "yyy",
+		},
+		MapStringSimpleWithDefault: map[string]*Simple{
+			"aaa": &Simple{
+				ByteField:   20,
+				I64Field:    21,
+				DoubleField: 22.0,
+				I32Field:    23,
+				StringField: "another simple string",
+				BinaryField: []byte("another simple binary"),
+				EnumField:   Enums_ValueC,
+			},
+		},
+	}
+}
+
+func (p *DefaultValues) InitDefault() {
+	*p = DefaultValues{
+
+		ByteFieldWithDefault:   1,
+		I64FieldWithDefault:    2,
+		DoubleFieldWithDefault: 3.0,
+		I32FieldWithDefault:    4,
+		StringFieldWithDefault: "string field default text",
+		BinaryFieldWithDefault: []byte("binary field default data"),
+		EnumFieldWithDefault:   Enums_ValueA,
+		SimpleStructWithDefault: &Simple{
+			ByteField:   10,
+			I64Field:    11,
+			DoubleField: 12.0,
+			I32Field:    13,
+			StringField: "simple string",
+			BinaryField: []byte("simple binary"),
+			EnumField:   Enums_ValueB,
+		},
+		ListFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		SetFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		MapI32I64WithDefault: map[int32]int64{
+			1: 2,
+			3: 4,
+		},
+		MapI64StringWithDefault: map[int64]string{
+			1: "aaa",
+			2: "bbb",
+		},
+		MapStringStringWithDefault: map[string]string{
+			"aaa": "xxx",
+			"bbb": "yyy",
+		},
+		MapStringSimpleWithDefault: map[string]*Simple{
+			"aaa": &Simple{
+				ByteField:   20,
+				I64Field:    21,
+				DoubleField: 22.0,
+				I32Field:    23,
+				StringField: "another simple string",
+				BinaryField: []byte("another simple binary"),
+				EnumField:   Enums_ValueC,
+			},
+		},
+	}
+}
+
+func (p *DefaultValues) GetByteFieldWithDefault() (v int8) {
+	return p.ByteFieldWithDefault
+}
+
+func (p *DefaultValues) GetI64FieldWithDefault() (v int64) {
+	return p.I64FieldWithDefault
+}
+
+func (p *DefaultValues) GetDoubleFieldWithDefault() (v float64) {
+	return p.DoubleFieldWithDefault
+}
+
+func (p *DefaultValues) GetI32FieldWithDefault() (v int32) {
+	return p.I32FieldWithDefault
+}
+
+func (p *DefaultValues) GetStringFieldWithDefault() (v string) {
+	return p.StringFieldWithDefault
+}
+
+func (p *DefaultValues) GetBinaryFieldWithDefault() (v []byte) {
+	return p.BinaryFieldWithDefault
+}
+
+func (p *DefaultValues) GetEnumFieldWithDefault() (v Enums) {
+	return p.EnumFieldWithDefault
+}
+
+var DefaultValues_SimpleStructWithDefault_DEFAULT *Simple = &Simple{
+	ByteField:   10,
+	I64Field:    11,
+	DoubleField: 12.0,
+	I32Field:    13,
+	StringField: "simple string",
+	BinaryField: []byte("simple binary"),
+	EnumField:   Enums_ValueB,
+}
+
+func (p *DefaultValues) GetSimpleStructWithDefault() (v *Simple) {
+	if !p.IsSetSimpleStructWithDefault() {
+		return DefaultValues_SimpleStructWithDefault_DEFAULT
+	}
+	return p.SimpleStructWithDefault
+}
+
+func (p *DefaultValues) GetListFieldWithDefault() (v []int32) {
+	return p.ListFieldWithDefault
+}
+
+func (p *DefaultValues) GetSetFieldWithDefault() (v []int32) {
+	return p.SetFieldWithDefault
+}
+
+func (p *DefaultValues) GetMapI32I64WithDefault() (v map[int32]int64) {
+	return p.MapI32I64WithDefault
+}
+
+func (p *DefaultValues) GetMapI64StringWithDefault() (v map[int64]string) {
+	return p.MapI64StringWithDefault
+}
+
+func (p *DefaultValues) GetMapStringStringWithDefault() (v map[string]string) {
+	return p.MapStringStringWithDefault
+}
+
+func (p *DefaultValues) GetMapStringSimpleWithDefault() (v map[string]*Simple) {
+	return p.MapStringSimpleWithDefault
+}
+func (p *DefaultValues) SetByteFieldWithDefault(val int8) {
+	p.ByteFieldWithDefault = val
+}
+func (p *DefaultValues) SetI64FieldWithDefault(val int64) {
+	p.I64FieldWithDefault = val
+}
+func (p *DefaultValues) SetDoubleFieldWithDefault(val float64) {
+	p.DoubleFieldWithDefault = val
+}
+func (p *DefaultValues) SetI32FieldWithDefault(val int32) {
+	p.I32FieldWithDefault = val
+}
+func (p *DefaultValues) SetStringFieldWithDefault(val string) {
+	p.StringFieldWithDefault = val
+}
+func (p *DefaultValues) SetBinaryFieldWithDefault(val []byte) {
+	p.BinaryFieldWithDefault = val
+}
+func (p *DefaultValues) SetEnumFieldWithDefault(val Enums) {
+	p.EnumFieldWithDefault = val
+}
+func (p *DefaultValues) SetSimpleStructWithDefault(val *Simple) {
+	p.SimpleStructWithDefault = val
+}
+func (p *DefaultValues) SetListFieldWithDefault(val []int32) {
+	p.ListFieldWithDefault = val
+}
+func (p *DefaultValues) SetSetFieldWithDefault(val []int32) {
+	p.SetFieldWithDefault = val
+}
+func (p *DefaultValues) SetMapI32I64WithDefault(val map[int32]int64) {
+	p.MapI32I64WithDefault = val
+}
+func (p *DefaultValues) SetMapI64StringWithDefault(val map[int64]string) {
+	p.MapI64StringWithDefault = val
+}
+func (p *DefaultValues) SetMapStringStringWithDefault(val map[string]string) {
+	p.MapStringStringWithDefault = val
+}
+func (p *DefaultValues) SetMapStringSimpleWithDefault(val map[string]*Simple) {
+	p.MapStringSimpleWithDefault = val
+}
+
+var fieldIDToName_DefaultValues = map[int16]string{
+	1:  "ByteFieldWithDefault",
+	2:  "I64FieldWithDefault",
+	3:  "DoubleFieldWithDefault",
+	4:  "I32FieldWithDefault",
+	5:  "StringFieldWithDefault",
+	6:  "BinaryFieldWithDefault",
+	7:  "EnumFieldWithDefault",
+	8:  "SimpleStructWithDefault",
+	9:  "ListFieldWithDefault",
+	10: "SetFieldWithDefault",
+	11: "MapI32I64WithDefault",
+	12: "MapI64StringWithDefault",
+	13: "MapStringStringWithDefault",
+	14: "MapStringSimpleWithDefault",
+}
+
+func (p *DefaultValues) IsSetSimpleStructWithDefault() bool {
+	return p.SimpleStructWithDefault != nil
+}
+
+func (p *DefaultValues) Read(iprot thrift.TProtocol) (err error) {
+
+	var fieldTypeId thrift.TType
+	var fieldId int16
+
+	if _, err = iprot.ReadStructBegin(); err != nil {
+		goto ReadStructBeginError
+	}
+
+	for {
+		_, fieldTypeId, fieldId, err = iprot.ReadFieldBegin()
+		if err != nil {
+			goto ReadFieldBeginError
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.BYTE {
+				if err = p.ReadField1(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 2:
+			if fieldTypeId == thrift.I64 {
+				if err = p.ReadField2(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 3:
+			if fieldTypeId == thrift.DOUBLE {
+				if err = p.ReadField3(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 4:
+			if fieldTypeId == thrift.I32 {
+				if err = p.ReadField4(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 5:
+			if fieldTypeId == thrift.STRING {
+				if err = p.ReadField5(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 6:
+			if fieldTypeId == thrift.STRING {
+				if err = p.ReadField6(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 7:
+			if fieldTypeId == thrift.I32 {
+				if err = p.ReadField7(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 8:
+			if fieldTypeId == thrift.STRUCT {
+				if err = p.ReadField8(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 9:
+			if fieldTypeId == thrift.LIST {
+				if err = p.ReadField9(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 10:
+			if fieldTypeId == thrift.SET {
+				if err = p.ReadField10(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 11:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField11(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 12:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField12(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 13:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField13(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 14:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField14(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		default:
+			if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
+			}
+		}
+
+		if err = iprot.ReadFieldEnd(); err != nil {
+			goto ReadFieldEndError
+		}
+	}
+	if err = iprot.ReadStructEnd(); err != nil {
+		goto ReadStructEndError
+	}
+
+	return nil
+ReadStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
+ReadFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
+ReadFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_DefaultValues[fieldId]), err)
+SkipFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+
+ReadFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
+ReadStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+}
+
+func (p *DefaultValues) ReadField1(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadByte(); err != nil {
+		return err
+	} else {
+		p.ByteFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField2(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI64(); err != nil {
+		return err
+	} else {
+		p.I64FieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField3(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadDouble(); err != nil {
+		return err
+	} else {
+		p.DoubleFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField4(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI32(); err != nil {
+		return err
+	} else {
+		p.I32FieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField5(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadString(); err != nil {
+		return err
+	} else {
+		p.StringFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField6(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadBinary(); err != nil {
+		return err
+	} else {
+		p.BinaryFieldWithDefault = []byte(v)
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField7(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI32(); err != nil {
+		return err
+	} else {
+		p.EnumFieldWithDefault = Enums(v)
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField8(iprot thrift.TProtocol) error {
+	p.SimpleStructWithDefault = NewSimple()
+	if err := p.SimpleStructWithDefault.Read(iprot); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField9(iprot thrift.TProtocol) error {
+	_, size, err := iprot.ReadListBegin()
+	if err != nil {
+		return err
+	}
+	p.ListFieldWithDefault = make([]int32, 0, size)
+	for i := 0; i < size; i++ {
+		var _elem int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_elem = v
+		}
+
+		p.ListFieldWithDefault = append(p.ListFieldWithDefault, _elem)
+	}
+	if err := iprot.ReadListEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField10(iprot thrift.TProtocol) error {
+	_, size, err := iprot.ReadSetBegin()
+	if err != nil {
+		return err
+	}
+	p.SetFieldWithDefault = make([]int32, 0, size)
+	for i := 0; i < size; i++ {
+		var _elem int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_elem = v
+		}
+
+		p.SetFieldWithDefault = append(p.SetFieldWithDefault, _elem)
+	}
+	if err := iprot.ReadSetEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField11(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapI32I64WithDefault = make(map[int32]int64, size)
+	for i := 0; i < size; i++ {
+		var _key int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val int64
+		if v, err := iprot.ReadI64(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapI32I64WithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField12(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapI64StringWithDefault = make(map[int64]string, size)
+	for i := 0; i < size; i++ {
+		var _key int64
+		if v, err := iprot.ReadI64(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapI64StringWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField13(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapStringStringWithDefault = make(map[string]string, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapStringStringWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) ReadField14(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapStringSimpleWithDefault = make(map[string]*Simple, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+		_val := NewSimple()
+		if err := _val.Read(iprot); err != nil {
+			return err
+		}
+
+		p.MapStringSimpleWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *DefaultValues) Write(oprot thrift.TProtocol) (err error) {
+	var fieldId int16
+	if err = oprot.WriteStructBegin("DefaultValues"); err != nil {
+		goto WriteStructBeginError
+	}
+	if p != nil {
+		if err = p.writeField1(oprot); err != nil {
+			fieldId = 1
+			goto WriteFieldError
+		}
+		if err = p.writeField2(oprot); err != nil {
+			fieldId = 2
+			goto WriteFieldError
+		}
+		if err = p.writeField3(oprot); err != nil {
+			fieldId = 3
+			goto WriteFieldError
+		}
+		if err = p.writeField4(oprot); err != nil {
+			fieldId = 4
+			goto WriteFieldError
+		}
+		if err = p.writeField5(oprot); err != nil {
+			fieldId = 5
+			goto WriteFieldError
+		}
+		if err = p.writeField6(oprot); err != nil {
+			fieldId = 6
+			goto WriteFieldError
+		}
+		if err = p.writeField7(oprot); err != nil {
+			fieldId = 7
+			goto WriteFieldError
+		}
+		if err = p.writeField8(oprot); err != nil {
+			fieldId = 8
+			goto WriteFieldError
+		}
+		if err = p.writeField9(oprot); err != nil {
+			fieldId = 9
+			goto WriteFieldError
+		}
+		if err = p.writeField10(oprot); err != nil {
+			fieldId = 10
+			goto WriteFieldError
+		}
+		if err = p.writeField11(oprot); err != nil {
+			fieldId = 11
+			goto WriteFieldError
+		}
+		if err = p.writeField12(oprot); err != nil {
+			fieldId = 12
+			goto WriteFieldError
+		}
+		if err = p.writeField13(oprot); err != nil {
+			fieldId = 13
+			goto WriteFieldError
+		}
+		if err = p.writeField14(oprot); err != nil {
+			fieldId = 14
+			goto WriteFieldError
+		}
+
+	}
+	if err = oprot.WriteFieldStop(); err != nil {
+		goto WriteFieldStopError
+	}
+	if err = oprot.WriteStructEnd(); err != nil {
+		goto WriteStructEndError
+	}
+	return nil
+WriteStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+WriteFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
+WriteFieldStopError:
+	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
+WriteStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField1(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("ByteFieldWithDefault", thrift.BYTE, 1); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteByte(p.ByteFieldWithDefault); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField2(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("I64FieldWithDefault", thrift.I64, 2); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteI64(p.I64FieldWithDefault); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField3(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("DoubleFieldWithDefault", thrift.DOUBLE, 3); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteDouble(p.DoubleFieldWithDefault); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 3 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 3 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField4(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("I32FieldWithDefault", thrift.I32, 4); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteI32(p.I32FieldWithDefault); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField5(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("StringFieldWithDefault", thrift.STRING, 5); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteString(p.StringFieldWithDefault); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 5 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 5 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField6(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("BinaryFieldWithDefault", thrift.STRING, 6); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteBinary([]byte(p.BinaryFieldWithDefault)); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 6 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 6 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField7(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("EnumFieldWithDefault", thrift.I32, 7); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteI32(int32(p.EnumFieldWithDefault)); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField8(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("SimpleStructWithDefault", thrift.STRUCT, 8); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := p.SimpleStructWithDefault.Write(oprot); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 8 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 8 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField9(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("ListFieldWithDefault", thrift.LIST, 9); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteListBegin(thrift.I32, len(p.ListFieldWithDefault)); err != nil {
+		return err
+	}
+	for _, v := range p.ListFieldWithDefault {
+		if err := oprot.WriteI32(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteListEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 9 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 9 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField10(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("SetFieldWithDefault", thrift.SET, 10); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteSetBegin(thrift.I32, len(p.SetFieldWithDefault)); err != nil {
+		return err
+	}
+	for i := 0; i < len(p.SetFieldWithDefault); i++ {
+		for j := i + 1; j < len(p.SetFieldWithDefault); j++ {
+			if func(tgt, src int32) bool {
+				if tgt != src {
+					return false
+				}
+				return true
+			}(p.SetFieldWithDefault[i], p.SetFieldWithDefault[j]) {
+				return thrift.PrependError("", fmt.Errorf("%T error writing set field: slice is not unique", p.SetFieldWithDefault[i]))
+			}
+		}
+	}
+	for _, v := range p.SetFieldWithDefault {
+		if err := oprot.WriteI32(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteSetEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 10 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 10 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField11(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("MapI32I64WithDefault", thrift.MAP, 11); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteMapBegin(thrift.I32, thrift.I64, len(p.MapI32I64WithDefault)); err != nil {
+		return err
+	}
+	for k, v := range p.MapI32I64WithDefault {
+
+		if err := oprot.WriteI32(k); err != nil {
+			return err
+		}
+
+		if err := oprot.WriteI64(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 11 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 11 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField12(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("MapI64StringWithDefault", thrift.MAP, 12); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteMapBegin(thrift.I64, thrift.STRING, len(p.MapI64StringWithDefault)); err != nil {
+		return err
+	}
+	for k, v := range p.MapI64StringWithDefault {
+
+		if err := oprot.WriteI64(k); err != nil {
+			return err
+		}
+
+		if err := oprot.WriteString(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 12 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 12 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField13(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("MapStringStringWithDefault", thrift.MAP, 13); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRING, len(p.MapStringStringWithDefault)); err != nil {
+		return err
+	}
+	for k, v := range p.MapStringStringWithDefault {
+
+		if err := oprot.WriteString(k); err != nil {
+			return err
+		}
+
+		if err := oprot.WriteString(v); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 13 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 13 end error: ", p), err)
+}
+
+func (p *DefaultValues) writeField14(oprot thrift.TProtocol) (err error) {
+	if err = oprot.WriteFieldBegin("MapStringSimpleWithDefault", thrift.MAP, 14); err != nil {
+		goto WriteFieldBeginError
+	}
+	if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRUCT, len(p.MapStringSimpleWithDefault)); err != nil {
+		return err
+	}
+	for k, v := range p.MapStringSimpleWithDefault {
+
+		if err := oprot.WriteString(k); err != nil {
+			return err
+		}
+
+		if err := v.Write(oprot); err != nil {
+			return err
+		}
+	}
+	if err := oprot.WriteMapEnd(); err != nil {
+		return err
+	}
+	if err = oprot.WriteFieldEnd(); err != nil {
+		goto WriteFieldEndError
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 14 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 14 end error: ", p), err)
+}
+
+func (p *DefaultValues) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("DefaultValues(%+v)", *p)
+}
+
+func (p *DefaultValues) DeepEqual(ano *DefaultValues) bool {
+	if p == ano {
+		return true
+	} else if p == nil || ano == nil {
+		return false
+	}
+	if !p.Field1DeepEqual(ano.ByteFieldWithDefault) {
+		return false
+	}
+	if !p.Field2DeepEqual(ano.I64FieldWithDefault) {
+		return false
+	}
+	if !p.Field3DeepEqual(ano.DoubleFieldWithDefault) {
+		return false
+	}
+	if !p.Field4DeepEqual(ano.I32FieldWithDefault) {
+		return false
+	}
+	if !p.Field5DeepEqual(ano.StringFieldWithDefault) {
+		return false
+	}
+	if !p.Field6DeepEqual(ano.BinaryFieldWithDefault) {
+		return false
+	}
+	if !p.Field7DeepEqual(ano.EnumFieldWithDefault) {
+		return false
+	}
+	if !p.Field8DeepEqual(ano.SimpleStructWithDefault) {
+		return false
+	}
+	if !p.Field9DeepEqual(ano.ListFieldWithDefault) {
+		return false
+	}
+	if !p.Field10DeepEqual(ano.SetFieldWithDefault) {
+		return false
+	}
+	if !p.Field11DeepEqual(ano.MapI32I64WithDefault) {
+		return false
+	}
+	if !p.Field12DeepEqual(ano.MapI64StringWithDefault) {
+		return false
+	}
+	if !p.Field13DeepEqual(ano.MapStringStringWithDefault) {
+		return false
+	}
+	if !p.Field14DeepEqual(ano.MapStringSimpleWithDefault) {
+		return false
+	}
+	return true
+}
+
+func (p *DefaultValues) Field1DeepEqual(src int8) bool {
+
+	if p.ByteFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field2DeepEqual(src int64) bool {
+
+	if p.I64FieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field3DeepEqual(src float64) bool {
+
+	if p.DoubleFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field4DeepEqual(src int32) bool {
+
+	if p.I32FieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field5DeepEqual(src string) bool {
+
+	if strings.Compare(p.StringFieldWithDefault, src) != 0 {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field6DeepEqual(src []byte) bool {
+
+	if bytes.Compare(p.BinaryFieldWithDefault, src) != 0 {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field7DeepEqual(src Enums) bool {
+
+	if p.EnumFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field8DeepEqual(src *Simple) bool {
+
+	if !p.SimpleStructWithDefault.DeepEqual(src) {
+		return false
+	}
+	return true
+}
+func (p *DefaultValues) Field9DeepEqual(src []int32) bool {
+
+	if len(p.ListFieldWithDefault) != len(src) {
+		return false
+	}
+	for i, v := range p.ListFieldWithDefault {
+		_src := src[i]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *DefaultValues) Field10DeepEqual(src []int32) bool {
+
+	if len(p.SetFieldWithDefault) != len(src) {
+		return false
+	}
+	for i, v := range p.SetFieldWithDefault {
+		_src := src[i]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *DefaultValues) Field11DeepEqual(src map[int32]int64) bool {
+
+	if len(p.MapI32I64WithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapI32I64WithDefault {
+		_src := src[k]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *DefaultValues) Field12DeepEqual(src map[int64]string) bool {
+
+	if len(p.MapI64StringWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapI64StringWithDefault {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
+	}
+	return true
+}
+func (p *DefaultValues) Field13DeepEqual(src map[string]string) bool {
+
+	if len(p.MapStringStringWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapStringStringWithDefault {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
+	}
+	return true
+}
+func (p *DefaultValues) Field14DeepEqual(src map[string]*Simple) bool {
+
+	if len(p.MapStringSimpleWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapStringSimpleWithDefault {
+		_src := src[k]
+		if !v.DeepEqual(_src) {
+			return false
+		}
+	}
+	return true
+}
+
+type OptionalDefaultValues struct {
+	ByteFieldWithDefault       int8               `thrift:"ByteFieldWithDefault,1,optional" frugal:"1,optional,byte" json:"ByteFieldWithDefault,omitempty"`
+	I64FieldWithDefault        int64              `thrift:"I64FieldWithDefault,2,optional" frugal:"2,optional,i64" json:"I64FieldWithDefault,omitempty"`
+	DoubleFieldWithDefault     float64            `thrift:"DoubleFieldWithDefault,3,optional" frugal:"3,optional,double" json:"DoubleFieldWithDefault,omitempty"`
+	I32FieldWithDefault        int32              `thrift:"I32FieldWithDefault,4,optional" frugal:"4,optional,i32" json:"I32FieldWithDefault,omitempty"`
+	StringFieldWithDefault     string             `thrift:"StringFieldWithDefault,5,optional" frugal:"5,optional,string" json:"StringFieldWithDefault,omitempty"`
+	BinaryFieldWithDefault     []byte             `thrift:"BinaryFieldWithDefault,6,optional" frugal:"6,optional,binary" json:"BinaryFieldWithDefault,omitempty"`
+	EnumFieldWithDefault       Enums              `thrift:"EnumFieldWithDefault,7,optional" frugal:"7,optional,Enums" json:"EnumFieldWithDefault,omitempty"`
+	SimpleStructWithDefault    *Simple            `thrift:"SimpleStructWithDefault,8,optional" frugal:"8,optional,Simple" json:"SimpleStructWithDefault,omitempty"`
+	ListFieldWithDefault       []int32            `thrift:"ListFieldWithDefault,9,optional" frugal:"9,optional,list<i32>" json:"ListFieldWithDefault,omitempty"`
+	SetFieldWithDefault        []int32            `thrift:"SetFieldWithDefault,10,optional" frugal:"10,optional,set<i32>" json:"SetFieldWithDefault,omitempty"`
+	MapI32I64WithDefault       map[int32]int64    `thrift:"MapI32I64WithDefault,11,optional" frugal:"11,optional,map<i32:i64>" json:"MapI32I64WithDefault,omitempty"`
+	MapI64StringWithDefault    map[int64]string   `thrift:"MapI64StringWithDefault,12,optional" frugal:"12,optional,map<i64:string>" json:"MapI64StringWithDefault,omitempty"`
+	MapStringStringWithDefault map[string]string  `thrift:"MapStringStringWithDefault,13,optional" frugal:"13,optional,map<string:string>" json:"MapStringStringWithDefault,omitempty"`
+	MapStringSimpleWithDefault map[string]*Simple `thrift:"MapStringSimpleWithDefault,14,optional" frugal:"14,optional,map<string:Simple>" json:"MapStringSimpleWithDefault,omitempty"`
+}
+
+func NewOptionalDefaultValues() *OptionalDefaultValues {
+	return &OptionalDefaultValues{
+
+		ByteFieldWithDefault:   1,
+		I64FieldWithDefault:    2,
+		DoubleFieldWithDefault: 3.0,
+		I32FieldWithDefault:    4,
+		StringFieldWithDefault: "string field default text",
+		BinaryFieldWithDefault: []byte("binary field default data"),
+		EnumFieldWithDefault:   Enums_ValueA,
+		SimpleStructWithDefault: &Simple{
+			ByteField:   10,
+			I64Field:    11,
+			DoubleField: 12.0,
+			I32Field:    13,
+			StringField: "simple string",
+			BinaryField: []byte("simple binary"),
+			EnumField:   Enums_ValueB,
+		},
+		ListFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		SetFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		MapI32I64WithDefault: map[int32]int64{
+			1: 2,
+			3: 4,
+		},
+		MapI64StringWithDefault: map[int64]string{
+			1: "aaa",
+			2: "bbb",
+		},
+		MapStringStringWithDefault: map[string]string{
+			"aaa": "xxx",
+			"bbb": "yyy",
+		},
+		MapStringSimpleWithDefault: map[string]*Simple{
+			"aaa": &Simple{
+				ByteField:   20,
+				I64Field:    21,
+				DoubleField: 22.0,
+				I32Field:    23,
+				StringField: "another simple string",
+				BinaryField: []byte("another simple binary"),
+				EnumField:   Enums_ValueC,
+			},
+		},
+	}
+}
+
+func (p *OptionalDefaultValues) InitDefault() {
+	*p = OptionalDefaultValues{
+
+		ByteFieldWithDefault:   1,
+		I64FieldWithDefault:    2,
+		DoubleFieldWithDefault: 3.0,
+		I32FieldWithDefault:    4,
+		StringFieldWithDefault: "string field default text",
+		BinaryFieldWithDefault: []byte("binary field default data"),
+		EnumFieldWithDefault:   Enums_ValueA,
+		SimpleStructWithDefault: &Simple{
+			ByteField:   10,
+			I64Field:    11,
+			DoubleField: 12.0,
+			I32Field:    13,
+			StringField: "simple string",
+			BinaryField: []byte("simple binary"),
+			EnumField:   Enums_ValueB,
+		},
+		ListFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		SetFieldWithDefault: []int32{
+			1,
+			2,
+			3,
+			4,
+			5,
+		},
+		MapI32I64WithDefault: map[int32]int64{
+			1: 2,
+			3: 4,
+		},
+		MapI64StringWithDefault: map[int64]string{
+			1: "aaa",
+			2: "bbb",
+		},
+		MapStringStringWithDefault: map[string]string{
+			"aaa": "xxx",
+			"bbb": "yyy",
+		},
+		MapStringSimpleWithDefault: map[string]*Simple{
+			"aaa": &Simple{
+				ByteField:   20,
+				I64Field:    21,
+				DoubleField: 22.0,
+				I32Field:    23,
+				StringField: "another simple string",
+				BinaryField: []byte("another simple binary"),
+				EnumField:   Enums_ValueC,
+			},
+		},
+	}
+}
+
+var OptionalDefaultValues_ByteFieldWithDefault_DEFAULT int8 = 1
+
+func (p *OptionalDefaultValues) GetByteFieldWithDefault() (v int8) {
+	if !p.IsSetByteFieldWithDefault() {
+		return OptionalDefaultValues_ByteFieldWithDefault_DEFAULT
+	}
+	return p.ByteFieldWithDefault
+}
+
+var OptionalDefaultValues_I64FieldWithDefault_DEFAULT int64 = 2
+
+func (p *OptionalDefaultValues) GetI64FieldWithDefault() (v int64) {
+	if !p.IsSetI64FieldWithDefault() {
+		return OptionalDefaultValues_I64FieldWithDefault_DEFAULT
+	}
+	return p.I64FieldWithDefault
+}
+
+var OptionalDefaultValues_DoubleFieldWithDefault_DEFAULT float64 = 3.0
+
+func (p *OptionalDefaultValues) GetDoubleFieldWithDefault() (v float64) {
+	if !p.IsSetDoubleFieldWithDefault() {
+		return OptionalDefaultValues_DoubleFieldWithDefault_DEFAULT
+	}
+	return p.DoubleFieldWithDefault
+}
+
+var OptionalDefaultValues_I32FieldWithDefault_DEFAULT int32 = 4
+
+func (p *OptionalDefaultValues) GetI32FieldWithDefault() (v int32) {
+	if !p.IsSetI32FieldWithDefault() {
+		return OptionalDefaultValues_I32FieldWithDefault_DEFAULT
+	}
+	return p.I32FieldWithDefault
+}
+
+var OptionalDefaultValues_StringFieldWithDefault_DEFAULT string = "string field default text"
+
+func (p *OptionalDefaultValues) GetStringFieldWithDefault() (v string) {
+	if !p.IsSetStringFieldWithDefault() {
+		return OptionalDefaultValues_StringFieldWithDefault_DEFAULT
+	}
+	return p.StringFieldWithDefault
+}
+
+var OptionalDefaultValues_BinaryFieldWithDefault_DEFAULT []byte = []byte("binary field default data")
+
+func (p *OptionalDefaultValues) GetBinaryFieldWithDefault() (v []byte) {
+	if !p.IsSetBinaryFieldWithDefault() {
+		return OptionalDefaultValues_BinaryFieldWithDefault_DEFAULT
+	}
+	return p.BinaryFieldWithDefault
+}
+
+var OptionalDefaultValues_EnumFieldWithDefault_DEFAULT Enums = Enums_ValueA
+
+func (p *OptionalDefaultValues) GetEnumFieldWithDefault() (v Enums) {
+	if !p.IsSetEnumFieldWithDefault() {
+		return OptionalDefaultValues_EnumFieldWithDefault_DEFAULT
+	}
+	return p.EnumFieldWithDefault
+}
+
+var OptionalDefaultValues_SimpleStructWithDefault_DEFAULT *Simple = &Simple{
+	ByteField:   10,
+	I64Field:    11,
+	DoubleField: 12.0,
+	I32Field:    13,
+	StringField: "simple string",
+	BinaryField: []byte("simple binary"),
+	EnumField:   Enums_ValueB,
+}
+
+func (p *OptionalDefaultValues) GetSimpleStructWithDefault() (v *Simple) {
+	if !p.IsSetSimpleStructWithDefault() {
+		return OptionalDefaultValues_SimpleStructWithDefault_DEFAULT
+	}
+	return p.SimpleStructWithDefault
+}
+
+var OptionalDefaultValues_ListFieldWithDefault_DEFAULT []int32 = []int32{
+	1,
+	2,
+	3,
+	4,
+	5,
+}
+
+func (p *OptionalDefaultValues) GetListFieldWithDefault() (v []int32) {
+	if !p.IsSetListFieldWithDefault() {
+		return OptionalDefaultValues_ListFieldWithDefault_DEFAULT
+	}
+	return p.ListFieldWithDefault
+}
+
+var OptionalDefaultValues_SetFieldWithDefault_DEFAULT []int32 = []int32{
+	1,
+	2,
+	3,
+	4,
+	5,
+}
+
+func (p *OptionalDefaultValues) GetSetFieldWithDefault() (v []int32) {
+	if !p.IsSetSetFieldWithDefault() {
+		return OptionalDefaultValues_SetFieldWithDefault_DEFAULT
+	}
+	return p.SetFieldWithDefault
+}
+
+var OptionalDefaultValues_MapI32I64WithDefault_DEFAULT map[int32]int64 = map[int32]int64{
+	1: 2,
+	3: 4,
+}
+
+func (p *OptionalDefaultValues) GetMapI32I64WithDefault() (v map[int32]int64) {
+	if !p.IsSetMapI32I64WithDefault() {
+		return OptionalDefaultValues_MapI32I64WithDefault_DEFAULT
+	}
+	return p.MapI32I64WithDefault
+}
+
+var OptionalDefaultValues_MapI64StringWithDefault_DEFAULT map[int64]string = map[int64]string{
+	1: "aaa",
+	2: "bbb",
+}
+
+func (p *OptionalDefaultValues) GetMapI64StringWithDefault() (v map[int64]string) {
+	if !p.IsSetMapI64StringWithDefault() {
+		return OptionalDefaultValues_MapI64StringWithDefault_DEFAULT
+	}
+	return p.MapI64StringWithDefault
+}
+
+var OptionalDefaultValues_MapStringStringWithDefault_DEFAULT map[string]string = map[string]string{
+	"aaa": "xxx",
+	"bbb": "yyy",
+}
+
+func (p *OptionalDefaultValues) GetMapStringStringWithDefault() (v map[string]string) {
+	if !p.IsSetMapStringStringWithDefault() {
+		return OptionalDefaultValues_MapStringStringWithDefault_DEFAULT
+	}
+	return p.MapStringStringWithDefault
+}
+
+var OptionalDefaultValues_MapStringSimpleWithDefault_DEFAULT map[string]*Simple = map[string]*Simple{
+	"aaa": &Simple{
+		ByteField:   20,
+		I64Field:    21,
+		DoubleField: 22.0,
+		I32Field:    23,
+		StringField: "another simple string",
+		BinaryField: []byte("another simple binary"),
+		EnumField:   Enums_ValueC,
+	},
+}
+
+func (p *OptionalDefaultValues) GetMapStringSimpleWithDefault() (v map[string]*Simple) {
+	if !p.IsSetMapStringSimpleWithDefault() {
+		return OptionalDefaultValues_MapStringSimpleWithDefault_DEFAULT
+	}
+	return p.MapStringSimpleWithDefault
+}
+func (p *OptionalDefaultValues) SetByteFieldWithDefault(val int8) {
+	p.ByteFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetI64FieldWithDefault(val int64) {
+	p.I64FieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetDoubleFieldWithDefault(val float64) {
+	p.DoubleFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetI32FieldWithDefault(val int32) {
+	p.I32FieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetStringFieldWithDefault(val string) {
+	p.StringFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetBinaryFieldWithDefault(val []byte) {
+	p.BinaryFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetEnumFieldWithDefault(val Enums) {
+	p.EnumFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetSimpleStructWithDefault(val *Simple) {
+	p.SimpleStructWithDefault = val
+}
+func (p *OptionalDefaultValues) SetListFieldWithDefault(val []int32) {
+	p.ListFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetSetFieldWithDefault(val []int32) {
+	p.SetFieldWithDefault = val
+}
+func (p *OptionalDefaultValues) SetMapI32I64WithDefault(val map[int32]int64) {
+	p.MapI32I64WithDefault = val
+}
+func (p *OptionalDefaultValues) SetMapI64StringWithDefault(val map[int64]string) {
+	p.MapI64StringWithDefault = val
+}
+func (p *OptionalDefaultValues) SetMapStringStringWithDefault(val map[string]string) {
+	p.MapStringStringWithDefault = val
+}
+func (p *OptionalDefaultValues) SetMapStringSimpleWithDefault(val map[string]*Simple) {
+	p.MapStringSimpleWithDefault = val
+}
+
+var fieldIDToName_OptionalDefaultValues = map[int16]string{
+	1:  "ByteFieldWithDefault",
+	2:  "I64FieldWithDefault",
+	3:  "DoubleFieldWithDefault",
+	4:  "I32FieldWithDefault",
+	5:  "StringFieldWithDefault",
+	6:  "BinaryFieldWithDefault",
+	7:  "EnumFieldWithDefault",
+	8:  "SimpleStructWithDefault",
+	9:  "ListFieldWithDefault",
+	10: "SetFieldWithDefault",
+	11: "MapI32I64WithDefault",
+	12: "MapI64StringWithDefault",
+	13: "MapStringStringWithDefault",
+	14: "MapStringSimpleWithDefault",
+}
+
+func (p *OptionalDefaultValues) IsSetByteFieldWithDefault() bool {
+	return p.ByteFieldWithDefault != OptionalDefaultValues_ByteFieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetI64FieldWithDefault() bool {
+	return p.I64FieldWithDefault != OptionalDefaultValues_I64FieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetDoubleFieldWithDefault() bool {
+	return p.DoubleFieldWithDefault != OptionalDefaultValues_DoubleFieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetI32FieldWithDefault() bool {
+	return p.I32FieldWithDefault != OptionalDefaultValues_I32FieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetStringFieldWithDefault() bool {
+	return p.StringFieldWithDefault != OptionalDefaultValues_StringFieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetBinaryFieldWithDefault() bool {
+	return string(p.BinaryFieldWithDefault) != string(OptionalDefaultValues_BinaryFieldWithDefault_DEFAULT)
+}
+
+func (p *OptionalDefaultValues) IsSetEnumFieldWithDefault() bool {
+	return p.EnumFieldWithDefault != OptionalDefaultValues_EnumFieldWithDefault_DEFAULT
+}
+
+func (p *OptionalDefaultValues) IsSetSimpleStructWithDefault() bool {
+	return p.SimpleStructWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetListFieldWithDefault() bool {
+	return p.ListFieldWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetSetFieldWithDefault() bool {
+	return p.SetFieldWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetMapI32I64WithDefault() bool {
+	return p.MapI32I64WithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetMapI64StringWithDefault() bool {
+	return p.MapI64StringWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetMapStringStringWithDefault() bool {
+	return p.MapStringStringWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) IsSetMapStringSimpleWithDefault() bool {
+	return p.MapStringSimpleWithDefault != nil
+}
+
+func (p *OptionalDefaultValues) Read(iprot thrift.TProtocol) (err error) {
+
+	var fieldTypeId thrift.TType
+	var fieldId int16
+
+	if _, err = iprot.ReadStructBegin(); err != nil {
+		goto ReadStructBeginError
+	}
+
+	for {
+		_, fieldTypeId, fieldId, err = iprot.ReadFieldBegin()
+		if err != nil {
+			goto ReadFieldBeginError
+		}
+		if fieldTypeId == thrift.STOP {
+			break
+		}
+
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.BYTE {
+				if err = p.ReadField1(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 2:
+			if fieldTypeId == thrift.I64 {
+				if err = p.ReadField2(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 3:
+			if fieldTypeId == thrift.DOUBLE {
+				if err = p.ReadField3(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 4:
+			if fieldTypeId == thrift.I32 {
+				if err = p.ReadField4(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 5:
+			if fieldTypeId == thrift.STRING {
+				if err = p.ReadField5(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 6:
+			if fieldTypeId == thrift.STRING {
+				if err = p.ReadField6(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 7:
+			if fieldTypeId == thrift.I32 {
+				if err = p.ReadField7(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 8:
+			if fieldTypeId == thrift.STRUCT {
+				if err = p.ReadField8(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 9:
+			if fieldTypeId == thrift.LIST {
+				if err = p.ReadField9(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 10:
+			if fieldTypeId == thrift.SET {
+				if err = p.ReadField10(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 11:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField11(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 12:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField12(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 13:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField13(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 14:
+			if fieldTypeId == thrift.MAP {
+				if err = p.ReadField14(iprot); err != nil {
+					goto ReadFieldError
+				}
+			} else {
+				if err = iprot.Skip(fieldTypeId); err != nil {
+					goto SkipFieldError
+				}
+			}
+		default:
+			if err = iprot.Skip(fieldTypeId); err != nil {
+				goto SkipFieldError
+			}
+		}
+
+		if err = iprot.ReadFieldEnd(); err != nil {
+			goto ReadFieldEndError
+		}
+	}
+	if err = iprot.ReadStructEnd(); err != nil {
+		goto ReadStructEndError
+	}
+
+	return nil
+ReadStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct begin error: ", p), err)
+ReadFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d begin error: ", p, fieldId), err)
+ReadFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T read field %d '%s' error: ", p, fieldId, fieldIDToName_OptionalDefaultValues[fieldId]), err)
+SkipFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T field %d skip type %d error: ", p, fieldId, fieldTypeId), err)
+
+ReadFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read field end error", p), err)
+ReadStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) ReadField1(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadByte(); err != nil {
+		return err
+	} else {
+		p.ByteFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField2(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI64(); err != nil {
+		return err
+	} else {
+		p.I64FieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField3(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadDouble(); err != nil {
+		return err
+	} else {
+		p.DoubleFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField4(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI32(); err != nil {
+		return err
+	} else {
+		p.I32FieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField5(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadString(); err != nil {
+		return err
+	} else {
+		p.StringFieldWithDefault = v
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField6(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadBinary(); err != nil {
+		return err
+	} else {
+		p.BinaryFieldWithDefault = []byte(v)
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField7(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadI32(); err != nil {
+		return err
+	} else {
+		p.EnumFieldWithDefault = Enums(v)
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField8(iprot thrift.TProtocol) error {
+	p.SimpleStructWithDefault = NewSimple()
+	if err := p.SimpleStructWithDefault.Read(iprot); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField9(iprot thrift.TProtocol) error {
+	_, size, err := iprot.ReadListBegin()
+	if err != nil {
+		return err
+	}
+	p.ListFieldWithDefault = make([]int32, 0, size)
+	for i := 0; i < size; i++ {
+		var _elem int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_elem = v
+		}
+
+		p.ListFieldWithDefault = append(p.ListFieldWithDefault, _elem)
+	}
+	if err := iprot.ReadListEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField10(iprot thrift.TProtocol) error {
+	_, size, err := iprot.ReadSetBegin()
+	if err != nil {
+		return err
+	}
+	p.SetFieldWithDefault = make([]int32, 0, size)
+	for i := 0; i < size; i++ {
+		var _elem int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_elem = v
+		}
+
+		p.SetFieldWithDefault = append(p.SetFieldWithDefault, _elem)
+	}
+	if err := iprot.ReadSetEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField11(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapI32I64WithDefault = make(map[int32]int64, size)
+	for i := 0; i < size; i++ {
+		var _key int32
+		if v, err := iprot.ReadI32(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val int64
+		if v, err := iprot.ReadI64(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapI32I64WithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField12(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapI64StringWithDefault = make(map[int64]string, size)
+	for i := 0; i < size; i++ {
+		var _key int64
+		if v, err := iprot.ReadI64(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapI64StringWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField13(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapStringStringWithDefault = make(map[string]string, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+
+		var _val string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_val = v
+		}
+
+		p.MapStringStringWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) ReadField14(iprot thrift.TProtocol) error {
+	_, _, size, err := iprot.ReadMapBegin()
+	if err != nil {
+		return err
+	}
+	p.MapStringSimpleWithDefault = make(map[string]*Simple, size)
+	for i := 0; i < size; i++ {
+		var _key string
+		if v, err := iprot.ReadString(); err != nil {
+			return err
+		} else {
+			_key = v
+		}
+		_val := NewSimple()
+		if err := _val.Read(iprot); err != nil {
+			return err
+		}
+
+		p.MapStringSimpleWithDefault[_key] = _val
+	}
+	if err := iprot.ReadMapEnd(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *OptionalDefaultValues) Write(oprot thrift.TProtocol) (err error) {
+	var fieldId int16
+	if err = oprot.WriteStructBegin("OptionalDefaultValues"); err != nil {
+		goto WriteStructBeginError
+	}
+	if p != nil {
+		if err = p.writeField1(oprot); err != nil {
+			fieldId = 1
+			goto WriteFieldError
+		}
+		if err = p.writeField2(oprot); err != nil {
+			fieldId = 2
+			goto WriteFieldError
+		}
+		if err = p.writeField3(oprot); err != nil {
+			fieldId = 3
+			goto WriteFieldError
+		}
+		if err = p.writeField4(oprot); err != nil {
+			fieldId = 4
+			goto WriteFieldError
+		}
+		if err = p.writeField5(oprot); err != nil {
+			fieldId = 5
+			goto WriteFieldError
+		}
+		if err = p.writeField6(oprot); err != nil {
+			fieldId = 6
+			goto WriteFieldError
+		}
+		if err = p.writeField7(oprot); err != nil {
+			fieldId = 7
+			goto WriteFieldError
+		}
+		if err = p.writeField8(oprot); err != nil {
+			fieldId = 8
+			goto WriteFieldError
+		}
+		if err = p.writeField9(oprot); err != nil {
+			fieldId = 9
+			goto WriteFieldError
+		}
+		if err = p.writeField10(oprot); err != nil {
+			fieldId = 10
+			goto WriteFieldError
+		}
+		if err = p.writeField11(oprot); err != nil {
+			fieldId = 11
+			goto WriteFieldError
+		}
+		if err = p.writeField12(oprot); err != nil {
+			fieldId = 12
+			goto WriteFieldError
+		}
+		if err = p.writeField13(oprot); err != nil {
+			fieldId = 13
+			goto WriteFieldError
+		}
+		if err = p.writeField14(oprot); err != nil {
+			fieldId = 14
+			goto WriteFieldError
+		}
+
+	}
+	if err = oprot.WriteFieldStop(); err != nil {
+		goto WriteFieldStopError
+	}
+	if err = oprot.WriteStructEnd(); err != nil {
+		goto WriteStructEndError
+	}
+	return nil
+WriteStructBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
+WriteFieldError:
+	return thrift.PrependError(fmt.Sprintf("%T write field %d error: ", p, fieldId), err)
+WriteFieldStopError:
+	return thrift.PrependError(fmt.Sprintf("%T write field stop error: ", p), err)
+WriteStructEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write struct end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField1(oprot thrift.TProtocol) (err error) {
+	if p.IsSetByteFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("ByteFieldWithDefault", thrift.BYTE, 1); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteByte(p.ByteFieldWithDefault); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 1 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField2(oprot thrift.TProtocol) (err error) {
+	if p.IsSetI64FieldWithDefault() {
+		if err = oprot.WriteFieldBegin("I64FieldWithDefault", thrift.I64, 2); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteI64(p.I64FieldWithDefault); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 2 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField3(oprot thrift.TProtocol) (err error) {
+	if p.IsSetDoubleFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("DoubleFieldWithDefault", thrift.DOUBLE, 3); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteDouble(p.DoubleFieldWithDefault); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 3 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 3 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField4(oprot thrift.TProtocol) (err error) {
+	if p.IsSetI32FieldWithDefault() {
+		if err = oprot.WriteFieldBegin("I32FieldWithDefault", thrift.I32, 4); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteI32(p.I32FieldWithDefault); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 4 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField5(oprot thrift.TProtocol) (err error) {
+	if p.IsSetStringFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("StringFieldWithDefault", thrift.STRING, 5); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteString(p.StringFieldWithDefault); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 5 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 5 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField6(oprot thrift.TProtocol) (err error) {
+	if p.IsSetBinaryFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("BinaryFieldWithDefault", thrift.STRING, 6); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteBinary([]byte(p.BinaryFieldWithDefault)); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 6 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 6 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField7(oprot thrift.TProtocol) (err error) {
+	if p.IsSetEnumFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("EnumFieldWithDefault", thrift.I32, 7); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteI32(int32(p.EnumFieldWithDefault)); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 7 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField8(oprot thrift.TProtocol) (err error) {
+	if p.IsSetSimpleStructWithDefault() {
+		if err = oprot.WriteFieldBegin("SimpleStructWithDefault", thrift.STRUCT, 8); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := p.SimpleStructWithDefault.Write(oprot); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 8 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 8 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField9(oprot thrift.TProtocol) (err error) {
+	if p.IsSetListFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("ListFieldWithDefault", thrift.LIST, 9); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteListBegin(thrift.I32, len(p.ListFieldWithDefault)); err != nil {
+			return err
+		}
+		for _, v := range p.ListFieldWithDefault {
+			if err := oprot.WriteI32(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteListEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 9 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 9 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField10(oprot thrift.TProtocol) (err error) {
+	if p.IsSetSetFieldWithDefault() {
+		if err = oprot.WriteFieldBegin("SetFieldWithDefault", thrift.SET, 10); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteSetBegin(thrift.I32, len(p.SetFieldWithDefault)); err != nil {
+			return err
+		}
+		for i := 0; i < len(p.SetFieldWithDefault); i++ {
+			for j := i + 1; j < len(p.SetFieldWithDefault); j++ {
+				if func(tgt, src int32) bool {
+					if tgt != src {
+						return false
+					}
+					return true
+				}(p.SetFieldWithDefault[i], p.SetFieldWithDefault[j]) {
+					return thrift.PrependError("", fmt.Errorf("%T error writing set field: slice is not unique", p.SetFieldWithDefault[i]))
+				}
+			}
+		}
+		for _, v := range p.SetFieldWithDefault {
+			if err := oprot.WriteI32(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteSetEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 10 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 10 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField11(oprot thrift.TProtocol) (err error) {
+	if p.IsSetMapI32I64WithDefault() {
+		if err = oprot.WriteFieldBegin("MapI32I64WithDefault", thrift.MAP, 11); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteMapBegin(thrift.I32, thrift.I64, len(p.MapI32I64WithDefault)); err != nil {
+			return err
+		}
+		for k, v := range p.MapI32I64WithDefault {
+
+			if err := oprot.WriteI32(k); err != nil {
+				return err
+			}
+
+			if err := oprot.WriteI64(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteMapEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 11 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 11 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField12(oprot thrift.TProtocol) (err error) {
+	if p.IsSetMapI64StringWithDefault() {
+		if err = oprot.WriteFieldBegin("MapI64StringWithDefault", thrift.MAP, 12); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteMapBegin(thrift.I64, thrift.STRING, len(p.MapI64StringWithDefault)); err != nil {
+			return err
+		}
+		for k, v := range p.MapI64StringWithDefault {
+
+			if err := oprot.WriteI64(k); err != nil {
+				return err
+			}
+
+			if err := oprot.WriteString(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteMapEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 12 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 12 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField13(oprot thrift.TProtocol) (err error) {
+	if p.IsSetMapStringStringWithDefault() {
+		if err = oprot.WriteFieldBegin("MapStringStringWithDefault", thrift.MAP, 13); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRING, len(p.MapStringStringWithDefault)); err != nil {
+			return err
+		}
+		for k, v := range p.MapStringStringWithDefault {
+
+			if err := oprot.WriteString(k); err != nil {
+				return err
+			}
+
+			if err := oprot.WriteString(v); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteMapEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 13 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 13 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) writeField14(oprot thrift.TProtocol) (err error) {
+	if p.IsSetMapStringSimpleWithDefault() {
+		if err = oprot.WriteFieldBegin("MapStringSimpleWithDefault", thrift.MAP, 14); err != nil {
+			goto WriteFieldBeginError
+		}
+		if err := oprot.WriteMapBegin(thrift.STRING, thrift.STRUCT, len(p.MapStringSimpleWithDefault)); err != nil {
+			return err
+		}
+		for k, v := range p.MapStringSimpleWithDefault {
+
+			if err := oprot.WriteString(k); err != nil {
+				return err
+			}
+
+			if err := v.Write(oprot); err != nil {
+				return err
+			}
+		}
+		if err := oprot.WriteMapEnd(); err != nil {
+			return err
+		}
+		if err = oprot.WriteFieldEnd(); err != nil {
+			goto WriteFieldEndError
+		}
+	}
+	return nil
+WriteFieldBeginError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 14 begin error: ", p), err)
+WriteFieldEndError:
+	return thrift.PrependError(fmt.Sprintf("%T write field 14 end error: ", p), err)
+}
+
+func (p *OptionalDefaultValues) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("OptionalDefaultValues(%+v)", *p)
+}
+
+func (p *OptionalDefaultValues) DeepEqual(ano *OptionalDefaultValues) bool {
+	if p == ano {
+		return true
+	} else if p == nil || ano == nil {
+		return false
+	}
+	if !p.Field1DeepEqual(ano.ByteFieldWithDefault) {
+		return false
+	}
+	if !p.Field2DeepEqual(ano.I64FieldWithDefault) {
+		return false
+	}
+	if !p.Field3DeepEqual(ano.DoubleFieldWithDefault) {
+		return false
+	}
+	if !p.Field4DeepEqual(ano.I32FieldWithDefault) {
+		return false
+	}
+	if !p.Field5DeepEqual(ano.StringFieldWithDefault) {
+		return false
+	}
+	if !p.Field6DeepEqual(ano.BinaryFieldWithDefault) {
+		return false
+	}
+	if !p.Field7DeepEqual(ano.EnumFieldWithDefault) {
+		return false
+	}
+	if !p.Field8DeepEqual(ano.SimpleStructWithDefault) {
+		return false
+	}
+	if !p.Field9DeepEqual(ano.ListFieldWithDefault) {
+		return false
+	}
+	if !p.Field10DeepEqual(ano.SetFieldWithDefault) {
+		return false
+	}
+	if !p.Field11DeepEqual(ano.MapI32I64WithDefault) {
+		return false
+	}
+	if !p.Field12DeepEqual(ano.MapI64StringWithDefault) {
+		return false
+	}
+	if !p.Field13DeepEqual(ano.MapStringStringWithDefault) {
+		return false
+	}
+	if !p.Field14DeepEqual(ano.MapStringSimpleWithDefault) {
+		return false
+	}
+	return true
+}
+
+func (p *OptionalDefaultValues) Field1DeepEqual(src int8) bool {
+
+	if p.ByteFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field2DeepEqual(src int64) bool {
+
+	if p.I64FieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field3DeepEqual(src float64) bool {
+
+	if p.DoubleFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field4DeepEqual(src int32) bool {
+
+	if p.I32FieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field5DeepEqual(src string) bool {
+
+	if strings.Compare(p.StringFieldWithDefault, src) != 0 {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field6DeepEqual(src []byte) bool {
+
+	if bytes.Compare(p.BinaryFieldWithDefault, src) != 0 {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field7DeepEqual(src Enums) bool {
+
+	if p.EnumFieldWithDefault != src {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field8DeepEqual(src *Simple) bool {
+
+	if !p.SimpleStructWithDefault.DeepEqual(src) {
+		return false
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field9DeepEqual(src []int32) bool {
+
+	if len(p.ListFieldWithDefault) != len(src) {
+		return false
+	}
+	for i, v := range p.ListFieldWithDefault {
+		_src := src[i]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field10DeepEqual(src []int32) bool {
+
+	if len(p.SetFieldWithDefault) != len(src) {
+		return false
+	}
+	for i, v := range p.SetFieldWithDefault {
+		_src := src[i]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field11DeepEqual(src map[int32]int64) bool {
+
+	if len(p.MapI32I64WithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapI32I64WithDefault {
+		_src := src[k]
+		if v != _src {
+			return false
+		}
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field12DeepEqual(src map[int64]string) bool {
+
+	if len(p.MapI64StringWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapI64StringWithDefault {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field13DeepEqual(src map[string]string) bool {
+
+	if len(p.MapStringStringWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapStringStringWithDefault {
+		_src := src[k]
+		if strings.Compare(v, _src) != 0 {
+			return false
+		}
+	}
+	return true
+}
+func (p *OptionalDefaultValues) Field14DeepEqual(src map[string]*Simple) bool {
+
+	if len(p.MapStringSimpleWithDefault) != len(src) {
+		return false
+	}
+	for k, v := range p.MapStringSimpleWithDefault {
+		_src := src[k]
+		if !v.DeepEqual(_src) {
+			return false
+		}
+	}
+	return true
+}

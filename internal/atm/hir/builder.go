@@ -371,12 +371,12 @@ func (self *Builder) BSW(rx GenericRegister, sw []string) *Ir {
     return self.tab(newInstr(OP_bsw).rx(rx), sw)
 }
 
-func (self *Builder) BEQN(ps PointerRegister, to string) *Ir {
-    return self.jmp(newInstr(OP_beqn).ps(ps), to)
+func (self *Builder) BEQP(ps PointerRegister, pd PointerRegister, to string) *Ir {
+    return self.jmp(newInstr(OP_beqp).ps(ps).pd(pd), to)
 }
 
-func (self *Builder) BNEN(ps PointerRegister, to string) *Ir {
-    return self.jmp(newInstr(OP_bnen).ps(ps), to)
+func (self *Builder) BNEP(ps PointerRegister, pd PointerRegister, to string) *Ir {
+    return self.jmp(newInstr(OP_bnep).ps(ps).pd(pd), to)
 }
 
 func (self *Builder) JMP(to string) *Ir {

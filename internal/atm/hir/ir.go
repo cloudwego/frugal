@@ -66,9 +66,9 @@ const (
     OP_blt                  // if (Rx <  Ry) Br.PC -> PC
     OP_bltu                 // if (u(Rx) <  u(Ry)) Br.PC -> PC
     OP_bgeu                 // if (u(Rx) >= u(Ry)) Br.PC -> PC
+    OP_beqp                 // if (Ps == Pd) Br.PC -> PC
+    OP_bnep                 // if (Ps == Pd) Br.PC -> PC
     OP_bsw                  // if (u(Rx) <  u(An)) Sw[u(Rx)].PC -> PC
-    OP_beqn                 // if (Ps == nil) Br.PC -> PC
-    OP_bnen                 // if (Ps != nil) Br.PC -> PC
     OP_jmp                  // Br.PC -> PC
     OP_bzero                // memset(Pd, 0, Iv)
     OP_bcopy                // memcpy(Pd, Ps, Rx)
@@ -287,9 +287,9 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_blt   : return fmt.Sprintf("blt     %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bltu  : return fmt.Sprintf("bltu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
         case OP_bgeu  : return fmt.Sprintf("bgeu    %%%s, %%%s, %s", self.Rx, self.Ry, self.formatRefs(refs, self.Br))
+        case OP_beqp  : return fmt.Sprintf("beq     %%%s, %%%s, %s", self.Ps, self.Pd, self.formatRefs(refs, self.Br))
+        case OP_bnep  : return fmt.Sprintf("bne     %%%s, %%%s, %s", self.Ps, self.Pd, self.formatRefs(refs, self.Br))
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
-        case OP_beqn  : return fmt.Sprintf("beq     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
-        case OP_bnen  : return fmt.Sprintf("bne     %%%s, %%nil, %s", self.Ps, self.formatRefs(refs, self.Br))
         case OP_jmp   : return fmt.Sprintf("jmp     %s", self.formatRefs(refs, self.Br))
         case OP_bzero : return fmt.Sprintf("bzero   $%d, %s", self.Iv, self.Pd)
         case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)

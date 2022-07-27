@@ -123,8 +123,8 @@ func (self *Emulator) Run() {
             case hir.OP_blt   : if int64(self.uv[p.Rx]) <  int64(self.uv[p.Ry]) { self.pc = p.Br }
             case hir.OP_bltu  : if       self.uv[p.Rx]  <        self.uv[p.Ry]  { self.pc = p.Br }
             case hir.OP_bgeu  : if       self.uv[p.Rx]  >=       self.uv[p.Ry]  { self.pc = p.Br }
-            case hir.OP_beqn  : if       self.pv[p.Ps]  ==                 nil  { self.pc = p.Br }
-            case hir.OP_bnen  : if       self.pv[p.Ps]  !=                 nil  { self.pc = p.Br }
+            case hir.OP_beqp  : if       self.pv[p.Ps]  ==       self.pv[p.Pd]  { self.pc = p.Br }
+            case hir.OP_bnep  : if       self.pv[p.Ps]  !=       self.pv[p.Pd]  { self.pc = p.Br }
             case hir.OP_jmp   : self.pc = p.Br
             case hir.OP_bzero : memclrNoHeapPointers(self.pv[p.Pd], uintptr(p.Iv))
             case hir.OP_bcopy : memmove(self.pv[p.Pd], self.pv[p.Ps], uintptr(self.uv[p.Rx]))

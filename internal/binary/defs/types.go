@@ -145,7 +145,7 @@ func (self *Type) String() string {
     }
 }
 
-func (self *Type) isKeyType() bool {
+func (self *Type) IsKeyType() bool {
     switch self.T {
         case T_bool    : return true
         case T_i8      : return true
@@ -156,6 +156,20 @@ func (self *Type) isKeyType() bool {
         case T_string  : return true
         case T_enum    : return true
         case T_pointer : return self.V.T == T_struct
+        default        : return false
+    }
+}
+
+func (self *Type) IsSimpleType() bool {
+    switch self.T {
+        case T_bool    : return true
+        case T_i8      : return true
+        case T_double  : return true
+        case T_i16     : return true
+        case T_i32     : return true
+        case T_i64     : return true
+        case T_string  : return true
+        case T_enum    : return true
         default        : return false
     }
 }
@@ -296,7 +310,7 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
     ret.K = doParseType(kt, def, i, true)
 
     /* validate map key */
-    if !ret.K.isKeyType() {
+    if !ret.K.IsKeyType() {
         panic(utils.ESyntax(vi, def, fmt.Sprintf("'%s' is not a valid map key", ret.K)))
     }
 

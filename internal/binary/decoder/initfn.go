@@ -26,8 +26,8 @@ import (
 )
 
 var (
-    initFnTab  = make(map[unsafe.Pointer]*hir.CallHandle)
-    initFnLock = sync.RWMutex{}
+    initFnLock  = new(sync.RWMutex)
+    initFnCache = make(map[unsafe.Pointer]*hir.CallHandle)
 )
 
 func toInitFn(fp unsafe.Pointer) (fn func(unsafe.Pointer)) {
@@ -41,7 +41,7 @@ func addInitFn(fp unsafe.Pointer) *hir.CallHandle {
 
     /* check function cache */
     initFnLock.RLock()
-    fn, ok = initFnTab[fp]
+    fn, ok = initFnCache[fp]
     initFnLock.RUnlock()
 
     /* exists, use the cached value */
@@ -54,7 +54,7 @@ func addInitFn(fp unsafe.Pointer) *hir.CallHandle {
     defer initFnLock.Unlock()
 
     /* double check */
-    if fn, ok = initFnTab[fp]; ok {
+    if fn, ok = initFnCache[fp]; ok {
         return fn
     }
 
@@ -68,6 +68,6 @@ func addInitFn(fp unsafe.Pointer) *hir.CallHandle {
     })
 
     /* update the cache */
-    initFnTab[fp] = fn
+    initFnCache[fp] = fn
     return fn
 }

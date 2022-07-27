@@ -186,6 +186,25 @@ func TestMarshalCompare(t *testing.T) {
     comparestruct(mm.Bytes(), buf)
 }
 
+func TestMarshalWithDefaultCompare(t *testing.T) {
+    var v baseline.OptionalDefaultValues
+    v.InitDefault()
+    mm := thrift.NewTMemoryBuffer()
+    err := v.Write(thrift.NewTBinaryProtocolTransport(mm))
+    require.NoError(t, err)
+    println("Expected Size :", mm.Len())
+    nb := frugal.EncodedSize(v)
+    println("Measured Size :", nb)
+    require.Equal(t, mm.Len(), nb)
+    buf := make([]byte, nb)
+    ret, err := frugal.EncodeObject(buf, nil, v)
+    require.NoError(t, err)
+    println("Encoded Size  :", ret)
+    require.Equal(t, nb, ret)
+    buf = buf[:ret]
+    comparestruct(mm.Bytes(), buf)
+}
+
 func TestUnmarshalEnum(t *testing.T) {
     var v EnumTestStruct
     v.X = baseline.Enums(1 << 32)

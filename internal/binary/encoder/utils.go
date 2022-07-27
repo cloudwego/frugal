@@ -18,6 +18,7 @@ package encoder
 
 import (
     `math/bits`
+    `unsafe`
 )
 
 func bswap16(v int64) int16 {
@@ -30,4 +31,16 @@ func bswap32(v int64) int32 {
 
 func bswap64(v int64) int64 {
     return int64(bits.ReverseBytes64(uint64(v)))
+}
+
+func mem2str(v []byte) string {
+    return *(*string)(unsafe.Pointer(&v))
+}
+
+func bool2i64(v bool) int64 {
+    if v {
+        return 1
+    } else {
+        return 0
+    }
 }

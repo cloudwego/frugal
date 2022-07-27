@@ -772,7 +772,7 @@ func translate_OP_defer(p *hir.Builder, v Instr) {
       R0    (IC).
       R1    (ET).
       R2    (EP)
-    p.BNEN  (ET, LB_error)
+    p.BNEP  (ET, hir.Pn, LB_error)
 }
 
 func translate_OP_goto(p *hir.Builder, v Instr) {

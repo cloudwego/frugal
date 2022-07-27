@@ -185,6 +185,8 @@ var translators = [256]func(*hir.Builder, Instr) {
     OP_goto          : translate_OP_goto,
     OP_if_nil        : translate_OP_if_nil,
     OP_if_hasbuf     : translate_OP_if_hasbuf,
+    OP_if_eq_imm     : translate_OP_if_eq_imm,
+    OP_if_eq_str     : translate_OP_if_eq_str,
     OP_make_state    : translate_OP_make_state,
     OP_drop_state    : translate_OP_drop_state,
     OP_halt          : translate_OP_halt,
@@ -213,7 +215,7 @@ func translate_OP_size_map(p *hir.Builder, v Instr) {
 }
 
 func translate_OP_size_defer(p *hir.Builder, v Instr) {
-    p.IP    (v.Vt, TP)
+    p.IP    (v.Vt(), TP)
     p.GCALL (F_encode).
       A0    (TP).
       A1    (hir.Pn).
@@ -226,7 +228,7 @@ func translate_OP_size_defer(p *hir.Builder, v Instr) {
       R0    (TR).
       R1    (ET).
       R2    (EP)
-    p.BNEN  (ET, LB_error)
+    p.BNEP  (ET, hir.Pn, LB_error)
     p.ADD   (RL, TR, RL)
 }
 
@@ -285,7 +287,7 @@ func translate_OP_memcpy_1(p *hir.Builder) {
     p.BGEU  (UR, TR, "_do_copy_{n}")
     p.LDAP  (ARG_mem_itab, ET)
     p.LDAP  (ARG_mem_data, EP)
-    p.BEQN  (EP, "_do_copy_{n}")
+    p.BEQP  (EP, hir.Pn, "_do_copy_{n}")
     p.SUB   (RC, RL, UR)
     p.ICALL (ET, EP, utils.FnWrite).
       A0    (TP).
@@ -294,7 +296,7 @@ func translate_OP_memcpy_1(p *hir.Builder) {
       A3    (UR).
       R0    (ET).
       R1    (EP)
-    p.BNEN  (ET, LB_error)
+    p.BNEP  (ET, hir.Pn, LB_error)
     p.JMP   ("_done_{n}")
     p.Label ("_do_copy_{n}")
     p.ADD   (RL, TR, UR)
@@ -350,7 +352,7 @@ func translate_OP_deref(p *hir.Builder, _ Instr) {
 }
 
 func translate_OP_defer(p *hir.Builder, v Instr) {
-    p.IP    (v.Vt, TP)
+    p.IP    (v.Vt(), TP)
     p.LDAP  (ARG_mem_itab, ET)
     p.LDAP  (ARG_mem_data, EP)
     p.SUB   (RC, RL, TR)
@@ -368,7 +370,7 @@ func translate_OP_defer(p *hir.Builder, v Instr) {
       R1    (ET).
       R2    (EP)
     p.SUBP  (RP, RL, RP)
-    p.BNEN  (ET, LB_error)
+    p.BNEP  (ET, hir.Pn, LB_error)
     p.ADD   (RL, TR, RL)
 }
 
@@ -398,7 +400,7 @@ func translate_OP_map_value(p *hir.Builder, _ Instr) {
 }
 
 func translate_OP_map_begin(p *hir.Builder, v Instr) {
-    p.IP    (v.Vt, ET)
+    p.IP    (v.Vt(), ET)
     p.LP    (WP, 0, EP)
     p.ADDP  (RS, ST, TP)
     p.ADDPI (TP, MiOffset, TP)
@@ -411,7 +413,7 @@ func translate_OP_map_begin(p *hir.Builder, v Instr) {
 func translate_OP_map_if_next(p *hir.Builder, v Instr) {
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MiOffset + MiKeyOffset, TP)
-    p.BNEN  (TP, p.At(v.To))
+    p.BNEP  (TP, hir.Pn, p.At(v.To))
 }
 
 func translate_OP_map_if_empty(p *hir.Builder, v Instr) {
@@ -449,7 +451,7 @@ func translate_OP_unique(p *hir.Builder, v Instr) {
     p.IB    (2, UR)
     p.LQ    (WP, abi.PtrSize, TR)
     p.BLTU  (TR, UR, "_ok_{n}")
-    translate_OP_unique_type(p, v.Vt)
+    translate_OP_unique_type(p, v.Vt())
     p.Label ("_ok_{n}")
 }
 
@@ -554,11 +556,69 @@ func translate_OP_goto(p *hir.Builder, v Instr) {
 
 func translate_OP_if_nil(p *hir.Builder, v Instr) {
     p.LP    (WP, 0, TP)
-    p.BEQN  (TP, p.At(v.To))
+    p.BEQP  (TP, hir.Pn, p.At(v.To))
 }
 
 func translate_OP_if_hasbuf(p *hir.Builder, v Instr) {
-    p.BNEN  (RP, p.At(v.To))
+    p.BNEP  (RP, hir.Pn, p.At(v.To))
+}
+
+func translate_OP_if_eq_imm(p *hir.Builder, v Instr) {
+    switch v.Uv {
+        case 1  : p.LB(WP, 0, TR); p.IB( int8(v.Iv), UR); p.BEQ(TR, UR, p.At(v.To))
+        case 2  : p.LW(WP, 0, TR); p.IW(int16(v.Iv), UR); p.BEQ(TR, UR, p.At(v.To))
+        case 4  : p.LL(WP, 0, TR); p.IL(int32(v.Iv), UR); p.BEQ(TR, UR, p.At(v.To))
+        case 8  : p.LQ(WP, 0, TR); p.IQ(      v.Iv , UR); p.BEQ(TR, UR, p.At(v.To))
+        default : panic("invalid imm size")
+    }
+}
+
+func translate_OP_if_eq_str(p *hir.Builder, v Instr) {
+    nb := v.Iv
+    to := p.At(v.To)
+
+    /* load the string length */
+    p.IQ    (v.Iv, TR)
+    p.LQ    (WP, abi.PtrSize, UR)
+
+    /* empty string */
+    if v.Iv == 0 {
+        p.BEQ(TR, UR, to)
+        return
+    }
+
+    /* compare the string pointers */
+    p.BNE   (TR, UR, "_neq_{n}")
+    p.IP    (v.Pr, TP)
+    p.LP    (WP, 0, EP)
+    p.BEQP  (TP, EP, to)
+
+    /* compare the content, 4-byte loop */
+    for nb >= 4 {
+        p.LL    (EP, v.Iv - nb, TR)
+        p.IL    (v.Long(v.Iv - nb), UR)
+        p.BNE   (TR, UR, "_neq_{n}")
+        nb -= 4
+    }
+
+    /* compare the content, 2-byte test */
+    if nb >= 2 {
+        p.LW    (EP, v.Iv - nb, TR)
+        p.IW    (v.Word(v.Iv - nb), UR)
+        p.BNE   (TR, UR, "_neq_{n}")
+        nb -= 2
+    }
+
+    /* compare the content, the last byte */
+    if nb != 0 {
+        p.LB    (EP, v.Iv - 1, TR)
+        p.IB    (v.Byte(v.Iv - 1), UR)
+        p.BNE   (TR, UR, "_neq_{n}")
+    }
+
+    /* two string are equal */
+    p.JMP   (to)
+    p.Label ("_neq_{n}")
 }
 
 func translate_OP_make_state(p *hir.Builder, _ Instr) {

@@ -492,8 +492,8 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
         case hir.OP_blt  : cmp, lhs, rhs = IrCmpLt  , p.Rx, p.Ry
         case hir.OP_bltu : cmp, lhs, rhs = IrCmpLtu , p.Rx, p.Ry
         case hir.OP_bgeu : cmp, lhs, rhs = IrCmpGeu , p.Rx, p.Ry
-        case hir.OP_beqn : cmp, lhs, rhs = IrCmpEq  , p.Ps, hir.Pn
-        case hir.OP_bnen : cmp, lhs, rhs = IrCmpNe  , p.Ps, hir.Pn
+        case hir.OP_beqp : cmp, lhs, rhs = IrCmpEq  , p.Ps, p.Pd
+        case hir.OP_bnep : cmp, lhs, rhs = IrCmpNe  , p.Ps, p.Pd
         default          : panic("invalid branch: " + p.Disassemble(nil))
     }
 
