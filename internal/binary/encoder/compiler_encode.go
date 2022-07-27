@@ -208,7 +208,7 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
         }
 
         /* struct types, only available in hand-written structs */
-        case defs.T_struct : {
+        case defs.T_struct: {
             self.compileStructRequired(p, sp, fv, maxpc)
         }
 
