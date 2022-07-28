@@ -148,11 +148,6 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
         }
 
-        /* structs must be declared as pointers */
-        if pt.T == T_struct {
-            return nil, fmt.Errorf("structs must be declared as pointers: %s.%s", vt, sf.Name)
-        }
-
         /* check for nested pointers */
         if pt.T == T_pointer && pt.V.T == T_pointer {
             return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
