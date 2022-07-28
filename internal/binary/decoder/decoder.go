@@ -83,7 +83,7 @@ func DecodeObject(buf []byte, val interface{}) (ret int, err error) {
 
     /* check for nil interface */
     if vt == nil || vv.Value == nil || vt.Kind() != reflect.Ptr {
-        return 0, DecodeError{vt}
+        return 0, DecodeError { vt }
     }
 
     /* create a new runtime state */

@@ -26,9 +26,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+	`unsafe`
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
+	`github.com/cloudwego/frugal/internal/rt`
 	"github.com/cloudwego/frugal/testdata/kitex_gen/baseline"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 	"github.com/stretchr/testify/assert"
@@ -260,6 +262,16 @@ func BenchmarkMarshalAllSize_Frugal(b *testing.B) {
 	}
 }
 
+//go:noescape
+//go:linkname typedmemclr runtime.typedmemclr
+//goland:noinspection GoUnusedParameter
+func typedmemclr(typ *rt.GoType, ptr unsafe.Pointer)
+
+func objectmemclr(v interface{}) {
+	p := rt.UnpackEface(v)
+	typedmemclr(rt.PtrElem(p.Type), p.Value)
+}
+
 func BenchmarkUnmarshalAllSize_ApacheThrift(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
@@ -272,10 +284,11 @@ func BenchmarkUnmarshalAllSize_ApacheThrift(b *testing.B) {
 			buf := s.bytes
 			rtype := reflect.TypeOf(s.val).Elem()
 			mm := thrift.NewTMemoryBuffer()
+			var v = reflect.New(rtype).Interface()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				var v = reflect.New(rtype).Interface()
 				mm.Reset()
+				objectmemclr(v)
 				_, _ = mm.Write(buf)
 				_ = v.(thrift.TStruct).Read(thrift.NewTBinaryProtocolTransport(mm))
 			}
@@ -302,7 +315,7 @@ func BenchmarkUnmarshalAllSize_ThriftIterator(b *testing.B) {
 			// assert.Equal(b, s.val, v)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				var v = reflect.New(rtype).Interface()
+				objectmemclr(v)
 				_ = thriftiter.Unmarshal(buf, v)
 			}
 		})
@@ -320,9 +333,10 @@ func BenchmarkUnmarshalAllSize_KitexFast(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
 			rtype := reflect.TypeOf(s.val).Elem()
+			var v = reflect.New(rtype).Interface()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				var v = reflect.New(rtype).Interface()
+				objectmemclr(v)
 				_, _ = v.(FastAPI).FastRead(buf)
 			}
 		})
@@ -351,7 +365,7 @@ func BenchmarkUnmarshalAllSize_Frugal(b *testing.B) {
 			b.SetBytes(int64(len(buf)))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				var v = reflect.New(rtype).Interface()
+				objectmemclr(v)
 				_, _ = frugal.DecodeObject(buf, v)
 			}
 		})
@@ -472,11 +486,11 @@ func BenchmarkUnmarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
 
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-
 				mm := thrift.NewTMemoryBuffer()
+				var v = reflect.New(rtype).Interface()
 				for pb.Next() {
-					var v = reflect.New(rtype).Interface()
 					mm.Reset()
+					objectmemclr(v)
 					_, _ = mm.Write(buf)
 					_ = v.(thrift.TStruct).Read(thrift.NewTBinaryProtocolTransport(mm))
 				}
@@ -505,9 +519,9 @@ func BenchmarkUnmarshalAllSize_Parallel_ThriftIterator(b *testing.B) {
 			// assert.Equal(b, s.val, v)
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-
+				var v = reflect.New(rtype).Interface()
 				for pb.Next() {
-					var v = reflect.New(rtype).Interface()
+					objectmemclr(v)
 					_ = thriftiter.Unmarshal(buf, v)
 				}
 			})
@@ -528,9 +542,9 @@ func BenchmarkUnmarshalAllSize_Parallel_KitexFast(b *testing.B) {
 			buf := s.bytes
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-
+				var v = reflect.New(rtype).Interface()
 				for pb.Next() {
-					var v = reflect.New(rtype).Interface()
+					objectmemclr(v)
 					_, _ = v.(FastAPI).FastRead(buf)
 				}
 			})
@@ -558,10 +572,10 @@ func BenchmarkUnmarshalAllSize_Parallel_Frugal(b *testing.B) {
 			assert.Equal(b, s.val.(FastAPI).BLength(), frugal.EncodedSize(v))
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-
+				var v = reflect.New(rtype).Interface()
 				for pb.Next() {
-					var v = reflect.New(rtype).Interface()
-					_, _ = frugal.DecodeObject(buf, v)
+					objectmemclr(v)
+					_, err = frugal.DecodeObject(buf, v)
 				}
 			})
 		})
