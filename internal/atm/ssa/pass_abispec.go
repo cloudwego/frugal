@@ -27,20 +27,20 @@ func (self ABILowering) Apply(cfg *CFG) {
     rr := make([]Reg, len(cfg.Layout.Args))
     rb := rr[:0]
 
-    /* map each argument load to register load */
+    /* map each argument load to register alias or stack load */
     for i, v := range cfg.Root.Ins {
-        if iv, ok := v.(*IrLoadArg); ok {
-            if iv.I < 0 || iv.I >= len(cfg.Layout.Args) {
-                panic("abi: argument load out of bound: " + v.String())
-            } else if rr[iv.I] != 0 {
-                panic("abi: second load of the same argument: " + v.String())
-            } else if a := cfg.Layout.Args[iv.I]; a.InRegister {
-                rr[iv.I] = IrSetArch(cfg.CreateRegister(iv.R.Ptr()), a.Reg)
-                cfg.Root.Ins[i] = IrArchCopy(iv.R, rr[iv.I])
-            } else {
-                rr[iv.I] = Rz
-                cfg.Root.Ins[i] = IrArchLoadStack(iv.R, a.Mem, IrSlotArgs)
-            }
+        if iv, ok := v.(*IrLoadArg); !ok {
+            break
+        } else if iv.I < 0 || iv.I >= len(cfg.Layout.Args) {
+            panic("abi: argument load out of bound: " + v.String())
+        } else if rr[iv.I] != 0 {
+            panic("abi: second load of the same argument: " + v.String())
+        } else if a := cfg.Layout.Args[iv.I]; a.InRegister {
+            rr[iv.I] = IrSetArch(Rz, a.Reg)
+            cfg.Root.Ins[i] = &IrAlias { R: iv.R, V: rr[iv.I] }
+        } else {
+            rr[iv.I] = Rz
+            cfg.Root.Ins[i] = IrArchLoadStack(iv.R, a.Mem, IrSlotArgs)
         }
     }
 

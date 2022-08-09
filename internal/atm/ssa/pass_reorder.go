@@ -76,36 +76,6 @@ func (self *_BlockRef) update(cfg *CFG, bb *BasicBlock) {
 // Reorder moves value closer to it's usage, which reduces register pressure.
 type Reorder struct{}
 
-func (Reorder) moveLoadArgs(cfg *CFG) {
-    var ok bool
-    var ir []IrNode
-    var vv *IrLoadArg
-
-    /* extract all the argument loads */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        ins := bb.Ins
-        bb.Ins = bb.Ins[:0]
-
-        /* scan instructions */
-        for _, v := range ins {
-            if vv, ok = v.(*IrLoadArg); ok {
-                ir = append(ir, vv)
-            } else {
-                bb.Ins = append(bb.Ins, v)
-            }
-        }
-    })
-
-    /* sort by argument ID */
-    sort.Slice(ir, func(i int, j int) bool {
-        return ir[i].(*IrLoadArg).I < ir[j].(*IrLoadArg).I
-    })
-
-    /* prepend to the root node */
-    ins := cfg.Root.Ins
-    cfg.Root.Ins = append(ir, ins...)
-}
-
 func (Reorder) moveInterblock(cfg *CFG) {
     defs := make(map[Reg]*_BlockRef)
     move := make(map[*BasicBlock]int)
@@ -303,9 +273,39 @@ func (Reorder) moveIntrablock(cfg *CFG) {
     })
 }
 
+func (Reorder) moveArgumentLoad(cfg *CFG) {
+    var ok bool
+    var ir []IrNode
+    var vv *IrLoadArg
+
+    /* extract all the argument loads */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        ins := bb.Ins
+        bb.Ins = bb.Ins[:0]
+
+        /* scan instructions */
+        for _, v := range ins {
+            if vv, ok = v.(*IrLoadArg); ok {
+                ir = append(ir, vv)
+            } else {
+                bb.Ins = append(bb.Ins, v)
+            }
+        }
+    })
+
+    /* sort by argument ID */
+    sort.Slice(ir, func(i int, j int) bool {
+        return ir[i].(*IrLoadArg).I < ir[j].(*IrLoadArg).I
+    })
+
+    /* prepend to the root node */
+    ins := cfg.Root.Ins
+    cfg.Root.Ins = append(ir, ins...)
+}
+
 func (self Reorder) Apply(cfg *CFG) {
-    self.moveLoadArgs(cfg)
     self.moveInterblock(cfg)
     self.moveIntrablock(cfg)
+    self.moveArgumentLoad(cfg)
 }
 

@@ -155,9 +155,9 @@ func (self Reg) String() string {
     switch self.Kind() {
         default: {
             if self.Ptr() {
-                return fmt.Sprintf("%%p%d.%d", self.Kind(), self.Index())
+                return fmt.Sprintf("p%d.%d", self.Kind(), self.Index())
             } else {
-                return fmt.Sprintf("%%r%d.%d", self.Kind(), self.Index())
+                return fmt.Sprintf("r%d.%d", self.Kind(), self.Index())
             }
         }
 
@@ -166,38 +166,38 @@ func (self Reg) String() string {
             if i := self.Name(); i >= len(ArchRegs) {
                 panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
             } else if self.Index() == 0 {
-                return fmt.Sprintf("{%s}", ArchRegNames[ArchRegs[i]])
+                return fmt.Sprintf("%%%s", ArchRegNames[ArchRegs[i]])
             } else if self.Ptr() {
-                return fmt.Sprintf("%%p%d{%s}", self.Index(), ArchRegNames[ArchRegs[i]])
+                return fmt.Sprintf("p%d{%%%s}", self.Index(), ArchRegNames[ArchRegs[i]])
             } else {
-                return fmt.Sprintf("%%r%d{%s}", self.Index(), ArchRegNames[ArchRegs[i]])
+                return fmt.Sprintf("r%d{%%%s}", self.Index(), ArchRegNames[ArchRegs[i]])
             }
         }
 
         /* zero registers */
         case K_zero: {
             if self.Ptr() {
-                return "%nil"
+                return "nil"
             } else {
-                return "%z"
+                return "zero"
             }
         }
 
         /* temp registers */
         case K_temp: {
             if self.Ptr() {
-                return fmt.Sprintf("%%tp%d.%d", self.Name(), self.Index())
+                return fmt.Sprintf("tp%d.%d", self.Name(), self.Index())
             } else {
-                return fmt.Sprintf("%%tr%d.%d", self.Name(), self.Index())
+                return fmt.Sprintf("tr%d.%d", self.Name(), self.Index())
             }
         }
 
         /* SSA normalized registers */
         case K_norm: {
             if self.Ptr() {
-                return fmt.Sprintf("%%p%d", self.Index())
+                return fmt.Sprintf("p%d", self.Index())
             } else {
-                return fmt.Sprintf("%%r%d", self.Index())
+                return fmt.Sprintf("r%d", self.Index())
             }
         }
     }
@@ -240,6 +240,7 @@ func (*IrSwitch)       irnode() {}
 func (*IrReturn)       irnode() {}
 func (*IrNop)          irnode() {}
 func (*IrBreakpoint)   irnode() {}
+func (*IrAlias)        irnode() {}
 func (*IrEntry)        irnode() {}
 func (*IrLoad)         irnode() {}
 func (*IrStore)        irnode() {}
@@ -263,6 +264,7 @@ func (*IrWriteBarrier) irimpure() {}
 
 func (*IrLoad)         irimmovable() {}
 func (*IrStore)        irimmovable() {}
+func (*IrAlias)        irimmovable() {}
 func (*IrEntry)        irimmovable() {}
 func (*IrLoadArg)      irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
@@ -582,11 +584,32 @@ type (
     IrBreakpoint struct{}
 )
 
-func (IrNop)        Clone() IrNode { return new(IrNop) }
-func (IrBreakpoint) Clone() IrNode { return new(IrBreakpoint) }
+func (*IrNop)        Clone() IrNode { return new(IrNop) }
+func (*IrBreakpoint) Clone() IrNode { return new(IrBreakpoint) }
 
-func (IrNop)        String() string { return "nop" }
-func (IrBreakpoint) String() string { return "breakpoint" }
+func (*IrNop)        String() string { return "nop" }
+func (*IrBreakpoint) String() string { return "breakpoint" }
+
+type IrAlias struct {
+    R Reg
+    V Reg
+}
+
+func (self *IrAlias) Clone() IrNode {
+    panic(`alias node "` + self.String() + `" is not cloneable`)
+}
+
+func (self *IrAlias) String() string {
+    return fmt.Sprintf("alias %s = %s", self.R, self.V)
+}
+
+func (self *IrAlias) Usages() []*Reg {
+    return []*Reg { &self.V }
+}
+
+func (self *IrAlias) Definitions() []*Reg {
+    return []*Reg { &self.R }
+}
 
 type IrEntry struct {
     R []Reg

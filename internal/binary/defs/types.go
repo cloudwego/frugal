@@ -17,13 +17,13 @@
 package defs
 
 import (
-	"fmt"
-	"reflect"
-	"strings"
-	"sync"
-	"unicode"
+    `fmt`
+    `reflect`
+    `strings`
+    `sync`
+    `unicode`
 
-	"github.com/cloudwego/frugal/internal/utils"
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 type Tag uint8
@@ -376,7 +376,7 @@ func doMatchStruct(vt reflect.Type, def string, i *int, tv *string) bool {
     tk := readToken(def, &sp, true)
 
     /* anonymous struct */
-    if vt.Kind() == reflect.Struct && tn == "" {
+    if tn == "" && vt.Kind() == reflect.Struct {
         return true
     }
 
