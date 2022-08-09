@@ -45,3 +45,4 @@ junit.xml
 *.svg
 *.out
 *.hir
+/fuzz/testdata
