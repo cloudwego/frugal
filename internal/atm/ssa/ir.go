@@ -1015,5 +1015,5 @@ func (self *IrWriteBarrier) String() string {
 }
 
 func (self *IrWriteBarrier) Usages() []*Reg {
-    return []*Reg { &self.Var, &self.Fn, &self.R, &self.M }
+    return []*Reg { &self.R, &self.M, &self.Var, &self.Fn }
 }
