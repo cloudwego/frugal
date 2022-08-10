@@ -19,8 +19,7 @@ package tests
 import (
     `testing`
 
-    `github.com/brianvoe/gofakeit`
-    gofakeit_v6 `github.com/brianvoe/gofakeit/v6`
+    gofakeit `github.com/simon0-o/gofakeit/v6`
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/davecgh/go-spew/spew`
@@ -95,7 +94,7 @@ func TestFakerV6(t *testing.T) {
     var got []byte
     var length int
     s := &FakerTestType{}
-    _ = gofakeit_v6.Struct(s)
+    _ = gofakeit.Struct(s)
     spew.Dump(s)
     length = frugal.EncodedSize(s)
     got = make([]byte, length)

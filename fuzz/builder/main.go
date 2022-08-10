@@ -28,8 +28,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/cloudwego/frugal"
+	gofakeit "github.com/simon0-o/gofakeit/v6"
 )
 
 var (
