@@ -14,7 +14,6 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/cloudwego/kitex v0.3.2 h1:izfwJ/5KI1tLipGN7NmUwsnpRgkOnECc55V/7nx+xk0=
 github.com/cloudwego/kitex v0.3.2/go.mod h1:/XD07VpUD9VQWmmoepASgZ6iw//vgWikVA9MpzLC5i0=
 github.com/cloudwego/netpoll v0.2.4/go.mod h1:1T2WVuQ+MQw6h6DpE45MohSvDTKdy2DlzCx2KsnPI4E=
-github.com/cloudwego/thriftgo v0.1.2 h1:AXpGJiWE3VggfiRHwA6raRJUIcjxliEIfJfGlvRiYUA=
 github.com/cloudwego/thriftgo v0.1.2/go.mod h1:LzeafuLSiHA9JTiWC8TIMIq64iadeObgRUhmVG1OC/w=
 github.com/cloudwego/thriftgo v0.1.8-0.20220801072121-3d6c2bdaa0cd h1:ZxtX0O6LZgcGFu157MqO5eTuquathvnw6Xr9CXnwGa0=
 github.com/cloudwego/thriftgo v0.1.8-0.20220801072121-3d6c2bdaa0cd/go.mod h1:aZxiVX7KJdonZwwnapZEMDAAGUGk9WCIkNU3YoVjbpg=

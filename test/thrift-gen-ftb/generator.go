@@ -107,7 +107,7 @@ var (
 		gen.P(`gofakeit.Struct(s)
 length := s.BLength()
 want := make([]byte, length)
-got := make([]byte, length)
+got := make([]byte, frugal.EncodedSize(s))
 s.FastWriteNocopy(want, nil)
 _, err := frugal.EncodeObject(got, nil, s)
 if err != nil {
@@ -165,6 +165,9 @@ func (g *generator) renderStructTags(scope *golang.Scope, tree *parser.Thrift) (
 			unionSkip := st.Category == "union" && fn != 0
 			if hasStructMapKey || selfReference || unionSkip {
 				tag = " fake:\"skip\""
+			}
+			if fi.Type.Category.IsContainerType() {
+				tag += " fakesize:\"2\""
 			}
 			if tag != "" {
 				ret = append(ret, &plugin.Generated{
