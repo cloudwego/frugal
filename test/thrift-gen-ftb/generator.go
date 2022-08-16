@@ -72,6 +72,7 @@ func (g *generator) generate() (generated []*plugin.Generated, err error) {
 }
 
 func (g *generator) renderTestFile(scope *golang.Scope, tree *parser.Thrift) (*plugin.Generated, error) {
+	structCounter := make(map[string]int)
 	gen := NewGenerated()
 	path := filepath.Join(g.req.OutputPath, g.utils.GetFilePath(tree))
 	path = strings.TrimSuffix(path, ".go") + "_test.go"
@@ -102,7 +103,9 @@ var (
 )`)
 
 	for _, st := range scope.StructLikes() {
-		gen.P("func Test", st.GoName(), "(t *testing.T) {")
+		name := fmt.Sprintf("Test%s%d", st.GoName(), structCounter[st.GoName().String()])
+		structCounter[st.GoName().String()]++
+		gen.P("func ", name, "(t *testing.T) {")
 		gen.P("s := &", st.GoName(), "{}")
 		gen.P(`gofakeit.Struct(s)
 length := s.BLength()
