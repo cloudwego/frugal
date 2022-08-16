@@ -103,6 +103,9 @@ var (
 )`)
 
 	for _, st := range scope.StructLikes() {
+		if FilterOut(st) {
+			continue
+		}
 		name := fmt.Sprintf("Test%s%d", st.GoName(), structCounter[st.GoName().String()])
 		structCounter[st.GoName().String()]++
 		gen.P("func ", name, "(t *testing.T) {")
