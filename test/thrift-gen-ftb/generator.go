@@ -120,7 +120,7 @@ if err != nil {
 	t.Error(err)
 }`)
 		gen.P("wantS := New", st.GoName(), "()")
-		gen.P("gotS := New", st.GoName(), "()")
+		gen.P("gotS := &", st.GoName(), "{}")
 		gen.P(`_, fastErr := wantS.FastRead(want)
 _, err = frugal.DecodeObject(got, gotS)
 if err == nil {
