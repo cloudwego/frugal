@@ -167,9 +167,10 @@ func (g *generator) renderStructTags(scope *golang.Scope, tree *parser.Thrift) (
 				}
 			}
 			checkMapKey(fi.Type)
-			selfReference := st.Name == fi.Type.Name
+			circularReference := st.Name == fi.Type.Name
 			unionSkip := st.Category == "union" && fn != 0
-			if hasStructMapKey || selfReference || unionSkip {
+			deepContainer := HasDeepContainer(scope, fi.Type)
+			if hasStructMapKey || circularReference || unionSkip || deepContainer {
 				tag = " fake:\"skip\""
 			}
 			if fi.Type.Category.IsContainerType() {
