@@ -48,6 +48,6 @@ func GetDefaultInitializer(vt reflect.Type) (unsafe.Pointer, error) {
     } else if mt.Type.NumIn() != 1 || mt.Type.NumOut() != 0 {
         return nil, fmt.Errorf("invalid implementation of `InitDefault()`: %s", mt.Type)
     } else {
-        return mt.Func.UnsafePointer(), nil
+        return *(*[2]*unsafe.Pointer)(unsafe.Pointer(&mt.Func))[1], nil
     }
 }

@@ -46,20 +46,18 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
 
     /* store each argument */
     for i, r := range p.In {
-        if v := p.Func.Args[i]; v.InRegister {
-            argv = append(argv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
-            bb.Ins = append(bb.Ins, IrArchCopy(argv[i], r))
+        if v := p.Func.Args[i]; !v.InRegister {
+            mm := v.Mem
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, mm, IrSlotCall))
         } else {
-            argv = append(argv, Rz)
-            bb.Ins = append(bb.Ins, IrArchStoreStack(r, v.Mem, IrSlotCall))
+            rr := IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg)
+            bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, r)), append(argv, rr)
         }
     }
 
     /* convert each return register */
     for i, r := range p.Out {
-        if v := p.Func.Rets[i]; !v.InRegister || r.Kind() == K_zero {
-            retv = append(retv, Rz)
-        } else {
+        if v := p.Func.Rets[i]; v.InRegister && r.Kind() != K_zero {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
         }
     }
@@ -133,30 +131,28 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     retv := make([]Reg, 0, retc)
 
     /* store the receiver */
-    if rx := p.Func.Args[0]; rx.InRegister {
-        argv = append(argv, IrSetArch(cfg.CreateRegister(p.V.Ptr()), rx.Reg))
-        bb.Ins = append(bb.Ins, IrArchCopy(argv[0], p.V))
+    if rx := p.Func.Args[0]; !rx.InRegister {
+        mm := p.Func.Args[0].Mem
+        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, mm, IrSlotCall))
     } else {
-        argv = append(argv, Rz)
-        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, p.Func.Args[0].Mem, IrSlotCall))
+        rr := IrSetArch(cfg.CreateRegister(p.V.Ptr()), rx.Reg)
+        bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, p.V)), append(argv, rr)
     }
 
     /* store each argument */
     for i, r := range p.In {
-        if v := p.Func.Args[i + 1]; v.InRegister {
-            argv = append(argv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
-            bb.Ins = append(bb.Ins, IrArchCopy(argv[i + 1], r))
+        if v := p.Func.Args[i+1]; !v.InRegister {
+            mm := v.Mem
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, mm, IrSlotCall))
         } else {
-            argv = append(argv, Rz)
-            bb.Ins = append(bb.Ins, IrArchStoreStack(r, v.Mem, IrSlotCall))
+            rr := IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg)
+            bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, r)), append(argv, rr)
         }
     }
 
     /* convert each return register */
     for i, r := range p.Out {
-        if v := p.Func.Rets[i]; !v.InRegister || r.Kind() == K_zero {
-            retv = append(retv, Rz)
-        } else {
+        if v := p.Func.Rets[i]; v.InRegister && r.Kind() != K_zero {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
         }
     }

@@ -19,6 +19,8 @@
 package pgen
 
 import (
+    `runtime`
+
     `github.com/chenzhuoyu/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
@@ -32,8 +34,18 @@ const (
 )
 
 func (self *CodeGen) abiStackCheck(p *x86_64.Program, to *x86_64.Label, sp uintptr) {
-    p.Data (_S_getg)
-    p.LEAQ (Ptr(RSP, -self.ctxt.size() - int32(sp)), RAX)
+    ctxt := self.ctxt
+    size := ctxt.size() + int32(sp)
+
+    /* get the current goroutine */
+    switch runtime.GOOS {
+        case "linux"  : p.MOVQ (Abs(-8), RCX).FS()
+        case "darwin" : p.MOVQ (Abs(0x30), RCX).GS()
+        default       : panic("unsupported operating system")
+    }
+
+    /* check the stack guard */
+    p.LEAQ (Ptr(RSP, -size), RAX)
     p.CMPQ (Ptr(RCX, _G_stackguard0), RAX)
     p.JBE  (to)
 }

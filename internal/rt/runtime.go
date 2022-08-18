@@ -116,9 +116,9 @@ type GoType struct {
 
 func (self *GoType) mtab() []GoMethod {
     switch self.Kind() {
-        case reflect.Struct  : return (*struct { GoStructType ; GoUncommonType })(unsafe.Pointer(self)).Methods()
-        case reflect.Pointer : return (*struct { GoPtrType    ; GoUncommonType })(unsafe.Pointer(self)).Methods()
-        default              : return nil
+        case reflect.Ptr    : return (*struct { GoPtrType    ; GoUncommonType })(unsafe.Pointer(self)).Methods()
+        case reflect.Struct : return (*struct { GoStructType ; GoUncommonType })(unsafe.Pointer(self)).Methods()
+        default             : return nil
     }
 }
 

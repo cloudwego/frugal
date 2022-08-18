@@ -52,6 +52,10 @@ var allocationOrder = [11]x86_64.Register64 {
     RBX,                        // finally the RBX, we put RBX here to reduce collision with Go register ABI
 }
 
+func Abs(disp int32) *x86_64.MemoryOperand {
+    return x86_64.Abs(disp)
+}
+
 func Ptr(base x86_64.Register, disp int32) *x86_64.MemoryOperand {
     return x86_64.Ptr(base, disp)
 }

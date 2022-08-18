@@ -431,8 +431,9 @@ func (self Fusion) Apply(cfg *CFG) {
             }
         }
 
-        /* perform reorder & TDCE after each round */
-        new(Reorder).Apply(cfg)
+        /* perform TDCE & reorder after each round */
         new(TDCE).Apply(cfg)
+        new(Reorder).Apply(cfg)
+        break
     }
 }

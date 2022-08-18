@@ -51,7 +51,7 @@ var Passes = [...]PassDescriptor {
     { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
     { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
     { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
-    { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
+    // { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
 }
 
 func toFuncType(fn interface{}) reflect.Type {
