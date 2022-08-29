@@ -134,6 +134,10 @@ func (self Mem) String() string {
     }
 }
 
+type IrAMD64_MemOp interface {
+    MemOp() *Mem
+}
+
 func (*IrAMD64_INT)    irnode() {}
 func (*IrAMD64_LEA)    irnode() {}
 func (*IrAMD64_NEG)    irnode() {}
@@ -258,6 +262,34 @@ func (self *IrAMD64_INT) String() string {
 type IrAMD64_LEA struct {
     R Reg
     M Mem
+}
+
+func IrArchAdd3RR(r Reg, x Reg, y Reg) IrNode {
+    return &IrAMD64_LEA {
+        R: r,
+        M: Mem {
+            M: x,
+            I: y,
+            S: 1,
+            D: 0,
+        },
+    }
+}
+
+func IrArchAdd3RI(r Reg, x Reg, y int32) IrNode {
+    return &IrAMD64_LEA {
+        R: r,
+        M: Mem {
+            M: x,
+            I: Rz,
+            S: 1,
+            D: y,
+        },
+    }
+}
+
+func (self *IrAMD64_LEA) MemOp() *Mem {
+    return &self.M
 }
 
 func (self *IrAMD64_LEA) Clone() IrNode {
@@ -448,6 +480,10 @@ type IrAMD64_MOV_load struct {
     N uint8
 }
 
+func (self *IrAMD64_MOV_load) MemOp() *Mem {
+    return &self.M
+}
+
 func (self *IrAMD64_MOV_load) Clone() IrNode {
     r := *self
     return &r
@@ -480,6 +516,10 @@ type IrAMD64_MOV_store_r struct {
     N uint8
 }
 
+func (self *IrAMD64_MOV_store_r) MemOp() *Mem {
+    return &self.M
+}
+
 func (self *IrAMD64_MOV_store_r) Clone() IrNode {
     r := *self
     return &r
@@ -502,6 +542,10 @@ type IrAMD64_MOV_store_i struct {
     N uint8
 }
 
+func (self *IrAMD64_MOV_store_i) MemOp() *Mem {
+    return &self.M
+}
+
 func (self *IrAMD64_MOV_store_i) Clone() IrNode {
     r := *self
     return &r
@@ -520,6 +564,10 @@ func (self *IrAMD64_MOV_store_i) Usages() (r []*Reg) {
 type IrAMD64_MOV_store_p struct {
     P unsafe.Pointer
     M Mem
+}
+
+func (self *IrAMD64_MOV_store_p) MemOp() *Mem {
+    return &self.M
 }
 
 func (self *IrAMD64_MOV_store_p) Clone() IrNode {
@@ -541,6 +589,10 @@ type IrAMD64_MOV_load_be struct {
     R Reg
     M Mem
     N uint8
+}
+
+func (self *IrAMD64_MOV_load_be) MemOp() *Mem {
+    return &self.M
 }
 
 func (self *IrAMD64_MOV_load_be) Clone() IrNode {
@@ -571,6 +623,10 @@ type IrAMD64_MOV_store_be struct {
     R Reg
     M Mem
     N uint8
+}
+
+func (self *IrAMD64_MOV_store_be) MemOp() *Mem {
+    return &self.M
 }
 
 func (self *IrAMD64_MOV_store_be) Clone() IrNode {
@@ -704,6 +760,22 @@ func (self IrAMD64_BinOp) String() string {
     }
 }
 
+func (self IrAMD64_BinOp) IsAdditive() bool {
+    switch self {
+        case IrAMD64_BinAdd : fallthrough
+        case IrAMD64_BinSub : return true
+        default             : return false
+    }
+}
+
+func (self IrAMD64_BinOp) ScaleFactor() int32 {
+    switch self {
+        case IrAMD64_BinAdd : return 1
+        case IrAMD64_BinSub : return -1
+        default             : panic("not an additive operator: " + self.String())
+    }
+}
+
 func (self IrAMD64_CmpOp) String() string {
     switch self {
         case IrAMD64_CmpEq  : return "e"
@@ -791,6 +863,10 @@ type IrAMD64_BinOp_rm struct {
     X  Reg
     Y  Mem
     Op IrAMD64_BinOp
+}
+
+func (self *IrAMD64_BinOp_rm) MemOp() *Mem {
+    return &self.Y
 }
 
 func (self *IrAMD64_BinOp_rm) Clone() IrNode {
@@ -1022,6 +1098,10 @@ type IrAMD64_CMPQ_rm struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_CMPQ_rm) MemOp() *Mem {
+    return &self.Y
+}
+
 func (self *IrAMD64_CMPQ_rm) Clone() IrNode {
     r := *self
     return &r
@@ -1056,6 +1136,10 @@ type IrAMD64_CMPQ_mr struct {
     Y  Reg
     N  uint8
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_CMPQ_mr) MemOp() *Mem {
+    return &self.X
 }
 
 func (self *IrAMD64_CMPQ_mr) Clone() IrNode {
@@ -1094,6 +1178,10 @@ type IrAMD64_CMPQ_mi struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_CMPQ_mi) MemOp() *Mem {
+    return &self.X
+}
+
 func (self *IrAMD64_CMPQ_mi) Clone() IrNode {
     r := *self
     return &r
@@ -1130,6 +1218,10 @@ type IrAMD64_CMPQ_mp struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_CMPQ_mp) MemOp() *Mem {
+    return &self.X
+}
+
 func (self *IrAMD64_CMPQ_mp) Clone() IrNode {
     r := *self
     return &r
@@ -1157,6 +1249,10 @@ type IrAMD64_CMPQ_im struct {
     Y  Mem
     N  uint8
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_CMPQ_im) MemOp() *Mem {
+    return &self.Y
 }
 
 func (self *IrAMD64_CMPQ_im) Clone() IrNode {
@@ -1193,6 +1289,10 @@ type IrAMD64_CMPQ_pm struct {
     X  unsafe.Pointer
     Y  Mem
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_CMPQ_pm) MemOp() *Mem {
+    return &self.Y
 }
 
 func (self *IrAMD64_CMPQ_pm) Clone() IrNode {
@@ -1311,6 +1411,10 @@ type IrAMD64_CALL_mem struct {
     In  []Reg
     Out []Reg
     Abi IrAMD64_ABI
+}
+
+func (self *IrAMD64_CALL_mem) MemOp() *Mem {
+    return &self.Fn
 }
 
 func (self *IrAMD64_CALL_mem) Clone() IrNode {
@@ -1643,6 +1747,10 @@ type IrAMD64_Jcc_rm struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_Jcc_rm) MemOp() *Mem {
+    return &self.Y
+}
+
 func (self *IrAMD64_Jcc_rm) Clone() IrNode {
     r := *self
     return &r
@@ -1685,6 +1793,10 @@ type IrAMD64_Jcc_mr struct {
     To IrBranch
     Ln IrBranch
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_Jcc_mr) MemOp() *Mem {
+    return &self.X
 }
 
 func (self *IrAMD64_Jcc_mr) Clone() IrNode {
@@ -1731,6 +1843,10 @@ type IrAMD64_Jcc_mi struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_Jcc_mi) MemOp() *Mem {
+    return &self.X
+}
+
 func (self *IrAMD64_Jcc_mi) Clone() IrNode {
     r := *self
     return &r
@@ -1773,6 +1889,10 @@ type IrAMD64_Jcc_mp struct {
     To IrBranch
     Ln IrBranch
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_Jcc_mp) MemOp() *Mem {
+    return &self.X
 }
 
 func (self *IrAMD64_Jcc_mp) Clone() IrNode {
@@ -1819,6 +1939,10 @@ type IrAMD64_Jcc_im struct {
     Op IrAMD64_CmpOp
 }
 
+func (self *IrAMD64_Jcc_im) MemOp() *Mem {
+    return &self.Y
+}
+
 func (self *IrAMD64_Jcc_im) Clone() IrNode {
     r := *self
     return &r
@@ -1860,6 +1984,10 @@ type IrAMD64_Jcc_pm struct {
     To IrBranch
     Ln IrBranch
     Op IrAMD64_CmpOp
+}
+
+func (self *IrAMD64_Jcc_pm) MemOp() *Mem {
+    return &self.Y
 }
 
 func (self *IrAMD64_Jcc_pm) Clone() IrNode {

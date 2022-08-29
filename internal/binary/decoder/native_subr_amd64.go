@@ -9,7 +9,7 @@ package decoder
 func __native_entry__() uintptr
 
 var (
-    _subr__do_skip = __native_entry__() + 13
+    _subr__do_skip = __native_entry__() + 16
 )
 
 const (

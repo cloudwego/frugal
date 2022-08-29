@@ -26,14 +26,14 @@ import (
 type _ValueId struct {
     i int
     v IrNode
-    d bool
+    r bool
 }
 
 func mkvid(i int, v IrNode) *_ValueId {
     return &_ValueId {
         i: i,
         v: v,
-        d: false,
+        r: true,
     }
 }
 
@@ -247,15 +247,28 @@ func (Reorder) moveIntrablock(cfg *CFG) {
                     if _, ok = defs[*r]; ok {
                         panic(fmt.Sprintf("reorder: multiple definitions for %s in bb_%d", r, bb.Id))
                     } else {
-                        v.d, defs[*r] = true, v
+                        defs[*r] = v
                     }
                 }
             }
         }
 
-        /* add all the non-definitive instructions */
+        /* find all the root nodes */
         for _, v := range vbuf {
-            if !v.d {
+            if use, ok := v.v.(IrUsages); !ok {
+                v.r = false
+            } else {
+                for _, r := range use.Usages() {
+                    if v, ok = defs[*r]; ok {
+                        v.r = false
+                    }
+                }
+            }
+        }
+
+        /* add all the root instructions */
+        for _, v := range vbuf {
+            if v.r {
                 addval(v, false)
             }
         }

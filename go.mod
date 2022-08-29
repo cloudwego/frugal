@@ -10,9 +10,10 @@ require (
 	github.com/cloudwego/kitex v0.3.2
 	github.com/cloudwego/thriftgo v0.1.2
 	github.com/davecgh/go-spew v1.1.1
-	github.com/klauspost/cpuid/v2 v2.1.0
+	github.com/klauspost/cpuid/v2 v2.1.1
 	github.com/oleiade/lane v1.0.1
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/arch v0.0.0-20220722155209-00200b7164a7
-	golang.org/x/sys v0.0.0-20220817070843-5a390386f1f2 // indirect
+	golang.org/x/arch v0.0.0-20220823144127-ada1728cebaa
+	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
+	gonum.org/v1/gonum v0.11.0
 )

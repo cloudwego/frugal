@@ -54,6 +54,8 @@ func (OperandAlloc) Apply(cfg *CFG) {
                 case *IrAMD64_BinOp_rr: {
                     if p.R == p.X {
                         bb.Ins = append(bb.Ins, v)
+                    } else if p.Op == IrAMD64_BinAdd {
+                        bb.Ins = append(bb.Ins, IrArchAdd3RR(p.R, p.X, p.Y))
                     } else {
                         bb.Ins, p.X = append(bb.Ins, IrArchCopy(p.R, p.X), v), p.R
                     }
@@ -62,6 +64,19 @@ func (OperandAlloc) Apply(cfg *CFG) {
                 /* binary operations, register to immediate */
                 case *IrAMD64_BinOp_ri: {
                     if p.R == p.X || p.Op == IrAMD64_BinMul {
+                        bb.Ins = append(bb.Ins, v)
+                    } else if p.Op == IrAMD64_BinAdd {
+                        bb.Ins = append(bb.Ins, IrArchAdd3RI(p.R, p.X, p.Y))
+                    } else if p.Op == IrAMD64_BinSub {
+                        bb.Ins = append(bb.Ins, IrArchAdd3RI(p.R, p.X, -p.Y))
+                    } else {
+                        bb.Ins, p.X = append(bb.Ins, IrArchCopy(p.R, p.X), v), p.R
+                    }
+                }
+
+                /* binary operations, register to memory */
+                case *IrAMD64_BinOp_rm: {
+                    if p.R == p.X {
                         bb.Ins = append(bb.Ins, v)
                     } else {
                         bb.Ins, p.X = append(bb.Ins, IrArchCopy(p.R, p.X), v), p.R

@@ -18,6 +18,7 @@ package ssa
 
 import (
     `math`
+    `sort`
     `strings`
     `unsafe`
 
@@ -125,4 +126,12 @@ func blockreverse(s []*BasicBlock) {
     for i, j := 0, len(s) - 1; i < j; i, j = i + 1, j - 1 {
         s[i], s[j] = s[j], s[i]
     }
+}
+
+func insertSortedInts(mm []int, v int) []int {
+    i := sort.SearchInts(mm, v)
+    mm = append(mm, 0)
+    copy(mm[i + 1:], mm[i:])
+    mm[i] = v
+    return mm
 }

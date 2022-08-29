@@ -24,9 +24,9 @@ import (
 
 // triggers a compilation error
 const (
-    _ = panic("Unsupported Go version. Supported versions are: 1.15, 1.16, 1.17, 1.18, 1.19")
+    _ = panic("Unsupported Go version. Supported versions are 1.15 ~ 1.19")
 )
 
 func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-    panic("Unsupported Go version. Supported versions are: 1.15, 1.16, 1.17, 1.18, 1.19")
+    panic("Unsupported Go version. Supported versions are 1.15 ~ 1.19")
 }

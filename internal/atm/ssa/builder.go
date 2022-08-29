@@ -30,7 +30,7 @@ var (
 
 func init() {
     _GenericRegs = make([]hir.GenericRegister, 0, len(hir.GenericRegisters))
-    _PointerRegs= make([]hir.PointerRegister, 0, len(hir.PointerRegisters))
+    _PointerRegs = make([]hir.PointerRegister, 0, len(hir.PointerRegisters))
 
     /* extract all generic registers */
     for i := range hir.GenericRegisters {

@@ -71,6 +71,51 @@ func (self Fusion) Apply(cfg *CFG) {
     done := false
     defs := make(map[Reg]IrNode)
 
+    /* leaq {mem}, %r1       ; op {disp}(%r1), %r2             --> op {disp}{mem}, %r2
+     * leaq {off1}(%r0), %r2 ; op {off2}(%r1,%r2), %r3         --> op {off1+off2}(%r1,%r0), %r3
+     * leaq {off1}(%r0), %r1 ; op {off2}(%r1,%r2,{scale}), %r3 --> op {off1+off2}(%r0,%r2,{scale}), %r3
+     * addsub $imm, %r1, %r2 ; op {disp}(%r3,%r2), %r4         --> op {disp+imm}(%r3,%r1), %r4
+     * movabsq $imm, %r1     ; op {disp}(%r0,%r1,{scale}), %r2 --> op {disp+imm*scale}(%r0), %r2 */
+    fusemem := func(m *Mem) {
+        if m.I == Rz {
+            if ins, ok := defs[m.M].(*IrAMD64_LEA); ok {
+                if x := int64(m.D) + int64(ins.M.D); isi32(x) {
+                    m.M = ins.M.M
+                    m.I = ins.M.I
+                    m.S = ins.M.S
+                    m.D = int32(x)
+                    done = false
+                }
+            }
+        } else {
+            if ins, ok := defs[m.M].(*IrAMD64_LEA); ok && ins.M.I == Rz {
+                if x := int64(m.D) + int64(ins.M.D); isi32(x) {
+                    m.M = ins.M.M
+                    m.D = int32(x)
+                    done = false
+                }
+            } else if ins, ok := defs[m.I].(*IrAMD64_LEA); ok && m.S == 1 && ins.M.I == Rz {
+                if x := int64(m.D) + int64(ins.M.D); isi32(x) {
+                    m.I = ins.M.M
+                    m.D = int32(x)
+                    done = false
+                }
+            } else if ins, ok := defs[m.I].(*IrAMD64_BinOp_ri); ok && m.S == 1 && ins.Op.IsAdditive() {
+                if x := int64(m.D) + int64(ins.Y * ins.Op.ScaleFactor()); isi32(x) {
+                    m.I = ins.X
+                    m.D = int32(x)
+                    done = false
+                }
+            } else if ins, ok := defs[m.I].(*IrAMD64_MOV_abs); ok {
+                if x := int64(m.D) + ins.V; isi32(x) {
+                    m.I = Rz
+                    m.D = int32(x)
+                    done = false
+                }
+            }
+        }
+    }
+
     /* retry until no more modifications */
     for !done {
         done = true
@@ -98,42 +143,18 @@ func (self Fusion) Apply(cfg *CFG) {
 
             /* scan all the instructions */
             for i, v := range bb.Ins {
-                var x int64
+                var m IrAMD64_MemOp
                 var d IrDefinitions
+
+                /* fuse memory addresses in instructions */
+                if m, ok = v.(IrAMD64_MemOp); ok {
+                    fusemem(m.MemOp())
+                }
 
                 /* fuse instructions if possible */
                 switch p := v.(type) {
                     default: {
                         break
-                    }
-
-                    /* movabsq $imm, %r1     ; leaq (%r0,%r1), %r2       --> leaq $imm(%r0), %r2
-                     * leaq {mem}, %r0       ; leaq {off}(%r0), %r1      --> leaq {mem+off}, %r1
-                     * leaq {off1}(%r0), %r1 ; leaq {off2}(%r1,%r2), %r3 --> leaq {off1+off2}(%r0,%r2), %r3 */
-                    case *IrAMD64_LEA: {
-                        if p.M.I == Rz {
-                            if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok {
-                                if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                    p.M = ins.M
-                                    done = false
-                                    p.M.D = int32(x)
-                                }
-                            }
-                        } else {
-                            if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && ins.M.I == Rz {
-                                if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                    done = false
-                                    p.M.M = ins.M.M
-                                    p.M.D = int32(x)
-                                }
-                            } else if ins, ok := defs[p.M.I].(*IrAMD64_MOV_abs); ok {
-                                if x = int64(p.M.D) + ins.V; isi32(x) {
-                                    done = false
-                                    p.M.I = Rz
-                                    p.M.D = int32(x)
-                                }
-                            }
-                        }
                     }
 
                     /* movx {mem}, %r0; bswapx %r0, %r1 --> movbex {mem}, %r1 */
@@ -144,29 +165,9 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
 
-                    /* leaq {mem}, %r0; movx (%r0), %r1                      --> movx {mem}, %r1
-                     * movq {i32}, %r0; movx {disp}({base},%r0,{scale}), %r1 --> movx {disp}+{i32}*{scale}({base}), %r1 */
-                    case *IrAMD64_MOV_load: {
-                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
-                        } else if ins, ok := defs[p.M.I].(*IrAMD64_MOV_abs); ok && p.M.I != Rz {
-                            if x = int64(p.M.D) + ins.V * int64(p.M.S); isi32(x) {
-                                done = false
-                                p.M.S = 1
-                                p.M.I = Rz
-                                p.M.D = int32(x)
-                            }
-                        }
-                    }
-
                     /* movq {i32}, %r0; movx %r0, {mem} --> movx {i32}, {mem}
                      * movq {p32}, %r0; movx %r0, {mem} --> movx {p32}, {mem}
-                     * bswapx %r0, %r1; movx %r1, {mm1} --> movbex %r0, {mm1}
-                     * leaq {mem}, %r0; movx %r1, (%r0) --> movx %r1, {mem} */
+                     * bswapx %r0, %r1; movx %r1, {mm1} --> movbex %r0, {mm1} */
                     case *IrAMD64_MOV_store_r: {
                         if ins, ok := defs[p.R].(*IrAMD64_MOV_abs); ok && isi32(ins.V) {
                             done = false
@@ -177,56 +178,6 @@ func (self Fusion) Apply(cfg *CFG) {
                         } else if ins, ok := defs[p.R].(*IrAMD64_BSWAP); ok && p.N != 1 && cpu.HasMOVBE {
                             done = false
                             bb.Ins[i] = &IrAMD64_MOV_store_be { R: ins.V, M: p.M, N: p.N }
-                        } else if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
-                        }
-                    }
-
-                    /* leaq {mem}, %r0; movx {imm}, (%r0) --> movx {imm}, {mem} */
-                    case *IrAMD64_MOV_store_i: {
-                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
-                        }
-                    }
-
-                    /* leaq {mem}, %r0; movx {ptr}, (%r0) --> movx {ptr}, {mem} */
-                    case *IrAMD64_MOV_store_p: {
-                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
-                        }
-                    }
-
-                    /* leaq {mem}, %r0; movbex (%r0), %r1 --> movbex {mem}, %r1 */
-                    case *IrAMD64_MOV_load_be: {
-                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
-                        }
-                    }
-
-                    /* leaq {mem}, %r0; movbex %r1, (%r0) --> movbex %r1, {mem} */
-                    case *IrAMD64_MOV_store_be: {
-                        if ins, ok := defs[p.M.M].(*IrAMD64_LEA); ok && p.M.I == Rz {
-                            if x = int64(p.M.D) + int64(ins.M.D); isi32(x) {
-                                p.M = ins.M
-                                done = false
-                                p.M.D = int32(x)
-                            }
                         }
                     }
 
@@ -239,18 +190,6 @@ func (self Fusion) Apply(cfg *CFG) {
                         } else if ins, ok := defs[p.Y].(*IrAMD64_MOV_load); ok && ins.N == abi.PtrSize {
                             done = false
                             bb.Ins[i] = &IrAMD64_BinOp_rm { R: p.R, X: p.X, Y: ins.M, Op: p.Op }
-                        }
-                    }
-
-                    /* movq {i32}, %r0; binop {disp}({base},%r0,{scale}), %r1 --> binop {disp}+{i32}*{scale}({base}), %r1 */
-                    case *IrAMD64_BinOp_rm: {
-                        if ins, ok := defs[p.Y.I].(*IrAMD64_MOV_abs); ok && p.Y.I != Rz {
-                            if x = int64(p.Y.D) + ins.V * int64(p.Y.S); isi32(x) {
-                                done = false
-                                p.Y.S = 1
-                                p.Y.I = Rz
-                                p.Y.D = int32(x)
-                            }
                         }
                     }
 
@@ -325,6 +264,11 @@ func (self Fusion) Apply(cfg *CFG) {
                         }
                     }
                 }
+            }
+
+            /* fuse memory operation in terminators */
+            if m, ok := bb.Term.(IrAMD64_MemOp); ok {
+                fusemem(m.MemOp())
             }
 
             /* fuse terminators if possible */
@@ -434,6 +378,5 @@ func (self Fusion) Apply(cfg *CFG) {
         /* perform TDCE & reorder after each round */
         new(TDCE).Apply(cfg)
         new(Reorder).Apply(cfg)
-        break
     }
 }
