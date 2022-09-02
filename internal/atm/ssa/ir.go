@@ -254,12 +254,14 @@ func (*IrBitTestSet)   irnode() {}
 func (*IrCallFunc)     irnode() {}
 func (*IrCallNative)   irnode() {}
 func (*IrCallMethod)   irnode() {}
+func (*IrClobberList)  irnode() {}
 func (*IrWriteBarrier) irnode() {}
 
 func (*IrStore)        irimpure() {}
 func (*IrCallFunc)     irimpure() {}
 func (*IrCallNative)   irimpure() {}
 func (*IrCallMethod)   irimpure() {}
+func (*IrClobberList)  irimpure() {}
 func (*IrWriteBarrier) irimpure() {}
 
 func (*IrLoad)         irimmovable() {}
@@ -267,16 +269,12 @@ func (*IrStore)        irimmovable() {}
 func (*IrAlias)        irimmovable() {}
 func (*IrEntry)        irimmovable() {}
 func (*IrLoadArg)      irimmovable() {}
+func (*IrClobberList)  irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
 
 type IrUsages interface {
     IrNode
     Usages() []*Reg
-}
-
-type IrClobbers interface {
-    IrNode
-    Clobbers() []*Reg
 }
 
 type IrDefinitions interface {
@@ -996,6 +994,25 @@ func (self *IrCallMethod) Usages() []*Reg {
 
 func (self *IrCallMethod) Definitions() []*Reg {
     return regsliceref(self.Out)
+}
+
+type IrClobberList struct {
+    R []Reg
+}
+
+func (self *IrClobberList) Clone() IrNode {
+    r := new(IrClobberList)
+    r.R = make([]Reg, len(self.R))
+    copy(r.R, self.R)
+    return r
+}
+
+func (self *IrClobberList) String() string {
+    return "drop " + regslicerepr(self.R)
+}
+
+func (self *IrClobberList) Usages() []*Reg {
+    return regsliceref(self.R)
 }
 
 type IrWriteBarrier struct {

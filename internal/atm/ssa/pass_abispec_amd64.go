@@ -22,6 +22,35 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
+var _AbiClobbersC = []x86_64.Register64 {
+    x86_64.RAX,
+    x86_64.RCX,
+    x86_64.RDX,
+    x86_64.RSI,
+    x86_64.RDI,
+    x86_64.R8,
+    x86_64.R9,
+    x86_64.R10,
+    x86_64.R11,
+}
+
+var _AbiClobbersGo = []x86_64.Register64 {
+    x86_64.RAX,
+    x86_64.RCX,
+    x86_64.RDX,
+    x86_64.RBX,
+    x86_64.RSI,
+    x86_64.RDI,
+    x86_64.R8,
+    x86_64.R9,
+    x86_64.R10,
+    x86_64.R11,
+    x86_64.R12,
+    x86_64.R13,
+    x86_64.R14,
+    x86_64.R15,
+}
+
 var _NativeArgsOrder = [...]x86_64.Register64 {
     x86_64.RDI,
     x86_64.RSI,
@@ -43,6 +72,13 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
     /* register buffer */
     argv := make([]Reg, 0, argc)
     retv := make([]Reg, 0, retc)
+    clob := make([]Reg, 0, len(_AbiClobbersGo))
+    rmap := make(map[x86_64.Register64]bool, len(_AbiClobbersGo))
+
+    /* add all arch registers */
+    for _, r := range _AbiClobbersGo {
+        rmap[r] = true
+    }
 
     /* store each argument */
     for i, r := range p.In {
@@ -59,16 +95,30 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
     for i, r := range p.Out {
         if v := p.Func.Rets[i]; v.InRegister && r.Kind() != K_zero {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
+            delete(rmap, v.Reg)
+        }
+    }
+
+    /* exclude return values from clobbering list (they are implied) */
+    for _, r := range _AbiClobbersGo {
+        if rmap[r] {
+            clob = append(clob, IrSetArch(cfg.CreateRegister(false), r))
         }
     }
 
     /* add the call instruction */
-    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
-        Fn  : p.R,
-        In  : argv,
-        Out : retv,
-        Abi : IrAbiGo,
-    })
+    bb.Ins = append(
+        bb.Ins,
+        &IrAMD64_CALL_reg {
+            Fn   : p.R,
+            In   : argv,
+            Out  : retv,
+            Clob : clob,
+        },
+        &IrClobberList {
+            R: regsliceclone(clob),
+        },
+    )
 
     /* load each return value */
     for i, r := range p.Out {
@@ -85,11 +135,20 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
 func (ABILowering) abiCallNative(cfg *CFG, bb *BasicBlock, p *IrCallNative) {
     retv := Rz
     argc := len(p.In)
-    argv := make([]Reg, 0, argc)
 
     /* check for argument count */
     if argc > len(_NativeArgsOrder) {
         panic("abi: too many native arguments: " + p.String())
+    }
+
+    /* register buffers */
+    argv := make([]Reg, 0, argc)
+    clob := make([]Reg, 0, len(_AbiClobbersC))
+    rmap := make(map[x86_64.Register64]bool, len(_AbiClobbersC))
+
+    /* add all arch registers */
+    for _, r := range _AbiClobbersC {
+        rmap[r] = true
     }
 
     /* convert each argument */
@@ -101,15 +160,29 @@ func (ABILowering) abiCallNative(cfg *CFG, bb *BasicBlock, p *IrCallNative) {
     /* allocate register for return value if needed */
     if p.Out.Kind() != K_zero {
         retv = IrSetArch(cfg.CreateRegister(p.Out.Ptr()), x86_64.RAX)
+        delete(rmap, x86_64.RAX)
+    }
+
+    /* exclude return values from clobbering list (they are implied) */
+    for _, r := range _AbiClobbersC {
+        if rmap[r] {
+            clob = append(clob, IrSetArch(cfg.CreateRegister(false), r))
+        }
     }
 
     /* add the call instruction */
-    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
-        Fn  : p.R,
-        In  : argv,
-        Out : []Reg { retv },
-        Abi : IrAbiC,
-    })
+    bb.Ins = append(
+        bb.Ins,
+        &IrAMD64_CALL_reg {
+            Fn   : p.R,
+            In   : argv,
+            Out  : []Reg { retv },
+            Clob : clob,
+        },
+        &IrClobberList {
+            R: regsliceclone(clob),
+        },
+    )
 
     /* copy the return value if needed */
     if p.Out.Kind() != K_zero {
@@ -129,6 +202,13 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     /* register buffer */
     argv := make([]Reg, 0, argc)
     retv := make([]Reg, 0, retc)
+    clob := make([]Reg, 0, len(_AbiClobbersGo))
+    rmap := make(map[x86_64.Register64]bool, len(_AbiClobbersGo))
+
+    /* add all arch registers */
+    for _, r := range _AbiClobbersGo {
+        rmap[r] = true
+    }
 
     /* store the receiver */
     if rx := p.Func.Args[0]; !rx.InRegister {
@@ -154,16 +234,30 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     for i, r := range p.Out {
         if v := p.Func.Rets[i]; v.InRegister && r.Kind() != K_zero {
             retv = append(retv, IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg))
+            delete(rmap, v.Reg)
+        }
+    }
+
+    /* exclude return values from clobbering list (they are implied) */
+    for _, r := range _AbiClobbersGo {
+        if rmap[r] {
+            clob = append(clob, IrSetArch(cfg.CreateRegister(false), r))
         }
     }
 
     /* add the call instruction */
-    bb.Ins = append(bb.Ins, &IrAMD64_CALL_mem {
-        Fn  : Ptr(p.T, int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize),
-        In  : argv,
-        Out : retv,
-        Abi : IrAbiGo,
-    })
+    bb.Ins = append(
+        bb.Ins,
+        &IrAMD64_CALL_mem {
+            Fn   : Ptr(p.T, int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize),
+            In   : argv,
+            Out  : retv,
+            Clob : clob,
+        },
+        &IrClobberList {
+            R: regsliceclone(clob),
+        },
+    )
 
     /* load each return value */
     for i, r := range p.Out {

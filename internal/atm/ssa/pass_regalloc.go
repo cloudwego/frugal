@@ -18,15 +18,15 @@ package ssa
 
 import (
     `fmt`
-    `io/ioutil`
     `math`
+    `os`
     `sort`
     `strings`
 
-    `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/davecgh/go-spew/spew`
-    `github.com/oleiade/lane`
+    `gonum.org/v1/gonum/graph/encoding/dot`
+    `gonum.org/v1/gonum/graph/simple`
 )
 
 const (
@@ -194,11 +194,6 @@ func (self *_RegTab) remove(r Reg) (rs _RegSet) {
     return
 }
 
-type _RegNode struct {
-    rr Reg
-    rs _RegSet
-}
-
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
@@ -282,9 +277,7 @@ func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in
 func (self RegAlloc) Apply(cfg *CFG) {
     next := true
     rpool := mkregtab()
-    adjtab := mkregtab()
-    ralloc := lane.NewStack()
-    ravail := make([]Reg, 0, len(ArchRegs))
+    rarch := make([]Reg, 0, len(ArchRegs))
     livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
@@ -309,8 +302,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* calculate allocatable registers */
     for _, r := range ArchRegs {
-        if _, ok := abi.ABI.Reserved()[r]; !ok && !ArchRegReserved[r] {
-            ravail = append(ravail, IrSetArch(Rz, r))
+        if !ArchRegReserved[r] {
+            rarch = append(rarch, IrSetArch(Rz, r))
         }
     }
 
@@ -336,28 +329,30 @@ func (self RegAlloc) Apply(cfg *CFG) {
     for next {
         next = false
         rpool.reset()
-        adjtab.reset()
         rt.MapClear(livein)
         rt.MapClear(liveout)
         rt.MapClear(liveset)
 
-        /* clear the allocation stack */
-        for !ralloc.Empty() {
-            ralloc.Pop()
-        }
+        /* Phase 1: Calculate live ranges */
+        lr := self.livein(rpool, liveset, cfg.Root, livein, liveout)
+        rig := simple.NewUndirectedGraph()
 
-        /* Phase 1: Calculate live ranges with sanity check: no registers live at the entry point */
-        if lr := self.livein(rpool, liveset, cfg.Root, livein, liveout); len(lr) != 0 {
+        /* sanity check: no registers live at the entry point */
+        if len(lr) != 0 {
             panic("regalloc: live registers at entry: " + lr.String())
         }
 
         /* Phase 2: Build register interference graph */
         for _, rs := range liveset {
-            for r0 := range rs {
-                for r1 := range rs {
-                    if r0 != r1 {
-                        adjtab.relate(r0, r1)
-                    }
+            rr := rs.toslice()
+            nr := len(rr)
+
+            /* create every edge */
+            for i := 0; i < nr - 1; i++ {
+                for j := i + 1; j < nr; j++ {
+                    p, _ := rig.NodeWithID(int64(rr[i]))
+                    q, _ := rig.NodeWithID(int64(rr[j]))
+                    rig.SetEdge(rig.NewEdge(p, q))
                 }
             }
         }
@@ -375,13 +370,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 }
 
                 /* make sure Y is the node with a lower degree */
-                if len(adjtab.m[rx]) < len(adjtab.m[ry]) {
+                if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
                     rx, ry = ry, rx
                 }
 
                 /* determain whether it's safe to coalesce using George's heuristic */
-                for t := range adjtab.m[ry] {
-                    if t == rx || len(ravail) <= len(adjtab.m[t]) && !adjtab.m[t].contains(rx) {
+                for p := rig.From(int64(ry)); p.Next(); {
+                    if t := p.Node().ID(); t == int64(rx) || len(rarch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
                         ok = false
                         break
                     }
@@ -446,213 +441,18 @@ func (self RegAlloc) Apply(cfg *CFG) {
             continue
         }
 
-        /* Phase 3: Attempt to color each node */
-        for len(adjtab.m) != 0 {
-            rr := Rz
-            dr := math.MaxUint32
-
-            /* find a node with the minimal degree */
-            for _, p := range adjtab.pairs() {
-                if len(p.rs) < dr {
-                    rr = p.rr
-                    dr = len(p.rs)
-                }
-            }
-
-            /* graph is not colorable with len(ravail) colors */
-            if dr > len(ravail) {
-                break
-            }
-
-            /* add to allocation stack */
-            ralloc.Push(_RegNode {
-                rr: rr,
-                rs: adjtab.remove(rr),
-            })
-
-            /* erase from adjacency table */
-            for _, v := range adjtab.m {
-                v.remove(rr)
-            }
-        }
-
-        /* check if the graph can be colored */
-        if len(adjtab.m) == 0 {
-            break
-        }
-
-        // TODO: implement spilling
-        drawrig(adjtab.m)
+        // TODO: remove debug code
         spew.Config.SortKeys = true
         spew.Config.DisablePointerMethods = true
-        spew.Dump(adjtab.m)
-        panic("regalloc: not implemented: spills")
-    }
-
-    /* sanity check */
-    for r := range adjtab.m {
-        panic("regalloc: unallocatable: " + r.String())
-    }
-
-    /* Phase 4: Assign each register with a color */
-    regs := make([]Reg, len(ravail))
-    colors := make(map[Reg]int, ralloc.Size())
-    calloc := make(map[int]struct{}, len(ravail))
-
-    /* allocate the registers */
-    for !ralloc.Empty() {
-        r := math.MaxUint32
-        n := ralloc.Pop().(_RegNode)
-
-        /* default to have access to all colors */
-        for i := range ravail {
-            calloc[i] = struct{}{}
+        spew.Dump(liveset)
+        buf, err := dot.Marshal(rig, "RIG", "", "  ")
+        if err != nil {
+            panic(err)
         }
-
-        /* remove colors that already allocated to neighbors */
-        for s := range n.rs {
-            if cc, ok := colors[s]; !ok {
-                panic(fmt.Sprintf("regalloc: allocation out of order: %s < %s", n.rr, s))
-            } else {
-                delete(calloc, cc)
-            }
-        }
-
-        /* should have at least one color available */
-        if len(calloc) == 0 {
-            panic("regalloc: not allocatable: " + n.rr.String())
-        }
-
-        /* find the lowest color index */
-        for cc := range calloc {
-            if r > cc {
-                r = cc
-            }
-        }
-
-        /* allocate the color */
-        colors[n.rr] = r
-        rt.MapClear(calloc)
-    }
-
-    /* allocate pre-colored registers */
-    for r, i := range colors {
-        if r.Kind() == K_arch {
-            ok := false
-            rbuf := ravail[:0]
-
-            /* sanity check */
-            if regs[i] != 0 {
-                panic("regalloc: pre-color confliction: " + r.String())
-            }
-
-            /* filter out the register */
-            for _, v := range ravail {
-                if v == r {
-                    ok = true
-                } else {
-                    rbuf = append(rbuf, v)
-                }
-            }
-
-            /* replace the buffer */
-            if ravail = rbuf; ok {
-                regs[i] = r
-            } else {
-                panic("regalloc: pre-color register does not exist: " + r.String())
-            }
+        err = os.WriteFile("/tmp/rig.gv", buf, 0644)
+        if err != nil {
+            panic(err)
         }
     }
-
-    /* allocate the remaining registers */
-    for r, i := range colors {
-        if regs[i] == 0 && r.Kind() != K_arch {
-            if len(ravail) == 0 {
-                panic("regalloc: no available registers: " + r.String())
-            } else {
-                regs[i], ravail = ravail[0], ravail[1:]
-            }
-        }
-    }
-
-    /* register replacement routine */
-    replacereg := func(rr []*Reg) {
-        for _, r := range rr {
-            if i, ok := colors[*r]; !ok {
-                panic("regalloc: unallocated register: " + r.String())
-            } else if regs[i] == 0 {
-                panic("regalloc: unallocated register index: " + r.String())
-            } else {
-                *r = regs[i]
-            }
-        }
-    }
-
-    /* Phase 5: Replace all register references */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        var ok bool
-        var use IrUsages
-        var def IrDefinitions
-
-        /* scan each instruction */
-        for _, v := range bb.Ins {
-            if use, ok = v.(IrUsages)      ; ok { replacereg(use.Usages()) }
-            if def, ok = v.(IrDefinitions) ; ok { replacereg(def.Definitions()) }
-        }
-
-        /* scan the terminator */
-        if use, ok = bb.Term.(IrUsages); ok {
-            replacereg(use.Usages())
-        }
-    })
 }
 
-func drawrig(adjtab map[Reg]_RegSet) {
-    buf := []string {
-        "graph RIG {",
-        `    xdotversion = "15"`,
-        `    layout = "circo"`,
-        `    graph [ fontname = "monospace" ]`,
-        `    node [ fontname = "monospace" fontsize = "16" shape = "circle" ]`,
-        `    edge [ fontname = "monospace" ]`,
-    }
-    adjmat := map[[2]Reg]struct{}{}
-    for r, s := range adjtab {
-        for t := range s {
-            adjmat[[2]Reg { r, t }] = struct{}{}
-        }
-    }
-    rr := make([]Reg, 0, len(adjtab))
-    ee := make([][2]Reg, 0, len(adjmat))
-    edge := make(map[[2]Reg]bool)
-    for r := range adjtab {
-        rr = append(rr, r)
-    }
-    for p := range adjmat {
-        ee = append(ee, p)
-    }
-    sort.Slice(rr, func(i, j int) bool {
-        return rr[i] < rr[j]
-    })
-    sort.Slice(ee, func(i, j int) bool {
-        return ee[i][0] < ee[j][0] || (ee[i][1] < ee[j][1] && ee[i][0] == ee[j][0])
-    })
-    regid := func(r Reg) string {
-        return fmt.Sprintf("r%d_%d_%d", r.Kind(), r.Name(), r.Index())
-    }
-    for _, r := range rr {
-        buf = append(buf, fmt.Sprintf(`    %s [ label = "%s\nd=%d" ]`, regid(r), r, len(adjtab[r])))
-    }
-    for _, p := range ee {
-        if edge[p] || edge[[2]Reg { p[1], p[0] }] {
-            continue
-        }
-        edge[p] = true
-        buf = append(buf, fmt.Sprintf(`    %s -- %s`, regid(p[0]), regid(p[1])))
-    }
-    buf = append(buf, "}")
-    err := ioutil.WriteFile("/tmp/rig.gv", []byte(strings.Join(buf, "\n")), 0644)
-    if err != nil {
-        panic(err)
-    }
-}
