@@ -264,30 +264,6 @@ type IrAMD64_LEA struct {
     M Mem
 }
 
-func IrArchAdd3RR(r Reg, x Reg, y Reg) IrNode {
-    return &IrAMD64_LEA {
-        R: r,
-        M: Mem {
-            M: x,
-            I: y,
-            S: 1,
-            D: 0,
-        },
-    }
-}
-
-func IrArchAdd3RI(r Reg, x Reg, y int32) IrNode {
-    return &IrAMD64_LEA {
-        R: r,
-        M: Mem {
-            M: x,
-            I: Rz,
-            S: 1,
-            D: y,
-        },
-    }
-}
-
 func (self *IrAMD64_LEA) MemOp() *Mem {
     return &self.M
 }
@@ -453,7 +429,7 @@ func IrArchTryIntoCopy(v IrNode) (Reg, Reg, bool) {
     if p, ok := v.(*IrAMD64_MOV_reg); ok {
         return p.R, p.V, true
     } else {
-        return 0, 0, false
+        return IrTryIntoCopy(v)
     }
 }
 

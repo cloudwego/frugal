@@ -848,6 +848,18 @@ func IrCopy(r Reg, v Reg) IrNode {
     }
 }
 
+func IrTryIntoCopy(v IrNode) (Reg, Reg, bool) {
+    if p, ok := v.(*IrAlias); ok {
+        return p.R, p.V, true
+    } else if p, ok := v.(*IrLEA); ok && p.Off == Rz {
+        return p.R, p.Mem, true
+    } else if p, ok := v.(*IrBinaryExpr); ok && p.Y == Rz && p.Op == IrOpAdd {
+        return p.R, p.X, true
+    } else {
+        return 0, 0, false
+    }
+}
+
 func (self *IrBinaryExpr) Clone() IrNode {
     r := *self
     return &r
@@ -998,6 +1010,12 @@ func (self *IrCallMethod) Definitions() []*Reg {
 
 type IrClobberList struct {
     R []Reg
+}
+
+func IrMarkClobber(r ...Reg) *IrClobberList {
+    return &IrClobberList {
+        R: regsliceclone(r),
+    }
 }
 
 func (self *IrClobberList) Clone() IrNode {

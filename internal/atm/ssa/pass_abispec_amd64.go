@@ -107,18 +107,17 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
     }
 
     /* add the call instruction */
-    bb.Ins = append(
-        bb.Ins,
-        &IrAMD64_CALL_reg {
-            Fn   : p.R,
-            In   : argv,
-            Out  : retv,
-            Clob : clob,
-        },
-        &IrClobberList {
-            R: regsliceclone(clob),
-        },
-    )
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
+        Fn   : p.R,
+        In   : argv,
+        Out  : retv,
+        Clob : clob,
+    })
+
+    /* declare clobber list if any */
+    if len(clob) != 0 {
+        bb.Ins = append(bb.Ins, IrMarkClobber(clob...))
+    }
 
     /* load each return value */
     for i, r := range p.Out {
@@ -171,18 +170,17 @@ func (ABILowering) abiCallNative(cfg *CFG, bb *BasicBlock, p *IrCallNative) {
     }
 
     /* add the call instruction */
-    bb.Ins = append(
-        bb.Ins,
-        &IrAMD64_CALL_reg {
-            Fn   : p.R,
-            In   : argv,
-            Out  : []Reg { retv },
-            Clob : clob,
-        },
-        &IrClobberList {
-            R: regsliceclone(clob),
-        },
-    )
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_reg {
+        Fn   : p.R,
+        In   : argv,
+        Out  : []Reg { retv },
+        Clob : clob,
+    })
+
+    /* declare clobber list if any */
+    if len(clob) != 0 {
+        bb.Ins = append(bb.Ins, IrMarkClobber(clob...))
+    }
 
     /* copy the return value if needed */
     if p.Out.Kind() != K_zero {
@@ -246,18 +244,17 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     }
 
     /* add the call instruction */
-    bb.Ins = append(
-        bb.Ins,
-        &IrAMD64_CALL_mem {
-            Fn   : Ptr(p.T, int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize),
-            In   : argv,
-            Out  : retv,
-            Clob : clob,
-        },
-        &IrClobberList {
-            R: regsliceclone(clob),
-        },
-    )
+    bb.Ins = append(bb.Ins, &IrAMD64_CALL_mem {
+        Fn   : Ptr(p.T, int32(rt.GoItabFuncBase) + int32(p.Slot) * abi.PtrSize),
+        In   : argv,
+        Out  : retv,
+        Clob : clob,
+    })
+
+    /* declare clobber list if any */
+    if len(clob) != 0 {
+        bb.Ins = append(bb.Ins, IrMarkClobber(clob...))
+    }
 
     /* load each return value */
     for i, r := range p.Out {

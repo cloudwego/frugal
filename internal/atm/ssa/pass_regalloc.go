@@ -19,13 +19,13 @@ package ssa
 import (
     `fmt`
     `math`
-    `os`
     `sort`
     `strings`
+    `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/davecgh/go-spew/spew`
-    `gonum.org/v1/gonum/graph/encoding/dot`
+    `gonum.org/v1/gonum/graph/coloring`
     `gonum.org/v1/gonum/graph/simple`
 )
 
@@ -275,9 +275,14 @@ func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in
 }
 
 func (self RegAlloc) Apply(cfg *CFG) {
+    var k int
+    var colors map[int64]int
+
+    /* reusable state */
     next := true
-    rpool := mkregtab()
-    rarch := make([]Reg, 0, len(ArchRegs))
+    pool := mkregtab()
+    arch := make([]Reg, 0, len(ArchRegs))
+    idmap := make(map[int]Reg)
     livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
@@ -303,7 +308,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* calculate allocatable registers */
     for _, r := range ArchRegs {
         if !ArchRegReserved[r] {
-            rarch = append(rarch, IrSetArch(Rz, r))
+            arch = append(arch, IrSetArch(Rz, r))
         }
     }
 
@@ -328,13 +333,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* loop until no more retries */
     for next {
         next = false
-        rpool.reset()
+        pool.reset()
         rt.MapClear(livein)
         rt.MapClear(liveout)
         rt.MapClear(liveset)
 
         /* Phase 1: Calculate live ranges */
-        lr := self.livein(rpool, liveset, cfg.Root, livein, liveout)
+        lr := self.livein(pool, liveset, cfg.Root, livein, liveout)
         rig := simple.NewUndirectedGraph()
 
         /* sanity check: no registers live at the entry point */
@@ -376,7 +381,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
                 /* determain whether it's safe to coalesce using George's heuristic */
                 for p := rig.From(int64(ry)); p.Next(); {
-                    if t := p.Node().ID(); t == int64(rx) || len(rarch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
+                    if t := p.Node().ID(); t == int64(rx) || len(arch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
                         ok = false
                         break
                     }
@@ -441,18 +446,96 @@ func (self RegAlloc) Apply(cfg *CFG) {
             continue
         }
 
-        // TODO: remove debug code
-        spew.Config.SortKeys = true
-        spew.Config.DisablePointerMethods = true
-        spew.Dump(liveset)
-        buf, err := dot.Marshal(rig, "RIG", "", "  ")
-        if err != nil {
-            panic(err)
+        /* Phase 4: Check if the RIG is len(arch)-colorable, and color the graph if possible */
+        if k, colors = coloring.RecursiveLargestFirst(rig); k <= len(arch) {
+            break
         }
-        err = os.WriteFile("/tmp/rig.gv", buf, 0644)
-        if err != nil {
-            panic(err)
+
+        /* Phase 5: Evaluate spilling cost, and spill the cheapest register */
+        // TODO: this
+        panic("regalloc: not implemented: spill")
+    }
+
+    /* sanity check */
+    if k > len(arch) {
+        panic(fmt.Sprintf("regalloc: more colors than available: %d > %d", k, len(arch)))
+    }
+
+    // TODO: remove debug code
+    cbuf := make([]struct{r Reg; c int}, 0, len(colors))
+    nbuf := make([]struct{c int; r []int64}, 0, len(colors))
+    for ci, r := range coloring.Sets(colors) { nbuf = append(nbuf, struct{c int; r []int64}{ci, r}) }
+    for ri, c := range colors { cbuf = append(cbuf, struct{r Reg; c int}{Reg(ri), c}) }
+    sort.Slice(cbuf, func(i, j int) bool { return cbuf[i].r < cbuf[j].r })
+    sort.Slice(nbuf, func(i, j int) bool { return nbuf[i].c < nbuf[j].c })
+    println(k)
+    for _, v := range cbuf {
+        println(v.r.String(), "=", v.c)
+    }
+    for _, v := range nbuf {
+        println(v.c, "=", regslicerepr(*(*[]Reg)(unsafe.Pointer(&v.r))))
+    }
+
+    /* assign IDs to precolored registers */
+    for ri, id := range colors {
+        if r := Reg(ri); r.Kind() == K_arch {
+            if _, ok := idmap[id]; ok {
+                panic("regalloc: confliction of arch-specific register: " + r.String())
+            } else {
+                arch, idmap[id] = regsliceremove(arch, r), r
+            }
         }
     }
-}
 
+    /* assign remaining registers */
+    for ri, id := range colors {
+        if r := Reg(ri); r.Kind() != K_arch {
+            if _, ok := idmap[id]; !ok {
+                arch, idmap[id] = arch[1:], arch[0]
+            }
+        }
+    }
+
+    // TODO: remove debug code
+    spew.Config.SortKeys = true
+    spew.Config.DisablePointerMethods = true
+    spew.Dump(idmap)
+
+    /* register remapping routine */
+    remapregs := func(rr []*Reg) {
+        for _, r := range rr {
+            if r.Kind() != K_zero {
+                if id, ok := colors[int64(*r)]; !ok {
+                    panic("regalloc: uncolored register: " + r.String())
+                } else if rv, ok := idmap[id]; !ok {
+                    panic("regalloc: unmapped register: " + r.String())
+                } else {
+                    *r = rv
+                }
+            }
+        }
+    }
+
+    /* Phase 6: Remap all the registers */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var ok bool
+        var use IrUsages
+        var def IrDefinitions
+
+        /* should not contain any Phi nodes */
+        if len(bb.Phi) != 0 {
+            panic(fmt.Sprintf("regalloc: unexpecte Phi node in bb_%d", bb.Id))
+        }
+
+        /* replace every instruction */
+        for _, v := range bb.Ins {
+            if use, ok = v.(IrUsages)     ; ok { remapregs(use.Usages()) }
+            if def, ok = v.(IrDefinitions); ok { remapregs(def.Definitions()) }
+        }
+
+        /* remap the terminator */
+        if use, ok = bb.Term.(IrUsages); ok {
+            remapregs(use.Usages())
+        }
+    })
+}

@@ -122,6 +122,12 @@ func regsliceclone(v []Reg) (r []Reg) {
     return
 }
 
+func regsliceremove(v []Reg, x Reg) (r []Reg) {
+    r = v[:0]
+    for _, p := range v { if p != x { r = append(r, p) } }
+    return
+}
+
 func blockreverse(s []*BasicBlock) {
     for i, j := 0, len(s) - 1; i < j; i, j = i + 1, j - 1 {
         s[i], s[j] = s[j], s[i]
