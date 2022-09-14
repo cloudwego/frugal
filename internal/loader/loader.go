@@ -19,10 +19,15 @@ package loader
 import (
     `fmt`
     `os`
+    `sync/atomic`
     `syscall`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
+)
+
+const (
+    MAP_BASE = 0x7ff00000000
 )
 
 const (
@@ -31,8 +36,16 @@ const (
     _RW = syscall.PROT_READ | syscall.PROT_WRITE
 )
 
-type Loader   []byte
-type Function unsafe.Pointer
+type (
+    Loader   []byte
+    Function unsafe.Pointer
+)
+
+var (
+    FnCount  uint32
+    LoadSize uintptr
+    LoadBase uintptr = MAP_BASE
+)
 
 func mkptr(m uintptr) unsafe.Pointer {
     return *(*unsafe.Pointer)(unsafe.Pointer(&m))
@@ -49,9 +62,10 @@ func (self Loader) Load(fn string, frame rt.Frame) (f Function) {
     /* align the size to pages */
     nf := uintptr(len(self))
     nb := alignUp(nf, os.Getpagesize())
+    fp := atomic.AddUintptr(&LoadBase, nb) - nb
 
     /* allocate a block of memory */
-    if mm, _, er = syscall.Syscall6(syscall.SYS_MMAP, 0, nb, _RW, _AP, 0, 0); er != 0 {
+    if mm, _, er = syscall.Syscall6(syscall.SYS_MMAP, fp, nb, _RW, _AP, 0, 0); er != 0 {
         panic(er)
     }
 
@@ -62,7 +76,10 @@ func (self Loader) Load(fn string, frame rt.Frame) (f Function) {
     /* make it executable */
     if _, _, err := syscall.Syscall(syscall.SYS_MPROTECT, mm, nb, _RX); err != 0 {
         panic(err)
-    } else {
-        return Function(&mm)
     }
+
+    /* record statistics */
+    atomic.AddUint32(&FnCount, 1)
+    atomic.AddUintptr(&LoadSize, nb)
+    return Function(&mm)
 }

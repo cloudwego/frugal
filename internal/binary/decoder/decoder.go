@@ -18,6 +18,7 @@ package decoder
 
 import (
     `reflect`
+    `sync/atomic`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
@@ -34,6 +35,12 @@ type Decoder func (
 ) (int, error)
 
 var (
+    HitCount  uint64 = 0
+    MissCount uint64 = 0
+    TypeCount uint64 = 0
+)
+
+var (
     programCache = utils.CreateProgramCache()
 )
 
@@ -46,13 +53,27 @@ func decode(vt *rt.GoType, buf unsafe.Pointer, nb int, i int, p unsafe.Pointer, 
 }
 
 func resolve(vt *rt.GoType) (Decoder, error) {
-    if val := programCache.Get(vt); val != nil {
+    var err error
+    var val interface{}
+
+    /* fast-path: type is cached */
+    if val = programCache.Get(vt); val != nil {
+        atomic.AddUint64(&HitCount, 1)
         return val.(Decoder), nil
-    } else if ret, err := programCache.Compute(vt, compile); err == nil {
-        return ret.(Decoder), nil
-    } else {
+    }
+
+    /* record the cache miss, and compile the type */
+    atomic.AddUint64(&MissCount, 1)
+    val, err = programCache.Compute(vt, compile)
+
+    /* check for errors */
+    if err != nil {
         return nil, err
     }
+
+    /* record the successful compilation */
+    atomic.AddUint64(&TypeCount, 1)
+    return val.(Decoder), nil
 }
 
 func compile(vt *rt.GoType) (interface{}, error) {

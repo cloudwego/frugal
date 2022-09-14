@@ -22,6 +22,7 @@ import (
     `github.com/brianvoe/gofakeit`
     gofakeit_v6 `github.com/brianvoe/gofakeit/v6`
     `github.com/cloudwego/frugal`
+    `github.com/cloudwego/frugal/debug`
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
@@ -83,6 +84,7 @@ func TestTypeSerdes(t *testing.T) {
     spew.Dump(s)
     println("--------- DECODED VALUE ---------")
     spew.Dump(gotS)
+    spew.Dump(debug.GetStats())
 }
 
 type MyNumberZ int64

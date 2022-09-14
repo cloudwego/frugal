@@ -14,6 +14,7 @@ require (
 	github.com/oleiade/lane v1.0.1
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/arch v0.0.0-20220823144127-ada1728cebaa
-	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
-	gonum.org/v1/gonum v0.11.0
+	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561 // indirect
+	golang.org/x/sys v0.0.0-20220913175220-63ea55921009 // indirect
+	gonum.org/v1/gonum v0.12.0
 )
