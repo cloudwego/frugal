@@ -17,19 +17,23 @@
 package defs
 
 import (
-    `fmt`
     `reflect`
     `testing`
+
+    `github.com/davecgh/go-spew/spew`
+    `github.com/stretchr/testify/require`
 )
 
-func TestTypes_Parsing(t *testing.T) {
-    var v map[string][]reflect.SliceHeader
-    tt := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
-    fmt.Println(tt)
+type NoCopyStringFields struct {
+    NormalString string `frugal:"1,default,string"`
+    NoCopyString string `frugal:"2,default,string,nocopy"`
 }
 
-func TestTypes_MapKeyType(t *testing.T) {
-    var v map[*reflect.SliceHeader]int
-    tt := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
-    fmt.Println(tt)
+func TestResolver_StringOptions(t *testing.T) {
+    var vv NoCopyStringFields
+    ret, err := ResolveFields(reflect.TypeOf(vv))
+    require.NoError(t, err)
+    spew.Config.SortKeys = true
+    spew.Config.DisablePointerMethods = true
+    spew.Dump(ret)
 }

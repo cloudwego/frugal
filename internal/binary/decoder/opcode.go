@@ -25,7 +25,9 @@ type OpCode uint8
 const (
     OP_int OpCode = iota
     OP_str
+    OP_str_nocopy
     OP_bin
+    OP_bin_nocopy
     OP_enum
     OP_size
     OP_type
@@ -65,7 +67,9 @@ const (
 var _OpNames = [256]string {
     OP_int               : "int",
     OP_str               : "str",
+    OP_str_nocopy        : "str_nocopy",
     OP_bin               : "bin",
+    OP_bin_nocopy        : "bin_nocopy",
     OP_enum              : "enum",
     OP_size              : "size",
     OP_type              : "type",

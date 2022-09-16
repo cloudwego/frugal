@@ -125,3 +125,46 @@ func TestDecoder_WithDefaultValue(t *testing.T) {
     require.Equal(t, len(buf), pos)
     spew.Dump(v)
 }
+
+type TestNoCopyString struct {
+    A string  `frugal:"1,default,string"`
+    B string  `frugal:"2,default,string,nocopy"`
+    C *string `frugal:"3,optional,string,nocopy"`
+    D []byte  `frugal:"4,default,binary"`
+    E []byte  `frugal:"5,default,binary,nocopy"`
+    F *[]byte `frugal:"6,optional,binary,nocopy"`
+}
+
+func TestDecoder_NoCopyString(t *testing.T) {
+    var v TestNoCopyString
+    rs := new(RuntimeState)
+    buf := []byte {
+        0x0b, 0, 1, 0, 0, 0, 5, 't', 'e', 's', 't', '1',
+        0x0b, 0, 2, 0, 0, 0, 5, 't', 'e', 's', 't', '2',
+        0x0b, 0, 3, 0, 0, 0, 5, 't', 'e', 's', 't', '3',
+        0x0b, 0, 4, 0, 0, 0, 5, 't', 'e', 's', 't', '4',
+        0x0b, 0, 5, 0, 0, 0, 5, 't', 'e', 's', 't', '5',
+        0x0b, 0, 6, 0, 0, 0, 5, 't', 'e', 's', 't', '6',
+        0x00,
+    }
+    sl := (*rt.GoSlice)(unsafe.Pointer(&buf))
+    pos, err := decode(rt.UnpackEface(v).Type, sl.Ptr, sl.Len, 0, unsafe.Pointer(&v), rs, 0)
+    require.NoError(t, err)
+    require.Equal(t, len(buf), pos)
+    require.Equal(t, TestNoCopyString {
+        A: "test1",
+        B: "test2",
+        C: &(&struct{v string}{"test3"}).v,
+        D: []byte("test4"),
+        E: []byte("test5"),
+        F: &(&struct{v []byte}{[]byte("test6")}).v,
+    }, v)
+    println("buf: source =", &buf[0])
+    println("v.A: normal =", *(*unsafe.Pointer)(unsafe.Pointer(&v.A)))
+    println("v.B: nocopy =", *(*unsafe.Pointer)(unsafe.Pointer(&v.B)))
+    println("v.C: nocopy =", *(*unsafe.Pointer)(unsafe.Pointer(v.C)))
+    println("v.D: normal =", &v.D[0])
+    println("v.E: nocopy =", &v.E[0])
+    println("v.F: nocopy =", &(*v.F)[0])
+    spew.Dump(v)
+}

@@ -57,7 +57,22 @@ func (self *CompilerTestSubStruct) InitDefault() {
 }
 
 func TestCompiler_Compile(t *testing.T) {
-    p, err := CreateCompiler().Compile(reflect.TypeOf(&CompilerTest{}))
+    p, err := CreateCompiler().Compile(reflect.TypeOf(CompilerTest{}))
+    require.NoError(t, err)
+    println(p.Disassemble())
+}
+
+type NoCopyStringTestStruct struct {
+    A string  `frugal:"1,default,string"`
+    B string  `frugal:"2,default,string,nocopy"`
+    C *string `frugal:"3,optional,string,nocopy"`
+    D []byte  `frugal:"4,default,binary"`
+    E []byte  `frugal:"5,default,binary,nocopy"`
+    F *[]byte `frugal:"6,optional,binary,nocopy"`
+}
+
+func TestCompiler_NoCopyString(t *testing.T) {
+    p, err := CreateCompiler().Compile(reflect.TypeOf(NoCopyStringTestStruct{}))
     require.NoError(t, err)
     println(p.Disassemble())
 }

@@ -18,6 +18,7 @@ package defs
 
 import (
     `fmt`
+    `math/bits`
     `reflect`
     `sort`
     `strconv`
@@ -26,7 +27,12 @@ import (
 )
 
 type (
+    Options      uint8
 	Requiredness uint8
+)
+
+const (
+    NoCopy Options = 1 << iota
 )
 
 const (
@@ -35,10 +41,36 @@ const (
     Optional
 )
 
+func (self Options) String() string {
+    nb := bits.OnesCount8(uint8(self))
+    ret := make([]string, 0, nb)
+
+    /* check for "nocopy" option */
+    if self & NoCopy != 0 {
+        ret = append(ret, "nocopy")
+    }
+
+    /* join them together */
+    return fmt.Sprintf(
+        "{%s}",
+        strings.Join(ret, ","),
+    )
+}
+
+func (self Requiredness) String() string {
+    switch self {
+        case Default  : return "default"
+        case Required : return "required"
+        case Optional : return "optional"
+        default       : panic("unreachable")
+    }
+}
+
 type Field struct {
     F       int
     ID      uint16
     Type    *Type
+    Opts    Options
     Spec    Requiredness
     Default reflect.Value
 }
@@ -103,6 +135,7 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
         var pt *Type
         var id uint64
         var tv string
+        var fv Options
         var ft []string
         var rx Requiredness
         var rv reflect.Value
@@ -118,8 +151,8 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             continue
         }
 
-        /* must have 3 fields: ID, Requiredness, Type */
-        if ft = strings.Split(tv, ","); len(ft) != 3 {
+        /* must have at least 3 fields: ID, Requiredness, Type */
+        if ft = strings.Split(tv, ","); len(ft) < 3 {
             return nil, fmt.Errorf("invalid tag for field %s.%s", vt, sf.Name)
         }
 
@@ -153,6 +186,26 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
         }
 
+        /* scan for the options */
+        for _, opt := range ft[3:] {
+            switch opt {
+                default: {
+                    return nil, fmt.Errorf("invalid option: %s", opt)
+                }
+
+                /* "nocopy" option enables zero-copy string decoding */
+                case "nocopy": {
+                    if pt.Tag() != T_string {
+                        return nil, fmt.Errorf(`"nocopy" is only applicable to "string" and "binary" types, not %s`, pt)
+                    } else if fv & NoCopy != 0 {
+                        return nil, fmt.Errorf(`duplicated option "nocopy" for field %s.%s`, vt, sf.Name)
+                    } else {
+                        fv |= NoCopy
+                    }
+                }
+            }
+        }
+
         /* get the default value if any */
         if mem.IsValid() {
             rv = mem.FieldByIndex(sf.Index)
@@ -163,6 +216,7 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             F       : int(sf.Offset),
             ID      : uint16(id),
             Type    : pt,
+            Opts    : fv,
             Spec    : rx,
             Default : rv,
         })

@@ -251,6 +251,7 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
 }
 
 func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
+    p.use(sp)
     p.add(OP_make_state)
     p.rtt(OP_deref, vt.V.S)
     self.compileOne(p, sp + 1, vt.V)
@@ -289,6 +290,46 @@ func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
         case defs.T_enum    : p.i64(OP_size, 4); p.rtt(OP_map_set_enum, vt.S)
         case defs.T_pointer : self.compileKeyPtr(p, sp, vt)
         default             : panic("unreachable")
+    }
+}
+
+func (self Compiler) compileNoCopy(p *Program, sp int, vt *defs.Type) {
+    switch {
+        default: {
+            panic("invalid nocopy type: " + vt.String())
+        }
+
+        /* simple strings */
+        case vt.T == defs.T_string: {
+            p.i64(OP_size, 4)
+            p.add(OP_str_nocopy)
+        }
+
+        /* simple binaries */
+        case vt.T == defs.T_binary: {
+            p.i64(OP_size, 4)
+            p.add(OP_bin_nocopy)
+        }
+
+        /* string pointers */
+        case vt.T == defs.T_pointer && vt.V.T == defs.T_string: {
+            p.use(sp)
+            p.add(OP_make_state)
+            p.rtt(OP_deref, vt.V.S)
+            p.i64(OP_size, 4)
+            p.add(OP_str_nocopy)
+            p.add(OP_drop_state)
+        }
+
+        /* binary pointers */
+        case vt.T == defs.T_pointer && vt.V.T == defs.T_binary: {
+            p.use(sp)
+            p.add(OP_make_state)
+            p.rtt(OP_deref, vt.V.S)
+            p.i64(OP_size, 4)
+            p.add(OP_bin_nocopy)
+            p.add(OP_drop_state)
+        }
     }
 }
 
@@ -381,10 +422,21 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
             p.i64(OP_struct_mark_tag, int64(fv.ID))
         }
 
-        /* seek and parse the field */
-        p.i64(OP_seek, int64(fv.F))
-        self.compileOne(p, sp + 1, fv.Type)
-        p.i64(OP_seek, -int64(fv.F))
+        /* seek to the field */
+        off := int64(fv.F)
+        p.i64(OP_seek, off)
+
+        /* check for no-copy strings */
+        if fv.Opts & defs.NoCopy == 0 {
+            self.compileOne(p, sp + 1, fv.Type)
+        } else if fv.Type.Tag() == defs.T_string {
+            self.compileNoCopy(p, sp + 1, fv.Type)
+        } else {
+            panic(`"nocopy" is only applicable to "string" or "binary" types`)
+        }
+
+        /* seek back to the beginning */
+        p.i64(OP_seek, -off)
         p.jmp(OP_goto, i)
     }
 

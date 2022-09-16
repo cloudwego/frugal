@@ -18,6 +18,7 @@ package decoder
 
 import (
     `fmt`
+    `reflect`
 
     `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/binary/defs`
@@ -82,11 +83,13 @@ const (
 )
 
 var (
+    _T_byte      *rt.GoType
     _E_overflow  error
     _V_zerovalue uint64
 )
 
 func init() {
+    _T_byte     = rt.UnpackType(reflect.TypeOf(byte(0)))
     _E_overflow = fmt.Errorf("frugal: decoder stack overflow")
 }
 
@@ -167,7 +170,9 @@ func epilogue(p *hir.Builder) {
 var translators = [256]func(*hir.Builder, Instr) {
     OP_int               : translate_OP_int,
     OP_str               : translate_OP_str,
+    OP_str_nocopy        : translate_OP_str_nocopy,
     OP_bin               : translate_OP_bin,
+    OP_bin_nocopy        : translate_OP_bin_nocopy,
     OP_enum              : translate_OP_enum,
     OP_size              : translate_OP_size,
     OP_type              : translate_OP_type,
@@ -219,6 +224,11 @@ func translate_OP_str(p *hir.Builder, _ Instr) {
     translate_OP_binstr(p)
 }
 
+func translate_OP_str_nocopy(p *hir.Builder, _ Instr) {
+    p.SP    (hir.Pn, WP, 0)
+    translate_OP_binstr_nocopy(p)
+}
+
 func translate_OP_bin(p *hir.Builder, _ Instr) {
     p.IP    (&_V_zerovalue, TP)
     p.SP    (TP, WP, 0)
@@ -226,7 +236,36 @@ func translate_OP_bin(p *hir.Builder, _ Instr) {
     p.SQ    (TR, WP, 16)
 }
 
+func translate_OP_bin_nocopy(p *hir.Builder, _ Instr) {
+    p.IP    (&_V_zerovalue, TP)
+    p.SP    (TP, WP, 0)
+    translate_OP_binstr_nocopy(p)
+    p.SQ    (TR, WP, 16)
+}
+
 func translate_OP_binstr(p *hir.Builder) {
+    p.ADDP  (IP, IC, EP)
+    p.ADDI  (IC, 4, IC)
+    p.LL    (EP, 0, TR)
+    p.SWAPL (TR, TR)
+    p.LDAQ  (ARG_nb, UR)
+    p.BLTU  (UR, TR, LB_eof)
+    p.BEQ   (TR, hir.Rz, "_empty_{n}")
+    p.ADDPI (EP, 4, EP)
+    p.ADD   (IC, TR, IC)
+    p.IP    (_T_byte, TP)
+    p.GCALL (F_mallocgc).
+      A0    (TR).
+      A1    (TP).
+      A2    (hir.Rz).
+      R0    (TP)
+    p.BCOPY (EP, TR, TP)
+    p.SP    (TP, WP, 0)
+    p.Label ("_empty_{n}")
+    p.SQ    (TR, WP, 8)
+}
+
+func translate_OP_binstr_nocopy(p *hir.Builder) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.LL    (EP, 0, TR)
@@ -452,8 +491,15 @@ func translate_OP_map_set_str_fast(p *hir.Builder, v Instr) {
     p.BLTU  (UR, TR, LB_eof)
     p.MOVP  (hir.Pn, EP)
     p.BEQ   (TR, hir.Rz, "_empty_{n}")
-    p.ADDP  (IP, IC, EP)
+    p.ADDP  (IP, IC, ET)
     p.ADD   (IC, TR, IC)
+    p.IP    (_T_byte, TP)
+    p.GCALL (F_mallocgc).
+      A0    (TR).
+      A1    (TP).
+      A2    (hir.Rz).
+      R0    (EP)
+    p.BCOPY (ET, TR, EP)
     p.Label ("_empty_{n}")
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MpOffset, TP)
@@ -478,7 +524,14 @@ func translate_OP_map_set_str_safe(p *hir.Builder, v Instr) {
     p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDPI (ET, 4, ET)
     p.ADD   (IC, TR, IC)
-    p.SP    (ET, RS, PrOffset)
+    p.IP    (_T_byte, TP)
+    p.GCALL (F_mallocgc).
+      A0    (TR).
+      A1    (TP).
+      A2    (hir.Rz).
+      R0    (TP)
+    p.BCOPY (ET, TR, TP)
+    p.SP    (TP, RS, PrOffset)
     p.Label ("_empty_{n}")
     p.ADDP  (RS, ST, EP)
     p.LP    (EP, MpOffset, EP)

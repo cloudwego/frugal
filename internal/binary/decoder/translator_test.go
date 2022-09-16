@@ -44,3 +44,11 @@ func TestTranslator_Translate(t *testing.T) {
     tr := Translate(p)
     println(tr.Disassemble())
 }
+
+func TestTranslator_NoCopyString(t *testing.T) {
+    var v NoCopyStringTestStruct
+    p, err := CreateCompiler().Compile(reflect.TypeOf(v))
+    require.NoError(t, err)
+    tr := Translate(p)
+    println(tr.Disassemble())
+}

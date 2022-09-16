@@ -292,7 +292,7 @@ func (self *Ir) Disassemble(refs map[*Ir]string) string {
         case OP_bsw   : return fmt.Sprintf("bsw     %%%s, %s", self.Rx, self.formatTable(refs))
         case OP_jmp   : return fmt.Sprintf("jmp     %s", self.formatRefs(refs, self.Br))
         case OP_bzero : return fmt.Sprintf("bzero   $%d, %s", self.Iv, self.Pd)
-        case OP_bcopy : return fmt.Sprintf("bcopy   %s, %s, %s", self.Ps, self.Rx, self.Pd)
+        case OP_bcopy : return fmt.Sprintf("bcopy   %%%s, %%%s, %%%s", self.Ps, self.Rx, self.Pd)
         case OP_ccall : return fmt.Sprintf("ccall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_gcall : return fmt.Sprintf("gcall   %s, %s", LookupCall(self.Iv), self.formatCall())
         case OP_icall : return fmt.Sprintf("icall   $%d, {%%%s, %%%s}, %s", LookupCall(self.Iv).Slot, self.Ps, self.Pd, self.formatCall())
