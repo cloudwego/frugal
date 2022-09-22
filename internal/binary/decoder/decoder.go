@@ -77,7 +77,7 @@ func resolve(vt *rt.GoType) (Decoder, error) {
 }
 
 func compile(vt *rt.GoType) (interface{}, error) {
-    if pp, err := CreateCompiler().Compile(vt.Pack()); err != nil {
+    if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
         return nil, err
     } else {
         return Link(Translate(pp)), nil
