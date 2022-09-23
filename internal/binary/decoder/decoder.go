@@ -21,6 +21,7 @@ import (
     `sync/atomic`
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/opts`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
 )
@@ -84,6 +85,25 @@ func compile(vt *rt.GoType) (interface{}, error) {
     }
 }
 
+func mkcompile(ty map[reflect.Type]struct{}, opts opts.Options) func(*rt.GoType) (interface{}, error) {
+    return func(vt *rt.GoType) (interface{}, error) {
+        cc := CreateCompiler()
+        pp, err := cc.Apply(opts).Compile(vt.Pack())
+
+        /* add all the deferred types */
+        for t := range cc.d {
+            ty[t] = struct{}{}
+        }
+
+        /* translate and link the program */
+        if err != nil {
+            return nil, err
+        } else {
+            return Link(Translate(pp)), nil
+        }
+    }
+}
+
 type DecodeError struct {
     vt *rt.GoType
 }
@@ -96,6 +116,29 @@ func (self DecodeError) Error() string {
     } else {
         return "frugal: unmarshal to non-pointer " + self.vt.String()
     }
+}
+
+func Pretouch(vt *rt.GoType, opts opts.Options) (map[reflect.Type]struct{}, error) {
+    var err error
+    var ret map[reflect.Type]struct{}
+
+    /* check for cached types */
+    if programCache.Get(vt) != nil {
+        return nil, nil
+    }
+
+    /* compile & load the type */
+    ret = make(map[reflect.Type]struct{})
+    _, err = programCache.Compute(vt, mkcompile(ret, opts))
+
+    /* check for errors */
+    if err != nil {
+        return nil, err
+    }
+
+    /* add the type count */
+    atomic.AddUint64(&TypeCount, 1)
+    return ret, nil
 }
 
 func DecodeObject(buf []byte, val interface{}) (ret int, err error) {

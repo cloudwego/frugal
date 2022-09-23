@@ -23,6 +23,7 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/opts`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -35,8 +36,7 @@ type Instr struct {
 }
 
 type (
-    Program  []Instr
-    Compiler map[reflect.Type]bool
+    Program []Instr
 )
 
 func (self Instr) Vt() *rt.GoType {
@@ -144,11 +144,16 @@ func (self Program) Disassemble() string {
     }
 }
 
-func CreateCompiler() Compiler {
+type Compiler struct {
+    o opts.Options
+    t map[reflect.Type]bool
+}
+
+func CreateCompiler() *Compiler {
     return newCompiler()
 }
 
-func (self Compiler) rescue(ep *error) {
+func (self *Compiler) rescue(ep *error) {
     if val := recover(); val != nil {
         if err, ok := val.(error); ok {
             *ep = err
@@ -158,11 +163,16 @@ func (self Compiler) rescue(ep *error) {
     }
 }
 
-func (self Compiler) Free() {
+func (self *Compiler) Free() {
     freeCompiler(self)
 }
 
-func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
+func (self *Compiler) Apply(o opts.Options) *Compiler {
+    self.o = o
+    return self
+}
+
+func (self *Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     ret := newProgram()
     vtp := defs.ParseType(vt, "")
 
@@ -173,13 +183,13 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     /* object measuring */
     i := ret.pc()
     ret.add(OP_if_hasbuf)
-    resetCompiler(self).measure(&ret, 0, vtp, ret.pc() + defs.MaxILBuffer / 2)
+    resetCompiler(self).measure(&ret, 0, vtp, ret.pc())
 
     /* object encoding */
     j := ret.pc()
     ret.add(OP_goto)
     ret.pin(i)
-    resetCompiler(self).compile(&ret, 0, vtp, ret.pc() + defs.MaxILBuffer / 2)
+    resetCompiler(self).compile(&ret, 0, vtp, ret.pc())
 
     /* halt the program */
     ret.pin(j)
@@ -187,7 +197,7 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     return Optimize(ret), nil
 }
 
-func (self Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
+func (self *Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
     ret, err = self.Compile(vt)
     self.Free()
     return

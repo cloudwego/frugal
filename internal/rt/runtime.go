@@ -309,6 +309,11 @@ func MapType(t *GoType) *GoMapType {
     }
 }
 
+func Dereference(t *GoType) *GoType {
+    for t.Kind() == reflect.Ptr { t = PtrElem(t) }
+    return t
+}
+
 func FuncAddr(f interface{}) unsafe.Pointer {
     if vv := UnpackEface(f); vv.Type.Kind() != reflect.Func {
         panic("f is not a function")

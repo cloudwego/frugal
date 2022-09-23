@@ -221,7 +221,24 @@ func translate_OP_int(p *hir.Builder, v Instr) {
 
 func translate_OP_str(p *hir.Builder, _ Instr) {
     p.SP    (hir.Pn, WP, 0)
-    translate_OP_binstr(p)
+    p.ADDP  (IP, IC, EP)
+    p.ADDI  (IC, 4, IC)
+    p.LL    (EP, 0, TR)
+    p.SWAPL (TR, TR)
+    p.LDAQ  (ARG_nb, UR)
+    p.BLTU  (UR, TR, LB_eof)
+    p.BEQ   (TR, hir.Rz, "_empty_{n}")
+    p.ADDPI (EP, 4, EP)
+    p.ADD   (IC, TR, IC)
+    p.GCALL (F_slicebytetostring).
+      A0    (hir.Pn).
+      A1    (EP).
+      A2    (TR).
+      R0    (TP).
+      R1    (TR)
+    p.SP    (TP, WP, 0)
+    p.Label ("_empty_{n}")
+    p.SQ    (TR, WP, 8)
 }
 
 func translate_OP_str_nocopy(p *hir.Builder, _ Instr) {
@@ -232,18 +249,6 @@ func translate_OP_str_nocopy(p *hir.Builder, _ Instr) {
 func translate_OP_bin(p *hir.Builder, _ Instr) {
     p.IP    (&_V_zerovalue, TP)
     p.SP    (TP, WP, 0)
-    translate_OP_binstr(p)
-    p.SQ    (TR, WP, 16)
-}
-
-func translate_OP_bin_nocopy(p *hir.Builder, _ Instr) {
-    p.IP    (&_V_zerovalue, TP)
-    p.SP    (TP, WP, 0)
-    translate_OP_binstr_nocopy(p)
-    p.SQ    (TR, WP, 16)
-}
-
-func translate_OP_binstr(p *hir.Builder) {
     p.ADDP  (IP, IC, EP)
     p.ADDI  (IC, 4, IC)
     p.LL    (EP, 0, TR)
@@ -263,6 +268,14 @@ func translate_OP_binstr(p *hir.Builder) {
     p.SP    (TP, WP, 0)
     p.Label ("_empty_{n}")
     p.SQ    (TR, WP, 8)
+    p.SQ    (TR, WP, 16)
+}
+
+func translate_OP_bin_nocopy(p *hir.Builder, _ Instr) {
+    p.IP    (&_V_zerovalue, TP)
+    p.SP    (TP, WP, 0)
+    translate_OP_binstr_nocopy(p)
+    p.SQ    (TR, WP, 16)
 }
 
 func translate_OP_binstr_nocopy(p *hir.Builder) {
@@ -493,13 +506,12 @@ func translate_OP_map_set_str_fast(p *hir.Builder, v Instr) {
     p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDP  (IP, IC, ET)
     p.ADD   (IC, TR, IC)
-    p.IP    (_T_byte, TP)
-    p.GCALL (F_mallocgc).
-      A0    (TR).
-      A1    (TP).
-      A2    (hir.Rz).
-      R0    (EP)
-    p.BCOPY (ET, TR, EP)
+    p.GCALL (F_slicebytetostring).
+      A0    (hir.Pn).
+      A1    (ET).
+      A2    (TR).
+      R0    (EP).
+      R1    (TR)
     p.Label ("_empty_{n}")
     p.ADDP  (RS, ST, TP)
     p.LP    (TP, MpOffset, TP)
@@ -524,13 +536,12 @@ func translate_OP_map_set_str_safe(p *hir.Builder, v Instr) {
     p.BEQ   (TR, hir.Rz, "_empty_{n}")
     p.ADDPI (ET, 4, ET)
     p.ADD   (IC, TR, IC)
-    p.IP    (_T_byte, TP)
-    p.GCALL (F_mallocgc).
-      A0    (TR).
-      A1    (TP).
-      A2    (hir.Rz).
-      R0    (TP)
-    p.BCOPY (ET, TR, TP)
+    p.GCALL (F_slicebytetostring).
+      A0    (hir.Pn).
+      A1    (ET).
+      A2    (TR).
+      R0    (TP).
+      R1    (TR)
     p.SP    (TP, RS, PrOffset)
     p.Label ("_empty_{n}")
     p.ADDP  (RS, ST, EP)

@@ -296,14 +296,15 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     }
 
-    /* register coalescer */
-    coalesce := func(rr []*Reg, rs Reg, rd Reg) {
-        for _, r := range rr {
-            if *r == rs {
-                *r = rd
-            }
-        }
-    }
+    // TODO: enable register coalescing
+    // /* register coalescer */
+    // coalesce := func(rr []*Reg, rs Reg, rd Reg) {
+    //     for _, r := range rr {
+    //         if *r == rs {
+    //             *r = rd
+    //         }
+    //     }
+    // }
 
     /* calculate allocatable registers */
     for _, r := range ArchRegs {
@@ -362,89 +363,90 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        /* Phase 3: Coalescing one pair of register */
-        for it := cfg.PostOrder(); !next && it.Next(); {
-            for _, v := range it.Block().Ins {
-                var rx Reg
-                var ry Reg
-                var ok bool
-
-                /* only look for copy instructions */
-                if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry {
-                    continue
-                }
-
-                /* make sure Y is the node with a lower degree */
-                if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
-                    rx, ry = ry, rx
-                }
-
-                /* determain whether it's safe to coalesce using George's heuristic */
-                for p := rig.From(int64(ry)); p.Next(); {
-                    if t := p.Node().ID(); t == int64(rx) || len(arch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
-                        ok = false
-                        break
-                    }
-                }
-
-                /* check if it can be coalesced */
-                if !ok {
-                    continue
-                }
-
-                /* check for pre-colored registers */
-                switch kx, ky := rx.Kind(), ry.Kind(); {
-                    case kx != K_arch && ky != K_arch: break
-                    case kx != K_arch && ky == K_arch: break
-                    case kx == K_arch && ky != K_arch: rx, ry = ry, rx
-                    case kx == K_arch && ky == K_arch: panic(fmt.Sprintf("regalloc: arch-specific register confliction: %s and %s", rx, ry))
-                }
-
-                /* replace all the register references */
-                cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-                    var use IrUsages
-                    var def IrDefinitions
-
-                    /* should not have Phi nodes here */
-                    if len(bb.Phi) != 0 {
-                        panic("regalloc: unexpected Phi node")
-                    }
-
-                    /* scan every instruction */
-                    for _, p := range bb.Ins {
-                        if use, ok = p.(IrUsages)      ; ok { coalesce(use.Usages(), rx, ry) }
-                        if def, ok = p.(IrDefinitions) ; ok { coalesce(def.Definitions(), rx, ry) }
-                    }
-
-                    /* scan the terminator */
-                    if use, ok = bb.Term.(IrUsages); ok {
-                        coalesce(use.Usages(), rx, ry)
-                    }
-                })
-
-                /* remove register copies to itself */
-                cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-                    ins := bb.Ins
-                    bb.Ins = bb.Ins[:0]
-
-                    /* filter the instructions */
-                    for _, p := range ins {
-                        if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
-                            bb.Ins = append(bb.Ins, p)
-                        }
-                    }
-                })
-
-                /* need to start over */
-                next = true
-                break
-            }
-        }
-
-        /* try again if coalescing occured */
-        if next {
-            continue
-        }
+        // TODO: enable register coalescing
+        // /* Phase 3: Coalescing one pair of register */
+        // for it := cfg.PostOrder(); !next && it.Next(); {
+        //     for _, v := range it.Block().Ins {
+        //         var rx Reg
+        //         var ry Reg
+        //         var ok bool
+        //
+        //         /* only look for copy instructions */
+        //         if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry {
+        //             continue
+        //         }
+        //
+        //         /* make sure Y is the node with a lower degree */
+        //         if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
+        //             rx, ry = ry, rx
+        //         }
+        //
+        //         /* determain whether it's safe to coalesce using George's heuristic */
+        //         for p := rig.From(int64(ry)); p.Next(); {
+        //             if t := p.Node().ID(); t == int64(rx) || len(arch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
+        //                 ok = false
+        //                 break
+        //             }
+        //         }
+        //
+        //         /* check if it can be coalesced */
+        //         if !ok {
+        //             continue
+        //         }
+        //
+        //         /* check for pre-colored registers */
+        //         switch kx, ky := rx.Kind(), ry.Kind(); {
+        //             case kx != K_arch && ky != K_arch: break
+        //             case kx != K_arch && ky == K_arch: break
+        //             case kx == K_arch && ky != K_arch: rx, ry = ry, rx
+        //             case kx == K_arch && ky == K_arch: panic(fmt.Sprintf("regalloc: arch-specific register confliction: %s and %s", rx, ry))
+        //         }
+        //
+        //         /* replace all the register references */
+        //         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        //             var use IrUsages
+        //             var def IrDefinitions
+        //
+        //             /* should not have Phi nodes here */
+        //             if len(bb.Phi) != 0 {
+        //                 panic("regalloc: unexpected Phi node")
+        //             }
+        //
+        //             /* scan every instruction */
+        //             for _, p := range bb.Ins {
+        //                 if use, ok = p.(IrUsages)      ; ok { coalesce(use.Usages(), rx, ry) }
+        //                 if def, ok = p.(IrDefinitions) ; ok { coalesce(def.Definitions(), rx, ry) }
+        //             }
+        //
+        //             /* scan the terminator */
+        //             if use, ok = bb.Term.(IrUsages); ok {
+        //                 coalesce(use.Usages(), rx, ry)
+        //             }
+        //         })
+        //
+        //         /* remove register copies to itself */
+        //         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        //             ins := bb.Ins
+        //             bb.Ins = bb.Ins[:0]
+        //
+        //             /* filter the instructions */
+        //             for _, p := range ins {
+        //                 if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
+        //                     bb.Ins = append(bb.Ins, p)
+        //                 }
+        //             }
+        //         })
+        //
+        //         /* need to start over */
+        //         next = true
+        //         break
+        //     }
+        // }
+        //
+        // /* try again if coalescing occured */
+        // if next {
+        //     continue
+        // }
 
         /* Phase 4: Check if the RIG is len(arch)-colorable, and color the graph if possible */
         if k, colors = coloring.RecursiveLargestFirst(rig); k <= len(arch) {
@@ -452,7 +454,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
 
         /* Phase 5: Evaluate spilling cost, and spill the cheapest register */
-        // TODO: this
         panic("regalloc: not implemented: spill")
     }
 

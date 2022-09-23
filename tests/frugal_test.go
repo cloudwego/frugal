@@ -17,6 +17,7 @@
 package tests
 
 import (
+    `reflect`
     `testing`
 
     `github.com/brianvoe/gofakeit`
@@ -24,6 +25,7 @@ import (
     `github.com/cloudwego/frugal`
     `github.com/cloudwego/frugal/debug`
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/testdata/kitex_gen/baseline`
     `github.com/davecgh/go-spew/spew`
     `github.com/stretchr/testify/require`
 )
@@ -162,4 +164,12 @@ func TestListOfEnum(t *testing.T) {
     _, err = frugal.DecodeObject(m, &v)
     require.NoError(t, err)
     require.Equal(t, []MyNumberZ{-3948394, 0, 1, 2, 3, 4, 5}, v.X)
+}
+
+func TestPretouch(t *testing.T) {
+    var v baseline.Nesting2
+    s0 := debug.GetStats()
+    err := frugal.Pretouch(reflect.TypeOf(v), frugal.WithMaxInlineDepth(1), frugal.WithMaxInlineILSize(0))
+    require.NoError(t, err)
+    spew.Dump(s0, debug.GetStats())
 }

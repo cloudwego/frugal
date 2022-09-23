@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package defs
+package opts
 
 import (
     `os`
@@ -22,13 +22,13 @@ import (
 )
 
 const (
-    _DefaultMaxNesting  = 5         // cutoff at 5 levels of nesting types
-    _DefaultMaxILBuffer = 50000     // cutoff at 50k of IL instructions
+    _DefaultMaxInlineDepth  = 5     // cutoff at 5 levels of inlining
+    _DefaultMaxInlineILSize = 50000 // cutoff at 50k of IL instructions
 )
 
 var (
-    MaxNesting  = parseOrDefault("FRUGAL_MAX_NESTING", _DefaultMaxNesting, 1)
-    MaxILBuffer = parseOrDefault("FRUGAL_MAX_IL_BUFFER", _DefaultMaxILBuffer, 256)
+    MaxInlineDepth  = parseOrDefault("FRUGAL_MAX_INLINE_DEPTH", _DefaultMaxInlineDepth, 1)
+    MaxInlineILSize = parseOrDefault("FRUGAL_MAX_INLINE_IL_SIZE", _DefaultMaxInlineILSize, 256)
 )
 
 func parseOrDefault(key string, def int, min int) int {

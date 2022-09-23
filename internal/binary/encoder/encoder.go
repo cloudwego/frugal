@@ -21,6 +21,7 @@ import (
     `sync/atomic`
     `unsafe`
 
+    `github.com/cloudwego/frugal/internal/opts`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
     `github.com/cloudwego/frugal/iov`
@@ -82,6 +83,27 @@ func compile(vt *rt.GoType) (interface{}, error) {
         return nil, err
     } else {
         return Link(Translate(pp)), nil
+    }
+}
+
+func mkcompile(opts opts.Options) func(*rt.GoType) (interface{}, error) {
+    return func(vt *rt.GoType) (interface{}, error) {
+        if pp, err := CreateCompiler().Apply(opts).CompileAndFree(vt.Pack()); err != nil {
+            return nil, err
+        } else {
+            return Link(Translate(pp)), nil
+        }
+    }
+}
+
+func Pretouch(vt *rt.GoType, opts opts.Options) error {
+    if programCache.Get(vt) != nil {
+        return nil
+    } else if _, err := programCache.Compute(vt, mkcompile(opts)); err != nil {
+        return err
+    } else {
+        atomic.AddUint64(&TypeCount, 1)
+        return nil
     }
 }
 

@@ -23,23 +23,29 @@ import (
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-func (self Compiler) measure(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measure(p *Program, sp int, vt *defs.Type, startpc int) {
     rt := vt.S
     tt := vt.T
 
-    /* check for loops, recursive only on structs with inlining depth limit */
-    if tt == defs.T_struct && (self[rt] || p.pc() >= maxpc || sp >= defs.MaxNesting) {
+    /* only recurse on structs */
+    if tt != defs.T_struct {
+        self.measureOne(p, sp, vt, startpc)
+        return
+    }
+
+    /* check for loops with inlining depth limit */
+    if self.t[rt] || !self.o.CanInline(sp, (p.pc() - startpc) * 2) {
         p.rtt(OP_size_defer, rt)
         return
     }
 
     /* measure the type recursively */
-    self[rt] = true
-    self.measureOne(p, sp, vt, maxpc)
-    delete(self, rt)
+    self.t[rt] = true
+    self.measureOne(p, sp, vt, startpc)
+    delete(self.t, rt)
 }
 
-func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measureOne(p *Program, sp int, vt *defs.Type, startpc int) {
     switch vt.T {
         case defs.T_bool    : p.i64(OP_size_const, 1)
         case defs.T_i8      : p.i64(OP_size_const, 1)
@@ -50,27 +56,27 @@ func (self Compiler) measureOne(p *Program, sp int, vt *defs.Type, maxpc int) {
         case defs.T_double  : p.i64(OP_size_const, 8)
         case defs.T_string  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, abi.PtrSize, 1)
         case defs.T_binary  : p.i64(OP_size_const, 4); p.dyn(OP_size_dyn, abi.PtrSize, 1)
-        case defs.T_map     : self.measureMap(p, sp, vt, maxpc)
-        case defs.T_set     : self.measureSeq(p, sp, vt, maxpc)
-        case defs.T_list    : self.measureSeq(p, sp, vt, maxpc)
-        case defs.T_struct  : self.measureStruct(p, sp, vt, maxpc)
-        case defs.T_pointer : self.measurePtr(p, sp, vt, maxpc)
+        case defs.T_map     : self.measureMap(p, sp, vt, startpc)
+        case defs.T_set     : self.measureSeq(p, sp, vt, startpc)
+        case defs.T_list    : self.measureSeq(p, sp, vt, startpc)
+        case defs.T_struct  : self.measureStruct(p, sp, vt, startpc)
+        case defs.T_pointer : self.measurePtr(p, sp, vt, startpc)
         default             : panic("measureOne: unreachable")
     }
 }
 
-func (self Compiler) measurePtr(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measurePtr(p *Program, sp int, vt *defs.Type, startpc int) {
     i := p.pc()
     p.tag(sp)
     p.add(OP_if_nil)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.measure(p, sp + 1, vt.V, maxpc)
+    self.measure(p, sp + 1, vt.V, startpc)
     p.add(OP_drop_state)
     p.pin(i)
 }
 
-func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measureMap(p *Program, sp int, vt *defs.Type, startpc int) {
     nk := defs.GetSize(vt.K.S)
     nv := defs.GetSize(vt.V.S)
 
@@ -103,13 +109,13 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, maxpc int) {
     /* complex keys */
     if nk <= 0 {
         p.add(OP_map_key)
-        self.measure(p, sp + 1, vt.K, maxpc)
+        self.measure(p, sp + 1, vt.K, startpc)
     }
 
     /* complex values */
     if nv <= 0 {
         p.add(OP_map_value)
-        self.measure(p, sp + 1, vt.V, maxpc)
+        self.measure(p, sp + 1, vt.V, startpc)
     }
 
     /* move to the next state */
@@ -120,7 +126,7 @@ func (self Compiler) measureMap(p *Program, sp int, vt *defs.Type, maxpc int) {
     p.pin(j)
 }
 
-func (self Compiler) measureSeq(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measureSeq(p *Program, sp int, vt *defs.Type, startpc int) {
     et := vt.V
     nb := defs.GetSize(et.S)
 
@@ -149,7 +155,7 @@ func (self Compiler) measureSeq(p *Program, sp int, vt *defs.Type, maxpc int) {
     r := p.pc()
     p.i64(OP_seek, int64(et.S.Size()))
     p.pin(k)
-    self.measure(p, sp + 1, et, maxpc)
+    self.measure(p, sp + 1, et, startpc)
     p.add(OP_list_decr)
     p.jmp(OP_list_if_next, r)
     p.add(OP_drop_state)
@@ -157,7 +163,7 @@ func (self Compiler) measureSeq(p *Program, sp int, vt *defs.Type, maxpc int) {
     p.pin(j)
 }
 
-func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) measureStruct(p *Program, sp int, vt *defs.Type, startpc int) {
     var err error
     var fvs []defs.Field
 
@@ -185,12 +191,12 @@ func (self Compiler) measureStruct(p *Program, sp int, vt *defs.Type, maxpc int)
     /* measure every field */
     for _, fv := range fvs {
         p.i64(OP_seek, int64(fv.F))
-        self.measureField(p, sp + 1, fv, maxpc)
+        self.measureField(p, sp + 1, fv, startpc)
         p.i64(OP_seek, -int64(fv.F))
     }
 }
 
-func (self Compiler) measureField(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureField(p *Program, sp int, fv defs.Field, startpc int) {
     switch fv.Type.T {
         default: {
             panic("fatal: invalid field type: " + fv.Type.String())
@@ -207,15 +213,15 @@ func (self Compiler) measureField(p *Program, sp int, fv defs.Field, maxpc int) 
         case defs.T_enum   : fallthrough
         case defs.T_binary : {
             if fv.Default.IsValid() && fv.Spec == defs.Optional {
-                self.measureStructDefault(p, sp, fv, maxpc)
+                self.measureStructDefault(p, sp, fv, startpc)
             } else {
-                self.measureStructRequired(p, sp, fv, maxpc)
+                self.measureStructRequired(p, sp, fv, startpc)
             }
         }
 
         /* struct types, only available in hand-written structs */
         case defs.T_struct: {
-            self.measureStructRequired(p, sp, fv, maxpc)
+            self.measureStructRequired(p, sp, fv, startpc)
         }
 
         /* sequencial types */
@@ -223,18 +229,18 @@ func (self Compiler) measureField(p *Program, sp int, fv defs.Field, maxpc int) 
         case defs.T_set  : fallthrough
         case defs.T_list : {
             if fv.Spec == defs.Optional {
-                self.measureStructIterable(p, sp, fv, maxpc)
+                self.measureStructIterable(p, sp, fv, startpc)
             } else {
-                self.measureStructRequired(p, sp, fv, maxpc)
+                self.measureStructRequired(p, sp, fv, startpc)
             }
         }
 
         /* pointers */
         case defs.T_pointer: {
             if fv.Spec == defs.Optional {
-                self.measureStructOptional(p, sp, fv, maxpc)
+                self.measureStructOptional(p, sp, fv, startpc)
             } else if fv.Type.V.T == defs.T_struct {
-                self.measureStructPointer(p, sp, fv, maxpc)
+                self.measureStructPointer(p, sp, fv, startpc)
             } else {
                 panic("fatal: non-optional non-struct pointers")
             }
@@ -242,7 +248,7 @@ func (self Compiler) measureField(p *Program, sp int, fv defs.Field, maxpc int) 
     }
 }
 
-func (self Compiler) measureStructDefault(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureStructDefault(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     t := fv.Type.T
 
@@ -262,17 +268,17 @@ func (self Compiler) measureStructDefault(p *Program, sp int, fv defs.Field, max
 
     /* measure if it's not the default value */
     p.i64(OP_size_const, 3)
-    self.measure(p, sp, fv.Type, maxpc)
+    self.measure(p, sp, fv.Type, startpc)
     p.pin(i)
 }
 
-func (self Compiler) measureStructPointer(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureStructPointer(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     p.i64(OP_size_const, 3)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.measure(p, sp + 1, fv.Type.V, maxpc)
+    self.measure(p, sp + 1, fv.Type.V, startpc)
     p.add(OP_drop_state)
     j := p.pc()
     p.add(OP_goto)
@@ -281,26 +287,26 @@ func (self Compiler) measureStructPointer(p *Program, sp int, fv defs.Field, max
     p.pin(j)
 }
 
-func (self Compiler) measureStructIterable(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureStructIterable(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     p.i64(OP_size_const, 3)
-    self.measure(p, sp, fv.Type, maxpc)
+    self.measure(p, sp, fv.Type, startpc)
     p.pin(i)
 }
 
-func (self Compiler) measureStructOptional(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureStructOptional(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     p.i64(OP_size_const, 3)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.measure(p, sp + 1, fv.Type.V, maxpc)
+    self.measure(p, sp + 1, fv.Type.V, startpc)
     p.add(OP_drop_state)
     p.pin(i)
 }
 
-func (self Compiler) measureStructRequired(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) measureStructRequired(p *Program, sp int, fv defs.Field, startpc int) {
     p.i64(OP_size_const, 3)
-    self.measure(p, sp, fv.Type, maxpc)
+    self.measure(p, sp, fv.Type, startpc)
 }

@@ -25,6 +25,7 @@ import (
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
+    `github.com/cloudwego/frugal/internal/opts`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/cloudwego/frugal/internal/utils`
 )
@@ -123,8 +124,7 @@ func mkins(op OpCode, dt defs.Tag, id uint16, to int, iv int64, sw []int, vt ref
 }
 
 type (
-    Program  []Instr
-    Compiler map[reflect.Type]bool
+    Program []Instr
 )
 
 func (self Program) pc() int {
@@ -201,11 +201,17 @@ func (self Program) Disassemble() string {
     return strings.Join(append(ret, "    end"), "\n")
 }
 
-func CreateCompiler() Compiler {
+type Compiler struct {
+    o opts.Options
+    t map[reflect.Type]bool
+    d map[reflect.Type]struct{}
+}
+
+func CreateCompiler() *Compiler {
     return newCompiler()
 }
 
-func (self Compiler) rescue(ep *error) {
+func (self *Compiler) rescue(ep *error) {
     if val := recover(); val != nil {
         if err, ok := val.(error); ok {
             *ep = err
@@ -215,23 +221,30 @@ func (self Compiler) rescue(ep *error) {
     }
 }
 
-func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileDef(p *Program, vt *defs.Type) {
+    p.rtt(OP_defer, vt.S)
+    self.d[vt.S] = struct{}{}
+}
+
+func (self *Compiler) compileOne(p *Program, sp int, vt *defs.Type) {
     if vt.T == defs.T_pointer {
         self.compilePtr(p, sp, vt)
-    } else if _, ok := self[vt.S]; vt.T != defs.T_struct || (!ok && sp < defs.MaxNesting && p.pc() < defs.MaxILBuffer) {
+    } else if vt.T != defs.T_struct {
+        self.compileRec(p, sp, vt)
+    } else if _, ok := self.t[vt.S]; !ok && self.o.CanInline(sp, p.pc()) {
         self.compileTag(p, sp, vt)
     } else {
-        p.rtt(OP_defer, vt.S)
+        self.compileDef(p, vt)
     }
 }
 
-func (self Compiler) compileTag(p *Program, sp int, vt *defs.Type) {
-    self[vt.S] = true
+func (self *Compiler) compileTag(p *Program, sp int, vt *defs.Type) {
+    self.t[vt.S] = true
     self.compileRec(p, sp, vt)
-    delete(self, vt.S)
+    delete(self.t, vt.S)
 }
 
-func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     switch vt.T {
         case defs.T_bool   : p.i64(OP_size, 1); p.i64(OP_int, 1)
         case defs.T_i8     : p.i64(OP_size, 1); p.i64(OP_int, 1)
@@ -250,7 +263,7 @@ func (self Compiler) compileRec(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
     p.use(sp)
     p.add(OP_make_state)
     p.rtt(OP_deref, vt.V.S)
@@ -258,7 +271,7 @@ func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type) {
     p.add(OP_drop_state)
 }
 
-func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.use(sp)
     p.i64(OP_size, 6)
     p.tag(OP_type, vt.K.Tag())
@@ -277,7 +290,7 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type) {
     p.add(OP_drop_state)
 }
 
-func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
     switch vt.K.T {
         case defs.T_bool    : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
         case defs.T_i8      : p.i64(OP_size, 1); p.rtt(OP_map_set_i8, vt.S)
@@ -293,7 +306,7 @@ func (self Compiler) compileKey(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) compileNoCopy(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileNoCopy(p *Program, sp int, vt *defs.Type) {
     switch {
         default: {
             panic("invalid nocopy type: " + vt.String())
@@ -333,7 +346,7 @@ func (self Compiler) compileNoCopy(p *Program, sp int, vt *defs.Type) {
     }
 }
 
-func (self Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
     pt := vt.K
     st := pt.V
 
@@ -348,7 +361,7 @@ func (self Compiler) compileKeyPtr(p *Program, sp int, vt *defs.Type) {
     p.rtt(OP_map_set_pointer, vt.S)
 }
 
-func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
+func (self *Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     var fid int
     var err error
     var req []int
@@ -451,7 +464,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type) {
     p.add(OP_drop_state)
 }
 
-func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
+func (self *Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.use(sp)
     p.i64(OP_size, 5)
     p.tag(OP_type, et.Tag())
@@ -472,11 +485,16 @@ func (self Compiler) compileSetList(p *Program, sp int, et *defs.Type) {
     p.add(OP_drop_state)
 }
 
-func (self Compiler) Free() {
+func (self *Compiler) Free() {
     freeCompiler(self)
 }
 
-func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
+func (self *Compiler) Apply(o opts.Options) *Compiler {
+    self.o = o
+    return self
+}
+
+func (self *Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     ret := newProgram()
     vtp := defs.ParseType(vt, "")
 
@@ -490,7 +508,7 @@ func (self Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     return Optimize(ret), nil
 }
 
-func (self Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
+func (self *Compiler) CompileAndFree(vt reflect.Type) (ret Program, err error) {
     ret, err = self.Compile(vt)
     self.Free()
     return

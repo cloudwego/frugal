@@ -6,8 +6,8 @@ require (
 	github.com/apache/thrift v0.13.0
 	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/brianvoe/gofakeit/v6 v6.16.0
-	github.com/cloudwego/frugal v0.0.0-00010101000000-000000000000
-	github.com/cloudwego/kitex v0.3.2
+	github.com/cloudwego/frugal v0.1.3
+	github.com/cloudwego/kitex v0.4.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/stretchr/testify v1.7.0
 	github.com/thrift-iterator/go v0.0.0-20190402154806-9b5a67519118

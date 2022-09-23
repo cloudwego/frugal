@@ -17,8 +17,10 @@
 package encoder
 
 import (
+    `reflect`
     `sync`
 
+    `github.com/cloudwego/frugal/internal/opts`
     `github.com/cloudwego/frugal/internal/rt`
 )
 
@@ -43,20 +45,28 @@ func freeProgram(p Program) {
     programPool.Put(p)
 }
 
-func newCompiler() Compiler {
-    if v := compilerPool.Get(); v != nil {
-        return v.(Compiler)
+func newCompiler() *Compiler {
+    if v := compilerPool.Get(); v == nil {
+        return allocCompiler()
     } else {
-        return make(Compiler)
+        return resetCompiler(v.(*Compiler))
     }
 }
 
-func freeCompiler(p Compiler) {
+func freeCompiler(p *Compiler) {
     compilerPool.Put(p)
 }
 
-func resetCompiler(p Compiler) Compiler {
-    rt.MapClear(p)
+func allocCompiler() *Compiler {
+    return &Compiler {
+        o: opts.GetDefaultOptions(),
+        t: make(map[reflect.Type]bool),
+    }
+}
+
+func resetCompiler(p *Compiler) *Compiler {
+    p.o = opts.GetDefaultOptions()
+    rt.MapClear(p.t)
     return p
 }
 

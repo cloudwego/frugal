@@ -23,23 +23,29 @@ import (
     `github.com/cloudwego/frugal/internal/binary/defs`
 )
 
-func (self Compiler) compile(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) compile(p *Program, sp int, vt *defs.Type, startpc int) {
     rt := vt.S
     tt := vt.T
 
-    /* check for loops, recursive only on structs with inlining depth limit */
-    if tt == defs.T_struct && (self[rt] || p.pc() >= maxpc || sp >= defs.MaxNesting) {
+    /* only recurse on structs */
+    if tt != defs.T_struct {
+        self.compileOne(p, sp, vt, startpc)
+        return
+    }
+
+    /* check for loops */
+    if self.t[rt] || !self.o.CanInline(sp, (p.pc() - startpc) * 2) {
         p.rtt(OP_defer, rt)
         return
     }
 
     /* compile the type recursively */
-    self[rt] = true
-    self.compileOne(p, sp, vt, maxpc)
-    delete(self, rt)
+    self.t[rt] = true
+    self.compileOne(p, sp, vt, startpc)
+    delete(self.t, rt)
 }
 
-func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) compileOne(p *Program, sp int, vt *defs.Type, startpc int) {
     switch vt.T {
         case defs.T_bool    : p.i64(OP_size_check, 1); p.i64(OP_sint, 1)
         case defs.T_i8      : p.i64(OP_size_check, 1); p.i64(OP_sint, 1)
@@ -50,27 +56,27 @@ func (self Compiler) compileOne(p *Program, sp int, vt *defs.Type, maxpc int) {
         case defs.T_double  : p.i64(OP_size_check, 8); p.i64(OP_sint, 8)
         case defs.T_string  : p.i64(OP_size_check, 4); p.i64(OP_length, abi.PtrSize); p.dyn(OP_memcpy_be, abi.PtrSize, 1)
         case defs.T_binary  : p.i64(OP_size_check, 4); p.i64(OP_length, abi.PtrSize); p.dyn(OP_memcpy_be, abi.PtrSize, 1)
-        case defs.T_map     : self.compileMap(p, sp, vt, maxpc)
-        case defs.T_set     : self.compileSeq(p, sp, vt, maxpc, true)
-        case defs.T_list    : self.compileSeq(p, sp, vt, maxpc, false)
-        case defs.T_struct  : self.compileStruct(p, sp, vt, maxpc)
-        case defs.T_pointer : self.compilePtr(p, sp, vt, maxpc)
+        case defs.T_map     : self.compileMap(p, sp, vt, startpc)
+        case defs.T_set     : self.compileSeq(p, sp, vt, startpc, true)
+        case defs.T_list    : self.compileSeq(p, sp, vt, startpc, false)
+        case defs.T_struct  : self.compileStruct(p, sp, vt, startpc)
+        case defs.T_pointer : self.compilePtr(p, sp, vt, startpc)
         default             : panic("unreachable")
     }
 }
 
-func (self Compiler) compilePtr(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) compilePtr(p *Program, sp int, vt *defs.Type, startpc int) {
     i := p.pc()
     p.tag(sp)
     p.add(OP_if_nil)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.compile(p, sp + 1, vt.V, maxpc)
+    self.compile(p, sp + 1, vt.V, startpc)
     p.add(OP_drop_state)
     p.pin(i)
 }
 
-func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) compileMap(p *Program, sp int, vt *defs.Type, startpc int) {
     kt := vt.K
     et := vt.V
 
@@ -92,9 +98,9 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type, maxpc int) {
     p.rtt(OP_map_begin, vt.S)
     k := p.pc()
     p.add(OP_map_key)
-    self.compile(p, sp + 1, kt, maxpc)
+    self.compile(p, sp + 1, kt, startpc)
     p.add(OP_map_value)
-    self.compile(p, sp + 1, et, maxpc)
+    self.compile(p, sp + 1, et, startpc)
     p.add(OP_map_next)
     p.jmp(OP_map_if_next, k)
     p.add(OP_drop_state)
@@ -108,7 +114,7 @@ func (self Compiler) compileMap(p *Program, sp int, vt *defs.Type, maxpc int) {
     p.pin(r)
 }
 
-func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, maxpc int, verifyUnique bool) {
+func (self *Compiler) compileSeq(p *Program, sp int, vt *defs.Type, startpc int, verifyUnique bool) {
     nb := -1
     et := vt.V
 
@@ -154,7 +160,7 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, maxpc int, ve
     r := p.pc()
     p.i64(OP_seek, int64(et.S.Size()))
     p.pin(k)
-    self.compile(p, sp + 1, et, maxpc)
+    self.compile(p, sp + 1, et, startpc)
     p.add(OP_list_decr)
     p.jmp(OP_list_if_next, r)
     p.add(OP_drop_state)
@@ -162,7 +168,7 @@ func (self Compiler) compileSeq(p *Program, sp int, vt *defs.Type, maxpc int, ve
     p.pin(j)
 }
 
-func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type, maxpc int) {
+func (self *Compiler) compileStruct(p *Program, sp int, vt *defs.Type, startpc int) {
     var err error
     var fvs []defs.Field
 
@@ -175,7 +181,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type, maxpc int)
     for _, fv := range fvs {
         p.tag(sp)
         p.i64(OP_seek, int64(fv.F))
-        self.compileStructField(p, sp + 1, fv, maxpc)
+        self.compileStructField(p, sp + 1, fv, startpc)
         p.i64(OP_seek, -int64(fv.F))
     }
 
@@ -184,7 +190,7 @@ func (self Compiler) compileStruct(p *Program, sp int, vt *defs.Type, maxpc int)
     p.i64(OP_byte, 0)
 }
 
-func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructField(p *Program, sp int, fv defs.Field, startpc int) {
     switch fv.Type.T {
         default: {
             panic("fatal: invalid field type: " + fv.Type.String())
@@ -201,15 +207,15 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
         case defs.T_enum   : fallthrough
         case defs.T_binary : {
             if fv.Default.IsValid() && fv.Spec == defs.Optional {
-                self.compileStructDefault(p, sp, fv, maxpc)
+                self.compileStructDefault(p, sp, fv, startpc)
             } else {
-                self.compileStructRequired(p, sp, fv, maxpc)
+                self.compileStructRequired(p, sp, fv, startpc)
             }
         }
 
         /* struct types, only available in hand-written structs */
         case defs.T_struct: {
-            self.compileStructRequired(p, sp, fv, maxpc)
+            self.compileStructRequired(p, sp, fv, startpc)
         }
 
         /* sequencial types */
@@ -217,18 +223,18 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
         case defs.T_set  : fallthrough
         case defs.T_list : {
             if fv.Spec == defs.Optional {
-                self.compileStructIterable(p, sp, fv, maxpc)
+                self.compileStructIterable(p, sp, fv, startpc)
             } else {
-                self.compileStructRequired(p, sp, fv, maxpc)
+                self.compileStructRequired(p, sp, fv, startpc)
             }
         }
 
         /* pointers */
         case defs.T_pointer: {
             if fv.Spec == defs.Optional {
-                self.compileStructOptional(p, sp, fv, maxpc)
+                self.compileStructOptional(p, sp, fv, startpc)
             } else if fv.Type.V.T == defs.T_struct {
-                self.compileStructPointer(p, sp, fv, maxpc)
+                self.compileStructPointer(p, sp, fv, startpc)
             } else {
                 panic("fatal: non-optional non-struct pointers")
             }
@@ -236,7 +242,7 @@ func (self Compiler) compileStructField(p *Program, sp int, fv defs.Field, maxpc
     }
 }
 
-func (self Compiler) compileStructDefault(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructDefault(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     t := fv.Type.T
 
@@ -256,17 +262,17 @@ func (self Compiler) compileStructDefault(p *Program, sp int, fv defs.Field, max
 
     /* compile if it's not the default value */
     self.compileStructFieldBegin(p, fv, 3)
-    self.compile(p, sp, fv.Type, maxpc)
+    self.compile(p, sp, fv.Type, startpc)
     p.pin(i)
 }
 
-func (self Compiler) compileStructPointer(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructPointer(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     self.compileStructFieldBegin(p, fv, 4)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.compile(p, sp + 1, fv.Type.V, maxpc)
+    self.compile(p, sp + 1, fv.Type.V, startpc)
     p.add(OP_drop_state)
     j := p.pc()
     p.add(OP_goto)
@@ -276,31 +282,31 @@ func (self Compiler) compileStructPointer(p *Program, sp int, fv defs.Field, max
     p.pin(j)
 }
 
-func (self Compiler) compileStructIterable(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructIterable(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     self.compileStructFieldBegin(p, fv, 3)
-    self.compile(p, sp, fv.Type, maxpc)
+    self.compile(p, sp, fv.Type, startpc)
     p.pin(i)
 }
 
-func (self Compiler) compileStructOptional(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructOptional(p *Program, sp int, fv defs.Field, startpc int) {
     i := p.pc()
     p.add(OP_if_nil)
     self.compileStructFieldBegin(p, fv, 3)
     p.add(OP_make_state)
     p.add(OP_deref)
-    self.compile(p, sp + 1, fv.Type.V, maxpc)
+    self.compile(p, sp + 1, fv.Type.V, startpc)
     p.add(OP_drop_state)
     p.pin(i)
 }
 
-func (self Compiler) compileStructRequired(p *Program, sp int, fv defs.Field, maxpc int) {
+func (self *Compiler) compileStructRequired(p *Program, sp int, fv defs.Field, startpc int) {
     self.compileStructFieldBegin(p, fv, 3)
-    self.compile(p, sp, fv.Type, maxpc)
+    self.compile(p, sp, fv.Type, startpc)
 }
 
-func (self Compiler) compileStructFieldBegin(p *Program, fv defs.Field, nb int64) {
+func (self *Compiler) compileStructFieldBegin(p *Program, fv defs.Field, nb int64) {
     p.i64(OP_size_check, nb)
     p.i64(OP_byte, int64(fv.Type.Tag()))
     p.i64(OP_word, int64(fv.ID))
