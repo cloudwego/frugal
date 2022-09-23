@@ -26,7 +26,7 @@ const (
     _MinILSize = 1024
 )
 
-// Option is the property setter function for Options.
+// Option is the property setter function for opts.Options.
 type Option func(*opts.Options)
 
 // WithMaxInlineDepth sets the maximum inlining depth for the JIT compiler.
