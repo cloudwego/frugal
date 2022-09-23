@@ -24,7 +24,7 @@ import (
 
 const (
     IntSize   = 4 << (^uint(0) >> 63)
-    StackSize = 65536
+    StackSize = 1024
 )
 
 func GetSize(vt reflect.Type) int {
