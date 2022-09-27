@@ -3,7 +3,7 @@
 #define ETAG        -1
 #define EEOF        -2
 #define ESTACK      -3
-#define MAX_STACK   65536
+#define MAX_STACK   1024
 
 #define T_bool      2
 #define T_i8        3
