@@ -31,7 +31,7 @@ func newBasicBlockIter(cfg *CFG) *BasicBlockIter {
     return &BasicBlockIter {
         g: cfg,
         s: stacknew(cfg.Root),
-        v: map[int]struct{}{ cfg.Root.Id: {} },
+        v: map[int]struct{} { cfg.Root.Id: {} },
     }
 }
 
