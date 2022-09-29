@@ -47,11 +47,11 @@ var Passes = [...]PassDescriptor {
     { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering)   },
     { Name: "Instruction Fusion"         , Pass: new(Fusion)        },
     { Name: "Instruction Compaction"     , Pass: new(Compaction)    },
-    { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
-    { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
     { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
     { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
-    { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
+    // { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
+    // { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
+    // { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
 }
 
 func toFuncType(fn interface{}) reflect.Type {

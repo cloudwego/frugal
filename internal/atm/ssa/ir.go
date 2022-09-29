@@ -168,9 +168,9 @@ func (self Reg) String() string {
             } else if self.Index() == 0 {
                 return fmt.Sprintf("%%%s", ArchRegNames[ArchRegs[i]])
             } else if self.Ptr() {
-                return fmt.Sprintf("p%d{%%%s}", self.Index(), ArchRegNames[ArchRegs[i]])
+                return fmt.Sprintf("p%d:%%%s", self.Index(), ArchRegNames[ArchRegs[i]])
             } else {
-                return fmt.Sprintf("r%d{%%%s}", self.Index(), ArchRegNames[ArchRegs[i]])
+                return fmt.Sprintf("r%d:%%%s", self.Index(), ArchRegNames[ArchRegs[i]])
             }
         }
 

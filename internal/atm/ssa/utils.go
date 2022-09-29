@@ -98,6 +98,14 @@ func stacknew(v interface{}) (r *lane.Stack) {
     return
 }
 
+func regorder(v Reg) int {
+    if v.Kind() != K_arch {
+        return int(v)
+    } else {
+        return math.MinInt64
+    }
+}
+
 func regnewref(v Reg) (r *Reg) {
     r = new(Reg)
     *r = v

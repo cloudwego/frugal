@@ -377,6 +377,23 @@ type IrAMD64_MOV_abs struct {
     V int64
 }
 
+func IrArchConstInt(r Reg, v int64) IrNode {
+    return &IrAMD64_MOV_abs {
+        R: r,
+        V: v,
+    }
+}
+
+func IrArchTryIntoConstInt(v IrNode) (Reg, int64, bool) {
+    if p, ok := v.(*IrConstInt); ok {
+        return p.R, p.V, true
+    } else if p, ok := v.(*IrAMD64_MOV_abs); ok {
+        return p.R, p.V, true
+    } else {
+        return 0, 0, false
+    }
+}
+
 func (self *IrAMD64_MOV_abs) Clone() IrNode {
     r := *self
     return &r
@@ -393,6 +410,23 @@ func (self *IrAMD64_MOV_abs) Definitions() []*Reg {
 type IrAMD64_MOV_ptr struct {
     R Reg
     P unsafe.Pointer
+}
+
+func IrArchConstPtr(r Reg, p unsafe.Pointer) IrNode {
+    return &IrAMD64_MOV_ptr {
+        R: r,
+        P: p,
+    }
+}
+
+func IrArchTryIntoConstPtr(v IrNode) (Reg, unsafe.Pointer, bool) {
+    if p, ok := v.(*IrConstPtr); ok {
+        return p.R, p.P, true
+    } else if p, ok := v.(*IrAMD64_MOV_ptr); ok {
+        return p.R, p.P, true
+    } else {
+        return 0, nil, false
+    }
 }
 
 func (self *IrAMD64_MOV_ptr) Clone() IrNode {
@@ -646,16 +680,18 @@ func (self IrSlotKind) String() string {
 }
 
 type IrAMD64_MOV_load_stack struct {
-    R Reg
-    S uintptr
-    K IrSlotKind
+    R   Reg
+    S   uintptr
+    K   IrSlotKind
+    Ptr bool
 }
 
 func IrArchLoadStack(reg Reg, slot uintptr, kind IrSlotKind) *IrAMD64_MOV_load_stack {
     return &IrAMD64_MOV_load_stack {
-        R: reg,
-        S: slot,
-        K: kind,
+        R   : reg,
+        S   : slot,
+        K   : kind,
+        Ptr : reg.Ptr(),
     }
 }
 
@@ -673,16 +709,18 @@ func (self *IrAMD64_MOV_load_stack) Definitions() (r []*Reg) {
 }
 
 type IrAMD64_MOV_store_stack struct {
-    R Reg
-    S uintptr
-    K IrSlotKind
+    R   Reg
+    S   uintptr
+    K   IrSlotKind
+    Ptr bool
 }
 
 func IrArchStoreStack(reg Reg, slot uintptr, kind IrSlotKind) *IrAMD64_MOV_store_stack {
     return &IrAMD64_MOV_store_stack {
-        R: reg,
-        S: slot,
-        K: kind,
+        R   : reg,
+        S   : slot,
+        K   : kind,
+        Ptr : reg.Ptr(),
     }
 }
 

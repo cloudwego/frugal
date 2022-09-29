@@ -27,9 +27,10 @@ func (Rematerialize) Apply(cfg *CFG) {
     /* Phase 1: Scan all the constants */
     for _, bb := range cfg.PostOrder().Reversed() {
         for _, v := range bb.Ins {
-            switch p := v.(type) {
-                case *IrAMD64_MOV_abs: consts[p.R] = constint(p.V)
-                case *IrAMD64_MOV_ptr: consts[p.R] = constptr(p.P, Volatile)
+            if r, x, ok := IrArchTryIntoConstInt(v); ok {
+                consts[r] = constint(x)
+            } else if r, p, ok := IrArchTryIntoConstPtr(v); ok {
+                consts[r] = constptr(p, Volatile)
             }
         }
     }
@@ -37,12 +38,12 @@ func (Rematerialize) Apply(cfg *CFG) {
     /* Phase 2: Replace register copies with consts if possible */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         for i, v := range bb.Ins {
-            if p, ok := v.(*IrAMD64_MOV_reg); ok {
-                if cc, ok := consts[p.V]; ok {
+            if d, s, ok := IrArchTryIntoCopy(v); ok {
+                if cc, ok := consts[s]; ok {
                     if cc.i {
-                        bb.Ins[i] = &IrAMD64_MOV_abs { R: p.R, V: cc.v }
+                        bb.Ins[i] = IrArchConstInt(d, cc.v)
                     } else {
-                        bb.Ins[i] = &IrAMD64_MOV_ptr { R: p.R, P: cc.p }
+                        bb.Ins[i] = IrArchConstPtr(d, cc.p)
                     }
                 }
             }
