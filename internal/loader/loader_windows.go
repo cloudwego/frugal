@@ -1,6 +1,3 @@
-//go:build !windows
-// +build !windows
-
 /*
  * Copyright 2022 ByteDance Inc.
  *
@@ -29,12 +26,17 @@ import (
 )
 
 const (
-    _AP = syscall.MAP_ANON  | syscall.MAP_PRIVATE
-    _RX = syscall.PROT_READ | syscall.PROT_EXEC
-    _RW = syscall.PROT_READ | syscall.PROT_WRITE
+    MEM_COMMIT  = 0x00001000
+    MEM_RESERVE = 0x00002000
 )
 
-type Loader   []byte
+var (
+    libKernel32                = syscall.NewLazyDLL("KERNEL32.DLL")
+    libKernel32_VirtualAlloc   = libKernel32.NewProc("VirtualAlloc")
+    libKernel32_VirtualProtect = libKernel32.NewProc("VirtualProtect")
+)
+
+type Loader []byte
 type Function unsafe.Pointer
 
 func mkptr(m uintptr) unsafe.Pointer {
@@ -47,14 +49,15 @@ func alignUp(n uintptr, a int) uintptr {
 
 func (self Loader) Load(fn string, frame rt.Frame) (f Function) {
     var mm uintptr
-    var er syscall.Errno
+    var er error
+    var r1 uintptr
 
     /* align the size to pages */
     nf := uintptr(len(self))
     nb := alignUp(nf, os.Getpagesize())
 
     /* allocate a block of memory */
-    if mm, _, er = syscall.Syscall6(syscall.SYS_MMAP, 0, nb, _RW, _AP, 0, 0); er != 0 {
+    if mm, _, er = libKernel32_VirtualAlloc.Call(0, nb, MEM_COMMIT|MEM_RESERVE, syscall.PAGE_READWRITE); mm == 0 {
         panic(er)
     }
 
@@ -63,8 +66,9 @@ func (self Loader) Load(fn string, frame rt.Frame) (f Function) {
     registerFunction(fmt.Sprintf("(frugal).%s_%x", fn, mm), mm, nf, frame)
 
     /* make it executable */
-    if _, _, err := syscall.Syscall(syscall.SYS_MPROTECT, mm, nb, _RX); err != 0 {
-        panic(err)
+    var oldPf uintptr
+    if r1, _, er = libKernel32_VirtualProtect.Call(mm, nb, syscall.PAGE_EXECUTE_READ, uintptr(unsafe.Pointer(&oldPf))); r1 == 0 {
+        panic(er)
     } else {
         return Function(&mm)
     }

@@ -20,6 +20,8 @@ import (
     `fmt`
     `html`
     `io/ioutil`
+    `os`
+    `path/filepath`
     `strings`
     `testing`
 
@@ -135,5 +137,8 @@ func TestCFG_Build(t *testing.T) {
     c := p.Build()
     g := Compile(c, (func(*int, *int) (int, int))(nil))
     t.Logf("Generating DOT file ...")
-    cfgdot(g, "/tmp/cfg.gv")
+    fn := filepath.Join(os.TempDir(), "cfg.gv")
+    t.Logf("path %s", fn)
+    cfgdot(g, fn)
 }
+
