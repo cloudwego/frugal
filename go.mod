@@ -7,6 +7,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.16.0
 	github.com/bytedance/gopkg v0.0.0-20220509134931-d1878f638986
 	github.com/chenzhuoyu/iasm v0.0.0-20220520152703-997ea6739ce9
+	github.com/choleraehyq/pid v0.0.15 // indirect
 	github.com/cloudwego/kitex v0.3.2
 	github.com/cloudwego/thriftgo v0.1.2
 	github.com/davecgh/go-spew v1.1.1
