@@ -36,7 +36,6 @@ var Passes = [...]PassDescriptor {
     { Name: "Early Constant Propagation" , Pass: new(ConstProp)     },
     { Name: "Early Reduction"            , Pass: new(Reduce)        },
     { Name: "Branch Elimination"         , Pass: new(BranchElim)    },
-    { Name: "Block Merging"              , Pass: new(BlockMerge)    },
     { Name: "Return Spreading"           , Pass: new(ReturnSpread)  },
     { Name: "Value Reordering"           , Pass: new(Reorder)       },
     { Name: "Late Constant Propagation"  , Pass: new(ConstProp)     },
@@ -49,8 +48,10 @@ var Passes = [...]PassDescriptor {
     { Name: "Instruction Compaction"     , Pass: new(Compaction)    },
     { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
     { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
-    // { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
-    // { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
+    { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
+    { Name: "Critical Edge Splitting"    , Pass: new(SplitCritical) },
+    { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
+    { Name: "Block Merging"              , Pass: new(BlockMerge)    },
     // { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
 }
 

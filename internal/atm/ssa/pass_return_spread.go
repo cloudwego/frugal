@@ -122,7 +122,7 @@ func (ReturnSpread) Apply(cfg *CFG) {
                 /* replace the switch targets */
                 for v, b := range sw.Br {
                     if b.To == bb {
-                        sw.Br[v] = IrBranch {
+                        sw.Br[v] = &IrBranch {
                             To         : ret,
                             Likeliness : b.Likeliness,
                         }

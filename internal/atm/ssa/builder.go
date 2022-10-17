@@ -164,7 +164,7 @@ func (self *_GraphBuilder) branch(cfg *CFG, p *hir.Ir) *BasicBlock {
 
 func (self *_GraphBuilder) termbsw(cfg *CFG, p *hir.Ir, bb *BasicBlock) {
     sw := new(IrSwitch)
-    sw.Br = make(map[int32]IrBranch, p.Iv)
+    sw.Br = make(map[int32]*IrBranch, p.Iv)
     bb.Term = sw
 
     /* add every branch of the switch instruction */

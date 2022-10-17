@@ -17,6 +17,8 @@
 package ssa
 
 import (
+    `fmt`
+
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
@@ -61,6 +63,10 @@ type BasicBlock struct {
     Ins  []IrNode
     Pred []*BasicBlock
     Term IrTerminator
+}
+
+func (self *BasicBlock) String() string {
+    return fmt.Sprintf("bb_%d", self.Id)
 }
 
 func (self *BasicBlock) addPred(p *BasicBlock) {
@@ -510,8 +516,8 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
     f.addPred(self)
 
     /* create branch targets */
-    to := IrBranch { To: t, Likeliness: Unlikely }
-    br := IrBranch { To: f, Likeliness: Unlikely }
+    to := IrUnlikely(t)
+    br := IrUnlikely(f)
 
     /* assign the correct likeliness */
     if p.Likeliness() == hir.Likely {
@@ -522,5 +528,5 @@ func (self *BasicBlock) termCondition(p *hir.Ir, t *BasicBlock, f *BasicBlock) {
 
     /* attach to the block */
     self.Ins = append(self.Ins, ins)
-    self.Term = &IrSwitch { V: Tr(0), Ln: to, Br: map[int32]IrBranch { 0: br } }
+    self.Term = &IrSwitch { V: Tr(0), Ln: to, Br: map[int32]*IrBranch { 0: br } }
 }

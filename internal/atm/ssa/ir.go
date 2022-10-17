@@ -372,21 +372,28 @@ type IrBranch struct {
     Likeliness Likeliness
 }
 
-func IrLikely(bb *BasicBlock) IrBranch {
-    return IrBranch {
+func IrLikely(bb *BasicBlock) *IrBranch {
+    return &IrBranch {
         To         : bb,
         Likeliness : Likely,
     }
 }
 
-func IrUnlikely(bb *BasicBlock) IrBranch {
-    return IrBranch {
+func IrUnlikely(bb *BasicBlock) *IrBranch {
+    return &IrBranch {
         To         : bb,
         Likeliness : Unlikely,
     }
 }
 
-func (self IrBranch) String() string {
+func (self *IrBranch) Clone() *IrBranch {
+    return &IrBranch {
+        To         : self.To,
+        Likeliness : self.Likeliness,
+    }
+}
+
+func (self *IrBranch) String() string {
     return fmt.Sprintf("bb_%d (%s)", self.To.Id, self.Likeliness)
 }
 
@@ -395,6 +402,7 @@ type IrSuccessors interface {
     Block() *BasicBlock
     Value() (int32, bool)
     Likeliness() Likeliness
+    UpdateBlock(bb *BasicBlock)
 }
 
 type IrTerminator interface {
@@ -408,7 +416,7 @@ func (*IrReturn) irterminator() {}
 
 type _SwitchTarget struct {
     i int32
-    b IrBranch
+    b *IrBranch
 }
 
 type _SwitchSuccessors struct {
@@ -445,10 +453,18 @@ func (self *_SwitchSuccessors) Likeliness() Likeliness {
     }
 }
 
+func (self *_SwitchSuccessors) UpdateBlock(to *BasicBlock) {
+    if self.i >= len(self.t) - 1 {
+        panic("end of iterator")
+    } else {
+        self.t[self.i].b.To = to
+    }
+}
+
 type IrSwitch struct {
     V  Reg
-    Ln IrBranch
-    Br map[int32]IrBranch
+    Ln *IrBranch
+    Br map[int32]*IrBranch
 }
 
 func (self *IrSwitch) iter() *_SwitchSuccessors {
@@ -483,16 +499,16 @@ func (self *IrSwitch) iter() *_SwitchSuccessors {
 
 func (self *IrSwitch) Clone() IrNode {
     ret := new(IrSwitch)
-    ret.Br = make(map[int32]IrBranch, len(ret.Br))
+    ret.Br = make(map[int32]*IrBranch, len(ret.Br))
 
     /* clone the switch branches */
     for v, b := range self.Br {
-        ret.Br[v] = b
+        ret.Br[v] = b.Clone()
     }
 
     /* set the switch register and default branch */
     ret.V = self.V
-    ret.Ln = self.Ln
+    ret.Ln = self.Ln.Clone()
     return ret
 }
 
@@ -541,6 +557,7 @@ func (_EmptySuccessor) Next()       bool          { return false }
 func (_EmptySuccessor) Block()      *BasicBlock   { return nil }
 func (_EmptySuccessor) Value()      (int32, bool) { return 0, false }
 func (_EmptySuccessor) Likeliness() Likeliness    { return Unlikely }
+func (_EmptySuccessor) UpdateBlock(_ *BasicBlock) { panic("empty iterator") }
 
 type IrReturn struct {
     R []Reg

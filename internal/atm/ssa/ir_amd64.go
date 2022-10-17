@@ -1465,12 +1465,15 @@ func (self *IrAMD64_RET) Successors() IrSuccessors {
 }
 
 type IrAMD64_JMP struct {
-    To IrBranch
+    To *IrBranch
+}
+
+func IrArchJump(to *BasicBlock) IrTerminator {
+    return &IrAMD64_JMP { IrLikely(to) }
 }
 
 func (self *IrAMD64_JMP) Clone() IrNode {
-    r := *self
-    return &r
+    return &IrAMD64_JMP { self.To.Clone() }
 }
 
 func (self *IrAMD64_JMP) String() string {
@@ -1485,13 +1488,15 @@ func (self *IrAMD64_JMP) Successors() IrSuccessors {
 }
 
 type IrAMD64_JNC struct {
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
 }
 
 func (self *IrAMD64_JNC) Clone() IrNode {
-    r := *self
-    return &r
+    return &IrAMD64_JNC {
+        To: self.To.Clone(),
+        Ln: self.Ln.Clone(),
+    }
 }
 
 func (self *IrAMD64_JNC) String() string {
@@ -1502,8 +1507,8 @@ func (self *IrAMD64_JNC) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1511,13 +1516,15 @@ func (self *IrAMD64_JNC) Successors() IrSuccessors {
 type IrAMD64_Jcc_rr struct {
     X  Reg
     Y  Reg
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
 func (self *IrAMD64_Jcc_rr) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1540,8 +1547,8 @@ func (self *IrAMD64_Jcc_rr) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1549,13 +1556,15 @@ func (self *IrAMD64_Jcc_rr) Successors() IrSuccessors {
 type IrAMD64_Jcc_ri struct {
     X  Reg
     Y  int32
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
 func (self *IrAMD64_Jcc_ri) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1579,8 +1588,8 @@ func (self *IrAMD64_Jcc_ri) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1588,13 +1597,15 @@ func (self *IrAMD64_Jcc_ri) Successors() IrSuccessors {
 type IrAMD64_Jcc_rp struct {
     X  Reg
     Y  unsafe.Pointer
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
 func (self *IrAMD64_Jcc_rp) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1617,8 +1628,8 @@ func (self *IrAMD64_Jcc_rp) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1626,13 +1637,15 @@ func (self *IrAMD64_Jcc_rp) Successors() IrSuccessors {
 type IrAMD64_Jcc_ir struct {
     X  int32
     Y  Reg
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
 func (self *IrAMD64_Jcc_ir) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1656,8 +1669,8 @@ func (self *IrAMD64_Jcc_ir) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1665,13 +1678,15 @@ func (self *IrAMD64_Jcc_ir) Successors() IrSuccessors {
 type IrAMD64_Jcc_pr struct {
     X  unsafe.Pointer
     Y  Reg
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
 func (self *IrAMD64_Jcc_pr) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1694,8 +1709,8 @@ func (self *IrAMD64_Jcc_pr) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1704,8 +1719,8 @@ type IrAMD64_Jcc_rm struct {
     X  Reg
     Y  Mem
     N  uint8
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1715,6 +1730,8 @@ func (self *IrAMD64_Jcc_rm) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_rm) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1742,8 +1759,8 @@ func (self *IrAMD64_Jcc_rm) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1752,8 +1769,8 @@ type IrAMD64_Jcc_mr struct {
     X  Mem
     Y  Reg
     N  uint8
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1763,6 +1780,8 @@ func (self *IrAMD64_Jcc_mr) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_mr) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1790,8 +1809,8 @@ func (self *IrAMD64_Jcc_mr) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1800,8 +1819,8 @@ type IrAMD64_Jcc_mi struct {
     X  Mem
     Y  int32
     N  uint8
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1811,6 +1830,8 @@ func (self *IrAMD64_Jcc_mi) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_mi) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1839,8 +1860,8 @@ func (self *IrAMD64_Jcc_mi) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1848,8 +1869,8 @@ func (self *IrAMD64_Jcc_mi) Successors() IrSuccessors {
 type IrAMD64_Jcc_mp struct {
     X  Mem
     Y  unsafe.Pointer
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1859,6 +1880,8 @@ func (self *IrAMD64_Jcc_mp) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_mp) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1886,8 +1909,8 @@ func (self *IrAMD64_Jcc_mp) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
@@ -1896,8 +1919,8 @@ type IrAMD64_Jcc_im struct {
     X  int32
     Y  Mem
     N  uint8
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1907,6 +1930,8 @@ func (self *IrAMD64_Jcc_im) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_im) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1935,16 +1960,17 @@ func (self *IrAMD64_Jcc_im) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }
+
 type IrAMD64_Jcc_pm struct {
     X  unsafe.Pointer
     Y  Mem
-    To IrBranch
-    Ln IrBranch
+    To *IrBranch
+    Ln *IrBranch
     Op IrAMD64_CmpOp
 }
 
@@ -1954,6 +1980,8 @@ func (self *IrAMD64_Jcc_pm) MemOp() *Mem {
 
 func (self *IrAMD64_Jcc_pm) Clone() IrNode {
     r := *self
+    r.To = self.To.Clone()
+    r.Ln = self.Ln.Clone()
     return &r
 }
 
@@ -1980,8 +2008,8 @@ func (self *IrAMD64_Jcc_pm) Successors() IrSuccessors {
     return &_SwitchSuccessors {
         i: -1,
         t: []_SwitchTarget {
-            { b: self.To, i: 1 },
-            { b: self.Ln },
+            { b: self.Ln, i: 0 },
+            { b: self.To },
         },
     }
 }

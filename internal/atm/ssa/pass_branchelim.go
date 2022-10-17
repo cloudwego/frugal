@@ -532,7 +532,7 @@ func (self BranchElim) dfs(cfg *CFG, bb *BasicBlock, ps *_Proof) {
         if rem.Enqueue(_Edge { bb, sw.Ln.To }); len(sw.Br) != 1 {
             sw.Ln = IrUnlikely(cfg.CreateUnreachable(bb))
         } else {
-            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]IrBranch)
+            sw.Ln, sw.Br = sw.Br[val[0]], make(map[int32]*IrBranch)
         }
     }
 
