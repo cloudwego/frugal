@@ -23,6 +23,7 @@ import (
     `strings`
 
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/davecgh/go-spew/spew`
     `github.com/oleiade/lane`
     `gonum.org/v1/gonum/graph`
     `gonum.org/v1/gonum/graph/simple`
@@ -194,6 +195,11 @@ func (self *_RegTab) remove(r Reg) (rs _RegSet) {
     return
 }
 
+type _RegColor struct {
+    r Reg
+    c int
+}
+
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
@@ -274,6 +280,36 @@ func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in
     return rs
 }
 
+func (self RegAlloc) depthmap(dm map[int]int, bb *BasicBlock, vis map[int]struct{}, path []int) {
+    path = append(path, bb.Id)
+    vis[bb.Id] = struct{}{}
+
+    /* traverse all the sucessors */
+    for it := bb.Term.Successors(); it.Next(); {
+        st := -1
+        nx := it.Block()
+
+        /* find ID on the path */
+        for i, v := range path {
+            if v == nx.Id {
+                st = i
+                break
+            }
+        }
+
+        /* check for loops, visit the successor if not already */
+        if st != -1 {
+            for _, id := range path[st:] {
+                dm[id]++
+            }
+        } else {
+            if _, ok := vis[nx.Id]; !ok {
+                self.depthmap(dm, nx, vis, path)
+            }
+        }
+    }
+}
+
 func (self RegAlloc) Apply(cfg *CFG) {
     var spill bool
     var order *lane.Stack
@@ -286,7 +322,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
-    spillset := make(map[Reg]bool)
+    depthmap := make(map[int]int)
     coalescemap := make(map[Reg]Reg)
 
     /* register precolorer */
@@ -300,9 +336,18 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* register coalescer */
     coalesce := func(rr []*Reg) {
-        for _, p := range rr {
-            if r, ok := coalescemap[*p]; ok {
-                *p = r
+        for _, r := range rr {
+            if c, ok := coalescemap[*r]; ok {
+                *r = c
+            }
+        }
+    }
+
+    /* def-use counter */
+    countdefuse := func(bb int, rr []*Reg) {
+        for _, r := range rr {
+            if r.Kind() != K_arch {
+                defuse[*r] += math.Pow(10.0, float64(depthmap[bb]))
             }
         }
     }
@@ -332,6 +377,10 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
+    /* calculate the depth map */
+    root := cfg.Root
+    self.depthmap(depthmap, root, make(map[int]struct{}), nil)
+
     /* loop until no more retries */
     for {
         pool.reset()
@@ -340,7 +389,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
         rt.MapClear(livein)
         rt.MapClear(liveout)
         rt.MapClear(liveset)
-        rt.MapClear(spillset)
         rt.MapClear(coalescemap)
 
         /* Phase 1: Calculate live ranges */
@@ -494,11 +542,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
             var nd graph.Node
             var it graph.Nodes
 
-            /* find the node with a degree less than available arch-registers */
+            /* find the node with a degree less than available
+             * registers (and have the smallest ID, to be deterministic) */
             for it = rig.Nodes(); it.Next(); {
                 if rig.From(it.Node().ID()).Len() < len(arch) {
-                    nd = it.Node()
-                    break
+                    if nd == nil || nd.ID() > it.Node().ID() {
+                        nd = it.Node()
+                    }
                 }
             }
 
@@ -524,6 +574,49 @@ func (self RegAlloc) Apply(cfg *CFG) {
             break
         }
 
+        /* insert all the edges back */
+        for !order.Empty() {
+            val := order.Pop()
+            reg := val.(Reg)
+
+            /* create one edge */
+            for _, r := range edges[reg] {
+                p, _ := rig.NodeWithID(int64(r))
+                q, _ := rig.NodeWithID(int64(reg))
+                rig.SetEdge(rig.NewEdge(p, q))
+            }
+        }
+
+        /* count def and use of each register */
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+            var ok bool
+            var use IrUsages
+            var def IrDefinitions
+
+            /* should not have Phi nodes */
+            if len(bb.Phi) != 0 {
+                panic("regalloc: unexpected Phi node at this point")
+            }
+
+            /* process instructions */
+            for _, v := range bb.Ins {
+                if use, ok = v.(IrUsages)      ; ok { countdefuse(bb.Id, use.Usages()) }
+                if def, ok = v.(IrDefinitions) ; ok { countdefuse(bb.Id, def.Definitions()) }
+            }
+
+            /* process the terminator */
+            if use, ok = bb.Term.(IrUsages); ok {
+                countdefuse(bb.Id, use.Usages())
+            }
+        })
+
+        /* cost-to-degree ratio = [(defs & uses) * 10 ^ loop-nest-depth] / degree */
+        for r := range defuse {
+            defuse[r] /= float64(rig.From(int64(r)).Len())
+        }
+
+        spew.Config.SortKeys = true
+        spew.Dump(defuse)
         panic("not implemented: spill")
     }
 
@@ -532,6 +625,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     regmap := make(map[int]Reg)
     colors := make(map[int]struct{})
     colormap := make(map[Reg]int)
+    colortab := make([]_RegColor, 0, len(arch))
 
     /* assign colors to every register */
     for !order.Empty() {
@@ -557,7 +651,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             rig.SetEdge(rig.NewEdge(p, q))
         }
 
-        /* find the lowest available register */
+        /* find the lowest available color */
         for c := range colors {
             if c < cx {
                 cx = c
@@ -572,20 +666,30 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     }
 
-    /* map arch-specific registers to itself */
+    /* dump all register colors */
     for r, c := range colormap {
-        if r.Kind() == K_arch {
-            regmap[c] = r
-            regsliceremove(&arch, r)
-        }
+        colortab = append(colortab, _RegColor { r, c })
     }
 
-    /* map the remaining registers to arch-specific registers */
-    for r, c := range colormap {
-        if r.Kind() != K_arch {
-            regmap[c] = arch[0]
-            arch = arch[1:]
+    /* sort by register order, ensure all arch-specific registers are at the front */
+    sort.Slice(colortab, func(i int, j int) bool {
+        return regorder(colortab[i].r) < regorder(colortab[j].r)
+    })
+
+    /* assign colors to registers */
+    for _, rc := range colortab {
+        rr := rc.r
+        rk := rr.Kind()
+
+        /* allocate a new register if not arch-specific */
+        if rk != K_arch {
+            regmap[rc.c], arch = arch[0], arch[1:]
+            continue
         }
+
+        /* map all arch-specific registers to themself */
+        regmap[rc.c] = rr
+        regsliceremove(&arch, rr)
     }
 
     /* register substitution function */
