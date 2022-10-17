@@ -23,7 +23,6 @@ import (
     `strings`
 
     `github.com/cloudwego/frugal/internal/rt`
-    `github.com/davecgh/go-spew/spew`
     `github.com/oleiade/lane`
     `gonum.org/v1/gonum/graph`
     `gonum.org/v1/gonum/graph/simple`
@@ -323,6 +322,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
     depthmap := make(map[int]int)
+    spillslots := make(map[Reg]struct{})
     coalescemap := make(map[Reg]Reg)
 
     /* register precolorer */
@@ -344,10 +344,12 @@ func (self RegAlloc) Apply(cfg *CFG) {
     }
 
     /* def-use counter */
-    countdefuse := func(bb int, rr []*Reg) {
+    countdefuse := func(rig *simple.UndirectedGraph, bb int, rr []*Reg) {
         for _, r := range rr {
-            if r.Kind() != K_arch {
-                defuse[*r] += math.Pow(10.0, float64(depthmap[bb]))
+            if _, ok := spillslots[*r]; !ok {
+                if r.Kind() != K_arch && rig.Node(int64(*r)) != nil {
+                    defuse[*r] += math.Pow(10.0, float64(depthmap[bb]))
+                }
             }
         }
     }
@@ -574,19 +576,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
             break
         }
 
-        /* insert all the edges back */
-        for !order.Empty() {
-            val := order.Pop()
-            reg := val.(Reg)
-
-            /* create one edge */
-            for _, r := range edges[reg] {
-                p, _ := rig.NodeWithID(int64(r))
-                q, _ := rig.NodeWithID(int64(reg))
-                rig.SetEdge(rig.NewEdge(p, q))
-            }
-        }
-
         /* count def and use of each register */
         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
             var ok bool
@@ -600,13 +589,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
             /* process instructions */
             for _, v := range bb.Ins {
-                if use, ok = v.(IrUsages)      ; ok { countdefuse(bb.Id, use.Usages()) }
-                if def, ok = v.(IrDefinitions) ; ok { countdefuse(bb.Id, def.Definitions()) }
+                if use, ok = v.(IrUsages)      ; ok { countdefuse(rig, bb.Id, use.Usages()) }
+                if def, ok = v.(IrDefinitions) ; ok { countdefuse(rig, bb.Id, def.Definitions()) }
             }
 
             /* process the terminator */
             if use, ok = bb.Term.(IrUsages); ok {
-                countdefuse(bb.Id, use.Usages())
+                countdefuse(rig, bb.Id, use.Usages())
             }
         })
 
@@ -615,9 +604,92 @@ func (self RegAlloc) Apply(cfg *CFG) {
             defuse[r] /= float64(rig.From(int64(r)).Len())
         }
 
-        spew.Config.SortKeys = true
-        spew.Dump(defuse)
-        panic("not implemented: spill")
+        /* the register with lowest spill cost */
+        spillr := Rz
+        spillc := math.MaxFloat64
+
+        /* find that register */
+        for r, c := range defuse {
+            if c < spillc {
+                spillc = c
+                spillr = r
+            }
+        }
+
+        /* sanity check */
+        if spillr == Rz {
+            panic("regalloc: corrupted def-use counters")
+        } else {
+            spillslots[spillr] = struct{}{}
+        }
+
+        /* Phase 5: Spill the selected register */
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+            ins := bb.Ins
+            bb.Ins = make([]IrNode, 0, len(ins))
+
+            /* should not have Phi nodes */
+            if len(bb.Phi) != 0 {
+                panic("regalloc: unexpected Phi nodes")
+            }
+
+            /* scan all the instructions */
+            for _, v := range ins {
+                lds := false
+                sts := false
+                reg := cfg.CreateRegister(spillr.Ptr())
+
+                /* check usages */
+                if use, ok := v.(IrUsages); ok {
+                    for _, r := range use.Usages() {
+                        if *r == spillr {
+                            *r = reg
+                            lds = true
+                        }
+                    }
+                }
+
+                /* check definitions */
+                if def, ok := v.(IrDefinitions); ok {
+                    for _, r := range def.Definitions() {
+                        if *r == spillr {
+                            sts = true
+                        }
+                    }
+                }
+
+                /* spill & reload IR */
+                ld := IrArchLoadStack(reg, uintptr(spillr), IrSlotLocal)
+                st := IrArchStoreStack(spillr, uintptr(spillr), IrSlotLocal)
+
+                /* insert spill & reload instructions */
+                switch {
+                    case !lds && !sts : bb.Ins = append(bb.Ins, v)
+                    case !lds &&  sts : bb.Ins = append(bb.Ins, v, st)
+                    case  lds && !sts : bb.Ins = append(bb.Ins, ld, v)
+                    case  lds &&  sts : bb.Ins = append(bb.Ins, ld, v, st)
+                }
+            }
+
+            /* create register for terminator */
+            lds := false
+            reg := cfg.CreateRegister(spillr.Ptr())
+
+            /* check usages in the terminator */
+            if use, ok := bb.Term.(IrUsages); ok {
+                for _, r := range use.Usages() {
+                    if *r == spillr {
+                        *r = reg
+                        lds = true
+                    }
+                }
+            }
+
+            /* insert load instruction if needed */
+            if lds {
+                bb.Ins = append(bb.Ins, IrArchLoadStack(reg, uintptr(spillr), IrSlotLocal))
+            }
+        })
     }
 
     /* register colors */
@@ -651,7 +723,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             rig.SetEdge(rig.NewEdge(p, q))
         }
 
-        /* find the lowest available color */
+        /* find the highest available color */
         for c := range colors {
             if c < cx {
                 cx = c
@@ -678,26 +750,24 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* assign colors to registers */
     for _, rc := range colortab {
-        rr := rc.r
-        rk := rr.Kind()
-
-        /* allocate a new register if not arch-specific */
-        if rk != K_arch {
-            regmap[rc.c], arch = arch[0], arch[1:]
-            continue
+        if rc.r.Kind() == K_arch {
+            regmap[rc.c] = rc.r
+            regsliceremove(&arch, rc.r)
+        } else {
+            if _, ok := regmap[rc.c]; !ok {
+                regmap[rc.c], arch = arch[0], arch[1:]
+            }
         }
-
-        /* map all arch-specific registers to themself */
-        regmap[rc.c] = rr
-        regsliceremove(&arch, rr)
     }
 
     /* register substitution function */
     replaceregs := func(rr []*Reg) {
         for _, r := range rr {
             if c, ok := colormap[*r]; ok && r.Kind() != K_arch {
-                if *r, ok = regmap[c]; !ok {
+                if p, ok := regmap[c]; !ok {
                     panic(fmt.Sprintf("regalloc: no register for color %d", c))
+                } else {
+                    *r = IrSetArch(*r, ArchRegs[p.Name()])
                 }
             }
         }
