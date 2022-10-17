@@ -128,7 +128,7 @@ func updateDominatorTree(cfg *CFG) {
     lt := newLengauerTarjan()
     lt.dfs(cfg.Root)
 
-    /* perform Step 2 and Step 3 simultaneously */
+    /* perform Step 2 and Step 3 for every node */
     for i := len(lt.nodes) - 1; i > 0; i-- {
         p := lt.nodes[i]
         q := (*_LtNode)(nil)
