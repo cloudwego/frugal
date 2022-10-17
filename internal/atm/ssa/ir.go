@@ -454,7 +454,7 @@ func (self *_SwitchSuccessors) Likeliness() Likeliness {
 }
 
 func (self *_SwitchSuccessors) UpdateBlock(to *BasicBlock) {
-    if self.i >= len(self.t) - 1 {
+    if self.i >= len(self.t) {
         panic("end of iterator")
     } else {
         self.t[self.i].b.To = to

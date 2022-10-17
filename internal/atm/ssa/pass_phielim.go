@@ -42,7 +42,9 @@ func (self PhiElim) addSource(src map[_RegSrc]struct{}, phi *IrPhi, defs map[Reg
 
     /* add definitions for this node */
     for _, r := range phi.V {
-        if def, ok = defs[*r]; !ok {
+        if r.Kind() == K_zero {
+            src[_RegSrc { r: *r, p: nil }] = struct{}{}
+        } else if def, ok = defs[*r]; !ok {
             panic("phixform: undefined register: " + r.String())
         } else if pp, ok = def.(*IrPhi); ok {
             self.addSource(src, pp, defs, visited)
