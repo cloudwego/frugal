@@ -52,7 +52,7 @@ var Passes = [...]PassDescriptor {
     { Name: "Critical Edge Splitting"    , Pass: new(SplitCritical) },
     { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
     { Name: "Block Merging"              , Pass: new(BlockMerge)    },
-    // { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
+    { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
 }
 
 func toFuncType(fn interface{}) reflect.Type {
