@@ -903,4 +903,45 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
     })
+
+    /* remove redundant storeStack where the same stackPos is overwritten before loading */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var redundantIrPos []int
+        storeStack := make(map[Reg][]int)
+
+        /* scan every instruction */
+        for i, v := range bb.Ins {
+            if spillIr, ok := v.(*_IrSpillOp) ; ok && !spillIr.reload {
+                storeStack[spillIr.tag] = append(storeStack[spillIr.tag], i)
+            } else if ok && spillIr.reload {
+                if irPos, ok := storeStack[spillIr.tag]; ok {
+                    redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
+                    delete(storeStack, spillIr.tag)
+                }
+            }
+        }
+
+        for _, irPos := range storeStack {
+            if len(irPos) > 1 {
+                redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
+            }
+        }
+
+        /* abandon redundant storeStack instructions according to their position in the block */
+        if len(redundantIrPos) > 0 {
+            ins := bb.Ins
+            bb.Ins = nil
+            sort.Ints(redundantIrPos)
+            startPos := 0
+            for _, p := range redundantIrPos {
+                if startPos < len(ins) {
+                    bb.Ins = append(bb.Ins, ins[startPos : p]...)
+                    startPos = p + 1
+                }
+            }
+            if startPos < len(ins) {
+                bb.Ins = append(bb.Ins, ins[startPos : ]...)
+            }
+        }
+    })
 }
