@@ -665,7 +665,7 @@ type IrAMD64_MOV_load_stack struct {
     S *IrStackSlot
 }
 
-func IrArchLoadStack(reg Reg, slot *IrStackSlot) *IrAMD64_MOV_load_stack {
+func IrArchLoadStack(reg Reg, slot *IrStackSlot) IrSlotOwner {
     return &IrAMD64_MOV_load_stack {
         R: reg,
         S: slot,
@@ -694,7 +694,7 @@ type IrAMD64_MOV_store_stack struct {
     S *IrStackSlot
 }
 
-func IrArchStoreStack(reg Reg, slot *IrStackSlot) *IrAMD64_MOV_store_stack {
+func IrArchStoreStack(reg Reg, slot *IrStackSlot) IrSlotOwner {
     return &IrAMD64_MOV_store_stack {
         R: reg,
         S: slot,
@@ -1414,7 +1414,7 @@ type IrAMD64_RET struct {
     R []Reg
 }
 
-func IrArchReturn(rr []Reg) *IrAMD64_RET {
+func IrArchReturn(rr []Reg) IrTerminator {
     return &IrAMD64_RET { rr }
 }
 
