@@ -770,7 +770,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             delete(colors, colormap[r])
         }
 
-        /* find the highest available color */
+        /* find the lowest available color */
         for c := range colors {
             if c < cx {
                 cx = c
