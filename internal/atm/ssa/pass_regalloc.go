@@ -484,13 +484,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 var ry Reg
                 var ok bool
 
-                /* only look for copy instructions */
-                if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry {
-                    continue
-                }
-
-                /* don't coalesce arch-specific registers */
-                if rx.Kind() == K_arch || ry.Kind() == K_arch {
+                /* only look for copy-to-virtual-register instructions */
+                if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry || rx.Kind() == K_arch {
                     continue
                 }
 
