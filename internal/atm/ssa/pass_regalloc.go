@@ -440,6 +440,11 @@ func (self RegAlloc) Apply(cfg *CFG) {
                     continue
                 }
 
+                /* don't coalesce arch-specific registers */
+                if rx.Kind() == K_arch || ry.Kind() == K_arch {
+                    continue
+                }
+
                 /* make sure Y is the node with a lower degree */
                 if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
                     rx, ry = ry, rx
@@ -456,11 +461,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 /* check if it can be coalesced */
                 if !ok {
                     continue
-                }
-
-                /* check for pre-colored registers */
-                if rx.Kind() == K_arch && ry.Kind() == K_arch {
-                    panic(fmt.Sprintf("regalloc: arch-specific register confliction: %s and %s", rx, ry))
                 }
 
                 /* add to colaescing graph */
@@ -516,19 +516,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 }
             })
         }
-
-        /* remove copies to itself */
-        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-            ins := bb.Ins
-            bb.Ins = bb.Ins[:0]
-
-            /* filter the instructions */
-            for _, p := range ins {
-                if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
-                    bb.Ins = append(bb.Ins, p)
-                }
-            }
-        })
 
         /* try again if coalesce occured */
         if next {
@@ -741,7 +728,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         return regorder(colortab[i].r) < regorder(colortab[j].r)
     })
 
-    /* assign colors to registers */
+    /* Phase 6: Assign colors to registers */
     for _, rc := range colortab {
         if rc.r.Kind() == K_arch {
             regmap[rc.c] = rc.r
@@ -757,10 +744,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
     replaceregs := func(rr []*Reg) {
         for _, r := range rr {
             if c, ok := colormap[*r]; ok && r.Kind() != K_arch {
-                if p, ok := regmap[c]; !ok {
+                if *r, ok = regmap[c]; !ok {
                     panic(fmt.Sprintf("regalloc: no register for color %d", c))
-                } else {
-                    *r = IrSetArch(*r, ArchRegs[p.Name()])
                 }
             }
         }
@@ -786,6 +771,19 @@ func (self RegAlloc) Apply(cfg *CFG) {
         /* process the terminator */
         if use, ok = bb.Term.(IrUsages); ok {
             replaceregs(use.Usages())
+        }
+    })
+
+    /* remove copies to itself */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        ins := bb.Ins
+        bb.Ins = bb.Ins[:0]
+
+        /* filter the instructions */
+        for _, p := range ins {
+            if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
+                bb.Ins = append(bb.Ins, p)
+            }
         }
     })
 }
