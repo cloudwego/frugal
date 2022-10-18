@@ -746,7 +746,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* assign colors to every virtual register */
     for !order.Empty() {
-        cx := math.MaxInt64
         reg := order.Pop().(Reg)
         rt.MapClear(colors)
 
@@ -765,18 +764,10 @@ func (self RegAlloc) Apply(cfg *CFG) {
             delete(colors, colormap[r])
         }
 
-        /* find the lowest available color */
+        /* randomly choose an available color */
         for c := range colors {
-            if c < cx {
-                cx = c
-            }
-        }
-
-        /* the register must exists */
-        if cx == math.MaxInt64 {
-            panic("regalloc: no available register")
-        } else {
-            colormap[reg] = cx
+            colormap[reg] = c
+            break
         }
     }
 
