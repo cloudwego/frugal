@@ -381,7 +381,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* calculate the depth map */
     root := cfg.Root
-    self.depthmap(depthmap, root, make(map[int]struct{}), nil)
+    self.depthmap(depthmap, root, make(map[int]struct{}), make([]int, 0, 16))
 
     /* loop until no more retries */
     for {
@@ -679,7 +679,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     colormap := make(map[Reg]int)
     colortab := make([]_RegColor, 0, len(arch))
 
-    /* assign colors to every register */
+    /* assign colors to every virtual register */
     for !order.Empty() {
         cx := math.MaxInt64
         reg := order.Pop().(Reg)
@@ -728,7 +728,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         return regorder(colortab[i].r) < regorder(colortab[j].r)
     })
 
-    /* Phase 6: Assign colors to registers */
+    /* Phase 6: Assign physical registers to colors */
     for _, rc := range colortab {
         if rc.r.Kind() == K_arch {
             regmap[rc.c] = rc.r

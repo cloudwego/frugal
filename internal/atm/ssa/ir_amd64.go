@@ -685,6 +685,10 @@ func (self *IrAMD64_MOV_load_stack) String() string {
     return fmt.Sprintf("movq %s, %s", self.S, self.R)
 }
 
+func (self *IrAMD64_MOV_load_stack) Action() IrSlotAction {
+    return IrSlotLoad
+}
+
 func (self *IrAMD64_MOV_load_stack) Definitions() (r []*Reg) {
     return []*Reg { &self.R }
 }
@@ -712,6 +716,10 @@ func (self *IrAMD64_MOV_store_stack) Clone() IrNode {
 
 func (self *IrAMD64_MOV_store_stack) String() string {
     return fmt.Sprintf("movq %s, %s", self.R, self.S)
+}
+
+func (self *IrAMD64_MOV_store_stack) Action() IrSlotAction {
+    return IrSlotStore
 }
 
 func (self *IrAMD64_MOV_store_stack) Usages() (r []*Reg) {

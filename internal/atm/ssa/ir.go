@@ -273,13 +273,19 @@ func (*IrClobberList)  irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
 
 type (
-    IrSlotKind uint8
+    IrSlotKind   uint8
+    IrSlotAction uint8
 )
 
 const (
     IrSlotArgs IrSlotKind = iota
     IrSlotCall
     IrSlotLocal
+)
+
+const (
+    IrSlotLoad IrSlotAction = iota
+    IrSlotStore
 )
 
 func (self IrSlotKind) String() string {
@@ -299,9 +305,18 @@ func (self IrSlotKind) Create(reg Reg, offs uintptr) *IrStackSlot {
     }
 }
 
+func (self IrSlotAction) String() string {
+    switch self {
+        case IrSlotLoad  : return "load"
+        case IrSlotStore : return "store"
+        default          : return "???"
+    }
+}
+
 type IrSlotOwner interface {
     IrNode
     Slot() *IrStackSlot
+    Action() IrSlotAction
 }
 
 type IrStackSlot struct {
