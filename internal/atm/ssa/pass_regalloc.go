@@ -199,6 +199,55 @@ type _RegColor struct {
     c int
 }
 
+type _IrSpillOp struct {
+    reg   Reg
+    tag   Reg
+    offs  uintptr
+    reload bool
+}
+
+func mkSpillOp(reg Reg, tag Reg, reload bool) *_IrSpillOp {
+    return &_IrSpillOp {
+        reg    : reg,
+        tag    : tag,
+        offs   : 0,
+        reload : reload,
+    }
+}
+
+func (self *_IrSpillOp) irnode()      {}
+func (self *_IrSpillOp) irimpure()    {}
+func (self *_IrSpillOp) irimmovable() {}
+
+func (self *_IrSpillOp) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *_IrSpillOp) String() string {
+    if self.reload {
+        return fmt.Sprintf("%s = reload %s(SP)", self.reg, self.tag)
+    } else {
+        return fmt.Sprintf("spill %s -> %s(SP)", self.reg, self.tag)
+    }
+}
+
+func (self *_IrSpillOp) Usages() []*Reg {
+    if self.reload {
+        return nil
+    } else {
+        return []*Reg { &self.reg }
+    }
+}
+
+func (self *_IrSpillOp) Definitions() []*Reg {
+    if !self.reload {
+        return nil
+    } else {
+        return []*Reg { &self.reg }
+    }
+}
+
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
@@ -322,8 +371,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
     depthmap := make(map[int]int)
-    spillslots := make(map[Reg]*IrStackSlot)
     coalescemap := make(map[Reg]Reg)
+    nospillregs := make(map[Reg]struct{})
 
     /* register precolorer */
     precolor := func(rr []*Reg) {
@@ -346,7 +395,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* def-use counter */
     countdefuse := func(rig *simple.UndirectedGraph, bb int, rr []*Reg) {
         for _, r := range rr {
-            if _, ok := spillslots[*r]; !ok {
+            if _, ok := nospillregs[*r]; !ok {
                 if r.Kind() != K_arch && rig.Node(int64(*r)) != nil {
                     defuse[*r] += math.Pow(10.0, float64(depthmap[bb]))
                 }
@@ -603,23 +652,40 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        /* sanity check */
+        /* mark the register no-spill */
         if spillr == Rz {
             panic("regalloc: corrupted def-use counters")
+        } else {
+            nospillregs[spillr] = struct{}{}
         }
-
-        /* create a splill slot */
-        slot := IrSlotLocal.Create(spillr, 0)
-        spillslots[spillr] = slot
 
         /* Phase 5: Spill the selected register */
         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+            reg := Rz
+            ldt := false
             ins := bb.Ins
-            bb.Ins = make([]IrNode, 0, len(ins))
 
             /* should not have Phi nodes */
             if len(bb.Phi) != 0 {
                 panic("regalloc: unexpected Phi nodes")
+            } else {
+                bb.Ins = make([]IrNode, 0, len(ins))
+            }
+
+            /* register allocation */
+            newr := func() Reg {
+                reg = cfg.CreateRegister(spillr.Ptr())
+                nospillregs[reg] = struct{}{}
+                return reg
+            }
+
+            /* lazy register allocation */
+            getr := func() Reg {
+                if reg != Rz {
+                    return reg
+                } else {
+                    return newr()
+                }
             }
 
             /* scan all the instructions */
@@ -631,8 +697,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 if use, ok := v.(IrUsages); ok {
                     for _, r := range use.Usages() {
                         if *r == spillr {
+                            *r = getr()
                             loads = true
-                            break
                         }
                     }
                 }
@@ -648,8 +714,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 }
 
                 /* spill & reload IR */
-                ld := IrArchLoadStack(spillr, slot)
-                st := IrArchStoreStack(spillr, slot)
+                ld := mkSpillOp(getr(), spillr, true)
+                st := mkSpillOp(spillr, spillr, false)
 
                 /* insert spill & reload instructions */
                 switch {
@@ -664,16 +730,20 @@ func (self RegAlloc) Apply(cfg *CFG) {
             if use, ok := bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
                     if *r == spillr {
-                        bb.Ins = append(bb.Ins, IrArchLoadStack(*r, slot))
-                        break
+                        *r = getr()
+                        ldt = true
                     }
                 }
+            }
+
+            /* insert the reload if needed */
+            if ldt {
+                bb.Ins = append(bb.Ins, mkSpillOp(getr(), spillr, true))
             }
         })
     }
 
     /* register colors */
-    rig := simple.NewUndirectedGraph()
     regmap := make(map[int]Reg)
     colors := make(map[int]struct{})
     colormap := make(map[Reg]int)
@@ -695,12 +765,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
             colors[c] = struct{}{}
         }
 
-        /* insert the node back to RIG */
+        /* choose a different color from it's neightbors */
         for _, r := range edges[reg] {
-            p, _ := rig.NodeWithID(int64(r))
-            q, _ := rig.NodeWithID(int64(reg))
             delete(colors, colormap[r])
-            rig.SetEdge(rig.NewEdge(p, q))
         }
 
         /* find the highest available color */

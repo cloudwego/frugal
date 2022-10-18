@@ -272,67 +272,6 @@ func (*IrLoadArg)      irimmovable() {}
 func (*IrClobberList)  irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
 
-type (
-    IrSlotKind   uint8
-    IrSlotAction uint8
-)
-
-const (
-    IrSlotArgs IrSlotKind = iota
-    IrSlotCall
-    IrSlotLocal
-)
-
-const (
-    IrSlotLoad IrSlotAction = iota
-    IrSlotStore
-)
-
-func (self IrSlotKind) String() string {
-    switch self {
-        case IrSlotArgs  : return "args"
-        case IrSlotCall  : return "call"
-        case IrSlotLocal : return "local"
-        default          : return "???"
-    }
-}
-
-func (self IrSlotKind) Create(reg Reg, offs uintptr) *IrStackSlot {
-    return &IrStackSlot {
-        Reg  : reg,
-        Offs : offs,
-        Kind : self,
-    }
-}
-
-func (self IrSlotAction) String() string {
-    switch self {
-        case IrSlotLoad  : return "load"
-        case IrSlotStore : return "store"
-        default          : return "???"
-    }
-}
-
-type IrSlotOwner interface {
-    IrNode
-    Slot() *IrStackSlot
-    Action() IrSlotAction
-}
-
-type IrStackSlot struct {
-    Reg  Reg
-    Offs uintptr
-    Kind IrSlotKind
-}
-
-func (self *IrStackSlot) String() string {
-    if self.Reg == 0 || self.Reg.Kind() == K_zero {
-        return fmt.Sprintf("%s+%d<>(FP)", self.Kind, self.Offs)
-    } else {
-        return fmt.Sprintf("%s+%d<%s>(FP)", self.Kind, self.Offs, self.Reg)
-    }
-}
-
 type IrUsages interface {
     IrNode
     Usages() []*Reg

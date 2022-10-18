@@ -40,7 +40,7 @@ func (self ABILowering) Apply(cfg *CFG) {
             cfg.Root.Ins[i] = &IrAlias { R: iv.R, V: rr[iv.I] }
         } else {
             rr[iv.I] = Rz
-            cfg.Root.Ins[i] = IrArchLoadStack(iv.R, IrSlotArgs.Create(iv.R, a.Mem))
+            cfg.Root.Ins[i] = IrArchLoadStack(iv.R, a.Mem, IrSlotArgs)
         }
     }
 
@@ -92,7 +92,7 @@ func (self ABILowering) Apply(cfg *CFG) {
                     bb.Ins = append(bb.Ins, IrArchCopy(rr[i], rv))
                 } else {
                     rr[i] = Rz
-                    bb.Ins = append(bb.Ins, IrArchStoreStack(rv, IrSlotArgs.Create(rv, r.Mem)))
+                    bb.Ins = append(bb.Ins, IrArchStoreStack(rv, r.Mem, IrSlotArgs))
                 }
             }
 
