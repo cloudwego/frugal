@@ -848,4 +848,113 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
     })
+
+    /* remove redundant loadStack where the register isn't modified after being stored to stack */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        storeStack := make(map[Reg]IrStackSlot)
+        regModified := make(map[Reg]bool)
+        ins := bb.Ins
+        bb.Ins = nil
+        def := IrDefinitions(nil)
+
+        /* scan every instruction */
+        for _, v := range ins {
+            if storeIr, ok := v.(*IrAMD64_MOV_store_stack) ; ok {
+                storeStack[storeIr.R] = *storeIr.S
+                regModified[storeIr.R] = false
+                bb.Ins = append(bb.Ins, v)
+            } else if loadIr, ok := v.(*IrAMD64_MOV_load_stack) ; ok {
+                pos := loadIr.S
+                /* if a loadStack instruction loads from the same stackPos to the same register when the register isn't modified, abandon it */
+                if s, ok := storeStack[loadIr.R]; ok && s == *pos && regModified[loadIr.R] == false {
+                    continue
+                }
+                bb.Ins = append(bb.Ins, v)
+            } else {
+                if def, ok = v.(IrDefinitions); ok {
+                    for _, r := range def.Definitions() {
+                        if _, ok := regModified[*r]; ok && regModified[*r] == false {
+                            regModified[*r] = true
+                        }
+                    }
+                }
+                bb.Ins = append(bb.Ins, v)
+            }
+        }
+    })
+
+    /* remove redundant loadStack where the register isn't modified after being loaded from stack */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        loadStack := make(map[Reg]IrStackSlot)
+        regModified := make(map[Reg]bool)
+        ins := bb.Ins
+        bb.Ins = nil
+        def := IrDefinitions(nil)
+
+        /* scan every instruction */
+        for _, v := range ins {
+            if loadIr, ok := v.(*IrAMD64_MOV_load_stack) ; ok {
+                pos := *loadIr.S
+                /* if a loadStack instruction loads from the same stackPos to the same register when the register isn't modified, abandon it */
+                if s, ok := loadStack[loadIr.R]; ok && s == pos && regModified[loadIr.R] == false {
+                    continue
+                }
+                loadStack[loadIr.R] = pos
+                regModified[loadIr.R] = false
+                bb.Ins = append(bb.Ins, v)
+            } else {
+                if def, ok = v.(IrDefinitions); ok {
+                    for _, r := range def.Definitions() {
+                        if _, ok := regModified[*r]; ok && regModified[*r] == false {
+                            regModified[*r] = true
+                        }
+                    }
+                }
+                bb.Ins = append(bb.Ins, v)
+            }
+        }
+    })
+
+    /* remove redundant storeStack where the same stackPos is overwritten before loading */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var redundantIrPos []int
+        storeStack := make(map[IrStackSlot][]int)
+
+        /* scan every instruction */
+        for i, v := range bb.Ins {
+            if storeIr, ok := v.(*IrAMD64_MOV_store_stack) ; ok {
+                pos := storeIr.S
+                storeStack[*pos] = append(storeStack[*pos], i)
+            } else if loadIr, ok := v.(*IrAMD64_MOV_load_stack) ; ok {
+                pos := loadIr.S
+                if irPos, ok := storeStack[*pos]; ok {
+                    redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
+                    delete(storeStack, *pos)
+                }
+            }
+        }
+
+        for _, irPos := range storeStack {
+            if len(irPos) > 1 {
+                redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
+            }
+        }
+
+        /* abandon redundant storeStack instructions according to their position in the block */
+        if len(redundantIrPos) > 0 {
+            ins := bb.Ins
+            bb.Ins = nil
+            sort.Ints(redundantIrPos)
+            startPos := 0
+            for _, p := range redundantIrPos {
+                if startPos < len(ins) {
+                    bb.Ins = append(bb.Ins, ins[startPos : p]...)
+                    startPos = p + 1
+                }
+            }
+            if startPos < len(ins) {
+                bb.Ins = append(bb.Ins, ins[startPos : ]...)
+            }
+        }
+    })
 }
