@@ -635,16 +635,15 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
             /* scan all the instructions */
             for _, v := range ins {
-                lds := false
-                sts := false
-                reg := cfg.CreateRegister(spillr.Ptr())
+                loads := false
+                stores := false
 
                 /* check usages */
                 if use, ok := v.(IrUsages); ok {
                     for _, r := range use.Usages() {
                         if *r == spillr {
-                            *r = reg
-                            lds = true
+                            loads = true
+                            break
                         }
                     }
                 }
@@ -653,41 +652,33 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 if def, ok := v.(IrDefinitions); ok {
                     for _, r := range def.Definitions() {
                         if *r == spillr {
-                            sts = true
+                            stores = true
+                            break
                         }
                     }
                 }
 
                 /* spill & reload IR */
-                ld := IrArchLoadStack(reg, uintptr(spillr), IrSlotLocal)
+                ld := IrArchLoadStack(spillr, uintptr(spillr), IrSlotLocal)
                 st := IrArchStoreStack(spillr, uintptr(spillr), IrSlotLocal)
 
                 /* insert spill & reload instructions */
                 switch {
-                    case !lds && !sts : bb.Ins = append(bb.Ins, v)
-                    case !lds &&  sts : bb.Ins = append(bb.Ins, v, st)
-                    case  lds && !sts : bb.Ins = append(bb.Ins, ld, v)
-                    case  lds &&  sts : bb.Ins = append(bb.Ins, ld, v, st)
+                    case !loads && !stores: bb.Ins = append(bb.Ins, v)
+                    case !loads &&  stores: bb.Ins = append(bb.Ins, v, st)
+                    case  loads && !stores: bb.Ins = append(bb.Ins, ld, v)
+                    case  loads &&  stores: bb.Ins = append(bb.Ins, ld, v, st)
                 }
             }
-
-            /* create register for terminator */
-            lds := false
-            reg := cfg.CreateRegister(spillr.Ptr())
 
             /* check usages in the terminator */
             if use, ok := bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
                     if *r == spillr {
-                        *r = reg
-                        lds = true
+                        bb.Ins = append(bb.Ins, IrArchLoadStack(*r, uintptr(spillr), IrSlotLocal))
+                        break
                     }
                 }
-            }
-
-            /* insert load instruction if needed */
-            if lds {
-                bb.Ins = append(bb.Ins, IrArchLoadStack(reg, uintptr(spillr), IrSlotLocal))
             }
         })
     }
