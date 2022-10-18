@@ -322,7 +322,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
     depthmap := make(map[int]int)
-    spillslots := make(map[Reg]struct{})
+    spillslots := make(map[Reg]*IrStackSlot)
     coalescemap := make(map[Reg]Reg)
 
     /* register precolorer */
@@ -619,9 +619,11 @@ func (self RegAlloc) Apply(cfg *CFG) {
         /* sanity check */
         if spillr == Rz {
             panic("regalloc: corrupted def-use counters")
-        } else {
-            spillslots[spillr] = struct{}{}
         }
+
+        /* create a splill slot */
+        slot := IrSlotLocal.Create(spillr, 0)
+        spillslots[spillr] = slot
 
         /* Phase 5: Spill the selected register */
         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
@@ -659,8 +661,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 }
 
                 /* spill & reload IR */
-                ld := IrArchLoadStack(spillr, uintptr(spillr), IrSlotLocal)
-                st := IrArchStoreStack(spillr, uintptr(spillr), IrSlotLocal)
+                ld := IrArchLoadStack(spillr, slot)
+                st := IrArchStoreStack(spillr, slot)
 
                 /* insert spill & reload instructions */
                 switch {
@@ -675,7 +677,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             if use, ok := bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
                     if *r == spillr {
-                        bb.Ins = append(bb.Ins, IrArchLoadStack(*r, uintptr(spillr), IrSlotLocal))
+                        bb.Ins = append(bb.Ins, IrArchLoadStack(*r, slot))
                         break
                     }
                 }

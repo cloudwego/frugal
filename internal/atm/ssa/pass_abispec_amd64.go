@@ -84,7 +84,7 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
     for i, r := range p.In {
         if v := p.Func.Args[i]; !v.InRegister {
             mm := v.Mem
-            bb.Ins = append(bb.Ins, IrArchStoreStack(r, mm, IrSlotCall))
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, IrSlotCall.Create(r, mm)))
         } else {
             rr := IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg)
             bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, r)), append(argv, rr)
@@ -125,7 +125,7 @@ func (ABILowering) abiCallFunc(cfg *CFG, bb *BasicBlock, p *IrCallFunc) {
             if v := p.Func.Rets[i]; v.InRegister {
                 bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
             } else {
-                bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))
+                bb.Ins = append(bb.Ins, IrArchLoadStack(r, IrSlotCall.Create(r, v.Mem)))
             }
         }
     }
@@ -211,7 +211,7 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     /* store the receiver */
     if rx := p.Func.Args[0]; !rx.InRegister {
         mm := p.Func.Args[0].Mem
-        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, mm, IrSlotCall))
+        bb.Ins = append(bb.Ins, IrArchStoreStack(p.V, IrSlotCall.Create(p.V, mm)))
     } else {
         rr := IrSetArch(cfg.CreateRegister(p.V.Ptr()), rx.Reg)
         bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, p.V)), append(argv, rr)
@@ -221,7 +221,7 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
     for i, r := range p.In {
         if v := p.Func.Args[i+1]; !v.InRegister {
             mm := v.Mem
-            bb.Ins = append(bb.Ins, IrArchStoreStack(r, mm, IrSlotCall))
+            bb.Ins = append(bb.Ins, IrArchStoreStack(r, IrSlotCall.Create(r, mm)))
         } else {
             rr := IrSetArch(cfg.CreateRegister(r.Ptr()), v.Reg)
             bb.Ins, argv = append(bb.Ins, IrArchCopy(rr, r)), append(argv, rr)
@@ -262,7 +262,7 @@ func (ABILowering) abiCallMethod(cfg *CFG, bb *BasicBlock, p *IrCallMethod) {
             if v := p.Func.Rets[i]; v.InRegister {
                 bb.Ins = append(bb.Ins, IrArchCopy(r, retv[i]))
             } else {
-                bb.Ins = append(bb.Ins, IrArchLoadStack(r, v.Mem, IrSlotCall))
+                bb.Ins = append(bb.Ins, IrArchLoadStack(r, IrSlotCall.Create(r, v.Mem)))
             }
         }
     }
