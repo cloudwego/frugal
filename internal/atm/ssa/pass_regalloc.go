@@ -359,13 +359,16 @@ func (self RegAlloc) depthmap(dm map[int]int, bb *BasicBlock, vis map[int]struct
 }
 
 /* try to choose a different color from reloadRegs */
-func (self RegAlloc) colorDiffWithReload(
-    rig *simple.UndirectedGraph,
-    reg Reg,
-    reloadReg map[Reg]int,
-    arch []Reg,
-    colormap map[Reg]int,
-) {
+func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, reloadReg map[Reg]int, arch []Reg, colormap map[Reg]int, spillReg Reg) {
+    sameWithReload := false
+    for _, c := range reloadReg {
+        if c == colormap[reg] {
+            sameWithReload = true
+            break
+        }
+    }
+    if !sameWithReload && spillReg == Rz { return }
+
     /* all possible colors */
     colors := make(map[int]struct{})
     for i := range arch {
@@ -377,13 +380,21 @@ func (self RegAlloc) colorDiffWithReload(
         delete(colors, colormap[Reg(r.Node().ID())])
     }
 
+    if spillReg != Rz {
+        /* if the reload slot is same with a previous spill slot, try to use the same color with the spill reg */
+        if _, ok := colors[colormap[spillReg]]; ok {
+            colormap[reg] = colormap[spillReg]
+            return
+        }
+    }
+
     /* choose a different color from reloadRegs */
     for _, v := range reloadReg {
         delete(colors, v)
     }
 
     if len(colors) > 0 {
-        /* there're some other colors different with reoloadRegs, so randomly pick one */
+        /* there're some other colors different with reoloadRegs */
         for c := range colors {
             colormap[reg] = c
             break
@@ -852,12 +863,44 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     }
 
+    /* choose different colors for reload regs, choose colors different from reload regs for other defined regs */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var ok bool
+        var def IrDefinitions
+        reloadRegs := make(map[Reg]int)
+        spillSlots := make(map[Reg]Reg)
+
+        /* process instructions */
+        for _, v := range bb.Ins {
+            if def, ok = v.(IrDefinitions) ; ok {
+                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
+                    /* try to choose different color for reload regs */
+                    if _, ok = reloadRegs[spillIr.reg]; !ok {
+                        /* try to use the same color with the spill reg if their slots are the same */
+                        if r, ok := spillSlots[spillIr.tag]; ok {
+                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap, r)
+                        } else {
+                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap, Rz)
+                        }
+                        reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+                    }
+                } else if ok && !spillIr.reload {
+                    spillSlots[spillIr.tag] = spillIr.reg
+                } else {
+                    /* try to choose color different from reload regs for defined regs */
+                    for _, r := range def.Definitions() {
+                        self.colorDiffWithReload(rig, *r, reloadRegs, archtmp, colormap, Rz)
+                    }
+                }
+            }
+        }
+    })
+
     /* replace all the registers */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var ok bool
         var use IrUsages
         var def IrDefinitions
-        reloadRegs := make(map[Reg]int)
 
         /* should not have Phi nodes */
         if len(bb.Phi) != 0 {
@@ -866,22 +909,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* process instructions */
         for _, v := range bb.Ins {
-            if use, ok = v.(IrUsages); ok {
-                replaceregs(use.Usages())
-            }
-            if def, ok = v.(IrDefinitions); ok {
-                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                    if _, ok = reloadRegs[spillIr.reg]; !ok {
-                        self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap)
-                    }
-                    reloadRegs[spillIr.reg] = colormap[spillIr.reg]
-                } else {
-                    for _, r := range def.Definitions() {
-                        self.colorDiffWithReload(rig, *r, reloadRegs, archtmp, colormap)
-                    }
-                }
-                replaceregs(def.Definitions())
-            }
+            if use, ok = v.(IrUsages)      ; ok { replaceregs(use.Usages()) }
+            if def, ok = v.(IrDefinitions) ; ok { replaceregs(def.Definitions()) }
         }
 
         /* process the terminator */
@@ -999,14 +1028,90 @@ func (self RegAlloc) Apply(cfg *CFG) {
             sort.Ints(redundantIrPos)
             startPos := 0
             for _, p := range redundantIrPos {
-                if startPos < len(ins) {
-                    bb.Ins = append(bb.Ins, ins[startPos : p]...)
-                    startPos = p + 1
-                }
+                bb.Ins = append(bb.Ins, ins[startPos : p]...)
+                startPos = p + 1
             }
             if startPos < len(ins) {
                 bb.Ins = append(bb.Ins, ins[startPos : ]...)
             }
         }
+    })
+
+    /* remove redundant storeStack where the register isn't modified after being loaded from the same stack */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+       loadStack := make(map[Reg]Reg)
+       ins := bb.Ins
+       bb.Ins = nil
+       def := IrDefinitions(nil)
+
+       /* scan every instruction */
+       for _, v := range ins {
+           if spillIr, ok := v.(*_IrSpillOp) ; ok && spillIr.reload {
+               loadStack[spillIr.reg] = spillIr.tag
+           } else if ok && !spillIr.reload {
+               if s, ok := loadStack[spillIr.reg]; ok && s == spillIr.tag {
+                   continue
+               }
+           } else {
+               if def, ok = v.(IrDefinitions); ok {
+                   for _, r := range def.Definitions() {
+                       if _, ok := loadStack[*r]; ok {
+                           delete(loadStack, *r)
+                       }
+                   }
+               }
+           }
+           bb.Ins = append(bb.Ins, v)
+       }
+    })
+
+    regSliceToSet := func(rr []*Reg) _RegSet {
+       rs := make(_RegSet, 0)
+       for _, r := range rr {
+           rs.add(*r)
+       }
+       return rs
+    }
+
+    /* remove redundant loadStack where the register isn't used after being loaded from stack */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+       var ok bool
+       var use IrUsages
+       var def IrDefinitions
+       var spillIr *_IrSpillOp
+       var removePos []int
+       rs := make(_RegSet, 0)
+
+       /* add the terminator usages if any */
+       if use, ok = bb.Term.(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
+
+       /* live(i-1) = use(i) ∪ (live(i) - { def(i) }) */
+       for i := len(bb.Ins) - 1; i >= 0; i-- {
+           if def, ok = bb.Ins[i].(IrDefinitions); ok {
+               if spillIr, ok = bb.Ins[i].(*_IrSpillOp); ok && spillIr.reload {
+                   /* if the reloaded reg isn't used afterwards, record its position and then remove it */
+                   if !rs.contains(spillIr.reg) {
+                       removePos = append(removePos, i)
+                       continue
+                   }
+               }
+               rs.subtract(regSliceToSet(def.Definitions()))
+           }
+           if use, ok = bb.Ins[i].(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
+       }
+
+       if len(removePos) > 0 {
+           ins := bb.Ins
+           bb.Ins = nil
+           sort.Ints(removePos)
+           startPos := 0
+           for _, p := range removePos {
+               bb.Ins = append(bb.Ins, ins[startPos : p]...)
+               startPos = p + 1
+           }
+           if startPos < len(ins) {
+               bb.Ins = append(bb.Ins, ins[startPos : ]...)
+           }
+       }
     })
 }

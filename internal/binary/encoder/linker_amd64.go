@@ -25,7 +25,7 @@ import (
 )
 
 type (
-	LinkerAMD64 struct{}
+    LinkerAMD64 struct{}
 )
 
 func init() {
