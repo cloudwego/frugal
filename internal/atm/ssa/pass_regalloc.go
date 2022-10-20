@@ -54,7 +54,7 @@ func (self _Pos) String() string {
 }
 
 type (
-	_RegSet map[Reg]struct{}
+    _RegSet map[Reg]struct{}
 )
 
 func (self _RegSet) add(r Reg) _RegSet {
@@ -354,6 +354,39 @@ func (self RegAlloc) depthmap(dm map[int]int, bb *BasicBlock, vis map[int]struct
             if _, ok := vis[nx.Id]; !ok {
                 self.depthmap(dm, nx, vis, path)
             }
+        }
+    }
+}
+
+/* try to choose a different color from reloadRegs */
+func (self RegAlloc) colorDiffWithReload(
+    rig *simple.UndirectedGraph,
+    reg Reg,
+    reloadReg map[Reg]int,
+    arch []Reg,
+    colormap map[Reg]int,
+) {
+    /* all possible colors */
+    colors := make(map[int]struct{})
+    for i := range arch {
+        colors[i] = struct{}{}
+    }
+
+    /* choose a different color from it's neightbors */
+    for r := rig.From(int64(reg)); r.Next(); {
+        delete(colors, colormap[Reg(r.Node().ID())])
+    }
+
+    /* choose a different color from reloadRegs */
+    for _, v := range reloadReg {
+        delete(colors, v)
+    }
+
+    if len(colors) > 0 {
+        /* there're some other colors different with reoloadRegs, so randomly pick one */
+        for c := range colors {
+            colormap[reg] = c
+            break
         }
     }
 }
@@ -687,6 +720,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
             for _, v := range ins {
                 loads := false
                 stores := false
+                cpStore := false
+                copySrc := Rz
 
                 /* check usages */
                 if use, ok := v.(IrUsages); ok {
@@ -703,6 +738,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
                     for _, r := range def.Definitions() {
                         if *r == spillr {
                             stores = true
+                            if _, copySrc, ok = IrArchTryIntoCopy(v); ok {
+                                cpStore = true
+                            }
                             break
                         }
                     }
@@ -712,10 +750,14 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 ld := mkSpillOp(getr(), spillr, true)
                 st := mkSpillOp(spillr, spillr, false)
 
+                /* if the spilled register is defined by copy instruction, store the copy source to stack directly */
+                if cpStore && !loads { st = mkSpillOp(copySrc, spillr, false) }
+
                 /* insert spill & reload instructions */
                 switch {
                     case !loads && !stores: bb.Ins = append(bb.Ins, v)
-                    case !loads &&  stores: bb.Ins = append(bb.Ins, v, st)
+                    case !loads &&  stores && !cpStore: bb.Ins = append(bb.Ins, v, st)
+                    case !loads &&  stores &&  cpStore: bb.Ins = append(bb.Ins, st)
                     case  loads && !stores: bb.Ins = append(bb.Ins, ld, v)
                     case  loads &&  stores: bb.Ins = append(bb.Ins, ld, v, st)
                 }
@@ -739,10 +781,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
     }
 
     /* register colors */
+    rig := simple.NewUndirectedGraph()
     regmap := make(map[int]Reg)
     colors := make(map[int]struct{})
     colormap := make(map[Reg]int)
     colortab := make([]_RegColor, 0, len(arch))
+    archtmp := make([]Reg, len(arch), len(arch))
+    copy(archtmp, arch)
 
     /* assign colors to every virtual register */
     for !order.Empty() {
@@ -761,7 +806,10 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* choose a different color from it's neightbors */
         for _, r := range edges[reg] {
+            p, _ := rig.NodeWithID(int64(r))
+            q, _ := rig.NodeWithID(int64(reg))
             delete(colors, colormap[r])
+            rig.SetEdge(rig.NewEdge(p, q))
         }
 
         /* randomly choose an available color */
@@ -809,6 +857,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         var ok bool
         var use IrUsages
         var def IrDefinitions
+        reloadRegs := make(map[Reg]int)
 
         /* should not have Phi nodes */
         if len(bb.Phi) != 0 {
@@ -817,8 +866,22 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* process instructions */
         for _, v := range bb.Ins {
-            if use, ok = v.(IrUsages)      ; ok { replaceregs(use.Usages()) }
-            if def, ok = v.(IrDefinitions) ; ok { replaceregs(def.Definitions()) }
+            if use, ok = v.(IrUsages); ok {
+                replaceregs(use.Usages())
+            }
+            if def, ok = v.(IrDefinitions); ok {
+                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
+                    if _, ok = reloadRegs[spillIr.reg]; !ok {
+                        self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap)
+                    }
+                    reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+                } else {
+                    for _, r := range def.Definitions() {
+                        self.colorDiffWithReload(rig, *r, reloadRegs, archtmp, colormap)
+                    }
+                }
+                replaceregs(def.Definitions())
+            }
         }
 
         /* process the terminator */
@@ -855,7 +918,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 regModified[spillIr.reg] = false
                 bb.Ins = append(bb.Ins, v)
             } else if ok && spillIr.reload {
-                /* if a loadStack instruction loads from the same stackPos to the same register when the register isn't modified, abandon it */
+                /* if a loadStack instruction loads from the same stackPos to the
+                 * same register when the register isn't modified, abandon it */
                 if s, ok := storeStack[spillIr.reg]; ok && s == spillIr.tag && regModified[spillIr.reg] == false {
                     continue
                 }
@@ -884,7 +948,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
         /* scan every instruction */
         for _, v := range ins {
             if spillIr, ok := v.(*_IrSpillOp) ; ok && spillIr.reload {
-                /* if a loadStack instruction loads from the same stackPos to the same register when the register isn't modified, abandon it */
+                /* if a loadStack instruction loads from the same stackPos to the
+                 * same register when the register isn't modified, abandon it */
                 if s, ok := loadStack[spillIr.reg]; ok && s == spillIr.tag && regModified[spillIr.reg] == false {
                     continue
                 }
