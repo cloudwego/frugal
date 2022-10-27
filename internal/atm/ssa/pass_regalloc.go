@@ -932,33 +932,39 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
-    /* remove redundant loadStack where the register isn't modified after being stored to stack */
+    /* remove redundant spill and reload instructions where both the register and stack aren't modified */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        storeStack := make(map[Reg]Reg)
-        regModified := make(map[Reg]bool)
+        /* register to stack slot is a one to one mapping */
+        regSlot := make(map[Reg]Reg)
+        slotReg := make(map[Reg]Reg)
         ins := bb.Ins
         bb.Ins = nil
         def := IrDefinitions(nil)
 
         /* scan every instruction */
         for _, v := range ins {
-            if spillIr, ok := v.(*_IrSpillOp) ; ok && !spillIr.reload {
-                storeStack[spillIr.reg] = spillIr.tag
-                regModified[spillIr.reg] = false
-                bb.Ins = append(bb.Ins, v)
-            } else if ok && spillIr.reload {
-                /* if a loadStack instruction loads from the same stackPos to the
-                 * same register when the register isn't modified, abandon it */
-                if s, ok := storeStack[spillIr.reg]; ok && s == spillIr.tag && regModified[spillIr.reg] == false {
-                    continue
+            if spillIr, ok := v.(*_IrSpillOp); ok {
+                /* if there has been a one-one mapping between the register and stack slot, abandon this spill/reload instruction */
+                if s, ok := regSlot[spillIr.reg]; ok && s == spillIr.tag {
+                    if r, ok := slotReg[spillIr.tag]; ok && r == spillIr.reg {
+                        continue
+                    }
                 }
+
+                /* delete old mapping relations */
+                delete(regSlot, slotReg[spillIr.tag])
+                delete(slotReg, regSlot[spillIr.reg])
+
+                /* establish new mapping relations */
+                slotReg[spillIr.tag] = spillIr.reg
+                regSlot[spillIr.reg] = spillIr.tag
                 bb.Ins = append(bb.Ins, v)
             } else {
                 if def, ok = v.(IrDefinitions); ok {
                     for _, r := range def.Definitions() {
-                        if _, ok := regModified[*r]; ok && regModified[*r] == false {
-                            regModified[*r] = true
-                        }
+                        /* delete old mapping relations */
+                        delete(slotReg, regSlot[*r])
+                        delete(regSlot, *r)
                     }
                 }
                 bb.Ins = append(bb.Ins, v)
@@ -966,39 +972,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
-    /* remove redundant loadStack where the register isn't modified after being loaded from stack */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        loadStack := make(map[Reg]Reg)
-        regModified := make(map[Reg]bool)
-        ins := bb.Ins
-        bb.Ins = nil
-        def := IrDefinitions(nil)
-
-        /* scan every instruction */
-        for _, v := range ins {
-            if spillIr, ok := v.(*_IrSpillOp) ; ok && spillIr.reload {
-                /* if a loadStack instruction loads from the same stackPos to the
-                 * same register when the register isn't modified, abandon it */
-                if s, ok := loadStack[spillIr.reg]; ok && s == spillIr.tag && regModified[spillIr.reg] == false {
-                    continue
-                }
-                loadStack[spillIr.reg] = spillIr.tag
-                regModified[spillIr.reg] = false
-                bb.Ins = append(bb.Ins, v)
-            } else {
-                if def, ok = v.(IrDefinitions); ok {
-                    for _, r := range def.Definitions() {
-                        if _, ok := regModified[*r]; ok && regModified[*r] == false {
-                            regModified[*r] = true
-                        }
-                    }
-                }
-                bb.Ins = append(bb.Ins, v)
-            }
-        }
-    })
-
-    /* remove redundant storeStack where the same stackPos is overwritten before loading */
+    /* remove redundant spill where the same stack slot is overwritten before loading */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var redundantIrPos []int
         storeStack := make(map[Reg][]int)
@@ -1021,7 +995,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        /* abandon redundant storeStack instructions according to their position in the block */
+        /* abandon redundant spill instructions according to their position in the block */
         if len(redundantIrPos) > 0 {
             ins := bb.Ins
             bb.Ins = nil
@@ -1037,34 +1011,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
-    /* remove redundant storeStack where the register isn't modified after being loaded from the same stack */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-       loadStack := make(map[Reg]Reg)
-       ins := bb.Ins
-       bb.Ins = nil
-       def := IrDefinitions(nil)
-
-       /* scan every instruction */
-       for _, v := range ins {
-           if spillIr, ok := v.(*_IrSpillOp) ; ok && spillIr.reload {
-               loadStack[spillIr.reg] = spillIr.tag
-           } else if ok && !spillIr.reload {
-               if s, ok := loadStack[spillIr.reg]; ok && s == spillIr.tag {
-                   continue
-               }
-           } else {
-               if def, ok = v.(IrDefinitions); ok {
-                   for _, r := range def.Definitions() {
-                       if _, ok := loadStack[*r]; ok {
-                           delete(loadStack, *r)
-                       }
-                   }
-               }
-           }
-           bb.Ins = append(bb.Ins, v)
-       }
-    })
-
     regSliceToSet := func(rr []*Reg) _RegSet {
        rs := make(_RegSet, 0)
        for _, r := range rr {
@@ -1073,7 +1019,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
        return rs
     }
 
-    /* remove redundant loadStack where the register isn't used after being loaded from stack */
+    /* remove redundant reload where the register isn't used after being reloaded */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
        var ok bool
        var use IrUsages
