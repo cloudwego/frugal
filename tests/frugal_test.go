@@ -173,3 +173,8 @@ func TestPretouch(t *testing.T) {
     require.NoError(t, err)
     spew.Dump(s0, debug.GetStats())
 }
+
+func TestSSACompile(t *testing.T) {
+    var v baseline.Nesting
+    println(frugal.EncodedSize(v))
+}
