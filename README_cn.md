@@ -62,7 +62,7 @@ UnmarshalAllSize_Parallel/large-16      4.80k ± 0%      0.76k ± 0%    -84.10%
 
 ### 直接定义 struct 进行编解码
 
-如果你们连 IDL 都不想有，没问题，直径定义好 Go 语言 struct 后，给每个 Field 带上 Frugal 所需的 tag，就可以直接使用 Frugal 进行编解码了。
+如果你们连 IDL 都不想有，没问题，直接定义好 Go 语言 struct 后，给每个 Field 带上 Frugal 所需的 tag，就可以直接使用 Frugal 进行编解码了。
 
 ## 使用手册
 
