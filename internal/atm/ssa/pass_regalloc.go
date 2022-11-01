@@ -21,12 +21,11 @@ import (
     `math`
     `sort`
     `strings`
+    `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
-    `github.com/oleiade/lane`
-    `gonum.org/v1/gonum/graph`
+    `gonum.org/v1/gonum/graph/coloring`
     `gonum.org/v1/gonum/graph/simple`
-    `gonum.org/v1/gonum/graph/topo`
 )
 
 const (
@@ -194,23 +193,16 @@ func (self *_RegTab) remove(r Reg) (rs _RegSet) {
     return
 }
 
-type _RegColor struct {
-    r Reg
-    c int
-}
-
 type _IrSpillOp struct {
-    reg   Reg
-    tag   Reg
-    offs  uintptr
+    reg    Reg
+    slot   int
     reload bool
 }
 
-func mkSpillOp(reg Reg, tag Reg, reload bool) *_IrSpillOp {
+func mkSpillOp(reg Reg, slot int, reload bool) *_IrSpillOp {
     return &_IrSpillOp {
         reg    : reg,
-        tag    : tag,
-        offs   : 0,
+        slot   : slot,
         reload : reload,
     }
 }
@@ -226,9 +218,9 @@ func (self *_IrSpillOp) Clone() IrNode {
 
 func (self *_IrSpillOp) String() string {
     if self.reload {
-        return fmt.Sprintf("%s = reload %s(SP)", self.reg, self.tag)
+        return fmt.Sprintf("%s = reload <slot %d>", self.reg, self.slot)
     } else {
-        return fmt.Sprintf("spill %s -> %s(SP)", self.reg, self.tag)
+        return fmt.Sprintf("spill %s -> <slot %d>", self.reg, self.slot)
     }
 }
 
@@ -328,36 +320,6 @@ func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in
     return rs
 }
 
-func (self RegAlloc) depthmap(dm map[int]int, bb *BasicBlock, vis map[int]struct{}, path []int) {
-    path = append(path, bb.Id)
-    vis[bb.Id] = struct{}{}
-
-    /* traverse all the sucessors */
-    for it := bb.Term.Successors(); it.Next(); {
-        st := -1
-        nx := it.Block()
-
-        /* find ID on the path */
-        for i, v := range path {
-            if v == nx.Id {
-                st = i
-                break
-            }
-        }
-
-        /* check for loops, visit the successor if not already */
-        if st != -1 {
-            for _, id := range path[st:] {
-                dm[id]++
-            }
-        } else {
-            if _, ok := vis[nx.Id]; !ok {
-                self.depthmap(dm, nx, vis, path)
-            }
-        }
-    }
-}
-
 /* try to choose a different color from reloadRegs */
 func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, reloadReg map[Reg]int, arch []Reg, colormap map[Reg]int, spillReg Reg) {
     sameWithReload := false
@@ -403,46 +365,23 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
 }
 
 func (self RegAlloc) Apply(cfg *CFG) {
-    var spill bool
-    var order *lane.Stack
+    var pass int
+    var arch []Reg
+    var colormap map[Reg]int
 
     /* reusable state */
     pool := mkregtab()
-    arch := make([]Reg, 0, len(ArchRegs))
-    edges := make(map[Reg][]Reg)
-    defuse := make(map[Reg]float64)
+    regmap := make(map[int]Reg)
     livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
-    depthmap := make(map[int]int)
-    coalescemap := make(map[Reg]Reg)
-    nospillregs := make(map[Reg]struct{})
+    archcolors := make(map[int64]int, len(ArchRegs))
 
     /* register precolorer */
     precolor := func(rr []*Reg) {
         for _, r := range rr {
             if r.Kind() == K_arch {
                 *r = IrSetArch(Rz, ArchRegs[r.Name()])
-            }
-        }
-    }
-
-    /* register coalescer */
-    coalesce := func(rr []*Reg) {
-        for _, r := range rr {
-            if c, ok := coalescemap[*r]; ok {
-                *r = c
-            }
-        }
-    }
-
-    /* def-use counter */
-    countdefuse := func(rig *simple.UndirectedGraph, bb int, rr []*Reg) {
-        for _, r := range rr {
-            if _, ok := nospillregs[*r]; !ok {
-                if r.Kind() != K_arch && rig.Node(int64(*r)) != nil {
-                    defuse[*r] += math.Pow(10.0, float64(depthmap[bb]))
-                }
             }
         }
     }
@@ -454,7 +393,12 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     }
 
-    /* precolor all arch-specific registers */
+    /* allocate colors to the registers */
+    for i, r := range arch {
+        archcolors[int64(r)] = i
+    }
+
+    /* precolor all physical registers */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         ok := false
         use := IrUsages(nil)
@@ -472,19 +416,12 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
-    /* calculate the depth map */
-    root := cfg.Root
-    self.depthmap(depthmap, root, make(map[int]struct{}), make([]int, 0, 16))
-
     /* loop until no more retries */
     for {
         pool.reset()
-        rt.MapClear(edges)
-        rt.MapClear(defuse)
         rt.MapClear(livein)
         rt.MapClear(liveout)
         rt.MapClear(liveset)
-        rt.MapClear(coalescemap)
 
         /* Phase 1: Calculate live ranges */
         lr := self.livein(pool, liveset, cfg.Root, livein, liveout)
@@ -517,384 +454,140 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        /* Phase 3: Coalescing registers */
-        next := false
-        cols := simple.NewUndirectedGraph()
+        /* make sure all physical registers are in the RIG */
+        for _, r := range arch {
+            if p, ok := rig.NodeWithID(int64(r)); ok {
+                rig.AddNode(p)
+            }
+        }
 
-        /* find out all the coalescing pairs */
+        /* Phase 3: Attempt to color the RIG */
+        k, m, _ := coloring.WelshPowell(rig, archcolors)
+        colormap = *(*map[Reg]int)(unsafe.Pointer(&m))
+
+        /* check for len(arch)-colorablity */
+        if k <= len(arch) {
+            break
+        }
+
+        /* the second pass should always be colorable */
+        if pass++; pass >= 2 {
+            panic("regalloc: this CFG may not colorable")
+        }
+
+        /* calculate the color sets */
+        colors := coloring.Sets(m)
+        colorset := *(*map[int][]Reg)(unsafe.Pointer(&colors))
+
+        /* Phase 4: Spill excess registers to stack */
+        for i, r := range arch {
+            rr := Rz
+            ok := false
+            rs := colorset[i]
+
+            /* remove from color map */
+            for _, rr = range rs {
+                if colormap[rr] != i {
+                    panic("regalloc: color mismatch for register " + rr.String())
+                } else if delete(colormap, rr); rr == r {
+                    ok = true
+                }
+            }
+
+            /* remove from color set */
+            if delete(colorset, i); !ok {
+                panic("regalloc: invalid coloring: missing register " + r.String())
+            }
+        }
+
+        /* spill those without a physical register */
         cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-            for _, v := range bb.Ins {
-                var rx Reg
-                var ry Reg
-                var ok bool
+            var cc int
+            var rr Reg
+            var ok bool
+            var use IrUsages
 
-                /* only look for copy-to-virtual-register instructions */
-                if rx, ry, ok = IrArchTryIntoCopy(v); !ok || rx == ry || rx.Kind() == K_arch {
-                    continue
+            /* should not contain Phi nodes */
+            if len(bb.Phi) != 0 {
+                panic("regalloc: unexpected Phi node")
+            }
+
+            /* allocate buffer for new instructions */
+            ins := bb.Ins
+            bb.Ins = make([]IrNode, 0, len(ins))
+
+            /* scan every instructions */
+            for _, v := range ins {
+                var r *Reg
+                var d IrDefinitions
+
+                /* clear the register map */
+                for c := range regmap {
+                    delete(regmap, c)
                 }
 
-                /* make sure Y is the node with a lower degree */
-                if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
-                    rx, ry = ry, rx
-                }
-
-                /* determain whether it's safe to coalesce using George's heuristic */
-                for p := rig.From(int64(ry)); p.Next(); {
-                    if t := p.Node().ID(); t == int64(rx) || len(arch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
-                        ok = false
-                        break
+                /* reload as needed */
+                if use, ok = v.(IrUsages); ok {
+                    for _, r = range use.Usages() {
+                        if cc, ok = colormap[*r]; ok {
+                            if rr, ok = regmap[cc]; ok {
+                                *r = rr
+                            } else {
+                                *r = cfg.CreateRegister(r.Ptr())
+                                bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, true))
+                                regmap[cc] = *r
+                            }
+                        }
                     }
                 }
 
-                /* check if it can be coalesced */
+                /* add the instruction itself */
+                d, ok = v.(IrDefinitions)
+                bb.Ins = append(bb.Ins, v)
+
+                /* no definitions */
                 if !ok {
                     continue
                 }
 
-                /* add to colaescing graph */
-                p, _ := cols.NodeWithID(int64(rx))
-                q, _ := cols.NodeWithID(int64(ry))
-                cols.SetEdge(cols.NewEdge(p, q))
-            }
-        })
-
-        /* calculate the substitution set */
-        for _, cc := range topo.ConnectedComponents(cols) {
-            var r0 Reg
-            var rx []graph.Node
-
-            /* sort by register, arch-specific register always goes first */
-            sort.Slice(cc, func(i int, j int) bool {
-                x, y := Reg(cc[i].ID()), Reg(cc[j].ID())
-                return regorder(x) < regorder(y)
-            })
-
-            /* extract the target register */
-            rx = cc[1:]
-            r0 = Reg(cc[0].ID())
-
-            /* substitute to the first register */
-            for _, node := range rx {
-                next = true
-                coalescemap[Reg(node.ID())] = r0
-            }
-        }
-
-        /* coalesce if needed */
-        if next {
-            cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-                var ok bool
-                var use IrUsages
-                var def IrDefinitions
-
-                /* should not have Phi nodes */
-                if len(bb.Phi) != 0 {
-                    panic("regalloc: unexpected Phi nodes")
-                }
-
-                /* scan instructions */
-                for _, v := range bb.Ins {
-                    if use, ok = v.(IrUsages)      ; ok { coalesce(use.Usages()) }
-                    if def, ok = v.(IrDefinitions) ; ok { coalesce(def.Definitions()) }
-                }
-
-                /* scan terminator */
-                if use, ok = bb.Term.(IrUsages); ok {
-                    coalesce(use.Usages())
-                }
-            })
-        }
-
-        /* try again if coalesce occured */
-        if next {
-            continue
-        }
-
-        /* coloring stack */
-        spill = false
-        order = lane.NewStack()
-
-        /* Phase 4: Check if the RIG is len(arch)-colorable, and color the graph if possible */
-        for rig.Nodes().Len() > 0 {
-            var nd graph.Node
-            var it graph.Nodes
-
-            /* find the node with a degree less than available
-             * registers (and have the smallest ID, to be deterministic) */
-            for it = rig.Nodes(); it.Next(); {
-                if rig.From(it.Node().ID()).Len() < len(arch) {
-                    if nd == nil || nd.ID() > it.Node().ID() {
-                        nd = it.Node()
+                /* spill as needed */
+                for _, r = range d.Definitions() {
+                    if cc, ok = colormap[*r]; ok {
+                        bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, false))
                     }
                 }
             }
 
-            /* no such node, then some register must be spilled */
-            if nd == nil {
-                spill = true
-                break
+            /* clear the register map for terminator */
+            for c := range regmap {
+                delete(regmap, c)
             }
 
-            /* add all the edges */
-            for et := rig.From(nd.ID()); et.Next(); {
-                rr := Reg(nd.ID())
-                edges[rr] = append(edges[rr], Reg(et.Node().ID()))
-            }
-
-            /* add the node to stack */
-            order.Push(Reg(nd.ID()))
-            rig.RemoveNode(nd.ID())
-        }
-
-        /* no spilling, the coloring is successful */
-        if !spill {
-            break
-        }
-
-        /* count def and use of each register */
-        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-            var ok bool
-            var use IrUsages
-            var def IrDefinitions
-
-            /* should not have Phi nodes */
-            if len(bb.Phi) != 0 {
-                panic("regalloc: unexpected Phi node at this point")
-            }
-
-            /* process instructions */
-            for _, v := range bb.Ins {
-                if use, ok = v.(IrUsages)      ; ok { countdefuse(rig, bb.Id, use.Usages()) }
-                if def, ok = v.(IrDefinitions) ; ok { countdefuse(rig, bb.Id, def.Definitions()) }
-            }
-
-            /* process the terminator */
+            /* scan for reloads in the terminator */
             if use, ok = bb.Term.(IrUsages); ok {
-                countdefuse(rig, bb.Id, use.Usages())
-            }
-        })
-
-        /* cost-to-degree ratio = [(defs & uses) * 10 ^ loop-nest-depth] / degree */
-        for r := range defuse {
-            defuse[r] /= float64(rig.From(int64(r)).Len())
-        }
-
-        /* the register with lowest spill cost */
-        spillr := Rz
-        spillc := math.MaxFloat64
-
-        /* find that register */
-        for r, c := range defuse {
-            if c < spillc {
-                spillc = c
-                spillr = r
-            }
-        }
-
-        /* mark the register no-spill */
-        if spillr == Rz {
-            panic("regalloc: corrupted def-use counters")
-        } else {
-            nospillregs[spillr] = struct{}{}
-        }
-
-        /* Phase 5: Spill the selected register */
-        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-            reg := Rz
-            ldt := false
-            ins := bb.Ins
-
-            /* should not have Phi nodes */
-            if len(bb.Phi) != 0 {
-                panic("regalloc: unexpected Phi nodes")
-            } else {
-                bb.Ins = make([]IrNode, 0, len(ins))
-            }
-
-            /* register allocation */
-            newr := func() Reg {
-                reg = cfg.CreateRegister(spillr.Ptr())
-                nospillregs[reg] = struct{}{}
-                return reg
-            }
-
-            /* lazy register allocation */
-            getr := func() Reg {
-                if reg != Rz {
-                    return reg
-                } else {
-                    return newr()
-                }
-            }
-
-            /* scan all the instructions */
-            for _, v := range ins {
-                loads := false
-                stores := false
-                cpStore := false
-                copySrc := Rz
-
-                /* check usages */
-                if use, ok := v.(IrUsages); ok {
-                    for _, r := range use.Usages() {
-                        if *r == spillr {
-                            *r = getr()
-                            loads = true
-                        }
-                    }
-                }
-
-                /* check definitions */
-                if def, ok := v.(IrDefinitions); ok {
-                    for _, r := range def.Definitions() {
-                        if *r == spillr {
-                            stores = true
-                            if _, copySrc, ok = IrArchTryIntoCopy(v); ok {
-                                cpStore = true
-                            }
-                            break
-                        }
-                    }
-                }
-
-                /* spill & reload IR */
-                ld := mkSpillOp(getr(), spillr, true)
-                st := mkSpillOp(spillr, spillr, false)
-
-                /* if the spilled register is defined by copy instruction, store the copy source to stack directly */
-                if cpStore && !loads { st = mkSpillOp(copySrc, spillr, false) }
-
-                /* insert spill & reload instructions */
-                switch {
-                    case !loads && !stores: bb.Ins = append(bb.Ins, v)
-                    case !loads &&  stores && !cpStore: bb.Ins = append(bb.Ins, v, st)
-                    case !loads &&  stores &&  cpStore: bb.Ins = append(bb.Ins, st)
-                    case  loads && !stores: bb.Ins = append(bb.Ins, ld, v)
-                    case  loads &&  stores: bb.Ins = append(bb.Ins, ld, v, st)
-                }
-            }
-
-            /* check usages in the terminator */
-            if use, ok := bb.Term.(IrUsages); ok {
                 for _, r := range use.Usages() {
-                    if *r == spillr {
-                        *r = getr()
-                        ldt = true
+                    if cc, ok = colormap[*r]; ok {
+                        if rr, ok = regmap[cc]; ok {
+                            *r = rr
+                        } else {
+                            *r = cfg.CreateRegister(r.Ptr())
+                            bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, true))
+                            regmap[cc] = *r
+                        }
                     }
                 }
-            }
-
-            /* insert the reload if needed */
-            if ldt {
-                bb.Ins = append(bb.Ins, mkSpillOp(getr(), spillr, true))
             }
         })
     }
 
-    /* register colors */
-    rig := simple.NewUndirectedGraph()
-    regmap := make(map[int]Reg)
-    colors := make(map[int]struct{})
-    colormap := make(map[Reg]int)
-    colortab := make([]_RegColor, 0, len(arch))
-    archtmp := make([]Reg, len(arch), len(arch))
-    copy(archtmp, arch)
-
-    /* assign colors to every virtual register */
-    for !order.Empty() {
-        reg := order.Pop().(Reg)
-        rt.MapClear(colors)
-
-        /* must not be colored */
-        if _, ok := colormap[reg]; ok {
-            panic("regalloc: allocation confliction")
-        }
-
-        /* all possible colors */
-        for c := range arch {
-            colors[c] = struct{}{}
-        }
-
-        /* choose a different color from it's neightbors */
-        for _, r := range edges[reg] {
-            p, _ := rig.NodeWithID(int64(r))
-            q, _ := rig.NodeWithID(int64(reg))
-            delete(colors, colormap[r])
-            rig.SetEdge(rig.NewEdge(p, q))
-        }
-
-        /* randomly choose an available color */
-        for c := range colors {
-            colormap[reg] = c
-            break
-        }
-    }
-
-    /* dump all register colors */
-    for r, c := range colormap {
-        colortab = append(colortab, _RegColor { r, c })
-    }
-
-    /* sort by register order, ensure all arch-specific registers are at the front */
-    sort.Slice(colortab, func(i int, j int) bool {
-        return regorder(colortab[i].r) < regorder(colortab[j].r)
-    })
-
-    /* Phase 6: Assign physical registers to colors */
-    for _, rc := range colortab {
-        if rc.r.Kind() == K_arch {
-            regmap[rc.c] = rc.r
-            regsliceremove(&arch, rc.r)
-        } else {
-            if _, ok := regmap[rc.c]; !ok {
-                regmap[rc.c], arch = arch[0], arch[1:]
-            }
-        }
-    }
-
-    /* register substitution function */
+    /* register substitution routine */
     replaceregs := func(rr []*Reg) {
         for _, r := range rr {
-            if c, ok := colormap[*r]; ok && r.Kind() != K_arch {
-                if *r, ok = regmap[c]; !ok {
-                    panic(fmt.Sprintf("regalloc: no register for color %d", c))
-                }
+            if c, ok := colormap[*r]; ok {
+                *r = arch[c]
             }
         }
     }
-
-    /* choose different colors for reload regs, choose colors different from reload regs for other defined regs */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        var ok bool
-        var def IrDefinitions
-        reloadRegs := make(map[Reg]int)
-        spillSlots := make(map[Reg]Reg)
-
-        /* process instructions */
-        for _, v := range bb.Ins {
-            if def, ok = v.(IrDefinitions) ; ok {
-                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                    /* try to choose different color for reload regs */
-                    if _, ok = reloadRegs[spillIr.reg]; !ok {
-                        /* try to use the same color with the spill reg if their slots are the same */
-                        if r, ok := spillSlots[spillIr.tag]; ok {
-                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap, r)
-                        } else {
-                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, archtmp, colormap, Rz)
-                        }
-                        reloadRegs[spillIr.reg] = colormap[spillIr.reg]
-                    }
-                } else if ok && !spillIr.reload {
-                    spillSlots[spillIr.tag] = spillIr.reg
-                } else {
-                    /* try to choose color different from reload regs for defined regs */
-                    for _, r := range def.Definitions() {
-                        self.colorDiffWithReload(rig, *r, reloadRegs, archtmp, colormap, Rz)
-                    }
-                }
-            }
-        }
-    })
 
     /* replace all the registers */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
@@ -902,18 +595,18 @@ func (self RegAlloc) Apply(cfg *CFG) {
         var use IrUsages
         var def IrDefinitions
 
-        /* should not have Phi nodes */
+        /* should not contain Phi nodes */
         if len(bb.Phi) != 0 {
-            panic("regalloc: unexpected Phi node at this point")
+            panic("regalloc: unexpected Phi node")
         }
 
-        /* process instructions */
+        /* replace instructions */
         for _, v := range bb.Ins {
             if use, ok = v.(IrUsages)      ; ok { replaceregs(use.Usages()) }
             if def, ok = v.(IrDefinitions) ; ok { replaceregs(def.Definitions()) }
         }
 
-        /* process the terminator */
+        /* replace the terminator */
         if use, ok = bb.Term.(IrUsages); ok {
             replaceregs(use.Usages())
         }
@@ -935,8 +628,8 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* remove redundant spill and reload instructions where both the register and stack aren't modified */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         /* register to stack slot is a one to one mapping */
-        regSlot := make(map[Reg]Reg)
-        slotReg := make(map[Reg]Reg)
+        regSlot := make(map[Reg]int)
+        slotReg := make(map[int]Reg)
         ins := bb.Ins
         bb.Ins = nil
         def := IrDefinitions(nil)
@@ -945,19 +638,19 @@ func (self RegAlloc) Apply(cfg *CFG) {
         for _, v := range ins {
             if spillIr, ok := v.(*_IrSpillOp); ok {
                 /* if there has been a one-one mapping between the register and stack slot, abandon this spill/reload instruction */
-                if s, ok := regSlot[spillIr.reg]; ok && s == spillIr.tag {
-                    if r, ok := slotReg[spillIr.tag]; ok && r == spillIr.reg {
+                if s, ok := regSlot[spillIr.reg]; ok && s == spillIr.slot {
+                    if r, ok := slotReg[spillIr.slot]; ok && r == spillIr.reg {
                         continue
                     }
                 }
 
                 /* delete old mapping relations */
-                delete(regSlot, slotReg[spillIr.tag])
+                delete(regSlot, slotReg[spillIr.slot])
                 delete(slotReg, regSlot[spillIr.reg])
 
                 /* establish new mapping relations */
-                slotReg[spillIr.tag] = spillIr.reg
-                regSlot[spillIr.reg] = spillIr.tag
+                slotReg[spillIr.slot] = spillIr.reg
+                regSlot[spillIr.reg] = spillIr.slot
                 bb.Ins = append(bb.Ins, v)
             } else {
                 if def, ok = v.(IrDefinitions); ok {
@@ -975,16 +668,16 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* remove redundant spill where the same stack slot is overwritten before loading */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var redundantIrPos []int
-        storeStack := make(map[Reg][]int)
+        storeStack := make(map[int][]int)
 
         /* scan every instruction */
         for i, v := range bb.Ins {
             if spillIr, ok := v.(*_IrSpillOp) ; ok && !spillIr.reload {
-                storeStack[spillIr.tag] = append(storeStack[spillIr.tag], i)
+                storeStack[spillIr.slot] = append(storeStack[spillIr.slot], i)
             } else if ok && spillIr.reload {
-                if irPos, ok := storeStack[spillIr.tag]; ok {
+                if irPos, ok := storeStack[spillIr.slot]; ok {
                     redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
-                    delete(storeStack, spillIr.tag)
+                    delete(storeStack, spillIr.slot)
                 }
             }
         }
@@ -1021,43 +714,43 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* remove redundant reload where the register isn't used after being reloaded */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-       var ok bool
-       var use IrUsages
-       var def IrDefinitions
-       var spillIr *_IrSpillOp
-       var removePos []int
-       rs := make(_RegSet, 0)
+        var ok bool
+        var use IrUsages
+        var def IrDefinitions
+        var spillIr *_IrSpillOp
+        var removePos []int
+        rs := make(_RegSet, 0)
 
-       /* add the terminator usages if any */
-       if use, ok = bb.Term.(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
+        /* add the terminator usages if any */
+        if use, ok = bb.Term.(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
 
-       /* live(i-1) = use(i) ∪ (live(i) - { def(i) }) */
-       for i := len(bb.Ins) - 1; i >= 0; i-- {
-           if def, ok = bb.Ins[i].(IrDefinitions); ok {
-               if spillIr, ok = bb.Ins[i].(*_IrSpillOp); ok && spillIr.reload {
-                   /* if the reloaded reg isn't used afterwards, record its position and then remove it */
-                   if !rs.contains(spillIr.reg) {
-                       removePos = append(removePos, i)
-                       continue
-                   }
-               }
-               rs.subtract(regSliceToSet(def.Definitions()))
-           }
-           if use, ok = bb.Ins[i].(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
-       }
+        /* live(i-1) = use(i) ∪ (live(i) - { def(i) }) */
+        for i := len(bb.Ins) - 1; i >= 0; i-- {
+            if def, ok = bb.Ins[i].(IrDefinitions); ok {
+                if spillIr, ok = bb.Ins[i].(*_IrSpillOp); ok && spillIr.reload {
+                    /* if the reloaded reg isn't used afterwards, record its position and then remove it */
+                    if !rs.contains(spillIr.reg) {
+                        removePos = append(removePos, i)
+                        continue
+                    }
+                }
+                rs.subtract(regSliceToSet(def.Definitions()))
+            }
+            if use, ok = bb.Ins[i].(IrUsages); ok { rs.union(regSliceToSet(use.Usages())) }
+        }
 
-       if len(removePos) > 0 {
-           ins := bb.Ins
-           bb.Ins = nil
-           sort.Ints(removePos)
-           startPos := 0
-           for _, p := range removePos {
-               bb.Ins = append(bb.Ins, ins[startPos : p]...)
-               startPos = p + 1
-           }
-           if startPos < len(ins) {
-               bb.Ins = append(bb.Ins, ins[startPos : ]...)
-           }
-       }
+        if len(removePos) > 0 {
+            ins := bb.Ins
+            bb.Ins = nil
+            sort.Ints(removePos)
+            startPos := 0
+            for _, p := range removePos {
+                bb.Ins = append(bb.Ins, ins[startPos : p]...)
+                startPos = p + 1
+            }
+            if startPos < len(ins) {
+                bb.Ins = append(bb.Ins, ins[startPos : ]...)
+            }
+        }
     })
 }

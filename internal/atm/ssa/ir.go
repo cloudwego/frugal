@@ -161,10 +161,10 @@ func (self Reg) String() string {
             }
         }
 
-        /* arch-specific registers */
+        /* physical registers */
         case K_arch: {
             if i := self.Name(); i >= len(ArchRegs) {
-                panic(fmt.Sprintf("invalid arch-specific register index: %d", i))
+                panic(fmt.Sprintf("invalid physical register index: %d", i))
             } else if self.Index() == 0 {
                 return fmt.Sprintf("%%%s", ArchRegNames[ArchRegs[i]])
             } else if self.Ptr() {

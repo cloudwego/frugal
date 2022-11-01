@@ -175,6 +175,6 @@ func TestPretouch(t *testing.T) {
 }
 
 func TestSSACompile(t *testing.T) {
-    var v baseline.Nesting
+    var v baseline.Nesting2
     println(frugal.EncodedSize(v))
 }

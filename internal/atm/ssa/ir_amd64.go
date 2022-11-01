@@ -88,7 +88,7 @@ var ArchRegReserved = map[x86_64.Register64]bool {
 
 func IrSetArch(rr Reg, reg x86_64.Register64) Reg {
     if id, ok := ArchRegIds[reg]; !ok {
-        panic("invalid arch-specific register: " + reg.String())
+        panic("invalid physical register: " + reg.String())
     } else if rr.Ptr() {
         return mkreg(1, K_arch, id).Derive(rr.Index())
     } else {

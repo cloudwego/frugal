@@ -46,12 +46,12 @@ var Passes = [...]PassDescriptor {
     { Name: "ABI-Specific Lowering"      , Pass: new(ABILowering)   },
     { Name: "Instruction Fusion"         , Pass: new(Fusion)        },
     { Name: "Instruction Compaction"     , Pass: new(Compaction)    },
-    { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
-    { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
-    { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
+    { Name: "Block Merging"              , Pass: new(BlockMerge)    },
     { Name: "Critical Edge Splitting"    , Pass: new(SplitCritical) },
     { Name: "Phi Propagation"            , Pass: new(PhiProp)       },
-    { Name: "Block Merging"              , Pass: new(BlockMerge)    },
+    { Name: "Operand Allocation"         , Pass: new(OperandAlloc)  },
+    { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
+    { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
     { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
 }
 
