@@ -387,6 +387,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     var pass int
     var arch []Reg
     var colormap map[Reg]int
+    var rig *simple.UndirectedGraph
 
     /* reusable state */
     pool := mkregtab()
@@ -435,7 +436,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
-    rig := simple.NewUndirectedGraph()
     /* loop until no more retries */
     for {
         pool.reset()
