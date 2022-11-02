@@ -364,6 +364,25 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
     }
 }
 
+/* try to choose same color for reloadRegs with the same slots */
+func (self RegAlloc) colorSameWithReload(rig *simple.UndirectedGraph, reg Reg, arch []Reg, colormap map[Reg]int, reloadReg Reg) {
+    /* all possible colors */
+    colors := make(map[int]struct{})
+    for i := range arch {
+        colors[i] = struct{}{}
+    }
+
+    /* choose a different color from it's neightbors */
+    for r := rig.From(int64(reg)); r.Next(); {
+        delete(colors, colormap[Reg(r.Node().ID())])
+    }
+
+    /* try to choose the same color with reloadReg */
+    if _, ok := colors[colormap[reloadReg]]; ok {
+        colormap[reg] = colormap[reloadReg]
+    }
+}
+
 func (self RegAlloc) Apply(cfg *CFG) {
     var pass int
     var arch []Reg
@@ -416,6 +435,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     })
 
+    rig := simple.NewUndirectedGraph()
     /* loop until no more retries */
     for {
         pool.reset()
@@ -425,7 +445,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* Phase 1: Calculate live ranges */
         lr := self.livein(pool, liveset, cfg.Root, livein, liveout)
-        rig := simple.NewUndirectedGraph()
+        rig = simple.NewUndirectedGraph()
 
         /* sanity check: no registers live at the entry point */
         if len(lr) != 0 {
@@ -520,6 +540,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             for _, v := range ins {
                 var r *Reg
                 var d IrDefinitions
+                var copySrc Reg
 
                 /* clear the register map */
                 for c := range regmap {
@@ -553,7 +574,12 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 /* spill as needed */
                 for _, r = range d.Definitions() {
                     if cc, ok = colormap[*r]; ok {
-                        bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, false))
+                        if _, copySrc, ok = IrArchTryIntoCopy(v); ok {
+                            bb.Ins = bb.Ins[0:len(bb.Ins)-1]
+                            bb.Ins = append(bb.Ins, mkSpillOp(copySrc, cc, false))
+                        } else {
+                            bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, false))
+                        }
                     }
                 }
             }
@@ -579,6 +605,57 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         })
     }
+
+    /* choose different colors for reload regs, choose colors different from reload regs for other defined regs */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        var ok bool
+        var def IrDefinitions
+        reloadRegs := make(map[Reg]int)
+        spillSlots := make(map[int]Reg)
+
+        /* process instructions */
+        for _, v := range bb.Ins {
+            if def, ok = v.(IrDefinitions) ; ok {
+                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
+                    /* try to choose different color for reload regs with different slots */
+                    if _, ok = reloadRegs[spillIr.reg]; !ok {
+                        /* try to use the same color with the spill reg if their slots are the same */
+                        if r, ok := spillSlots[spillIr.slot]; ok {
+                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, r)
+                        } else {
+                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, Rz)
+                        }
+                        reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+                    }
+                } else if ok && !spillIr.reload {
+                    spillSlots[spillIr.slot] = spillIr.reg
+                } else {
+                    /* try to choose color different from reload regs for defined regs */
+                    for _, r := range def.Definitions() {
+                        self.colorDiffWithReload(rig, *r, reloadRegs, arch, colormap, Rz)
+                    }
+                }
+            }
+        }
+    })
+
+    /* try to choose same colors for reload regs which have the same slots */
+    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+        slotReg := make(map[int]Reg)
+
+        /* process instructions */
+        for _, v := range bb.Ins {
+            if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
+                if r, ok := slotReg[spillIr.slot]; ok {
+                    if spillIr.reg != r {
+                        self.colorSameWithReload(rig, spillIr.reg, arch, colormap, r)
+                    }
+                } else {
+                    slotReg[spillIr.slot] = spillIr.reg
+                }
+            }
+        }
+    })
 
     /* register substitution routine */
     replaceregs := func(rr []*Reg) {
@@ -705,11 +782,11 @@ func (self RegAlloc) Apply(cfg *CFG) {
     })
 
     regSliceToSet := func(rr []*Reg) _RegSet {
-       rs := make(_RegSet, 0)
-       for _, r := range rr {
-           rs.add(*r)
-       }
-       return rs
+        rs := make(_RegSet, 0)
+        for _, r := range rr {
+            rs.add(*r)
+        }
+        return rs
     }
 
     /* remove redundant reload where the register isn't used after being reloaded */
