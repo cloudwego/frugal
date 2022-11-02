@@ -606,24 +606,33 @@ func (self RegAlloc) Apply(cfg *CFG) {
         })
     }
 
-    /* choose different colors for reload regs, choose colors different from reload regs for other defined regs */
+    /* finetune color allocation plan */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var ok bool
         var def IrDefinitions
         reloadRegs := make(map[Reg]int)
         spillSlots := make(map[int]Reg)
+        slotReg := make(map[int]Reg)
 
         /* process instructions */
         for _, v := range bb.Ins {
             if def, ok = v.(IrDefinitions) ; ok {
                 if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                    /* try to choose different color for reload regs with different slots */
                     if _, ok = reloadRegs[spillIr.reg]; !ok {
-                        /* try to use the same color with the spill reg if their slots are the same */
-                        if r, ok := spillSlots[spillIr.slot]; ok {
-                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, r)
+                        /* try to choose same color for reload regs with same slots */
+                        if r, ok := slotReg[spillIr.slot]; ok {
+                            if spillIr.reg != r {
+                                self.colorSameWithReload(rig, spillIr.reg, arch, colormap, r)
+                            }
                         } else {
-                            self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, Rz)
+                            /* try to choose different color for reload regs with different slots */
+                            slotReg[spillIr.slot] = spillIr.reg
+                            if r, ok := spillSlots[spillIr.slot]; ok {
+                                /* try to choose same color with the spill reg if they have same slots */
+                                self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, r)
+                            } else {
+                                self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, Rz)
+                            }
                         }
                         reloadRegs[spillIr.reg] = colormap[spillIr.reg]
                     }
@@ -634,24 +643,6 @@ func (self RegAlloc) Apply(cfg *CFG) {
                     for _, r := range def.Definitions() {
                         self.colorDiffWithReload(rig, *r, reloadRegs, arch, colormap, Rz)
                     }
-                }
-            }
-        }
-    })
-
-    /* try to choose same colors for reload regs which have the same slots */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        slotReg := make(map[int]Reg)
-
-        /* process instructions */
-        for _, v := range bb.Ins {
-            if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                if r, ok := slotReg[spillIr.slot]; ok {
-                    if spillIr.reg != r {
-                        self.colorSameWithReload(rig, spillIr.reg, arch, colormap, r)
-                    }
-                } else {
-                    slotReg[spillIr.slot] = spillIr.reg
                 }
             }
         }
