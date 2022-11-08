@@ -396,12 +396,14 @@ func (self RegAlloc) Apply(cfg *CFG) {
     liveout := make(map[int]_RegSet)
     liveset := make(map[_Pos]_RegSet)
     archcolors := make(map[int64]int, len(ArchRegs))
+    coalescemap := make(map[Reg]Reg)
+    invcoalescemap := make(map[Reg][]Reg)
 
-    /* register precolorer */
-    precolor := func(rr []*Reg) {
+    /* register coalescer */
+    coalesce := func(rr []*Reg) {
         for _, r := range rr {
-            if r.Kind() == K_arch {
-                *r = IrSetArch(Rz, ArchRegs[r.Name()])
+            if c, ok := coalescemap[*r]; ok {
+                *r = c
             }
         }
     }
@@ -416,6 +418,15 @@ func (self RegAlloc) Apply(cfg *CFG) {
     /* allocate colors to the registers */
     for i, r := range arch {
         archcolors[int64(r)] = i
+    }
+
+    /* register precolorer */
+    precolor := func(rr []*Reg) {
+        for _, r := range rr {
+            if r.Kind() == K_arch {
+                *r = IrSetArch(Rz, ArchRegs[r.Name()])
+            }
+        }
     }
 
     /* precolor all physical registers */
@@ -442,6 +453,13 @@ func (self RegAlloc) Apply(cfg *CFG) {
         rt.MapClear(livein)
         rt.MapClear(liveout)
         rt.MapClear(liveset)
+        rt.MapClear(coalescemap)
+        rt.MapClear(invcoalescemap)
+
+        /* expand operands but not in the first pass */
+        if pass != 0 {
+            new(OperandAlloc).Apply(cfg)
+        }
 
         /* Phase 1: Calculate live ranges */
         lr := self.livein(pool, liveset, cfg.Root, livein, liveout)
@@ -481,7 +499,128 @@ func (self RegAlloc) Apply(cfg *CFG) {
             }
         }
 
-        /* Phase 3: Attempt to color the RIG */
+        /* Phase 3: Coalescing registers, find out all the coalescing pairs */
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+            for _, v := range bb.Ins {
+                var r0 Reg
+                var r1 Reg
+                var rx Reg
+                var ry Reg
+                var ok bool
+
+                /* only interested in copy instructions */
+                if rx, ry, ok = IrArchTryIntoCopy(v); !ok {
+                    continue
+                }
+
+                /* locate the coalescing source register */
+                if r0, ok = coalescemap[rx]; ok { rx = r0 }
+                if r1, ok = coalescemap[ry]; ok { ry = r1 }
+
+                /* check if the two registers can be coalesced */
+                if rx == ry || rig.HasEdgeBetween(int64(rx), int64(ry)) || (rx.Kind() == K_arch && ry.Kind() == K_arch) {
+                    continue
+                }
+
+                /* make sure Y is the node with a lower degree */
+                if rig.From(int64(rx)).Len() < rig.From(int64(ry)).Len() {
+                    rx, ry = ry, rx
+                }
+
+                /* all the adjacent nodes of Y */
+                p := rig.From(int64(ry))
+                ok = true
+
+                /* determain whether it's safe to coalesce using George's heuristic */
+                for p.Next() {
+                    if t := p.Node().ID(); len(arch) <= rig.From(t).Len() && !rig.HasEdgeBetween(t, int64(rx)) {
+                        ok = false
+                        break
+                    }
+                }
+
+                /* check if it can be coalesced */
+                if !ok {
+                    continue
+                }
+
+                /* r0 is the target register, r1 will be coalesced */
+                if regorder(rx) < regorder(ry) {
+                    r0 = rx
+                    r1 = ry
+                } else {
+                    r0 = ry
+                    r1 = rx
+                }
+
+                /* invcoalescemap's key is the target reg (named r0), it's value is the reg list coalesced to r0 */
+                for _, r := range invcoalescemap[r1] {
+                    coalescemap[r] = r0
+                }
+
+                /* also mark the inverse relationship */
+                invcoalescemap[r0] = append(invcoalescemap[r0], r1)
+                invcoalescemap[r0] = append(invcoalescemap[r0], invcoalescemap[r1]...)
+
+                /* coalesce r0 and r1 (replace r1 by r0) in the interference graph */
+                for p = rig.From(int64(r1)); p.Next(); {
+                    if t := p.Node().ID(); !rig.HasEdgeBetween(t, int64(r0)) {
+                        nt, _ := rig.NodeWithID(t)
+                        n0, _ := rig.NodeWithID(int64(r0))
+                        rig.SetEdge(rig.NewEdge(n0, nt))
+                    }
+                }
+
+                /* mark as coalesced */
+                coalescemap[r1] = r0
+                rig.RemoveNode(int64(r1))
+            }
+        })
+
+        /* coalesce if needed */
+        if len(coalescemap) != 0 {
+            cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+                var ok bool
+                var use IrUsages
+                var def IrDefinitions
+
+                /* should not have Phi nodes */
+                if len(bb.Phi) != 0 {
+                    panic("regalloc: unexpected Phi nodes")
+                }
+
+                /* scan instructions */
+                for _, v := range bb.Ins {
+                    if use, ok = v.(IrUsages)      ; ok { coalesce(use.Usages()) }
+                    if def, ok = v.(IrDefinitions) ; ok { coalesce(def.Definitions()) }
+                }
+
+                /* scan terminator */
+                if use, ok = bb.Term.(IrUsages); ok {
+                    coalesce(use.Usages())
+                }
+            })
+        }
+
+        /* remove copies to itself */
+        cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+            ins := bb.Ins
+            bb.Ins = bb.Ins[:0]
+
+            /* filter the instructions */
+            for _, p := range ins {
+                if rd, rs, ok := IrArchTryIntoCopy(p); !ok || rd != rs {
+                    bb.Ins = append(bb.Ins, p)
+                }
+            }
+        })
+
+        /* try again if coalesce occured */
+        if len(coalescemap) != 0 {
+            continue
+        }
+
+        /* Phase 4: Attempt to color the RIG */
         k, m, _ := coloring.WelshPowell(rig, archcolors)
         colormap = *(*map[Reg]int)(unsafe.Pointer(&m))
 
@@ -657,7 +796,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         }
     }
 
-    /* replace all the registers */
+    /* Phase 5: Replace all the virtual registers with physical registers */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         var ok bool
         var use IrUsages
