@@ -321,7 +321,7 @@ func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in
 }
 
 /* try to choose a different color from reloadRegs */
-func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, reloadReg map[Reg]int, arch []Reg, colormap map[Reg]int, spillReg Reg) {
+func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, reloadReg map[Reg]int, arch []Reg, colormap map[Reg]int) {
     sameWithReload := false
     for _, c := range reloadReg {
         if c == colormap[reg] {
@@ -329,7 +329,7 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
             break
         }
     }
-    if !sameWithReload && spillReg == Rz { return }
+    if !sameWithReload { return }
 
     /* all possible colors */
     colors := make(map[int]struct{})
@@ -340,14 +340,6 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
     /* choose a different color from it's neightbors */
     for r := rig.From(int64(reg)); r.Next(); {
         delete(colors, colormap[Reg(r.Node().ID())])
-    }
-
-    if spillReg != Rz {
-        /* if the reload slot is same with a previous spill slot, try to use the same color with the spill reg */
-        if _, ok := colors[colormap[spillReg]]; ok {
-            colormap[reg] = colormap[spillReg]
-            return
-        }
     }
 
     /* choose a different color from reloadRegs */
@@ -356,7 +348,7 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
     }
 
     if len(colors) > 0 {
-        /* there're some other colors different with reoloadRegs */
+        /* there have some other colors different with reload regs */
         for c := range colors {
             colormap[reg] = c
             break
@@ -364,8 +356,8 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
     }
 }
 
-/* try to choose same color for reloadRegs with the same slots */
-func (self RegAlloc) colorSameWithReload(rig *simple.UndirectedGraph, reg Reg, arch []Reg, colormap map[Reg]int, reloadReg Reg) {
+/* try to choose the same color for reloadReg as reg */
+func (self RegAlloc) colorSameWithReg(rig *simple.UndirectedGraph, reloadReg Reg, arch []Reg, colormap map[Reg]int, reg Reg) {
     /* all possible colors */
     colors := make(map[int]struct{})
     for i := range arch {
@@ -373,13 +365,13 @@ func (self RegAlloc) colorSameWithReload(rig *simple.UndirectedGraph, reg Reg, a
     }
 
     /* choose a different color from it's neightbors */
-    for r := rig.From(int64(reg)); r.Next(); {
+    for r := rig.From(int64(reloadReg)); r.Next(); {
         delete(colors, colormap[Reg(r.Node().ID())])
     }
 
-    /* try to choose the same color with reloadReg */
-    if _, ok := colors[colormap[reloadReg]]; ok {
-        colormap[reg] = colormap[reloadReg]
+    /* try to choose the same color with reg */
+    if _, ok := colors[colormap[reg]]; ok {
+        colormap[reloadReg] = colormap[reg]
     }
 }
 
@@ -608,40 +600,34 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
     /* finetune color allocation plan */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        var ok bool
-        var def IrDefinitions
         reloadRegs := make(map[Reg]int)
         spillSlots := make(map[int]Reg)
         slotReg := make(map[int]Reg)
 
         /* process instructions */
         for _, v := range bb.Ins {
-            if def, ok = v.(IrDefinitions) ; ok {
-                if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                    if _, ok = reloadRegs[spillIr.reg]; !ok {
-                        /* try to choose same color for reload regs with same slots */
-                        if r, ok := slotReg[spillIr.slot]; ok {
-                            if spillIr.reg != r {
-                                self.colorSameWithReload(rig, spillIr.reg, arch, colormap, r)
-                            }
-                        } else {
-                            /* try to choose different color for reload regs with different slots */
-                            slotReg[spillIr.slot] = spillIr.reg
-                            if r, ok := spillSlots[spillIr.slot]; ok {
-                                /* try to choose same color with the spill reg if they have same slots */
-                                self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, r)
-                            } else {
-                                self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap, Rz)
-                            }
-                        }
-                        reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+            if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
+                if _, ok = reloadRegs[spillIr.reg]; !ok {
+                    /* try to assign the same color to reloadReg and spillReg with the same slot */
+                    if r, ok := spillSlots[spillIr.slot]; ok {
+                        self.colorSameWithReg(rig, spillIr.reg, arch, colormap, r)
+                    } else if r, ok := slotReg[spillIr.slot]; ok {
+                        /* try to assign the same color to reloadRegs with the same slot */
+                        self.colorSameWithReg(rig, spillIr.reg, arch, colormap, r)
+                    } else {
+                        /* try to assign different color to reloadRegs with different slots */
+                        self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap)
                     }
-                } else if ok && !spillIr.reload {
-                    spillSlots[spillIr.slot] = spillIr.reg
-                } else {
-                    /* try to choose color different from reload regs for defined regs */
+                    slotReg[spillIr.slot] = spillIr.reg
+                    reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+                }
+            } else if ok && !spillIr.reload {
+                spillSlots[spillIr.slot] = spillIr.reg
+            } else {
+                /* try to choose color different from reload regs for defined regs */
+                if def, ok := v.(IrDefinitions); ok {
                     for _, r := range def.Definitions() {
-                        self.colorDiffWithReload(rig, *r, reloadRegs, arch, colormap, Rz)
+                        self.colorDiffWithReload(rig, *r, reloadRegs, arch, colormap)
                     }
                 }
             }
