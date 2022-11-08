@@ -193,53 +193,6 @@ func (self *_RegTab) remove(r Reg) (rs _RegSet) {
     return
 }
 
-type _IrSpillOp struct {
-    reg    Reg
-    slot   int
-    reload bool
-}
-
-func mkSpillOp(reg Reg, slot int, reload bool) *_IrSpillOp {
-    return &_IrSpillOp {
-        reg    : reg,
-        slot   : slot,
-        reload : reload,
-    }
-}
-
-func (self *_IrSpillOp) irnode()      {}
-func (self *_IrSpillOp) irimpure()    {}
-func (self *_IrSpillOp) irimmovable() {}
-
-func (self *_IrSpillOp) Clone() IrNode {
-    r := *self
-    return &r
-}
-
-func (self *_IrSpillOp) String() string {
-    if self.reload {
-        return fmt.Sprintf("%s = reload <slot %d>", self.reg, self.slot)
-    } else {
-        return fmt.Sprintf("spill %s -> <slot %d>", self.reg, self.slot)
-    }
-}
-
-func (self *_IrSpillOp) Usages() []*Reg {
-    if self.reload {
-        return nil
-    } else {
-        return []*Reg { &self.reg }
-    }
-}
-
-func (self *_IrSpillOp) Definitions() []*Reg {
-    if !self.reload {
-        return nil
-    } else {
-        return []*Reg { &self.reg }
-    }
-}
-
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
@@ -686,7 +639,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
                                 *r = rr
                             } else {
                                 *r = cfg.CreateRegister(r.Ptr())
-                                bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, true))
+                                bb.Ins = append(bb.Ins, IrCreateSpill(*r, cc, IrSpillReload))
                                 regmap[cc] = *r
                             }
                         }
@@ -706,9 +659,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 for _, r = range d.Definitions() {
                     if cc, ok = colormap[*r]; ok {
                         if _, s, ok = IrArchTryIntoCopy(v); !ok {
-                            bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, false))
+                            bb.Ins = append(bb.Ins, IrCreateSpill(*r, cc, IrSpillStore))
                         } else {
-                            bb.Ins[i] = mkSpillOp(s, cc, false)
+                            bb.Ins[i] = IrCreateSpill(s, cc, IrSpillStore)
                         }
                     }
                 }
@@ -727,7 +680,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
                             *r = rr
                         } else {
                             *r = cfg.CreateRegister(r.Ptr())
-                            bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, true))
+                            bb.Ins = append(bb.Ins, IrCreateSpill(*r, cc, IrSpillReload))
                             regmap[cc] = *r
                         }
                     }
@@ -744,23 +697,23 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* process instructions */
         for _, v := range bb.Ins {
-            if spillIr, ok := v.(*_IrSpillOp); ok && spillIr.reload {
-                if _, ok = reloadRegs[spillIr.reg]; !ok {
+            if spillIr, ok := v.(*IrSpill); ok && spillIr.Op == IrSpillReload {
+                if _, ok = reloadRegs[spillIr.R]; !ok {
                     /* try to assign the same color to reloadReg and spillReg with the same slot */
-                    if r, ok := spillSlots[spillIr.slot]; ok {
-                        self.colorSameWithReg(rig, spillIr.reg, arch, colormap, r)
-                    } else if r, ok := slotReg[spillIr.slot]; ok {
+                    if r, ok := spillSlots[spillIr.S.ID()]; ok {
+                        self.colorSameWithReg(rig, spillIr.R, arch, colormap, r)
+                    } else if r, ok := slotReg[spillIr.S.ID()]; ok {
                         /* try to assign the same color to reloadRegs with the same slot */
-                        self.colorSameWithReg(rig, spillIr.reg, arch, colormap, r)
+                        self.colorSameWithReg(rig, spillIr.R, arch, colormap, r)
                     } else {
                         /* try to assign different color to reloadRegs with different slots */
-                        self.colorDiffWithReload(rig, spillIr.reg, reloadRegs, arch, colormap)
+                        self.colorDiffWithReload(rig, spillIr.R, reloadRegs, arch, colormap)
                     }
-                    slotReg[spillIr.slot] = spillIr.reg
-                    reloadRegs[spillIr.reg] = colormap[spillIr.reg]
+                    slotReg[spillIr.S.ID()] = spillIr.R
+                    reloadRegs[spillIr.R] = colormap[spillIr.R]
                 }
-            } else if ok && !spillIr.reload {
-                spillSlots[spillIr.slot] = spillIr.reg
+            } else if ok && spillIr.Op == IrSpillStore {
+                spillSlots[spillIr.S.ID()] = spillIr.R
             } else {
                 /* try to choose color different from reload regs for defined regs */
                 if def, ok := v.(IrDefinitions); ok {
@@ -828,21 +781,21 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* scan every instruction */
         for _, v := range ins {
-            if spillIr, ok := v.(*_IrSpillOp); ok {
+            if spillIr, ok := v.(*IrSpill); ok {
                 /* if there has been a one-one mapping between the register and stack slot, abandon this spill/reload instruction */
-                if s, ok := regSlot[spillIr.reg]; ok && s == spillIr.slot {
-                    if r, ok := slotReg[spillIr.slot]; ok && r == spillIr.reg {
+                if s, ok := regSlot[spillIr.R]; ok && s == spillIr.S.ID() {
+                    if r, ok := slotReg[spillIr.S.ID()]; ok && r == spillIr.R {
                         continue
                     }
                 }
 
                 /* delete old mapping relations */
-                delete(regSlot, slotReg[spillIr.slot])
-                delete(slotReg, regSlot[spillIr.reg])
+                delete(regSlot, slotReg[spillIr.S.ID()])
+                delete(slotReg, regSlot[spillIr.R])
 
                 /* establish new mapping relations */
-                slotReg[spillIr.slot] = spillIr.reg
-                regSlot[spillIr.reg] = spillIr.slot
+                slotReg[spillIr.S.ID()] = spillIr.R
+                regSlot[spillIr.R] = spillIr.S.ID()
                 bb.Ins = append(bb.Ins, v)
             } else {
                 if def, ok = v.(IrDefinitions); ok {
@@ -864,12 +817,12 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
         /* scan every instruction */
         for i, v := range bb.Ins {
-            if spillIr, ok := v.(*_IrSpillOp) ; ok && !spillIr.reload {
-                storeStack[spillIr.slot] = append(storeStack[spillIr.slot], i)
-            } else if ok && spillIr.reload {
-                if irPos, ok := storeStack[spillIr.slot]; ok {
+            if spillIr, ok := v.(*IrSpill) ; ok && spillIr.Op == IrSpillStore {
+                storeStack[spillIr.S.ID()] = append(storeStack[spillIr.S.ID()], i)
+            } else if ok && spillIr.Op == IrSpillReload {
+                if irPos, ok := storeStack[spillIr.S.ID()]; ok {
                     redundantIrPos = append(redundantIrPos, irPos[0 : len(irPos)-1]...)
-                    delete(storeStack, spillIr.slot)
+                    delete(storeStack, spillIr.S.ID())
                 }
             }
         }
@@ -909,7 +862,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
         var ok bool
         var use IrUsages
         var def IrDefinitions
-        var spillIr *_IrSpillOp
+        var spillIr *IrSpill
         var removePos []int
         rs := make(_RegSet, 0)
 
@@ -919,9 +872,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
         /* live(i-1) = use(i) ∪ (live(i) - { def(i) }) */
         for i := len(bb.Ins) - 1; i >= 0; i-- {
             if def, ok = bb.Ins[i].(IrDefinitions); ok {
-                if spillIr, ok = bb.Ins[i].(*_IrSpillOp); ok && spillIr.reload {
+                if spillIr, ok = bb.Ins[i].(*IrSpill); ok && spillIr.Op == IrSpillReload {
                     /* if the reloaded reg isn't used afterwards, record its position and then remove it */
-                    if !rs.contains(spillIr.reg) {
+                    if !rs.contains(spillIr.R) {
                         removePos = append(removePos, i)
                         continue
                     }

@@ -256,6 +256,7 @@ func (*IrCallNative)   irnode() {}
 func (*IrCallMethod)   irnode() {}
 func (*IrClobberList)  irnode() {}
 func (*IrWriteBarrier) irnode() {}
+func (*IrSpill)        irnode() {}
 
 func (*IrStore)        irimpure() {}
 func (*IrCallFunc)     irimpure() {}
@@ -263,6 +264,7 @@ func (*IrCallNative)   irimpure() {}
 func (*IrCallMethod)   irimpure() {}
 func (*IrClobberList)  irimpure() {}
 func (*IrWriteBarrier) irimpure() {}
+func (*IrSpill)        irimpure() {}
 
 func (*IrLoad)         irimmovable() {}
 func (*IrStore)        irimmovable() {}
@@ -271,6 +273,7 @@ func (*IrEntry)        irimmovable() {}
 func (*IrLoadArg)      irimmovable() {}
 func (*IrClobberList)  irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
+func (*IrSpill)        irimmovable() {}
 
 type IrUsages interface {
     IrNode
@@ -1068,4 +1071,89 @@ func (self *IrWriteBarrier) String() string {
 
 func (self *IrWriteBarrier) Usages() []*Reg {
     return []*Reg { &self.R, &self.M, &self.Var, &self.Fn }
+}
+
+type (
+	IrSpillOp   uint8
+    IrSpillSlot uint64
+)
+
+const (
+    IrSpillStore IrSpillOp = iota
+    IrSpillReload
+)
+
+func mkspillslot(id int, ptr bool) IrSpillSlot {
+    if ptr {
+        return IrSpillSlot(id) | (1 << 63)
+    } else {
+        return IrSpillSlot(id) | (0 << 63)
+    }
+}
+
+func (self IrSpillOp) String() string {
+    switch self {
+        case IrSpillStore  : return "store"
+        case IrSpillReload : return "reload"
+        default            : panic("invalid spill op")
+    }
+}
+
+func (self IrSpillSlot) ID() int {
+    return int(self &^ (1 << 63))
+}
+
+func (self IrSpillSlot) IsPtr() bool {
+    return self & (1 << 63) != 0
+}
+
+func (self IrSpillSlot) String() string {
+    if self.IsPtr() {
+        return fmt.Sprintf("{slot %d.p}", self.ID())
+    } else {
+        return fmt.Sprintf("{slot %d.i}", self.ID())
+    }
+}
+
+type IrSpill struct {
+    R  Reg
+    S  IrSpillSlot
+    Op IrSpillOp
+}
+
+func IrCreateSpill(reg Reg, id int, op IrSpillOp) *IrSpill {
+    return &IrSpill {
+        R  : reg,
+        S  : mkspillslot(id, reg.Ptr()),
+        Op : op,
+    }
+}
+
+func (self *IrSpill) Clone() IrNode {
+    r := *self
+    return &r
+}
+
+func (self *IrSpill) String() string {
+    switch self.Op {
+        case IrSpillStore  : return fmt.Sprintf("spill %s -> %s", self.R, self.S)
+        case IrSpillReload : return fmt.Sprintf("%s = reload %s", self.R, self.S)
+        default            : panic("invalid spill op")
+    }
+}
+
+func (self *IrSpill) Usages() []*Reg {
+    switch self.Op {
+        case IrSpillStore  : return []*Reg { &self.R }
+        case IrSpillReload : return nil
+        default            : panic("invalid spill op")
+    }
+}
+
+func (self *IrSpill) Definitions() []*Reg {
+    switch self.Op {
+        case IrSpillStore  : return nil
+        case IrSpillReload : return []*Reg { &self.R }
+        default            : panic("invalid spill op")
+    }
 }
