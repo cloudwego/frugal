@@ -677,9 +677,9 @@ func (self RegAlloc) Apply(cfg *CFG) {
 
             /* scan every instructions */
             for _, v := range ins {
+                var s Reg
                 var r *Reg
                 var d IrDefinitions
-                var copySrc Reg
 
                 /* clear the register map */
                 for c := range regmap {
@@ -702,22 +702,21 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 }
 
                 /* add the instruction itself */
-                d, ok = v.(IrDefinitions)
+                i := len(bb.Ins)
                 bb.Ins = append(bb.Ins, v)
 
                 /* no definitions */
-                if !ok {
+                if d, ok = v.(IrDefinitions); !ok {
                     continue
                 }
 
                 /* spill as needed */
                 for _, r = range d.Definitions() {
                     if cc, ok = colormap[*r]; ok {
-                        if _, copySrc, ok = IrArchTryIntoCopy(v); ok {
-                            bb.Ins = bb.Ins[0:len(bb.Ins)-1]
-                            bb.Ins = append(bb.Ins, mkSpillOp(copySrc, cc, false))
-                        } else {
+                        if _, s, ok = IrArchTryIntoCopy(v); !ok {
                             bb.Ins = append(bb.Ins, mkSpillOp(*r, cc, false))
+                        } else {
+                            bb.Ins[i] = mkSpillOp(s, cc, false)
                         }
                     }
                 }
