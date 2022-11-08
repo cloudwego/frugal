@@ -384,10 +384,10 @@ func (self RegAlloc) colorSameWithReload(rig *simple.UndirectedGraph, reg Reg, a
 }
 
 func (self RegAlloc) Apply(cfg *CFG) {
+    var rig *simple.UndirectedGraph
     var pass int
     var arch []Reg
     var colormap map[Reg]int
-    var rig *simple.UndirectedGraph
 
     /* reusable state */
     pool := mkregtab()
