@@ -76,7 +76,39 @@ func (self *_BlockRef) update(cfg *CFG, bb *BasicBlock) {
 // Reorder moves value closer to it's usage, which reduces register pressure.
 type Reorder struct{}
 
-func (Reorder) moveInterblock(cfg *CFG) {
+func (Reorder) isMovable(v IrNode) bool {
+    var f bool
+    var u IrUsages
+    var d IrDefinitions
+
+    /* marked as immovable */
+    if _, f = v.(IrImmovable); f {
+        return false
+    }
+
+    /* blacklist all instructions that uses physical registers */
+    if u, f = v.(IrUsages); f {
+        for _, r := range u.Usages() {
+            if r.Kind() == K_arch {
+                return false
+            }
+        }
+    }
+
+    /* blacklist all instructions that alters physical registers */
+    if d, f = v.(IrDefinitions); f {
+        for _, r := range d.Definitions() {
+            if r.Kind() == K_arch {
+                return false
+            }
+        }
+    }
+
+    /* no such registers, all checked ok */
+    return true
+}
+
+func (self Reorder) moveInterblock(cfg *CFG) {
     defs := make(map[Reg]*_BlockRef)
     move := make(map[*BasicBlock]int)
     uses := make(map[_ValuePos]*_BlockRef)
@@ -106,8 +138,9 @@ func (Reorder) moveInterblock(cfg *CFG) {
                 var d IrDefinitions
 
                 /* value must be movable, and have definitions */
-                if _, f = v.(IrImmovable)  ;  f { continue }
-                if d, f = v.(IrDefinitions); !f { continue }
+                if d, f = v.(IrDefinitions); !f || !self.isMovable(v) {
+                    continue
+                }
 
                 /* initialize the lookup key */
                 k := _ValuePos {
@@ -192,8 +225,9 @@ func (Reorder) moveInterblock(cfg *CFG) {
     })
 }
 
-func (Reorder) moveIntrablock(cfg *CFG) {
+func (self Reorder) moveIntrablock(cfg *CFG) {
     var rbuf []IrNode
+    var mbuf []*_ValueId
     var vbuf []*_ValueId
     var addval func(*_ValueId, bool)
 
@@ -231,13 +265,20 @@ func (Reorder) moveIntrablock(cfg *CFG) {
     /* process every block */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
         rbuf = rbuf[:0]
+        mbuf = mbuf[:0]
         vbuf = vbuf[:0]
         rt.MapClear(adds)
         rt.MapClear(defs)
 
         /* number all instructions */
         for i, v := range bb.Ins {
-            vbuf = append(vbuf, mkvid(i, v))
+            id := mkvid(i, v)
+            vbuf = append(vbuf, id)
+
+            /* preserve the order of immovable instructions */
+            if !self.isMovable(v) {
+                mbuf = append(mbuf, id)
+            }
         }
 
         /* mark all non-Phi definitions in this block */
@@ -264,6 +305,11 @@ func (Reorder) moveIntrablock(cfg *CFG) {
                     }
                 }
             }
+        }
+
+        /* all the immovable instructions needs to preserve their order */
+        for _, v := range mbuf {
+            addval(v, false)
         }
 
         /* add all the root instructions */
