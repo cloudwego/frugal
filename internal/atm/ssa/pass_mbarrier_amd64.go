@@ -24,15 +24,6 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type _SplitPair struct {
-    i  int
-    bb *BasicBlock
-}
-
-func (self _SplitPair) isPriorTo(other _SplitPair) bool {
-    return self.bb.Id < other.bb.Id || (self.i < other.i && self.bb.Id == other.bb.Id)
-}
-
 // WriteBarrier inserts write barriers for pointer stores.
 type WriteBarrier struct{}
 
@@ -70,14 +61,11 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
         /* split pair buffer */
         nb := len(mbir)
-        mb := make([]_SplitPair, 0, nb)
+        mb := make([]Pos, 0, nb)
 
         /* extract from the map */
         for p, i := range mbir {
-            mb = append(mb, _SplitPair {
-                i  : i,
-                bb : p,
-            })
+            mb = append(mb, pos(p, i))
         }
 
         /* sort by block ID */
@@ -90,21 +78,21 @@ func (WriteBarrier) Apply(cfg *CFG) {
             bb := cfg.CreateBlock()
             ds := cfg.CreateBlock()
             wb := cfg.CreateBlock()
-            ir := p.bb.Ins[p.i].(*IrWriteBarrier)
+            ir := p.B.Ins[p.I].(*IrWriteBarrier)
 
             /* move instructions after the write barrier into a new block */
-            bb.Ins  = p.bb.Ins[p.i + 1:]
-            bb.Term = p.bb.Term
+            bb.Ins  = p.B.Ins[p.I + 1:]
+            bb.Term = p.B.Term
             bb.Pred = []*BasicBlock { ds, wb }
 
             /* update all the predecessors & Phi nodes */
-            for it := p.bb.Term.Successors(); it.Next(); {
+            for it := p.B.Term.Successors(); it.Next(); {
                 succ := it.Block()
                 pred := succ.Pred
 
                 /* update predecessors */
                 for x, v := range pred {
-                    if v == p.bb {
+                    if v == p.B {
                         pred[x] = bb
                         break
                     }
@@ -112,8 +100,8 @@ func (WriteBarrier) Apply(cfg *CFG) {
 
                 /* update Phi nodes */
                 for _, phi := range succ.Phi {
-                    phi.V[bb] = phi.V[p.bb]
-                    delete(phi.V, p.bb)
+                    phi.V[bb] = phi.V[p.B]
+                    delete(phi.V, p.B)
                 }
             }
 
@@ -127,7 +115,7 @@ func (WriteBarrier) Apply(cfg *CFG) {
             /* construct the direct store block */
             ds.Ins  = []IrNode { st }
             ds.Term = &IrAMD64_JMP { To: IrLikely(bb) }
-            ds.Pred = []*BasicBlock { p.bb }
+            ds.Pred = []*BasicBlock { p.B}
 
             /* rewrite the write barrier instruction */
             fn := &IrAMD64_CALL_gcwb {
@@ -144,11 +132,11 @@ func (WriteBarrier) Apply(cfg *CFG) {
             /* construct the write barrier block */
             wb.Ins  = []IrNode { fn }
             wb.Term = &IrAMD64_JMP { To: IrLikely(bb) }
-            wb.Pred = []*BasicBlock { p.bb }
+            wb.Pred = []*BasicBlock { p.B}
 
             /* rewrite the terminator to check for write barrier */
-            p.bb.Ins  = p.bb.Ins[:p.i]
-            p.bb.Term = &IrAMD64_Jcc_mi {
+            p.B.Ins  = p.B.Ins[:p.I]
+            p.B.Term = &IrAMD64_Jcc_mi {
                 X  : Ptr(ir.Var, 0),
                 Y  : 0,
                 N  : 1,

@@ -37,6 +37,7 @@ func (self *_CFGPrivate) allocblock() int {
 
 type CFG struct {
     _CFGPrivate
+    Func              FuncData
     Root              *BasicBlock
     Depth             map[int]int
     Layout            *abi.FunctionLayout

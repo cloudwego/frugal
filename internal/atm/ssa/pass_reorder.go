@@ -37,11 +37,6 @@ func mkvid(i int, v IrNode) *_ValueId {
     }
 }
 
-type _ValuePos struct {
-    i  int
-    bb *BasicBlock
-}
-
 type _BlockRef struct {
     bb *BasicBlock
 }
@@ -110,8 +105,8 @@ func (Reorder) isMovable(v IrNode) bool {
 
 func (self Reorder) moveInterblock(cfg *CFG) {
     defs := make(map[Reg]*_BlockRef)
+    uses := make(map[Pos]*_BlockRef)
     move := make(map[*BasicBlock]int)
-    uses := make(map[_ValuePos]*_BlockRef)
 
     /* usage update routine */
     updateUsage := func(r Reg, bb *BasicBlock) {
@@ -142,16 +137,10 @@ func (self Reorder) moveInterblock(cfg *CFG) {
                     continue
                 }
 
-                /* initialize the lookup key */
-                k := _ValuePos {
-                    i  : i,
-                    bb : bb,
-                }
-
                 /* create a new value movement if needed */
-                if p, f = uses[k]; !f {
+                if p, f = uses[pos(bb, i)]; !f {
                     p = new(_BlockRef)
-                    uses[k] = p
+                    uses[pos(bb, i)] = p
                 }
 
                 /* mark all the non-definition sites */
@@ -194,10 +183,10 @@ func (self Reorder) moveInterblock(cfg *CFG) {
 
         /* Phase 3: Move value definitions to their usage block */
         for p, m := range uses {
-            if m.bb != nil && m.bb != p.bb {
-                m.bb.Ins = append(m.bb.Ins, p.bb.Ins[p.i])
+            if m.bb != nil && m.bb != p.B {
+                m.bb.Ins = append(m.bb.Ins, p.B.Ins[p.I])
                 move[m.bb] = move[m.bb] + 1
-                p.bb.Ins[p.i] = new(IrNop)
+                p.B.Ins[p.I] = new(IrNop)
             }
         }
 

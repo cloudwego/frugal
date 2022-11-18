@@ -18,7 +18,6 @@ package ssa
 
 import (
     `fmt`
-    `math`
     `sort`
     `strings`
     `unsafe`
@@ -27,30 +26,6 @@ import (
     `gonum.org/v1/gonum/graph/coloring`
     `gonum.org/v1/gonum/graph/simple`
 )
-
-const (
-    _P_term = math.MaxUint32
-)
-
-type _Pos struct {
-    i int
-    b int
-}
-
-func pos(bb *BasicBlock, i int) _Pos {
-    return _Pos {
-        i: i,
-        b: bb.Id,
-    }
-}
-
-func (self _Pos) String() string {
-    if self.i == _P_term {
-        return fmt.Sprintf("bb_%d.term", self.b)
-    } else {
-        return fmt.Sprintf("bb_%d.ins[%d]", self.b, self.i)
-    }
-}
 
 type (
     _RegSet map[Reg]struct{}
@@ -94,13 +69,6 @@ func (self _RegSet) toslice() []Reg {
 func (self _RegSet) contains(r Reg) (ret bool) {
     _, ret = self[r]
     return
-}
-
-func (self _RegSet) hasoverlap(rs _RegSet) bool {
-    p, q := self, rs
-    if len(q) < len(p) { p, q = q, p }
-    for r := range p { if q.contains(r) { return true } }
-    return false
 }
 
 func (self _RegSet) String() string {
@@ -196,7 +164,7 @@ func (self *_RegTab) remove(r Reg) (rs _RegSet) {
 // RegAlloc performs register allocation on CFG.
 type RegAlloc struct{}
 
-func (self RegAlloc) livein(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
+func (self RegAlloc) livein(p *_RegTab, lr map[Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
     var ok bool
     var rs _RegSet
     var use IrUsages
@@ -242,7 +210,7 @@ func (self RegAlloc) livein(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in 
     return regs
 }
 
-func (self RegAlloc) liveout(p *_RegTab, lr map[_Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
+func (self RegAlloc) liveout(p *_RegTab, lr map[Pos]_RegSet, bb *BasicBlock, in map[int]_RegSet, out map[int]_RegSet) _RegSet {
     var ok bool
     var rr []Reg
     var rs _RegSet
@@ -339,7 +307,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
     regmap := make(map[int]Reg)
     livein := make(map[int]_RegSet)
     liveout := make(map[int]_RegSet)
-    liveset := make(map[_Pos]_RegSet)
+    liveset := make(map[Pos]_RegSet)
     archcolors := make(map[int64]int, len(ArchRegs))
     coalescemap := make(map[Reg]Reg)
     invcoalescemap := make(map[Reg][]Reg)
@@ -623,6 +591,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
             /* scan every instructions */
             for _, v := range ins {
                 var s Reg
+                var t Reg
                 var r *Reg
                 var d IrDefinitions
 
@@ -658,10 +627,10 @@ func (self RegAlloc) Apply(cfg *CFG) {
                 /* spill as needed */
                 for _, r = range d.Definitions() {
                     if cc, ok = colormap[*r]; ok {
-                        if _, s, ok = IrArchTryIntoCopy(v); !ok {
+                        if t, s, ok = IrArchTryIntoCopy(v); !ok {
                             bb.Ins = append(bb.Ins, IrCreateSpill(*r, cc, IrSpillStore))
                         } else {
-                            bb.Ins[i] = IrCreateSpill(s, cc, IrSpillStore)
+                            bb.Ins[i] = IrCreateSpillEx(s, t.Ptr(), cc, IrSpillStore)
                         }
                     }
                 }

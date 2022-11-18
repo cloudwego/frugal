@@ -257,6 +257,7 @@ func (*IrCallMethod)   irnode() {}
 func (*IrClobberList)  irnode() {}
 func (*IrWriteBarrier) irnode() {}
 func (*IrSpill)        irnode() {}
+func (*IrSlotAlive)    irnode() {}
 
 func (*IrStore)        irimpure() {}
 func (*IrCallFunc)     irimpure() {}
@@ -274,6 +275,7 @@ func (*IrLoadArg)      irimmovable() {}
 func (*IrClobberList)  irimmovable() {}
 func (*IrWriteBarrier) irimmovable() {}
 func (*IrSpill)        irimmovable() {}
+func (*IrSlotAlive)    irimmovable() {}
 
 type IrUsages interface {
     IrNode
@@ -1084,11 +1086,7 @@ const (
 )
 
 func mkspillslot(id int, ptr bool) IrSpillSlot {
-    if ptr {
-        return IrSpillSlot(id) | (1 << 63)
-    } else {
-        return IrSpillSlot(id) | (0 << 63)
-    }
+    return IrSpillSlot((id << 1) | bool2int(ptr))
 }
 
 func (self IrSpillOp) String() string {
@@ -1100,11 +1098,11 @@ func (self IrSpillOp) String() string {
 }
 
 func (self IrSpillSlot) ID() int {
-    return int(self &^ (1 << 63))
+    return int(self >> 1)
 }
 
 func (self IrSpillSlot) IsPtr() bool {
-    return self & (1 << 63) != 0
+    return int2bool(int(self & 1))
 }
 
 func (self IrSpillSlot) String() string {
@@ -1121,10 +1119,14 @@ type IrSpill struct {
     Op IrSpillOp
 }
 
-func IrCreateSpill(reg Reg, id int, op IrSpillOp) *IrSpill {
+func IrCreateSpill(reg Reg, id int, op IrSpillOp) IrNode {
+    return IrCreateSpillEx(reg, reg.Ptr(), id, op)
+}
+
+func IrCreateSpillEx(reg Reg, ptr bool, id int, op IrSpillOp) IrNode {
     return &IrSpill {
         R  : reg,
-        S  : mkspillslot(id, reg.Ptr()),
+        S  : mkspillslot(id, ptr),
         Op : op,
     }
 }
@@ -1156,4 +1158,42 @@ func (self *IrSpill) Definitions() []*Reg {
         case IrSpillReload : return []*Reg { &self.R }
         default            : panic("invalid spill op")
     }
+}
+
+type IrSlotAlive struct {
+    S []IrSpillSlot
+}
+
+func IrSlotGen(s IrSpillSlot) IrNode {
+    return &IrSlotAlive {
+        S: []IrSpillSlot { s },
+    }
+}
+
+func (self *IrSlotAlive) Clone() IrNode {
+    r := new(IrSlotAlive)
+    r.S = make([]IrSpillSlot, len(self.S))
+    copy(r.S, self.S)
+    return r
+}
+
+func (self *IrSlotAlive) String() string {
+    nb := len(self.S)
+    sv := make([]string, 0, nb)
+    ss := make([]IrSpillSlot, nb)
+
+    /* sort the slots */
+    copy(ss, self.S)
+    sort.Ints(*(*[]int)(unsafe.Pointer(&ss)))
+
+    /* dump the slots */
+    for _, v := range ss {
+        sv = append(sv, v.String())
+    }
+
+    /* join them together */
+    return fmt.Sprintf(
+        "mark_alive %s",
+        strings.Join(sv, ", "),
+    )
 }

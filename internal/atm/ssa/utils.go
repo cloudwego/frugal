@@ -18,7 +18,6 @@ package ssa
 
 import (
     `math`
-    `sort`
     `strings`
     `unsafe`
 
@@ -82,6 +81,18 @@ func addptr(p unsafe.Pointer, i int64) unsafe.Pointer {
     return unsafe.Pointer(uintptr(p) + uintptr(i))
 }
 
+func int2bool(v int) bool {
+    return v != 0
+}
+
+func bool2int(v bool) int {
+    if v {
+        return 1
+    } else {
+        return 0
+    }
+}
+
 func memsizec(n uint8) rune {
     switch n {
         case 1  : return 'b'
@@ -130,22 +141,8 @@ func regsliceclone(v []Reg) (r []Reg) {
     return
 }
 
-func regsliceremove(v *[]Reg, x Reg) {
-    r := *v
-    *v = (*v)[:0]
-    for _, p := range r { if p != x { *v = append(*v, p) } }
-}
-
 func blockreverse(s []*BasicBlock) {
     for i, j := 0, len(s) - 1; i < j; i, j = i + 1, j - 1 {
         s[i], s[j] = s[j], s[i]
     }
-}
-
-func insertSortedInts(mm []int, v int) []int {
-    i := sort.SearchInts(mm, v)
-    mm = append(mm, 0)
-    copy(mm[i + 1:], mm[i:])
-    mm[i] = v
-    return mm
 }

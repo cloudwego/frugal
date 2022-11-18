@@ -53,6 +53,8 @@ var Passes = [...]PassDescriptor {
     { Name: "Constant Rematerialize"     , Pass: new(Rematerialize) },
     { Name: "Pre-allocation TDCE"        , Pass: new(TDCE)          },
     { Name: "Register Allocation"        , Pass: new(RegAlloc)      },
+    { Name: "Stack Liveness Analysis"    , Pass: new(StackLiveness) },
+    { Name: "Function Layout"            , Pass: new(Layout)        },
 }
 
 func toFuncType(fn interface{}) reflect.Type {
