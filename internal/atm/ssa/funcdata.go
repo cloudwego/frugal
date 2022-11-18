@@ -19,39 +19,40 @@ package ssa
 import (
     `fmt`
     `strings`
+
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type FuncData struct {
+    Code     []byte
     Layout   *FuncLayout
     Liveness map[Pos]SlotSet
+    StackMap map[uintptr]*rt.StackMap
 }
 
 type FuncLayout struct {
     Ins   []IrNode
     Start map[int]int
+    Block map[int]*BasicBlock
 }
 
 func (self *FuncLayout) String() string {
-    rev := make(map[int]int, len(self.Start))
-    buf := make([]string, 0, len(self.Ins) + len(self.Start))
-
-    /* mark all the starting position for each basic block */
-    for i, p := range self.Start {
-        rev[p] = i
-    }
+    ni := len(self.Ins)
+    ns := len(self.Start)
+    ss := make([]string, 0, ni + ns)
 
     /* print every instruction */
     for i, ins := range self.Ins {
-        if bb, ok := rev[i]; !ok {
-            buf = append(buf, fmt.Sprintf("%06x |     %s", i, ins))
+        if bb, ok := self.Block[i]; !ok {
+            ss = append(ss, fmt.Sprintf("%06x |     %s", i, ins))
         } else {
-            buf = append(buf, fmt.Sprintf("%06x | bb_%d:", i, bb), fmt.Sprintf("%06x |     %s", i, ins))
+            ss = append(ss, fmt.Sprintf("%06x | bb_%d:", i, bb.Id), fmt.Sprintf("%06x |     %s", i, ins))
         }
     }
 
     /* join them together */
     return fmt.Sprintf(
         "FuncLayout {\n%s\n}",
-        strings.Join(buf, "\n"),
+        strings.Join(ss, "\n"),
     )
 }

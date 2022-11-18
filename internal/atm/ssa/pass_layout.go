@@ -35,9 +35,11 @@ func (self Layout) flatten(fn *FuncLayout, bb *BasicBlock) {
     /* check for visited blocks */
     if _, ok = fn.Start[bb.Id]; ok {
         return
-    } else {
-        fn.Start[bb.Id] = len(fn.Ins)
     }
+
+    /* mark the starting position, and the corresponding block */
+    fn.Start[bb.Id] = len(fn.Ins)
+    fn.Block[len(fn.Ins)] = bb
 
     /* add instructions and the terminator */
     fn.Ins = append(fn.Ins, bb.Ins...)
@@ -65,6 +67,7 @@ func (self Layout) flatten(fn *FuncLayout, bb *BasicBlock) {
 func (self Layout) Apply(cfg *CFG) {
     cfg.Func.Layout = new(FuncLayout)
     cfg.Func.Layout.Start = make(map[int]int, cfg.MaxBlock())
+    cfg.Func.Layout.Block = make(map[int]*BasicBlock, cfg.MaxBlock())
 
     /* remove all virtual instructions */
     cfg.PostOrder().ForEach(func(bb *BasicBlock) {
