@@ -19,6 +19,7 @@ package decoder
 import (
     `testing`
     `unsafe`
+    `encoding/hex`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/rt`
@@ -179,4 +180,17 @@ func TestSkippingEmu_SkipSetOrListButGotErrors(t *testing.T) {
     run_skipping_emu(t, []byte{2, 0, 0, 0, 2, 1}       , EEOF, defs.T_list)
     run_skipping_emu(t, []byte{9, 0, 0, 0, 1, 2}       , ETAG, defs.T_list)
     run_skipping_emu(t, []byte("\x0b\x00\x00\x00\x01") , EEOF, defs.T_list)
+}
+
+func TestSkipListMap(t *testing.T) {
+    listMap, err := hex.DecodeString("0f00010d000000020b0b00000001000000016100000001620b0b000000010000000161000000016200")
+    if err != nil {
+        t.Fatal(err)
+    }
+    var fsm _skipbuf_t
+    var in = (*rt.GoSlice)(unsafe.Pointer(&listMap))
+    rv := do_skip(&fsm, in.Ptr, in.Len, defs.T_struct)
+    if rv != len(listMap) {
+        t.Fatalf("skip failed: %d", rv)
+    }
 }

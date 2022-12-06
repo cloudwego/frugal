@@ -16,6 +16,7 @@
 #define T_map       13
 #define T_set       14
 #define T_list      15
+#define T_list_elem 0xfe
 #define T_map_pair  0xff
 
 typedef struct {
@@ -276,10 +277,27 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
                 }
 
                 /* set to parse the elements */
-                st[sp].t = et;
+                st[sp].t = T_list_elem;
+                st[sp].v = et;
                 st[sp].n = nv - 1;
                 mvbuf(&s, &n, &rv, 5);
                 break;
+            }
+
+            /* list elem */
+            case T_list_elem:
+            {
+                uint8_t et = st[sp].v;
+                stpop(st, &sp);
+                /* push the element onto stack */
+                if (stadd(st, &sp, et))
+                {
+                    break;
+                }
+                else
+                {
+                    return ESTACK;
+                }
             }
         }
     }
