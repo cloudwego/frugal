@@ -38,7 +38,8 @@ var _SkipSizeFixed = [256]int {
 }
 
 const (
-    _T_map_pair defs.Tag = 0xff
+    _T_list_elem defs.Tag = 0xfe
+    _T_map_pair  defs.Tag = 0xff
 )
 
 func u32be(s unsafe.Pointer) int {
@@ -249,9 +250,20 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
                 }
 
                 /* set to parse the elements */
-                st[sp].T = et
+                st[sp].T = _T_list_elem
+                st[sp].V = et
                 st[sp].N = uint32(nv) - 1
                 mvbuf(&s, &n, &rv, 5)
+            }
+
+            /* list elem */
+            case _T_list_elem: {
+                et := st[sp].V
+                stpop(st, &sp)
+                /* push the element onto stack */
+                if !stadd(st, &sp, et) {
+                   return ESTACK
+                }
             }
         }
     }
