@@ -58,7 +58,7 @@ func asmmemzero() MemZeroFn {
     p.RET()
 
     /* assemble the function */
-    c := p.AssembleAndFree(0)
+    c := p.Assemble(0)
     r := make([]uintptr, len(x))
 
     /* resolve all the labels */
@@ -67,6 +67,7 @@ func asmmemzero() MemZeroFn {
     }
 
     /* load the function */
+    defer p.Free()
     return MemZeroFn {
         Sz: r,
         Fn: *(*unsafe.Pointer)(loader.Loader(c).Load("_frugal_memzero", rt.Frame{})),
