@@ -25,6 +25,8 @@ github.com/chenzhuoyu/iasm v0.0.0-20220922113352-bfc57d23ee7f h1:Pq/tRaGsRmIZIxx
 github.com/chenzhuoyu/iasm v0.0.0-20220922113352-bfc57d23ee7f/go.mod h1:wOQ0nsbeOLa2awv8bUYFW/EHXbjQMlZ10fAlXDB2sz8=
 github.com/choleraehyq/pid v0.0.15 h1:PejhUZowqxxssjwyaw4OZURRFjnvftZfeEWK9UoWPXU=
 github.com/choleraehyq/pid v0.0.15/go.mod h1:uhzeFgxJZWQsZulelVQZwdASxQ9TIPZYL4TPkQMtL/U=
+github.com/choleraehyq/pid v0.0.16 h1:1/714sMH9IBlE/aK6xM0acTagGKSzpiR0bDt7l0cG7o=
+github.com/choleraehyq/pid v0.0.16/go.mod h1:uhzeFgxJZWQsZulelVQZwdASxQ9TIPZYL4TPkQMtL/U=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudwego/fastpb v0.0.2/go.mod h1:/V13XFTq2TUkxj2qWReV8MwfPC4NnPcy6FsrojnsSG0=
 github.com/cloudwego/kitex v0.4.2 h1:U3RDM5FsYNhr3GeDfeCau7GJZvMPKeoZ647gySx7XRk=

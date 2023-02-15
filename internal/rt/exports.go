@@ -26,11 +26,6 @@ import (
 func mapclear(t *GoType, h unsafe.Pointer)
 
 //go:noescape
-//go:linkname growslice runtime.growslice
-//goland:noinspection GoUnusedParameter
-func growslice(et *GoType, old GoSlice, cap int) GoSlice
-
-//go:noescape
 //go:linkname mapiternext runtime.mapiternext
 //goland:noinspection GoUnusedParameter
 func mapiternext(it *GoMapIterator)

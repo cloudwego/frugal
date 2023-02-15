@@ -1,7 +1,8 @@
-// +build !go1.15 go1.21
+//go:build go1.20
+// +build go1.20
 
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2023 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +17,13 @@
  * limitations under the License.
  */
 
-package loader
+package rt
 
 import (
-    `github.com/cloudwego/frugal/internal/rt`
+	_ "unsafe"
 )
 
-// triggers a compilation error
-const (
-    _ = panic("Unsupported Go version. Supported versions are 1.15 ~ 1.20")
-)
-
-func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-    panic("Unsupported Go version. Supported versions are 1.15 ~ 1.20")
-}
+//go:noescape
+//go:linkname growslice reflect.growslice
+//goland:noinspection GoUnusedParameter
+func growslice(et *GoType, old GoSlice, cap int) GoSlice
