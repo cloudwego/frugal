@@ -4,8 +4,6 @@ English | [中文](README_cn.md)
 
 A very fast dynamic Thrift serializer &amp; deserializer based on just-in-time compilation.
 
-**WARNING: This is still in very early alpha stage, use with care !!**
-
 ## Features
 
 ### Code Generation Free
@@ -98,9 +96,8 @@ package client
 import (
     "context"
 
-
-    "github.com/cloudwego/kitex/client"
     "example.com/kitex_test/client/kitex_gen/a/b/c/echo"
+    "github.com/cloudwego/kitex/client"
     "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
 
