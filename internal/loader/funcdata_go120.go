@@ -20,225 +20,225 @@
 package loader
 
 import (
-	"unsafe"
+    `unsafe`
 
-	"github.com/cloudwego/frugal/internal/rt"
+    `github.com/cloudwego/frugal/internal/rt`
 )
 
 type _Func struct {
-	entryOff    uint32
-	nameoff     int32
-	args        int32
-	deferreturn uint32
-	pcsp        uint32
-	pcfile      uint32
-	pcln        uint32
-	npcdata     uint32
-	cuOffset    uint32
-	startLine   int32
-	funcID      uint8
-	flag        uint8
-	_           [1]byte
-	nfuncdata   uint8
-	pcdata      [2]uint32
-	argptrs     uint32
-	localptrs   uint32
+    entryOff    uint32
+    nameoff     int32
+    args        int32
+    deferreturn uint32
+    pcsp        uint32
+    pcfile      uint32
+    pcln        uint32
+    npcdata     uint32
+    cuOffset    uint32
+    startLine   int32
+    funcID      uint8
+    flag        uint8
+    _           [1]byte
+    nfuncdata   uint8
+    pcdata      [2]uint32
+    argptrs     uint32
+    localptrs   uint32
 }
 
 type _FuncTab struct {
-	entry   uint32
-	funcoff uint32
+    entry   uint32
+    funcoff uint32
 }
 
 type _PCHeader struct {
-	magic          uint32
-	pad1, pad2     uint8
-	minLC          uint8
-	ptrSize        uint8
-	nfunc          int
-	nfiles         uint
-	textStart      uintptr
-	funcnameOffset uintptr
-	cuOffset       uintptr
-	filetabOffset  uintptr
-	pctabOffset    uintptr
-	pclnOffset     uintptr
+    magic          uint32
+    pad1, pad2     uint8
+    minLC          uint8
+    ptrSize        uint8
+    nfunc          int
+    nfiles         uint
+    textStart      uintptr
+    funcnameOffset uintptr
+    cuOffset       uintptr
+    filetabOffset  uintptr
+    pctabOffset    uintptr
+    pclnOffset     uintptr
 }
 
 type _BitVector struct {
-	n        int32 // # of bits
-	bytedata *uint8
+    n        int32 // # of bits
+    bytedata *uint8
 }
 
 type _ModuleData struct {
-	pcHeader              *_PCHeader
-	funcnametab           []byte
-	cutab                 []uint32
-	filetab               []byte
-	pctab                 []byte
-	pclntable             []byte
-	ftab                  []_FuncTab
-	findfunctab           uintptr
-	minpc, maxpc          uintptr
-	text, etext           uintptr
-	noptrdata, enoptrdata uintptr
-	data, edata           uintptr
-	bss, ebss             uintptr
-	noptrbss, enoptrbss   uintptr
-	covctrs, ecovctrs     uintptr
-	end, gcdata, gcbss    uintptr
-	types, etypes         uintptr
-	rodata                uintptr
-	gofunc                uintptr
-	textsectmap           [][3]uintptr
-	typelinks             []int32
-	itablinks             []*rt.GoItab
-	ptab                  [][2]int32
-	pluginpath            string
-	pkghashes             []struct{}
-	modulename            string
-	modulehashes          []struct{}
-	hasmain               uint8
-	gcdatamask, gcbssmask _BitVector
-	typemap               map[int32]*rt.GoType
-	bad                   bool
-	next                  *_ModuleData
+    pcHeader              *_PCHeader
+    funcnametab           []byte
+    cutab                 []uint32
+    filetab               []byte
+    pctab                 []byte
+    pclntable             []byte
+    ftab                  []_FuncTab
+    findfunctab           uintptr
+    minpc, maxpc          uintptr
+    text, etext           uintptr
+    noptrdata, enoptrdata uintptr
+    data, edata           uintptr
+    bss, ebss             uintptr
+    noptrbss, enoptrbss   uintptr
+    covctrs, ecovctrs     uintptr
+    end, gcdata, gcbss    uintptr
+    types, etypes         uintptr
+    rodata                uintptr
+    gofunc                uintptr
+    textsectmap           [][3]uintptr
+    typelinks             []int32
+    itablinks             []*rt.GoItab
+    ptab                  [][2]int32
+    pluginpath            string
+    pkghashes             []struct{}
+    modulename            string
+    modulehashes          []struct{}
+    hasmain               uint8
+    gcdatamask, gcbssmask _BitVector
+    typemap               map[int32]*rt.GoType
+    bad                   bool
+    next                  *_ModuleData
 }
 
 type _FindFuncBucket struct {
-	idx        uint32
-	subbuckets [16]byte
+    idx        uint32
+    subbuckets [16]byte
 }
 
 const minfunc = 16
 const pcbucketsize = 256 * minfunc
 
 var (
-	emptyByte  byte
-	bucketList []*_FindFuncBucket
+    emptyByte  byte
+    bucketList []*_FindFuncBucket
 )
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
-	var pbase uintptr
-	var sbase uintptr
+    var pbase uintptr
+    var sbase uintptr
 
-	/* PC ranges */
-	minpc := pc
-	maxpc := pc + size
-	pctab := make([]byte, 1)
-	ffunc := make([]_FindFuncBucket, size/pcbucketsize+1)
+    /* PC ranges */
+    minpc := pc
+    maxpc := pc + size
+    pctab := make([]byte, 1)
+    ffunc := make([]_FindFuncBucket, size/pcbucketsize+1)
 
-	/* define the PC-SP ranges */
-	for i, r := range frame.SpTab {
-		nb := r.Nb
-		ds := int(r.Sp - sbase)
+    /* define the PC-SP ranges */
+    for i, r := range frame.SpTab {
+        nb := r.Nb
+        ds := int(r.Sp - sbase)
 
-		/* check for remaining size */
-		if nb == 0 {
-			if i == len(frame.SpTab)-1 {
-				nb = size - pbase
-			} else {
-				panic("invalid PC-SP tab")
-			}
-		}
+        /* check for remaining size */
+        if nb == 0 {
+            if i == len(frame.SpTab)-1 {
+                nb = size - pbase
+            } else {
+                panic("invalid PC-SP tab")
+            }
+        }
 
-		/* check for the first entry */
-		if i == 0 {
-			pctab = append(pctab, encodeFirst(ds)...)
-		} else {
-			pctab = append(pctab, encodeValue(ds)...)
-		}
+        /* check for the first entry */
+        if i == 0 {
+            pctab = append(pctab, encodeFirst(ds)...)
+        } else {
+            pctab = append(pctab, encodeValue(ds)...)
+        }
 
-		/* encode the length */
-		sbase = r.Sp
-		pbase = pbase + nb
-		pctab = append(pctab, encodeVariant(int(nb))...)
-	}
+        /* encode the length */
+        sbase = r.Sp
+        pbase = pbase + nb
+        pctab = append(pctab, encodeVariant(int(nb))...)
+    }
 
-	/* pin the find function bucket */
-	ftab := &ffunc[0]
-	pctab = append(pctab, 0)
-	bucketList = append(bucketList, ftab)
+    /* pin the find function bucket */
+    ftab := &ffunc[0]
+    pctab = append(pctab, 0)
+    bucketList = append(bucketList, ftab)
 
-	/* pin the pointer maps */
-	argptrs := frame.ArgPtrs.Pin()
-	localptrs := frame.LocalPtrs.Pin()
+    /* pin the pointer maps */
+    argptrs := frame.ArgPtrs.Pin()
+    localptrs := frame.LocalPtrs.Pin()
 
-	/* find the lower base */
-	if argptrs < localptrs {
-		pbase = argptrs
-	} else {
-		pbase = localptrs
-	}
+    /* find the lower base */
+    if argptrs < localptrs {
+        pbase = argptrs
+    } else {
+        pbase = localptrs
+    }
 
-	/* function entry */
-	fn := _Func{
-		entryOff:  0,
-		nameoff:   1,
-		args:      int32(frame.ArgSize),
-		pcsp:      1,
-		npcdata:   2,
-		cuOffset:  1,
-		nfuncdata: 2,
-		argptrs:   uint32(argptrs - pbase),
-		localptrs: uint32(localptrs - pbase),
-	}
+    /* function entry */
+    fn := _Func{
+        entryOff:  0,
+        nameoff:   1,
+        args:      int32(frame.ArgSize),
+        pcsp:      1,
+        npcdata:   2,
+        cuOffset:  1,
+        nfuncdata: 2,
+        argptrs:   uint32(argptrs - pbase),
+        localptrs: uint32(localptrs - pbase),
+    }
 
-	/* mark the entire function as a single line of code */
-	fn.pcln = uint32(len(pctab))
-	fn.pcfile = uint32(len(pctab))
-	pctab = append(pctab, encodeFirst(1)...)
-	pctab = append(pctab, encodeVariant(int(size))...)
-	pctab = append(pctab, 0)
+    /* mark the entire function as a single line of code */
+    fn.pcln = uint32(len(pctab))
+    fn.pcfile = uint32(len(pctab))
+    pctab = append(pctab, encodeFirst(1)...)
+    pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
-	/* set the entire function to use stack map 0 */
-	fn.pcdata[_PCDATA_StackMapIndex] = uint32(len(pctab))
-	pctab = append(pctab, encodeFirst(0)...)
-	pctab = append(pctab, encodeVariant(int(size))...)
-	pctab = append(pctab, 0)
+    /* set the entire function to use stack map 0 */
+    fn.pcdata[_PCDATA_StackMapIndex] = uint32(len(pctab))
+    pctab = append(pctab, encodeFirst(0)...)
+    pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
-	/* mark the entire function as unsafe to async-preempt */
-	fn.pcdata[_PCDATA_UnsafePoint] = uint32(len(pctab))
-	pctab = append(pctab, encodeFirst(_PCDATA_UnsafePointUnsafe)...)
-	pctab = append(pctab, encodeVariant(int(size))...)
-	pctab = append(pctab, 0)
+    /* mark the entire function as unsafe to async-preempt */
+    fn.pcdata[_PCDATA_UnsafePoint] = uint32(len(pctab))
+    pctab = append(pctab, encodeFirst(_PCDATA_UnsafePointUnsafe)...)
+    pctab = append(pctab, encodeVariant(int(size))...)
+    pctab = append(pctab, 0)
 
-	/* module header */
-	hdr := &_PCHeader{
-		magic:     0xfffffff1,
-		minLC:     1,
-		nfunc:     1,
-		ptrSize:   4 << (^uintptr(0) >> 63),
-		textStart: minpc,
-	}
+    /* module header */
+    hdr := &_PCHeader{
+        magic:     0xfffffff1,
+        minLC:     1,
+        nfunc:     1,
+        ptrSize:   4 << (^uintptr(0) >> 63),
+        textStart: minpc,
+    }
 
-	/* function table */
-	tab := []_FuncTab{
-		{entry: 0},
-		{entry: uint32(size)},
-	}
+    /* function table */
+    tab := []_FuncTab{
+        {entry: 0},
+        {entry: uint32(size)},
+    }
 
-	/* module data */
-	mod := &_ModuleData{
-		pcHeader:    hdr,
-		funcnametab: append(append([]byte{0}, name...), 0),
-		cutab:       []uint32{0, 0, 1},
-		filetab:     []byte("\x00(jit-generated)\x00"),
-		pctab:       pctab,
-		pclntable:   ((*[unsafe.Sizeof(_Func{})]byte)(unsafe.Pointer(&fn)))[:],
-		ftab:        tab,
-		findfunctab: uintptr(unsafe.Pointer(ftab)),
-		minpc:       minpc,
-		maxpc:       maxpc,
-		text:        minpc,
-		etext:       maxpc,
-		modulename:  name,
-		gcdata:      uintptr(unsafe.Pointer(&emptyByte)),
-		gcbss:       uintptr(unsafe.Pointer(&emptyByte)),
-		gofunc:      pbase,
-	}
+    /* module data */
+    mod := &_ModuleData{
+        pcHeader:    hdr,
+        funcnametab: append(append([]byte{0}, name...), 0),
+        cutab:       []uint32{0, 0, 1},
+        filetab:     []byte("\x00(jit-generated)\x00"),
+        pctab:       pctab,
+        pclntable:   ((*[unsafe.Sizeof(_Func{})]byte)(unsafe.Pointer(&fn)))[:],
+        ftab:        tab,
+        findfunctab: uintptr(unsafe.Pointer(ftab)),
+        minpc:       minpc,
+        maxpc:       maxpc,
+        text:        minpc,
+        etext:       maxpc,
+        modulename:  name,
+        gcdata:      uintptr(unsafe.Pointer(&emptyByte)),
+        gcbss:       uintptr(unsafe.Pointer(&emptyByte)),
+        gofunc:      pbase,
+    }
 
-	/* verify and register the new module */
-	moduledataverify1(mod)
-	registerModule(mod)
+    /* verify and register the new module */
+    moduledataverify1(mod)
+    registerModule(mod)
 }

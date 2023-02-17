@@ -20,7 +20,7 @@
 package rt
 
 import (
-	_ "unsafe"
+    _ `unsafe`
 )
 
 //go:noescape
