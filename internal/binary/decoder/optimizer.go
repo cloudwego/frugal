@@ -240,11 +240,6 @@ func Optimize(p Program) Program {
         }
     }
 
-    /* grow the result buffer if needed */
-    if cap(ret) < acc {
-        rt.GrowSlice(&ret, acc)
-    }
-
     /* merge all the basic blocks */
     for _, bb := range ctx.buf {
         ret = append(ret, bb.P[bb.Src:bb.End]...)

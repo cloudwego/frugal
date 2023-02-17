@@ -1,4 +1,4 @@
-// +build go1.18,!go1.20
+// +build go1.18,!go1.21
 
 /*
  * Copyright 2022 ByteDance Inc.
@@ -24,25 +24,6 @@ import (
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-type _Func struct {
-    entryOff    uint32
-    nameoff     int32
-    args        int32
-    deferreturn uint32
-    pcsp        uint32
-    pcfile      uint32
-    pcln        uint32
-    npcdata     uint32
-    cuOffset    uint32
-    funcID      uint8
-    flag        uint8
-    _           [1]byte
-    nfuncdata   uint8
-    pcdata      [2]uint32
-    argptrs     uint32
-    localptrs   uint32
-}
-
 type _FuncTab struct {
     entry   uint32
     funcoff uint32
@@ -66,40 +47,6 @@ type _PCHeader struct {
 type _BitVector struct {
     n        int32 // # of bits
     bytedata *uint8
-}
-
-type _ModuleData struct {
-    pcHeader              *_PCHeader
-    funcnametab           []byte
-    cutab                 []uint32
-    filetab               []byte
-    pctab                 []byte
-    pclntable             []byte
-    ftab                  []_FuncTab
-    findfunctab           uintptr
-    minpc, maxpc          uintptr
-    text, etext           uintptr
-    noptrdata, enoptrdata uintptr
-    data, edata           uintptr
-    bss, ebss             uintptr
-    noptrbss, enoptrbss   uintptr
-    end, gcdata, gcbss    uintptr
-    types, etypes         uintptr
-    rodata                uintptr
-    gofunc                uintptr
-    textsectmap           [][3]uintptr
-    typelinks             []int32
-    itablinks             []*rt.GoItab
-    ptab                  [][2]int32
-    pluginpath            string
-    pkghashes             []struct{}
-    modulename            string
-    modulehashes          []struct{}
-    hasmain               uint8
-    gcdatamask, gcbssmask _BitVector
-    typemap               map[int32]*rt.GoType
-    bad                   bool
-    next                  *_ModuleData
 }
 
 type _FindFuncBucket struct {
@@ -202,7 +149,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
 
     /* module header */
     hdr := &_PCHeader {
-        magic     : 0xfffffff0,
+        magic     : _ModuleMagic,
         minLC     : 1,
         nfunc     : 1,
         ptrSize   : 4 << (^uintptr(0) >> 63),
