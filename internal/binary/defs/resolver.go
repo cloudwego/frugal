@@ -151,10 +151,13 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             continue
         }
 
-        /* must have at least 3 fields: ID, Requiredness, Type */
-        if ft = strings.Split(tv, ","); len(ft) < 3 {
+        /* must have at least 2 fields: ID and Requiredness; Type and other options are optional */
+        if ft = strings.Split(tv, ","); len(ft) < 2 {
             return nil, fmt.Errorf("invalid tag for field %s.%s", vt, sf.Name)
-        }
+        } else if len(ft) == 2 {
+	    /* append ft with an empty Type field */
+            ft = append(ft, "")
+	}
 
         /* parse the field index */
         if id, err = strconv.ParseUint(strings.TrimSpace(ft[0]), 10, 16); err != nil {

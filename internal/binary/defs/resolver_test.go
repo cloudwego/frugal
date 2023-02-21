@@ -25,8 +25,11 @@ import (
 )
 
 type NoCopyStringFields struct {
-    NormalString string `frugal:"1,default,string"`
-    NoCopyString string `frugal:"2,default,string,nocopy"`
+    NormalString         string `frugal:"1,default,string"`
+    NoCopyString         string `frugal:"2,default,string,nocopy"`
+    TypelessString       string `frugal:"3,default"`
+    TypelessString2      string `frugal:"4,default,"`
+    NoCopyTypelessString string `frugal:"5,default,,nocopy"`
 }
 
 func TestResolver_StringOptions(t *testing.T) {
