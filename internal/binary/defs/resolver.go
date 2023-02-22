@@ -151,13 +151,10 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             continue
         }
 
-        /* must have at least 2 fields: ID and Requiredness; Type and other options are optional */
+        /* must have at least 2 fields: ID and Requiredness */
         if ft = strings.Split(tv, ","); len(ft) < 2 {
             return nil, fmt.Errorf("invalid tag for field %s.%s", vt, sf.Name)
-        } else if len(ft) == 2 {
-	    /* append ft with an empty Type field */
-            ft = append(ft, "")
-	}
+        }
 
         /* parse the field index */
         if id, err = strconv.ParseUint(strings.TrimSpace(ft[0]), 10, 16); err != nil {
@@ -179,8 +176,15 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             return nil, fmt.Errorf("duplicated field ID %d for field %s.%s", id, vt, sf.Name)
         }
 
+        /* types and other options are optional */
+        if len(ft) == 2 {
+            tv, ft = "", nil
+        } else {
+            tv, ft = strings.TrimSpace(ft[2]), ft[3:]
+        }
+
         /* only optional fields or structs can be pointers */
-        if pt = ParseType(sf.Type, strings.TrimSpace(ft[2])); rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
+        if pt = ParseType(sf.Type, tv); rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
             return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
         }
 
@@ -190,7 +194,7 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
         }
 
         /* scan for the options */
-        for _, opt := range ft[3:] {
+        for _, opt := range ft {
             switch opt {
                 default: {
                     return nil, fmt.Errorf("invalid option: %s", opt)
