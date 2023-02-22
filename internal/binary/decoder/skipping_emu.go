@@ -260,6 +260,7 @@ func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
             case _T_list_elem: {
                 et := st[sp].V
                 stpop(st, &sp)
+
                 /* push the element onto stack */
                 if !stadd(st, &sp, et) {
                    return ESTACK

@@ -17,9 +17,9 @@
 package decoder
 
 import (
+    `encoding/hex`
     `testing`
     `unsafe`
-    `encoding/hex`
 
     `github.com/cloudwego/frugal/internal/binary/defs`
     `github.com/cloudwego/frugal/internal/rt`
