@@ -17,16 +17,20 @@
 package rtx
 
 import (
+    `unsafe`
     _ `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
+
+//go:linkname writeBarrier runtime.writeBarrier
+var writeBarrier uintptr
 
 //go:nosplit
 //go:linkname gcWriteBarrier runtime.gcWriteBarrier
 func gcWriteBarrier()
 
 var (
-    V_pWriteBarrier  = gcwbaddr()
+    V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
     F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
 )
