@@ -156,7 +156,8 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
                     }
                 }
 
-                /* must have more than 3 bytes (fields cannot have a size of zero), also skip the field ID cause we don't care */
+                /* must have more than 3 bytes (fields cannot have a size of zero),
+                 * also skip the field ID because we don't care */
                 if (n <= 3) {
                     return EEOF;
                 } else if (!stadd(st, &sp, vt)) {
@@ -284,18 +285,15 @@ int64_t do_skip(skipbuf_t *st, const char *s, int64_t n, uint8_t t) {
                 break;
             }
 
-            /* list elem */
-            case T_list_elem:
-            {
+            /* list elements */
+            case T_list_elem: {
                 uint8_t et = st[sp].v;
                 stpop(st, &sp);
+
                 /* push the element onto stack */
-                if (stadd(st, &sp, et))
-                {
+                if (stadd(st, &sp, et)) {
                     break;
-                }
-                else
-                {
+                } else {
                     return ESTACK;
                 }
             }
