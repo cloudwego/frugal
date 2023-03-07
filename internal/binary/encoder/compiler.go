@@ -174,7 +174,12 @@ func (self *Compiler) Apply(o opts.Options) *Compiler {
 
 func (self *Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     ret := newProgram()
-    vtp := defs.ParseType(vt, "")
+    vtp := (*defs.Type)(nil)
+
+    /* parse the type */
+    if vtp, err = defs.ParseType(vt, ""); err != nil {
+        return nil, err
+    }
 
     /* catch the exceptions, and free the type */
     defer self.rescue(&err)

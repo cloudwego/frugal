@@ -109,13 +109,13 @@ func (self *Compiler) measureMap(p *Program, sp int, vt *defs.Type, startpc int)
     /* complex keys */
     if nk <= 0 {
         p.add(OP_map_key)
-        self.measure(p, sp + 1, vt.K, startpc)
+        self.measureItem(p, sp + 1, vt.K, startpc)
     }
 
     /* complex values */
     if nv <= 0 {
         p.add(OP_map_value)
-        self.measure(p, sp + 1, vt.V, startpc)
+        self.measureItem(p, sp + 1, vt.V, startpc)
     }
 
     /* move to the next state */
@@ -155,11 +155,41 @@ func (self *Compiler) measureSeq(p *Program, sp int, vt *defs.Type, startpc int)
     r := p.pc()
     p.i64(OP_seek, int64(et.S.Size()))
     p.pin(k)
-    self.measure(p, sp + 1, et, startpc)
+    self.measureItem(p, sp + 1, et, startpc)
     p.add(OP_list_decr)
     p.jmp(OP_list_if_next, r)
     p.add(OP_drop_state)
     p.pin(i)
+    p.pin(j)
+}
+
+func (self *Compiler) measureItem(p *Program, sp int, vt *defs.Type, startpc int) {
+    tag := vt.T
+    elem := vt.V
+
+    /* special handling for pointers */
+    if tag != defs.T_pointer {
+        self.measure(p, sp, vt, startpc)
+        return
+    }
+
+    /* must be pointer struct at this point */
+    if elem.T != defs.T_struct {
+        panic("fatal: non-struct pointers within container elements")
+    }
+
+    /* always add the STOP field for structs */
+    i := p.pc()
+    p.tag(sp)
+    p.add(OP_if_nil)
+    p.add(OP_make_state)
+    p.add(OP_deref)
+    self.measure(p, sp + 1, elem, startpc)
+    p.add(OP_drop_state)
+    j := p.pc()
+    p.add(OP_goto)
+    p.pin(i)
+    p.i64(OP_size_const, 1)
     p.pin(j)
 }
 

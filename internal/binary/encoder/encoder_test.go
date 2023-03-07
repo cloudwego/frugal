@@ -96,3 +96,29 @@ func TestEncoder_ListI8Unique(t *testing.T) {
         t.Fatal(err)
     }
 }
+
+type Foo struct {
+    Message string `frugal:"1,required"`
+}
+
+type ContainerPointerElement struct {
+    Data map[int64]*Foo `frugal:"1,required"`
+}
+
+func TestEncoder_ContainerPointerElement(t *testing.T) {
+    want := &ContainerPointerElement{map[int64]*Foo{0x1234: nil}}
+    nb := EncodedSize(want)
+    println("encoded size =", nb)
+    buf := make([]byte, nb)
+    nx, err := EncodeObject(buf, nil, want)
+    if err != nil {
+        t.Fatal(err)
+    }
+    spew.Dump(buf[:nx])
+    require.Equal(t, []byte{
+        0x0d, 0x00, 0x01, 0x0a, 0x0c, 0x00, 0x00, 0x00, 0x01,   // field 1: map<i64, struct>, len = 1
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34,         //     key   = (i64) 0x1234
+        0x00,                                                   //     value = (struct) {}
+        0x00,                                                   // end
+    }, buf[:nx])
+}

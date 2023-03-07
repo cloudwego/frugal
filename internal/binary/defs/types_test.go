@@ -20,16 +20,20 @@ import (
     `fmt`
     `reflect`
     `testing`
+
+    `github.com/stretchr/testify/require`
 )
 
 func TestTypes_Parsing(t *testing.T) {
     var v map[string][]reflect.SliceHeader
-    tt := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
+    tt, err := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
+    require.NoError(t, err)
     fmt.Println(tt)
 }
 
 func TestTypes_MapKeyType(t *testing.T) {
     var v map[*reflect.SliceHeader]int
-    tt := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
+    tt, err := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
+    require.NoError(t, err)
     fmt.Println(tt)
 }

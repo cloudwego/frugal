@@ -160,6 +160,10 @@ func (self *Type) IsKeyType() bool {
     }
 }
 
+func (self *Type) IsValueType() bool {
+    return self.T != T_pointer || self.V.T == T_struct
+}
+
 func (self *Type) IsSimpleType() bool {
     switch self.T {
         case T_bool    : return true
@@ -174,7 +178,7 @@ func (self *Type) IsSimpleType() bool {
     }
 }
 
-func ParseType(vt reflect.Type, def string) *Type {
+func ParseType(vt reflect.Type, def string) (*Type, error) {
     var i int
     return doParseType(vt, def, &i, true)
 }
@@ -187,11 +191,7 @@ func isident0(c byte) bool {
     return c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }
 
-func nextToken(src string, i *int) string {
-    return readToken(src, i, false)
-}
-
-func readToken(src string, i *int, eofok bool) string {
+func readToken(src string, i *int, eofok bool) (string, error) {
     p := *i
     n := len(src)
 
@@ -203,9 +203,9 @@ func readToken(src string, i *int, eofok bool) string {
     /* check for EOF */
     if p == n {
         if eofok {
-            return ""
+            return "", nil
         } else {
-            panic(utils.ESyntax(p, src, "unexpected EOF"))
+            return "", utils.ESyntax(p, src, "unexpected EOF")
         }
     }
 
@@ -222,7 +222,7 @@ func readToken(src string, i *int, eofok bool) string {
 
     /* slice the source */
     *i = p
-    return src[q:p]
+    return src[q:p], nil
 }
 
 func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) utils.SyntaxError {
@@ -233,16 +233,27 @@ func mkMistyped(pos int, src string, tv string, tag Tag, vt reflect.Type) utils.
     }
 }
 
-func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
-    tag := Tag(0)
-    ret := newType()
+func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) (*Type, error) {
+    var tag Tag
+    var err error
+    var ret *Type
 
     /* dereference the pointer if possible */
-    if allowPtrs && vt.Kind() == reflect.Ptr {
+    if ret = newType(); vt.Kind() == reflect.Ptr {
         ret.S = vt
         ret.T = T_pointer
-        ret.V = doParseType(vt.Elem(), def, i, false)
-        return ret
+
+        /* prohibit nested pointers */
+        if !allowPtrs {
+            return nil, utils.EType(ret.V.S, "nested pointer is not allowed")
+        }
+
+        /* parse the pointer element recursively */
+        if ret.V, err = doParseType(vt.Elem(), def, i, false); err != nil {
+            return nil, err
+        } else {
+            return ret, nil
+        }
     }
 
     /* check for value kind */
@@ -253,19 +264,19 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
         case reflect.Int16   : tag = T_i16
         case reflect.Int32   : tag = T_i32
         case reflect.Int64   : tag = T_i64
-        case reflect.Uint    : panic(utils.ENotSupp(vt, "int"))
-        case reflect.Uint8   : panic(utils.ENotSupp(vt, "int8"))
-        case reflect.Uint16  : panic(utils.ENotSupp(vt, "int16"))
-        case reflect.Uint32  : panic(utils.ENotSupp(vt, "int32"))
-        case reflect.Uint64  : panic(utils.ENotSupp(vt, "int64"))
-        case reflect.Float32 : panic(utils.ENotSupp(vt, "float64"))
+        case reflect.Uint    : return nil, utils.EUseOther(vt, "int")
+        case reflect.Uint8   : return nil, utils.EUseOther(vt, "int8")
+        case reflect.Uint16  : return nil, utils.EUseOther(vt, "int16")
+        case reflect.Uint32  : return nil, utils.EUseOther(vt, "int32")
+        case reflect.Uint64  : return nil, utils.EUseOther(vt, "int64")
+        case reflect.Float32 : return nil, utils.EUseOther(vt, "float64")
         case reflect.Float64 : tag = T_double
-        case reflect.Array   : panic(utils.ENotSupp(vt, "[]" + vt.Elem().String()))
+        case reflect.Array   : return nil, utils.EUseOther(vt, "[]" + vt.Elem().String())
         case reflect.Map     : tag = T_map
         case reflect.Slice   : break
         case reflect.String  : tag = T_string
         case reflect.Struct  : tag = T_struct
-        default              : panic(utils.EType(vt))
+        default              : return nil, utils.EType(vt, "unsupported type")
     }
 
     /* it's a slice, check for byte slice */
@@ -273,7 +284,7 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
         if et := vt.Elem(); utils.IsByteType(et) {
             tag = T_binary
         } else if def == "" {
-            panic(utils.ESetList(*i, def, et))
+            return nil, utils.ESetList(*i, def, et)
         } else {
             return doParseSlice(vt, et, def, i, ret)
         }
@@ -281,9 +292,15 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
 
     /* match the type if any */
     if def != "" {
-        if tv := nextToken(def, i); !strings.Contains(keywordTab[tag], tv) {
-            if !isident0(tv[0]) || !doMatchStruct(vt, def, i, &tv) {
-                panic(mkMistyped(*i - len(tv), def, tv, tag, vt))
+        if tv, et := readToken(def, i, false); et != nil {
+            return nil, et
+        } else if !strings.Contains(keywordTab[tag], tv) {
+            if !isident0(tv[0]) {
+                return nil, mkMistyped(*i - len(tv), def, tv, tag, vt)
+            } else if ok, ex := doMatchStruct(vt, def, i, &tv); ex != nil {
+                return nil, ex
+            } else if !ok {
+                return nil, mkMistyped(*i - len(tv), def, tv, tag, vt)
             } else if tag == T_i64 && vt != i64type {
                 tag = T_enum
             }
@@ -294,108 +311,145 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) *Type {
     if tag != T_map {
         ret.S = vt
         ret.T = tag
-        return ret
+        return ret, nil
     }
 
     /* map begin */
     if def != "" {
-        if tk := nextToken(def, i); tk != "<" {
-            panic(utils.ESyntax(*i - len(tk), def, "'<' expected"))
+        if tk, et := readToken(def, i, false); et != nil {
+            return nil, et
+        } else if tk != "<" {
+            return nil, utils.ESyntax(*i - len(tk), def, "'<' expected")
         }
     }
 
     /* parse the key type */
-    vi := *i
-    kt := vt.Key()
-    ret.K = doParseType(kt, def, i, true)
+    if ret.K, err = doParseType(vt.Key(), def, i, true); err != nil {
+        return nil, err
+    }
 
     /* validate map key */
     if !ret.K.IsKeyType() {
-        panic(utils.ESyntax(vi, def, fmt.Sprintf("'%s' is not a valid map key", ret.K)))
+        return nil, utils.EType(ret.K.S, "not a valid map key type")
     }
 
     /* key-value delimiter */
     if def != "" {
-        if tk := nextToken(def, i); tk != ":" {
-            panic(utils.ESyntax(*i - len(tk), def, "':' expected"))
+        if tk, et := readToken(def, i, false); et != nil {
+            return nil, et
+        } else if tk != ":" {
+            return nil, utils.ESyntax(*i - len(tk), def, "':' expected")
         }
     }
 
     /* parse the value type */
-    et := vt.Elem()
-    ret.V = doParseType(et, def, i, true)
+    if ret.V, err = doParseType(vt.Elem(), def, i, true); err != nil {
+        return nil, err
+    }
 
     /* map end */
     if def != "" {
-        if tk := nextToken(def, i); tk != ">" {
-            panic(utils.ESyntax(*i - len(tk), def, "'>' expected"))
+        if tk, et := readToken(def, i, false); et != nil {
+            return nil, et
+        } else if tk != ">" {
+            return nil, utils.ESyntax(*i - len(tk), def, "'>' expected")
         }
+    }
+
+    /* check for list elements */
+    if !ret.V.IsValueType() {
+        return nil, utils.EType(ret.V.S, "non-struct pointers are not valid map value types")
     }
 
     /* set the type tag */
     ret.S = vt
     ret.T = T_map
-    return ret
+    return ret, nil
 }
 
-func doParseSlice(vt reflect.Type, et reflect.Type, def string, i *int, rt *Type) *Type {
-    tk := nextToken(def, i)
-    tp := *i - len(tk)
+func doParseSlice(vt reflect.Type, et reflect.Type, def string, i *int, rt *Type) (*Type, error) {
+    var err error
+    var tok string
+
+    /* read the next token */
+    if tok, err = readToken(def, i, false); err != nil {
+        return nil, err
+    }
 
     /* identify "set" or "list" */
-    if tk == "set" {
+    if tok == "set" {
         rt.T = T_set
-    } else if tk == "list" {
+    } else if tok == "list" {
         rt.T = T_list
     } else {
-        panic(utils.ESyntax(tp, def, `"set" or "list" expected`))
+        return nil, utils.ESyntax(*i - len(tok), def, `"set" or "list" expected`)
     }
 
     /* list or set begin */
-    if tk = nextToken(def, i); tk != "<" {
-        panic(utils.ESyntax(*i - len(tk), def, "'<' expected"))
+    if tok, err = readToken(def, i, false); err != nil {
+        return nil, err
+    } else if tok != "<" {
+        return nil, utils.ESyntax(*i - len(tok), def, "'<' expected")
     }
 
     /* set or list element */
-    rt.V = doParseType(et, def, i, true)
-    tk   = nextToken(def, i)
+    if rt.V, err = doParseType(et, def, i, true); err != nil {
+        return nil, err
+    }
 
     /* list or set end */
-    if tk != ">" {
-        panic(utils.ESyntax(*i - len(tk), def, "'>' expected"))
+    if tok, err = readToken(def, i, false); err != nil {
+        return nil, err
+    } else if tok != ">" {
+        return nil, utils.ESyntax(*i - len(tok), def, "'>' expected")
+    }
+
+    /* check for list elements */
+    if !rt.V.IsValueType() {
+        return nil, utils.EType(rt.V.S, "non-struct pointers are not valid list/set elements")
     }
 
     /* set the type */
     rt.S = vt
-    return rt
+    return rt, nil
 }
 
-func doMatchStruct(vt reflect.Type, def string, i *int, tv *string) bool {
+func doMatchStruct(vt reflect.Type, def string, i *int, tv *string) (bool, error) {
+    var err error
+    var tok string
+
+    /* mark the starting position */
     sp := *i
     tn := vt.Name()
-    tk := readToken(def, &sp, true)
+
+    /* read the next token */
+    if tok, err = readToken(def, &sp, true); err != nil {
+        return false, err
+    }
 
     /* anonymous struct */
     if tn == "" && vt.Kind() == reflect.Struct {
-        return true
+        return true, nil
     }
 
     /* just a simple type with no qualifiers */
-    if tk == "" || tk == ":" || tk == ">" {
-        return tn == *tv
+    if tok == "" || tok == ":" || tok == ">" {
+        return tn == *tv, nil
     }
 
     /* otherwise, it must be a "." */
-    if tk != "." {
-        panic(utils.ESyntax(sp, def, "'.' or '>' expected"))
+    if tok != "." {
+        return false, utils.ESyntax(sp, def, "'.' or '>' expected")
     }
 
     /* must be an identifier */
-    if *tv = nextToken(def, &sp); !isident0((*tv)[0]) {
-        panic(utils.ESyntax(sp, def, "struct name expected"))
+    if *tv, err = readToken(def, &sp, false); err != nil {
+        return false, err
+    } else if !isident0((*tv)[0]) {
+        return false, utils.ESyntax(sp, def, "struct name expected")
     }
 
     /* update parsing position */
     *i = sp
-    return tn == *tv
+    return tn == *tv, nil
 }

@@ -183,14 +183,14 @@ func doResolveFields(vt reflect.Type) ([]Field, error) {
             tv, ft = strings.TrimSpace(ft[2]), ft[3:]
         }
 
-        /* only optional fields or structs can be pointers */
-        if pt = ParseType(sf.Type, tv); rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
-            return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
+        /* parse the type descriptor */
+        if pt, err = ParseType(sf.Type, tv); err != nil {
+            return nil, fmt.Errorf("cannot parse type descriptor: %w", err)
         }
 
-        /* check for nested pointers */
-        if pt.T == T_pointer && pt.V.T == T_pointer {
-            return nil, fmt.Errorf("struct fields cannot have nested pointers: %s.%s", vt, sf.Name)
+        /* only optional fields or structs can be pointers */
+        if rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
+            return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
         }
 
         /* scan for the options */

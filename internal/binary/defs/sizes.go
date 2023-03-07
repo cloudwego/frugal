@@ -18,8 +18,6 @@ package defs
 
 import (
     `reflect`
-
-    `github.com/cloudwego/frugal/internal/utils`
 )
 
 const (
@@ -35,20 +33,13 @@ func GetSize(vt reflect.Type) int {
         case reflect.Int16   : return 2
         case reflect.Int32   : return 4
         case reflect.Int64   : return measureInt64(vt)
-        case reflect.Uint    : panic(utils.ENotSupp(vt, "int"))
-        case reflect.Uint8   : panic(utils.ENotSupp(vt, "int8"))
-        case reflect.Uint16  : panic(utils.ENotSupp(vt, "int16"))
-        case reflect.Uint32  : panic(utils.ENotSupp(vt, "int32"))
-        case reflect.Uint64  : panic(utils.ENotSupp(vt, "int64"))
-        case reflect.Float32 : panic(utils.ENotSupp(vt, "float64"))
         case reflect.Float64 : return 8
-        case reflect.Array   : panic(utils.ENotSupp(vt, "[]" + vt.Elem().String()))
         case reflect.Map     : return -1
         case reflect.Ptr     : return -1
         case reflect.Slice   : return -1
         case reflect.String  : return -1
         case reflect.Struct  : return measureStruct(vt)
-        default              : panic("invalid type tag")
+        default              : panic("unsupported type by Thrift")
     }
 }
 
