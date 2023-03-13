@@ -116,7 +116,7 @@ package main
 import (
     "log"
 
-    "code.byted.org/kite/kitex/server"
+    "github.com/cloudwego/kitex/server"
     c "example.com/kitex_test/kitex_gen/a/b/c/echo"
     "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
