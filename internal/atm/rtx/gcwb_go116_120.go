@@ -1,5 +1,5 @@
-//go:build !go1.16 || go1.22
-// +build !go1.16 go1.22
+//go:build !go1.21
+// +build !go1.21
 
 /*
  * Copyright 2022 ByteDance Inc.
@@ -17,17 +17,22 @@
  * limitations under the License.
  */
 
-package loader
+package rtx
 
 import (
+    `unsafe`
+
     `github.com/cloudwego/frugal/internal/rt`
 )
 
-// triggers a compilation error
-const (
-    _ = panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
-)
+//go:linkname writeBarrier runtime.writeBarrier
+var writeBarrier uintptr
 
-func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-    panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
-}
+//go:nosplit
+//go:linkname gcWriteBarrier runtime.gcWriteBarrier
+func gcWriteBarrier()
+
+var (
+    V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
+    F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
+)

@@ -1,3 +1,6 @@
+//go:build go1.21
+// +build go1.21
+
 /*
  * Copyright 2022 ByteDance Inc.
  *
@@ -18,7 +21,6 @@ package rtx
 
 import (
     `unsafe`
-    _ `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
 )
@@ -27,10 +29,16 @@ import (
 var writeBarrier uintptr
 
 //go:nosplit
-//go:linkname gcWriteBarrier runtime.gcWriteBarrier
-func gcWriteBarrier()
+//go:linkname gcWriteBarrier2 runtime.gcWriteBarrier2
+func gcWriteBarrier2()
+
+func gcWriteBarrier() {
+    // obsoleted in go1.21+, but it's referenced by ssa and we're not going to update
+    // ssa at the moment, we just leave an empty function here
+}
 
 var (
-    V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
-    F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
+    V_pWriteBarrier   = unsafe.Pointer(&writeBarrier)
+    F_gcWriteBarrier  = rt.FuncAddr(gcWriteBarrier) // referenced by ssa (but not used)
+    F_gcWriteBarrier2 = rt.FuncAddr(gcWriteBarrier2)
 )

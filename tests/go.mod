@@ -6,6 +6,7 @@ require (
 	github.com/apache/thrift v0.13.0
 	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/brianvoe/gofakeit/v6 v6.20.1
+	github.com/choleraehyq/pid v0.0.17 // indirect
 	github.com/cloudwego/frugal v0.1.4
 	github.com/cloudwego/kitex v0.4.5-0.20230213035731-7054d09a7d3a
 	github.com/davecgh/go-spew v1.1.1

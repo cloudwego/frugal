@@ -1,3 +1,6 @@
+//go:build go1.16 && !go1.21
+// +build go1.16,!go1.21
+
 /*
  * Copyright 2022 ByteDance Inc.
  *
