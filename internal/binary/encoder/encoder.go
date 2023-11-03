@@ -124,7 +124,11 @@ func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (ret int, e
     if efv.Type.IsIndirect() {
         ret, err = encode(efv.Type, out.Ptr, out.Len, mem, efv.Value, rst, 0)
     } else {
-        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, rt.NoEscape(unsafe.Pointer(&efv.Value)), rst, 0)
+        /* avoid an extra mallocgc which is expensive for small objects */
+        rst.Val = efv.Value
+        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, unsafe.Pointer(&rst.Val), rst, 0)
+        /* remove reference to avoid leak since rst will be reused */
+        rst.Val = nil
     }
 
     /* return the state into pool */
