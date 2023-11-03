@@ -124,7 +124,7 @@ func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (ret int, e
     if efv.Type.IsIndirect() {
         ret, err = encode(efv.Type, out.Ptr, out.Len, mem, efv.Value, rst, 0)
     } else {
-        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, rt.NoEscape(unsafe.Pointer(&efv.Value)), rst, 0)
+        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, unsafe.Pointer(&efv.Value), rst, 0)
     }
 
     /* return the state into pool */
