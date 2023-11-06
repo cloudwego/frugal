@@ -321,7 +321,7 @@ func (self *CodeGen) Generate(s hir.Program, sp uintptr) *Func {
     for v := s.Head; v != nil; v = v.Ln {
         switch v.Op {
             case hir.OP_gcall: fallthrough
-            case hir.OP_icall: self.ctxt.require(abi.ABI.FnTab[hir.LookupCall(v.Iv).Id].Sp)
+            case hir.OP_icall: self.ctxt.require(abi.ABI.GetLayout(hir.LookupCall(v.Iv).Id).Sp)
             case hir.OP_bcopy: self.ctxt.require(_M_memcpyargs)
         }
     }
