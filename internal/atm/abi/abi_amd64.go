@@ -21,6 +21,7 @@ import (
     `reflect`
     `sort`
     `strings`
+    `sync`
     `unsafe`
 
     `github.com/chenzhuoyu/iasm/x86_64`
@@ -169,17 +170,41 @@ func (self *FunctionLayout) formatSeq(v []Parameter) string {
 }
 
 type AMD64ABI struct {
-    FnTab map[int]*FunctionLayout
+    m     sync.Mutex
+    fnTab map[int]*FunctionLayout
 }
 
 func ArchCreateABI() *AMD64ABI {
     return &AMD64ABI {
-        FnTab: make(map[int]*FunctionLayout),
+        fnTab: make(map[int]*FunctionLayout),
     }
 }
 
+func (self *AMD64ABI) GetLayout(id int) (layout *FunctionLayout) {
+    self.m.Lock()
+    layout = self.fnTab[id]
+    self.m.Unlock()
+    return
+}
+
+func (self *AMD64ABI) SetLayout(id int, layout *FunctionLayout) {
+    self.m.Lock()
+    self.fnTab[id] = layout
+    self.m.Unlock()
+}
+
+func (self *AMD64ABI) DumpLayouts() map[int]*FunctionLayout {
+    self.m.Lock()
+    result := make(map[int]*FunctionLayout, len(self.fnTab))
+    for k, v := range self.fnTab {
+        result[k] = v
+    }
+    self.m.Unlock()
+    return result
+}
+
 func (self *AMD64ABI) RegisterMethod(id int, mt rt.Method) int {
-    self.FnTab[id] = self.LayoutFunc(mt.Id, mt.Vt.Pack().Method(mt.Id).Type)
+    self.SetLayout(id, self.LayoutFunc(mt.Id, mt.Vt.Pack().Method(mt.Id).Type))
     return mt.Id
 }
 
@@ -193,6 +218,6 @@ func (self *AMD64ABI) RegisterFunction(id int, fn interface{}) (fp unsafe.Pointe
     }
 
     /* layout the function, and get the real function address */
-    self.FnTab[id] = self.LayoutFunc(-1, vt)
+    self.SetLayout(id, self.LayoutFunc(-1, vt))
     return *(*unsafe.Pointer)(vv.Value)
 }

@@ -395,7 +395,7 @@ func (self *CodeGen) internalSetRegister(p *x86_64.Program, rr hir.Register, arg
 func (self *CodeGen) internalCallFunction(p *x86_64.Program, v *hir.Ir, this hir.Register, makeFuncCall func(fp *hir.CallHandle)) {
     ac := 0
     fp := hir.LookupCall(v.Iv)
-    fv := abi.ABI.FnTab[fp.Id]
+    fv := abi.ABI.GetLayout(fp.Id)
     rm := make(map[hir.Register]int32)
     cs := make(map[x86_64.Register64]bool)
 
