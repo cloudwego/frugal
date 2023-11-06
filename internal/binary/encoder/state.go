@@ -53,6 +53,7 @@ type StateItem struct {
 }
 
 type RuntimeState struct {
-    St [defs.StackSize]StateItem    // Must be the first field.
-    Bm [1024]uint64                 // Bitmap, used for uniqueness check of set<i8> and set<i16>.
+    St  [defs.StackSize]StateItem    // Must be the first field.
+    Bm  [1024]uint64                 // Bitmap, used for uniqueness check of set<i8> and set<i16>.
+    Val unsafe.Pointer               // Pointer to the object to be encoded
 }
