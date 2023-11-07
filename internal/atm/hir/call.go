@@ -20,7 +20,6 @@ import (
     `fmt`
     `runtime`
     `unsafe`
-    `sync`
 
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
@@ -162,69 +161,44 @@ func (self CallContext) verifySeq(s string, n uint8, v [8]uint8) bool {
     return true
 }
 
-type callHandleManager struct {
-    m       sync.RWMutex
-    handles []*CallHandle
-}
-
-func (self *callHandleManager) Len() (length int) {
-    self.m.RLock()
-    length = len(self.handles)
-    self.m.RUnlock()
-    return
-}
-
-func (self *callHandleManager) Append(h *CallHandle) {
-    self.m.Lock()
-    self.handles = append(self.handles, h)
-    self.m.Unlock()
-}
-
-func (self *callHandleManager) Get(i int) (h *CallHandle) {
-    self.m.RLock()
-    h = self.handles[i]
-    self.m.RUnlock()
-    return
-}
-
 var (
-    funcTab = &callHandleManager{}
+    funcTab []*CallHandle
 )
 
 func LookupCall(id int64) *CallHandle {
-    if id < 0 || id >= int64(funcTab.Len()) {
+    if id < 0 || id >= int64(len(funcTab)) {
         panic("invalid function ID")
     } else {
-        return funcTab.Get(int(id))
+        return funcTab[id]
     }
 }
 
 func RegisterICall(mt rt.Method, proxy func(CallContext)) (h *CallHandle) {
     h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h.Id    = len(funcTab)
     h.Type  = ICall
     h.Slot  = abi.ABI.RegisterMethod(h.Id, mt)
     h.proxy = proxy
-    funcTab.Append(h)
+    funcTab = append(funcTab, h)
     return
 }
 
 func RegisterGCall(fn interface{}, proxy func(CallContext)) (h *CallHandle) {
     h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h.Id    = len(funcTab)
     h.Type  = GCall
     h.Func  = abi.ABI.RegisterFunction(h.Id, fn)
     h.proxy = proxy
-    funcTab.Append(h)
+    funcTab = append(funcTab, h)
     return
 }
 
 func RegisterCCall(fn unsafe.Pointer, proxy func(CallContext)) (h *CallHandle) {
     h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h.Id    = len(funcTab)
     h.Type  = CCall
     h.Func  = fn
     h.proxy = proxy
-    funcTab.Append(h)
+    funcTab = append(funcTab, h)
     return
 }

@@ -23,5 +23,5 @@ import (
 )
 
 func TestABI_FunctionLayout(t *testing.T) {
-    spew.Dump(ABI.DumpLayouts())
+    spew.Dump(ABI.FnTab)
 }
