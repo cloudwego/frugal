@@ -404,7 +404,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     R    : Pr(0),
                     In   : ri2regs(p.Ar[:p.An]),
                     Out  : ri2regs(p.Rr[:p.Rn]),
-                    Func : abi.ABI.FnTab[hir.LookupCall(p.Iv).Id],
+                    Func : abi.ABI.GetLayout(hir.LookupCall(p.Iv).Id),
                 },
             )
         }
@@ -419,7 +419,7 @@ func (self *BasicBlock) addInstr(p *hir.Ir) {
                     In   : ri2regs(p.Ar[:p.An]),
                     Out  : ri2regs(p.Rr[:p.Rn]),
                     Slot : hir.LookupCall(p.Iv).Slot,
-                    Func : abi.ABI.FnTab[hir.LookupCall(p.Iv).Id],
+                    Func : abi.ABI.GetLayout(hir.LookupCall(p.Iv).Id),
                 },
             )
         }
