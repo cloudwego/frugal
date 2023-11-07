@@ -170,7 +170,7 @@ func (self *FunctionLayout) formatSeq(v []Parameter) string {
 }
 
 type AMD64ABI struct {
-    m     sync.Mutex
+    m     sync.RWMutex
     fnTab map[int]*FunctionLayout
 }
 
@@ -181,9 +181,9 @@ func ArchCreateABI() *AMD64ABI {
 }
 
 func (self *AMD64ABI) GetLayout(id int) (layout *FunctionLayout) {
-    self.m.Lock()
+    self.m.RLock()
     layout = self.fnTab[id]
-    self.m.Unlock()
+    self.m.RUnlock()
     return
 }
 
@@ -194,12 +194,12 @@ func (self *AMD64ABI) SetLayout(id int, layout *FunctionLayout) {
 }
 
 func (self *AMD64ABI) DumpLayouts() map[int]*FunctionLayout {
-    self.m.Lock()
+    self.m.RLock()
     result := make(map[int]*FunctionLayout, len(self.fnTab))
     for k, v := range self.fnTab {
         result[k] = v
     }
-    self.m.Unlock()
+    self.m.RUnlock()
     return result
 }
 

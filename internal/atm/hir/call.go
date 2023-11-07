@@ -163,14 +163,14 @@ func (self CallContext) verifySeq(s string, n uint8, v [8]uint8) bool {
 }
 
 type callHandleManager struct {
-    m       sync.Mutex
+    m       sync.RWMutex
     handles []*CallHandle
 }
 
 func (self *callHandleManager) Len() (length int) {
-    self.m.Lock()
+    self.m.RLock()
     length = len(self.handles)
-    self.m.Unlock()
+    self.m.RUnlock()
     return
 }
 
@@ -181,9 +181,9 @@ func (self *callHandleManager) Append(h *CallHandle) {
 }
 
 func (self *callHandleManager) Get(i int) (h *CallHandle) {
-    self.m.Lock()
+    self.m.RLock()
     h = self.handles[i]
-    self.m.Unlock()
+    self.m.RUnlock()
     return
 }
 
