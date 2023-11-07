@@ -81,8 +81,8 @@ var samples []Sample
 var (
 	bytesCount  = 16
 	stringCount = 16
-	listCount       = 8
-	mapCount        = 8
+	listCount   = 8
+	mapCount    = 8
 )
 
 func getSamples() []Sample {
@@ -575,7 +575,10 @@ func BenchmarkUnmarshalAllSize_Parallel_Frugal(b *testing.B) {
 				var v = reflect.New(rtype).Interface()
 				for pb.Next() {
 					objectmemclr(v)
-					_, err = frugal.DecodeObject(buf, v)
+					// new error object to avoid concurrent write to `err` which fails with -race
+					if _, errDecode := frugal.DecodeObject(buf, v); errDecode != nil {
+						b.Fatal(errDecode)
+					}
 				}
 			})
 		})
