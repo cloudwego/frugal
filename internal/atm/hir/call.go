@@ -19,8 +19,8 @@ package hir
 import (
     `fmt`
     `runtime`
-    `unsafe`
     `sync`
+    `unsafe`
 
     `github.com/cloudwego/frugal/internal/atm/abi`
     `github.com/cloudwego/frugal/internal/rt`
@@ -167,22 +167,20 @@ type callHandleManager struct {
     handles []*CallHandle
 }
 
-func (self *callHandleManager) Len() (length int) {
-    self.m.RLock()
-    length = len(self.handles)
-    self.m.RUnlock()
-    return
-}
-
-func (self *callHandleManager) Append(h *CallHandle) {
+func (self *callHandleManager) NewWithID() *CallHandle {
     self.m.Lock()
+    h := new(CallHandle)
+    h.Id = len(self.handles)
     self.handles = append(self.handles, h)
     self.m.Unlock()
+    return h
 }
 
-func (self *callHandleManager) Get(i int) (h *CallHandle) {
+func (self *callHandleManager) Get(id int) (h *CallHandle) {
     self.m.RLock()
-    h = self.handles[i]
+    if id >= 0 || id < len(self.handles) {
+        h = self.handles[id]
+    }
     self.m.RUnlock()
     return
 }
@@ -192,39 +190,33 @@ var (
 )
 
 func LookupCall(id int64) *CallHandle {
-    if id < 0 || id >= int64(funcTab.Len()) {
+    h := funcTab.Get(int(id))
+    if h == nil {
         panic("invalid function ID")
-    } else {
-        return funcTab.Get(int(id))
     }
+    return h
 }
 
 func RegisterICall(mt rt.Method, proxy func(CallContext)) (h *CallHandle) {
-    h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h       = funcTab.NewWithID()
     h.Type  = ICall
     h.Slot  = abi.ABI.RegisterMethod(h.Id, mt)
     h.proxy = proxy
-    funcTab.Append(h)
     return
 }
 
 func RegisterGCall(fn interface{}, proxy func(CallContext)) (h *CallHandle) {
-    h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h       = funcTab.NewWithID()
     h.Type  = GCall
     h.Func  = abi.ABI.RegisterFunction(h.Id, fn)
     h.proxy = proxy
-    funcTab.Append(h)
     return
 }
 
 func RegisterCCall(fn unsafe.Pointer, proxy func(CallContext)) (h *CallHandle) {
-    h       = new(CallHandle)
-    h.Id    = funcTab.Len()
+    h       = funcTab.NewWithID()
     h.Type  = CCall
     h.Func  = fn
     h.proxy = proxy
-    funcTab.Append(h)
     return
 }
