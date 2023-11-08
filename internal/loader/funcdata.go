@@ -17,8 +17,10 @@
 package loader
 
 import (
-    `sync`
-    _ `unsafe`
+    `sync/atomic`
+    `unsafe`
+
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 const (
@@ -35,8 +37,8 @@ var lastmoduledatap *_ModuleData
 func moduledataverify1(_ *_ModuleData)
 
 var (
-    modLock sync.Mutex
-    modList []*_ModuleData
+    /* retains local reference of all modules to bypass gc */
+    modList = utils.ListNode{}
 )
 
 func toZigzag(v int) int {
@@ -73,9 +75,32 @@ func encodeVariant(v int) []byte {
 }
 
 func registerModule(mod *_ModuleData) {
-    modLock.Lock()
-    modList = append(modList, mod)
-    lastmoduledatap.next = mod
-    lastmoduledatap = mod
-    modLock.Unlock()
+    modList.Prepend(unsafe.Pointer(mod))
+    registerModuleLockFree(&lastmoduledatap, mod)
+}
+
+func registerModuleLockFree(tail **_ModuleData, mod *_ModuleData) {
+    for {
+        oldTail := loadModule(tail)
+        if casModule(tail, oldTail, mod) {
+            storeModule(&oldTail.next, mod)
+            break
+        }
+    }
+}
+
+func loadModule(p **_ModuleData) *_ModuleData {
+    return (*_ModuleData)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(p))))
+}
+
+func storeModule(p **_ModuleData, value *_ModuleData) {
+    atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(p)), unsafe.Pointer(value))
+}
+
+func casModule(p **_ModuleData, oldValue *_ModuleData, newValue *_ModuleData) bool {
+    return atomic.CompareAndSwapPointer(
+        (*unsafe.Pointer)(unsafe.Pointer(p)),
+        unsafe.Pointer(oldValue),
+        unsafe.Pointer(newValue),
+    )
 }

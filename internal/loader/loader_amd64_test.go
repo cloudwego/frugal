@@ -122,6 +122,8 @@ func TestLoader_StackMap(t *testing.T) {
     require.NoError(t, asm.Assemble(src))
     smb.AddField(true)
     cc := asm.Code()
+    smb1 := new(rt.StackMapBuilder)
+    smb1.AddField(false)
     fp := Loader(cc).Load("test_with_stackmap", rt.Frame {
         SpTab: []rt.Stack {
             { Sp:  0, Nb: 4 },
@@ -129,7 +131,9 @@ func TestLoader_StackMap(t *testing.T) {
             { Sp:  0, Nb: 0 },
         },
         ArgSize   : 0,
-        ArgPtrs   : new(rt.StackMapBuilder).Build(),
+        ArgPtrs   : smb1.Build(), // Build() should be called on non-empty Builder,
+                                  // otherwise mallocgc will allocate less than enough
+                                  // which leads to fatal error when run with -race
         LocalPtrs : smb.Build(),
     })
     dumpfunction(*(*func())(unsafe.Pointer(&fp)))

@@ -19,10 +19,10 @@
 package loader
 
 import (
-    `sync`
     `unsafe`
 
     `github.com/cloudwego/frugal/internal/rt`
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 type _Func struct {
@@ -115,16 +115,11 @@ var modHeader = &_PCHeader {
 }
 
 var (
-    emptyByte  byte
-    bucketList []*_FindFuncBucket
-    bucketLock sync.Mutex
-)
+    emptyByte byte
 
-func appendToBucketList(ftab *_FindFuncBucket) {
-    bucketLock.Lock()
-    bucketList = append(bucketList, ftab)
-    bucketLock.Unlock()
-}
+    /* retain local reference of all buckets to bypass gc */
+    bucketList = &utils.ListNode{}
+)
 
 func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     var pbase uintptr
@@ -171,7 +166,7 @@ func registerFunction(name string, pc uintptr, size uintptr, frame rt.Frame) {
     /* pin the find function bucket */
     ftab := &ffunc[0]
     pctab = append(pctab, 0)
-    appendToBucketList(ftab)
+    bucketList.Prepend(unsafe.Pointer(ftab))
 
     /* function entry */
     fn := _Func {
