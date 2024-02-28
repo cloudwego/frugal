@@ -17,10 +17,10 @@
 package abi
 
 import (
-	"reflect"
-	"unsafe"
+	`reflect`
+	`unsafe`
 
-	"github.com/cloudwego/frugal/internal/rt"
+	`github.com/cloudwego/frugal/internal/rt`
 )
 
 type ARM64ABI struct {}
