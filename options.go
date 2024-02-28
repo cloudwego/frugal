@@ -17,14 +17,14 @@
 package frugal
 
 import (
-	"fmt"
+    `fmt`
 
-	"github.com/cloudwego/frugal/internal/opts"
-	"github.com/cloudwego/frugal/internal/utils"
+    `github.com/cloudwego/frugal/internal/opts`
+    `github.com/cloudwego/frugal/internal/utils`
 )
 
 const (
-	_MinILSize = 1024
+    _MinILSize = 1024
 )
 
 // Option is the property setter function for opts.Options.
@@ -40,11 +40,11 @@ type Option func(*opts.Options)
 //
 // The default value of this option is "5".
 func WithMaxInlineDepth(depth int) Option {
-	if depth < 0 {
-		panic(fmt.Sprintf("frugal: invalid inline depth: %d", depth))
-	} else {
-		return func(o *opts.Options) { o.MaxInlineDepth = depth }
-	}
+    if depth < 0 {
+        panic(fmt.Sprintf("frugal: invalid inline depth: %d", depth))
+    } else {
+        return func(o *opts.Options) { o.MaxInlineDepth = depth }
+    }
 }
 
 // WithMaxInlineILSize sets the maximum IL instruction count before not inlining.
@@ -58,11 +58,11 @@ func WithMaxInlineDepth(depth int) Option {
 //
 // The default value of this option is "50000".
 func WithMaxInlineILSize(size int) Option {
-	if size != 0 && size < _MinILSize {
-		panic(fmt.Sprintf("frugal: invalid inline IL size: %d", size))
-	} else {
-		return func(o *opts.Options) { o.MaxInlineILSize = size }
-	}
+    if size != 0 && size < _MinILSize {
+        panic(fmt.Sprintf("frugal: invalid inline IL size: %d", size))
+    } else {
+        return func(o *opts.Options) { o.MaxInlineILSize = size }
+    }
 }
 
 // WithMaxPretouchDepth controls how deep the compiler goes to compile
@@ -79,11 +79,11 @@ func WithMaxInlineILSize(size int) Option {
 // This option is only available when performing pretouch, otherwise it is
 // ignored and do not have any effect.
 func WithMaxPretouchDepth(depth int) Option {
-	if depth < 0 {
-		panic(fmt.Sprintf("frugal: invalid pretouch depth: %d", depth))
-	} else {
-		return func(o *opts.Options) { o.MaxPretouchDepth = depth }
-	}
+    if depth < 0 {
+        panic(fmt.Sprintf("frugal: invalid pretouch depth: %d", depth))
+    } else {
+        return func(o *opts.Options) { o.MaxPretouchDepth = depth }
+    }
 }
 
 // SetMaxInlineDepth sets the default maximum inlining depth for all types from
@@ -96,8 +96,8 @@ func WithMaxPretouchDepth(depth int) Option {
 //
 // Returns the old opts.MaxInlineDepth value.
 func SetMaxInlineDepth(depth int) int {
-	depth, opts.MaxInlineDepth = opts.MaxInlineDepth, depth
-	return depth
+    depth, opts.MaxInlineDepth = opts.MaxInlineDepth, depth
+    return depth
 }
 
 // SetMaxInlineILSize sets the default maximum inlining IL instructions for all
@@ -110,11 +110,11 @@ func SetMaxInlineDepth(depth int) int {
 //
 // Returns the old opts.MaxInlineILSize value.
 func SetMaxInlineILSize(size int) int {
-	size, opts.MaxInlineILSize = opts.MaxInlineILSize, size
-	return size
+    size, opts.MaxInlineILSize = opts.MaxInlineILSize, size
+    return size
 }
 
 // SetForceEmulator enables emulator.
 func SetForceEmulator(enable bool) {
-	utils.ForceEmulator = enable
+    utils.ForceEmulator = enable
 }
