@@ -114,6 +114,7 @@ func SetMaxInlineILSize(size int) int {
 	return size
 }
 
+// SetForceEmulator enables emulator.
 func SetForceEmulator(enable bool) {
 	utils.ForceEmulator = enable
 }
