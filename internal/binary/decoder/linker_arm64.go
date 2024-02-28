@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2024 ByteDance Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,21 @@
  * limitations under the License.
  */
 
-package abi
+package decoder
 
-import (
-    `unsafe`
+import "github.com/cloudwego/frugal/internal/atm/hir"
 
-    `github.com/cloudwego/frugal/internal/rt`
+// NOTE: this file is temporary and is used only for emu on arm
+// TODO: delete this file after frugal supports arm
+
+type (
+	LinkerARM64 struct{}
 )
 
-type AbstractABI interface {
-    RegisterMethod(id int, mt rt.Method) int
-    RegisterFunction(id int, fn interface{}) unsafe.Pointer
+func init() {
+	SetLinker(new(LinkerARM64))
 }
 
-var (
-    ABI = ArchCreateABI()
-)
-
-const (
-    PtrSize  = 8    // pointer size
-)
-
-func alignUp(n uintptr, a int) uintptr {
-    return (n + uintptr(a) - 1) &^ (uintptr(a) - 1)
+func (LinkerARM64) Link(p hir.Program) Decoder {
+	return link_emu(p)
 }

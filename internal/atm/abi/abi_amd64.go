@@ -29,7 +29,6 @@ import (
 )
 
 const (
-    PtrSize  = 8    // pointer size
     PtrAlign = 8    // pointer alignment
 )
 
