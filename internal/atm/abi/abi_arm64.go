@@ -23,6 +23,9 @@ import (
 	`github.com/cloudwego/frugal/internal/rt`
 )
 
+// NOTE: this file is temporary and is used only for emu on arm
+// TODO: delete this file after frugal supports arm
+
 type ARM64ABI struct {}
 
 func ArchCreateABI() *ARM64ABI {

@@ -20,6 +20,9 @@ import (
 	`unsafe`
 )
 
+// NOTE: this file is temporary and is used only for emu on arm
+// TODO: delete this file after frugal supports arm
+
 func archSkippingFn() unsafe.Pointer {
 	return nil
 }
