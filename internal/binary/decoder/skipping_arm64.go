@@ -16,6 +16,10 @@
 
 package decoder
 
+import (
+	`unsafe`
+)
+
 func archSkippingFn() unsafe.Pointer {
 	return nil
 }
