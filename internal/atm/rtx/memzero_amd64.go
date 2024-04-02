@@ -20,7 +20,7 @@ import (
     `fmt`
     `unsafe`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/loader`
     `github.com/cloudwego/frugal/internal/rt`
 )
