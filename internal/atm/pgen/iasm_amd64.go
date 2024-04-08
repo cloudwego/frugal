@@ -19,7 +19,7 @@ package pgen
 import (
     `math`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
 )
 
 const (

@@ -19,7 +19,7 @@ package rtx
 import (
     `unsafe`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/oleiade/lane`
     `golang.org/x/arch/x86/x86asm`

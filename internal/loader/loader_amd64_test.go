@@ -23,7 +23,7 @@ import (
     `testing`
     `unsafe`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/rt`
     `github.com/stretchr/testify/assert`
     `github.com/stretchr/testify/require`

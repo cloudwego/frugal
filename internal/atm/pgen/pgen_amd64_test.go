@@ -23,7 +23,7 @@ import (
     `testing`
     `unsafe`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
     `github.com/cloudwego/frugal/internal/atm/hir`
     `github.com/cloudwego/frugal/internal/atm/rtx`
     `github.com/cloudwego/frugal/internal/loader`

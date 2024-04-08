@@ -21,7 +21,7 @@ package abi
 import (
     `reflect`
 
-    `github.com/chenzhuoyu/iasm/x86_64`
+    `github.com/cloudwego/iasm/x86_64`
 )
 
 func salloc(p []Parameter, sp uintptr, vt reflect.Type) (uintptr, []Parameter) {
