@@ -173,7 +173,7 @@ func (self *Compiler) Apply(o opts.Options) *Compiler {
 }
 
 func (self *Compiler) resetState() *Compiler {
-    o := self.o // prevent from resetting opts
+    o := self.o // prevent resetting opts
     resetCompiler(self)
     self.o = o
     return self
