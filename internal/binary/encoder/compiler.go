@@ -172,6 +172,13 @@ func (self *Compiler) Apply(o opts.Options) *Compiler {
     return self
 }
 
+func (self *Compiler) resetState() *Compiler {
+    o := self.o // prevent from resetting opts
+    resetCompiler(self)
+    self.o = o
+    return self
+}
+
 func (self *Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     ret := newProgram()
     vtp := (*defs.Type)(nil)
@@ -188,13 +195,13 @@ func (self *Compiler) Compile(vt reflect.Type) (_ Program, err error) {
     /* object measuring */
     i := ret.pc()
     ret.add(OP_if_hasbuf)
-    resetCompiler(self).measure(&ret, 0, vtp, ret.pc())
+    self.resetState().measure(&ret, 0, vtp, ret.pc())
 
     /* object encoding */
     j := ret.pc()
     ret.add(OP_goto)
     ret.pin(i)
-    resetCompiler(self).compile(&ret, 0, vtp, ret.pc())
+    self.resetState().compile(&ret, 0, vtp, ret.pc())
 
     /* halt the program */
     ret.pin(j)
