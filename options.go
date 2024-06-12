@@ -37,7 +37,7 @@ type Option func(*opts.Options)
 //
 // Set this option to "0" disables this limit, which means inlining everything.
 //
-// The default value of this option is "5".
+// The default value of this option is "2".
 func WithMaxInlineDepth(depth int) Option {
     if depth < 0 {
         panic(fmt.Sprintf("frugal: invalid inline depth: %d", depth))
@@ -91,7 +91,7 @@ func WithMaxPretouchDepth(depth int) Option {
 // This value can also be configured with the `FRUGAL_MAX_INLINE_DEPTH`
 // environment variable.
 //
-// The default value of this option is "5".
+// The default value of this option is "2".
 //
 // Returns the old opts.MaxInlineDepth value.
 func SetMaxInlineDepth(depth int) int {

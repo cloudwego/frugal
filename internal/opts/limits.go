@@ -22,7 +22,7 @@ import (
 )
 
 const (
-    _DefaultMaxInlineDepth  = 5     // cutoff at 5 levels of inlining
+    _DefaultMaxInlineDepth  = 2     // cutoff at 2 levels of inlining
     _DefaultMaxInlineILSize = 50000 // cutoff at 50k of IL instructions
 )
 
