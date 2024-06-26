@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-//go:generate kitex -thrift frugal_tag baseline.thrift
 package tests
 
 import (
@@ -26,15 +25,14 @@ import (
 	"strings"
 	"testing"
 	"time"
-	`unsafe`
+	"unsafe"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
-	`github.com/cloudwego/frugal/internal/rt`
-	"github.com/cloudwego/frugal/testdata/kitex_gen/baseline"
+	"github.com/cloudwego/frugal/internal/rt"
+	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 	"github.com/stretchr/testify/assert"
-	thriftiter "github.com/thrift-iterator/go"
 )
 
 func TestMain(m *testing.M) {
@@ -194,29 +192,6 @@ func BenchmarkMarshalAllSize_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalAllSize_ThriftIterator(b *testing.B) {
-	for _, s := range getSamples() {
-		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
-			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val
-			act, err := thriftiter.Marshal(v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), len(act))
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				_, _ = thriftiter.Marshal(v)
-			}
-		})
-	}
-}
-
 func BenchmarkMarshalAllSize_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
@@ -296,32 +271,6 @@ func BenchmarkUnmarshalAllSize_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalAllSize_ThriftIterator(b *testing.B) {
-	for _, s := range getSamples() {
-		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
-			b.SetBytes(int64(len(s.bytes)))
-			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
-			var v = reflect.New(rtype).Interface()
-			err := thriftiter.Unmarshal(buf, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			// assert.Equal(b, s.val, v)
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				objectmemclr(v)
-				_ = thriftiter.Unmarshal(buf, v)
-			}
-		})
-	}
-}
-
 func BenchmarkUnmarshalAllSize_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
@@ -388,32 +337,6 @@ func BenchmarkMarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
 				for pb.Next() {
 					mm.Reset()
 					_ = v.(thrift.TStruct).Write(thrift.NewTBinaryProtocolTransport(mm))
-				}
-			})
-		})
-	}
-}
-
-func BenchmarkMarshalAllSize_Parallel_ThriftIterator(b *testing.B) {
-	for _, s := range getSamples() {
-		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
-			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val
-			act, err := thriftiter.Marshal(v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), len(act))
-			b.ResetTimer()
-			b.RunParallel(func(pb *testing.PB) {
-				var v = s.val
-				for pb.Next() {
-					_, _ = thriftiter.Marshal(v)
 				}
 			})
 		})
@@ -493,36 +416,6 @@ func BenchmarkUnmarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
 					objectmemclr(v)
 					_, _ = mm.Write(buf)
 					_ = v.(thrift.TStruct).Read(thrift.NewTBinaryProtocolTransport(mm))
-				}
-			})
-		})
-	}
-}
-
-func BenchmarkUnmarshalAllSize_Parallel_ThriftIterator(b *testing.B) {
-	for _, s := range getSamples() {
-		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
-			b.SetBytes(int64(len(s.bytes)))
-			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
-			var v = reflect.New(rtype).Interface()
-			err := thriftiter.Unmarshal(buf, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-
-			// assert.Equal(b, s.val, v)
-			b.ResetTimer()
-			b.RunParallel(func(pb *testing.PB) {
-				var v = reflect.New(rtype).Interface()
-				for pb.Next() {
-					objectmemclr(v)
-					_ = thriftiter.Unmarshal(buf, v)
 				}
 			})
 		})
