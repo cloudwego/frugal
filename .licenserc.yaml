@@ -1,0 +1,18 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+    copyright-owner: CloudWeGo Authors
+
+  paths:
+    - "**/*.go"
+    - "**/*.s"
+
+  paths-ignore:
+    - internal/binary/decoder/native_subr_amd64.go
+    - internal/binary/decoder/native_subr_amd64.go
+    - tests/kitex_gen/baseline/baseline.go
+    - tests/kitex_gen/baseline/k-baseline.go
+    - tests/kitex_gen/baseline/k-consts.go
+    - internal/binary/decoder/native_amd64.s
+
+  comment: on-failure
