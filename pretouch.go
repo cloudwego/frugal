@@ -49,6 +49,9 @@ func newty(ty *rt.GoType, d int) *_Ty {
 // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
 // order to reduce the first-hit latency.
 func Pretouch(vt reflect.Type, options ...Option) error {
+	if nojit {
+		return nil
+	}
 	d := 0
 	o := opts.GetDefaultOptions()
 

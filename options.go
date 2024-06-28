@@ -18,9 +18,23 @@ package frugal
 
 import (
 	"fmt"
+	"os"
+	"runtime"
+	"strconv"
 
 	"github.com/cloudwego/frugal/internal/opts"
 )
+
+// Frugal supports `reflect` mode which faster than jit version in many scenarios,
+// and performs more stable in concurrency, also  works in different CPU architectures.
+// It will become a default option soon.
+var nojit = runtime.GOARCH != "amd64" // always nojit=true under non-amd64 env
+
+func init() {
+	if v, err := strconv.ParseBool(os.Getenv("FRUGAL_NO_JIT")); err == nil {
+		nojit = v
+	}
+}
 
 const (
 	_MinILSize = 1024
