@@ -16,7 +16,7 @@
 
 package ssa
 
-// TDCE removes trivial dead-code such as unused register definations from CFG.
+// TDCE removes trivial dead-code such as unused register definitions from CFG.
 type TDCE struct{}
 
 func (TDCE) Apply(cfg *CFG) {
