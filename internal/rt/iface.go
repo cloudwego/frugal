@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,31 +17,31 @@
 package rt
 
 import (
-    `reflect`
+	"reflect"
 )
 
 type Method struct {
-    Id int
-    Vt *GoType
+	Id int
+	Vt *GoType
 }
 
 func AsMethod(id int, vt *GoType) Method {
-    return Method {
-        Id: id,
-        Vt: vt,
-    }
+	return Method{
+		Id: id,
+		Vt: vt,
+	}
 }
 
 func GetMethod(tp interface{}, name string) Method {
-    if tp == nil {
-        panic("value must be an interface pointer")
-    } else if vt := reflect.TypeOf(tp); vt.Kind() != reflect.Ptr {
-        panic("value must be an interface pointer")
-    } else if et := vt.Elem(); et.Kind() != reflect.Interface {
-        panic("value must be an interface pointer")
-    } else if mm, ok := et.MethodByName(name); !ok {
-        panic("interface " + vt.Elem().String() + " does not have method " + name)
-    } else {
-        return AsMethod(mm.Index, UnpackType(et))
-    }
+	if tp == nil {
+		panic("value must be an interface pointer")
+	} else if vt := reflect.TypeOf(tp); vt.Kind() != reflect.Ptr {
+		panic("value must be an interface pointer")
+	} else if et := vt.Elem(); et.Kind() != reflect.Interface {
+		panic("value must be an interface pointer")
+	} else if mm, ok := et.MethodByName(name); !ok {
+		panic("interface " + vt.Elem().String() + " does not have method " + name)
+	} else {
+		return AsMethod(mm.Index, UnpackType(et))
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package abi
 
 import (
-    `testing`
+	"testing"
 
-    `github.com/davecgh/go-spew/spew`
+	"github.com/davecgh/go-spew/spew"
 )
 
 func TestABI_FunctionLayout(t *testing.T) {
-    spew.Dump(ABI.DumpLayouts())
+	spew.Dump(ABI.DumpLayouts())
 }

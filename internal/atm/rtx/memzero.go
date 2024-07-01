@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,18 @@
 package rtx
 
 import (
-    `unsafe`
+	"unsafe"
 )
 
 type MemZeroFn struct {
-    Fn unsafe.Pointer
-    Sz []uintptr
+	Fn unsafe.Pointer
+	Sz []uintptr
 }
 
 var (
-    MemZero = asmmemzero()
+	MemZero = asmmemzero()
 )
 
 func (self MemZeroFn) ForSize(n uintptr) unsafe.Pointer {
-    return unsafe.Pointer(uintptr(self.Fn) + self.Sz[n / ZeroStep])
+	return unsafe.Pointer(uintptr(self.Fn) + self.Sz[n/ZeroStep])
 }

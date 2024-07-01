@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,62 +17,62 @@
 package decoder
 
 import (
-    `reflect`
-    `testing`
+	"reflect"
+	"testing"
 
-    `github.com/stretchr/testify/require`
+	"github.com/stretchr/testify/require"
 )
 
 type CompilerTest struct {
-    A bool                   `frugal:"0,default,bool"`
-    B int8                   `frugal:"1,default,i8"`
-    C float64                `frugal:"2,default,double"`
-    D int16                  `frugal:"3,default,i16"`
-    E int32                  `frugal:"4,default,i32"`
-    F int64                  `frugal:"5,default,i64"`
-    G string                 `frugal:"6,default,string"`
-    H *CompilerTest          `frugal:"7,default,CompilerTest"`
-    I *CompilerTestSubStruct `frugal:"8,default,CompilerTestSubStruct"`
-    J map[string]int         `frugal:"9,default,map<string:int>"`
-    K []string               `frugal:"10,default,set<string>"`
-    L []string               `frugal:"11,default,list<string>"`
-    M []byte                 `frugal:"12,default,binary"`
-    N []int8                 `frugal:"13,default,set<i8>"`
-    O []int8                 `frugal:"14,default,list<i8>"`
-    P int64                  `frugal:"16,required,i64"`
+	A bool                   `frugal:"0,default,bool"`
+	B int8                   `frugal:"1,default,i8"`
+	C float64                `frugal:"2,default,double"`
+	D int16                  `frugal:"3,default,i16"`
+	E int32                  `frugal:"4,default,i32"`
+	F int64                  `frugal:"5,default,i64"`
+	G string                 `frugal:"6,default,string"`
+	H *CompilerTest          `frugal:"7,default,CompilerTest"`
+	I *CompilerTestSubStruct `frugal:"8,default,CompilerTestSubStruct"`
+	J map[string]int         `frugal:"9,default,map<string:int>"`
+	K []string               `frugal:"10,default,set<string>"`
+	L []string               `frugal:"11,default,list<string>"`
+	M []byte                 `frugal:"12,default,binary"`
+	N []int8                 `frugal:"13,default,set<i8>"`
+	O []int8                 `frugal:"14,default,list<i8>"`
+	P int64                  `frugal:"16,required,i64"`
 }
 
 func (self *CompilerTest) InitDefault() {
-    *self = CompilerTest{}
+	*self = CompilerTest{}
 }
 
 type CompilerTestSubStruct struct {
-    X int                                      `frugal:"0,default,i64"`
-    Y *CompilerTestSubStruct                   `frugal:"1,default,CompilerTestSubStruct"`
-    Z map[*CompilerTest]*CompilerTestSubStruct `frugal:"2,default,map<CompilerTest:CompilerTestSubStruct>"`
+	X int                                      `frugal:"0,default,i64"`
+	Y *CompilerTestSubStruct                   `frugal:"1,default,CompilerTestSubStruct"`
+	Z map[*CompilerTest]*CompilerTestSubStruct `frugal:"2,default,map<CompilerTest:CompilerTestSubStruct>"`
 }
 
 func (self *CompilerTestSubStruct) InitDefault() {
-    *self = CompilerTestSubStruct{}
+	*self = CompilerTestSubStruct{}
 }
 
 func TestCompiler_Compile(t *testing.T) {
-    p, err := CreateCompiler().Compile(reflect.TypeOf(CompilerTest{}))
-    require.NoError(t, err)
-    println(p.Disassemble())
+	p, err := CreateCompiler().Compile(reflect.TypeOf(CompilerTest{}))
+	require.NoError(t, err)
+	println(p.Disassemble())
 }
 
 type NoCopyStringTestStruct struct {
-    A string  `frugal:"1,default,string"`
-    B string  `frugal:"2,default,string,nocopy"`
-    C *string `frugal:"3,optional,string,nocopy"`
-    D []byte  `frugal:"4,default,binary"`
-    E []byte  `frugal:"5,default,binary,nocopy"`
-    F *[]byte `frugal:"6,optional,binary,nocopy"`
+	A string  `frugal:"1,default,string"`
+	B string  `frugal:"2,default,string,nocopy"`
+	C *string `frugal:"3,optional,string,nocopy"`
+	D []byte  `frugal:"4,default,binary"`
+	E []byte  `frugal:"5,default,binary,nocopy"`
+	F *[]byte `frugal:"6,optional,binary,nocopy"`
 }
 
 func TestCompiler_NoCopyString(t *testing.T) {
-    p, err := CreateCompiler().Compile(reflect.TypeOf(NoCopyStringTestStruct{}))
-    require.NoError(t, err)
-    println(p.Disassemble())
+	p, err := CreateCompiler().Compile(reflect.TypeOf(NoCopyStringTestStruct{}))
+	require.NoError(t, err)
+	println(p.Disassemble())
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,49 +17,49 @@
 package decoder
 
 import (
-    `sync`
+	"sync"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
+	"github.com/cloudwego/frugal/internal/atm/hir"
 )
 
 const (
-    MaxField  = 65536
-    MaxBitmap = MaxField / 64
+	MaxField  = 65536
+	MaxBitmap = MaxField / 64
 )
 
 var (
-    bitmapPool sync.Pool
+	bitmapPool sync.Pool
 )
 
 var (
-    F_newFieldBitmap   = hir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
-    F_FieldBitmap_Free = hir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
+	F_newFieldBitmap   = hir.RegisterGCall(newFieldBitmap, emu_gcall_newFieldBitmap)
+	F_FieldBitmap_Free = hir.RegisterGCall((*FieldBitmap).Free, emu_gcall_FieldBitmap_Free)
 )
 
 type (
-    FieldBitmap [MaxBitmap]int64
+	FieldBitmap [MaxBitmap]int64
 )
 
 func newFieldBitmap() *FieldBitmap {
-    if v := bitmapPool.Get(); v != nil {
-        return v.(*FieldBitmap)
-    } else {
-        return new(FieldBitmap)
-    }
+	if v := bitmapPool.Get(); v != nil {
+		return v.(*FieldBitmap)
+	} else {
+		return new(FieldBitmap)
+	}
 }
 
 func (self *FieldBitmap) Free() {
-    bitmapPool.Put(self)
+	bitmapPool.Put(self)
 }
 
 func (self *FieldBitmap) Clear() {
-    *self = FieldBitmap{}
+	*self = FieldBitmap{}
 }
 
 func (self *FieldBitmap) Append(i int) {
-    if i < MaxField {
-        self[i / 64] |= 1 << (i % 64)
-    } else {
-        panic("field index too large")
-    }
+	if i < MaxField {
+		self[i/64] |= 1 << (i % 64)
+	} else {
+		panic("field index too large")
+	}
 }

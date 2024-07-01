@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,47 +17,47 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/binary/defs`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/binary/defs"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 const (
-    NbOffset = int64(unsafe.Offsetof(StateItem{}.Nb))
-    MpOffset = int64(unsafe.Offsetof(StateItem{}.Mp))
-    WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
-    FmOffset = int64(unsafe.Offsetof(StateItem{}.Fm))
+	NbOffset = int64(unsafe.Offsetof(StateItem{}.Nb))
+	MpOffset = int64(unsafe.Offsetof(StateItem{}.Mp))
+	WpOffset = int64(unsafe.Offsetof(StateItem{}.Wp))
+	FmOffset = int64(unsafe.Offsetof(StateItem{}.Fm))
 )
 
 const (
-    SkOffset = int64(unsafe.Offsetof(RuntimeState{}.Sk))
-    PrOffset = int64(unsafe.Offsetof(RuntimeState{}.Pr))
-    IvOffset = int64(unsafe.Offsetof(RuntimeState{}.Iv))
+	SkOffset = int64(unsafe.Offsetof(RuntimeState{}.Sk))
+	PrOffset = int64(unsafe.Offsetof(RuntimeState{}.Pr))
+	IvOffset = int64(unsafe.Offsetof(RuntimeState{}.Iv))
 )
 
 const (
-    StateMax  = (defs.StackSize - 1) * StateSize
-    StateSize = int64(unsafe.Sizeof(StateItem{}))
+	StateMax  = (defs.StackSize - 1) * StateSize
+	StateSize = int64(unsafe.Sizeof(StateItem{}))
 )
 
 type SkipItem struct {
-    T defs.Tag
-    K defs.Tag
-    V defs.Tag
-    N uint32
+	T defs.Tag
+	K defs.Tag
+	V defs.Tag
+	N uint32
 }
 
 type StateItem struct {
-    Nb uint64
-    Mp *rt.GoMap
-    Wp unsafe.Pointer
-    Fm *FieldBitmap
+	Nb uint64
+	Mp *rt.GoMap
+	Wp unsafe.Pointer
+	Fm *FieldBitmap
 }
 
 type RuntimeState struct {
-    St [defs.StackSize]StateItem    // Must be the first field.
-    Sk [defs.StackSize]SkipItem     // Skip buffer, used for non-recursive skipping
-    Pr unsafe.Pointer               // Pointer spill space, used for non-fast string or pointer map access.
-    Iv uint64                       // Integer spill space, used for non-fast string map access.
+	St [defs.StackSize]StateItem // Must be the first field.
+	Sk [defs.StackSize]SkipItem  // Skip buffer, used for non-recursive skipping
+	Pr unsafe.Pointer            // Pointer spill space, used for non-fast string or pointer map access.
+	Iv uint64                    // Integer spill space, used for non-fast string map access.
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@
 package abi
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 type AbstractABI interface {
-    RegisterMethod(id int, mt rt.Method) int
-    RegisterFunction(id int, fn interface{}) unsafe.Pointer
+	RegisterMethod(id int, mt rt.Method) int
+	RegisterFunction(id int, fn interface{}) unsafe.Pointer
 }
 
 var (
-    ABI = ArchCreateABI()
+	ABI = ArchCreateABI()
 )
 
 const (
-    PtrSize  = 8    // pointer size
+	PtrSize = 8 // pointer size
 )
 
 func alignUp(n uintptr, a int) uintptr {
-    return (n + uintptr(a) - 1) &^ (uintptr(a) - 1)
+	return (n + uintptr(a) - 1) &^ (uintptr(a) - 1)
 }

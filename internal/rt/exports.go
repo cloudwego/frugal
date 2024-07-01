@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package rt
 
 import (
-    `unsafe`
+	"unsafe"
 )
 
 //go:noescape
@@ -47,6 +47,6 @@ func resolveTextOff(p unsafe.Pointer, off GoTextOffset) unsafe.Pointer
 
 //go:nosplit
 func MapClear(m interface{}) {
-    v := UnpackEface(m)
-    mapclear(v.Type, v.Value)
+	v := UnpackEface(m)
+	mapclear(v.Type, v.Value)
 }

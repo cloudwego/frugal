@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 package rtx
 
 import (
-    _ `unsafe`
+	_ "unsafe"
 
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:linkname morestack_noctxt runtime.morestack_noctxt
 func morestack_noctxt()
 
 var (
-    F_morestack_noctxt = rt.FuncAddr(morestack_noctxt)
+	F_morestack_noctxt = rt.FuncAddr(morestack_noctxt)
 )

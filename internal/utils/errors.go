@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,51 +17,51 @@
 package utils
 
 import (
-    `fmt`
-    `reflect`
+	"fmt"
+	"reflect"
 )
 
 type TypeError struct {
-    Note string
-    Type reflect.Type
+	Note string
+	Type reflect.Type
 }
 
 func (self TypeError) Error() string {
-    return fmt.Sprintf("TypeError(%s): %s", self.Type, self.Note)
+	return fmt.Sprintf("TypeError(%s): %s", self.Type, self.Note)
 }
 
 type SyntaxError struct {
-    Pos    int
-    Src    string
-    Reason string
+	Pos    int
+	Src    string
+	Reason string
 }
 
 func (self SyntaxError) Error() string {
-    return fmt.Sprintf("Syntax error at position %d: %s", self.Pos, self.Reason)
+	return fmt.Sprintf("Syntax error at position %d: %s", self.Pos, self.Reason)
 }
 
 func EType(vt reflect.Type, note string) TypeError {
-    return TypeError {
-        Type: vt,
-        Note: note,
-    }
+	return TypeError{
+		Type: vt,
+		Note: note,
+	}
 }
 
 func ESyntax(pos int, src string, reason string) SyntaxError {
-    return SyntaxError {
-        Pos    : pos,
-        Src    : src,
-        Reason : reason,
-    }
+	return SyntaxError{
+		Pos:    pos,
+		Src:    src,
+		Reason: reason,
+	}
 }
 
 func ESetList(pos int, src string, vt reflect.Type) SyntaxError {
-    return ESyntax(pos, src, fmt.Sprintf(`ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`, vt, vt))
+	return ESyntax(pos, src, fmt.Sprintf(`ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`, vt, vt))
 }
 
 func EUseOther(vt reflect.Type, alt string) TypeError {
-    return TypeError {
-        Type: vt,
-        Note: fmt.Sprintf("Thrift does not support %s, use %s instead", vt, alt),
-    }
+	return TypeError{
+		Type: vt,
+		Note: fmt.Sprintf("Thrift does not support %s, use %s instead", vt, alt),
+	}
 }

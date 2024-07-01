@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package rtx
 
 import (
-    `reflect`
-    `unsafe`
+	"reflect"
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/abi`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/abi"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:noescape
@@ -30,7 +30,7 @@ import (
 func memmove(to unsafe.Pointer, from unsafe.Pointer, n uintptr)
 
 var (
-    F_memmove = rt.FuncAddr(memmove)
-    R_memmove = resolveClobberSet(memmove)
-    S_memmove = abi.ABI.LayoutFunc(-1, reflect.TypeOf(memmove))
+	F_memmove = rt.FuncAddr(memmove)
+	R_memmove = resolveClobberSet(memmove)
+	S_memmove = abi.ABI.LayoutFunc(-1, reflect.TypeOf(memmove))
 )

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,86 +17,86 @@
 package frugal
 
 import (
-    `reflect`
-    `sync`
+	"reflect"
+	"sync"
 
-    `github.com/cloudwego/frugal/internal/binary/decoder`
-    `github.com/cloudwego/frugal/internal/binary/encoder`
-    `github.com/cloudwego/frugal/internal/opts`
-    `github.com/cloudwego/frugal/internal/rt`
-    `github.com/oleiade/lane`
+	"github.com/cloudwego/frugal/internal/binary/decoder"
+	"github.com/cloudwego/frugal/internal/binary/encoder"
+	"github.com/cloudwego/frugal/internal/opts"
+	"github.com/cloudwego/frugal/internal/rt"
+	"github.com/oleiade/lane"
 )
 
 type _Ty struct {
-    d  int
-    ty *rt.GoType
+	d  int
+	ty *rt.GoType
 }
 
 var (
-    typool sync.Pool
+	typool sync.Pool
 )
 
 func newty(ty *rt.GoType, d int) *_Ty {
-    if v := typool.Get(); v == nil {
-        return &_Ty { d, ty }
-    } else {
-        r := v.(*_Ty)
-        r.d, r.ty = d, ty
-        return r
-    }
+	if v := typool.Get(); v == nil {
+		return &_Ty{d, ty}
+	} else {
+		r := v.(*_Ty)
+		r.d, r.ty = d, ty
+		return r
+	}
 }
 
 // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
 // order to reduce the first-hit latency.
 func Pretouch(vt reflect.Type, options ...Option) error {
-    d := 0
-    o := opts.GetDefaultOptions()
+	d := 0
+	o := opts.GetDefaultOptions()
 
-    /* apply all the options */
-    for _, fn := range options {
-        fn(&o)
-    }
+	/* apply all the options */
+	for _, fn := range options {
+		fn(&o)
+	}
 
-    /* unpack the type */
-    v := make(map[*rt.GoType]bool)
-    t := rt.Dereference(rt.UnpackType(vt))
+	/* unpack the type */
+	v := make(map[*rt.GoType]bool)
+	t := rt.Dereference(rt.UnpackType(vt))
 
-    /* add the root type */
-    q := lane.NewQueue()
-    q.Enqueue(newty(t, 1))
+	/* add the root type */
+	q := lane.NewQueue()
+	q.Enqueue(newty(t, 1))
 
-    /* BFS the type tree */
-    for !q.Empty() {
-        ty := q.Pop().(*_Ty)
-        tv, err := decoder.Pretouch(ty.ty, o)
+	/* BFS the type tree */
+	for !q.Empty() {
+		ty := q.Pop().(*_Ty)
+		tv, err := decoder.Pretouch(ty.ty, o)
 
-        /* also pretouch the encoder */
-        if err == nil {
-            err = encoder.Pretouch(ty.ty, o)
-        }
+		/* also pretouch the encoder */
+		if err == nil {
+			err = encoder.Pretouch(ty.ty, o)
+		}
 
-        /* mark the type as been visited */
-        d, v[ty.ty] = ty.d, true
-        typool.Put(ty)
+		/* mark the type as been visited */
+		d, v[ty.ty] = ty.d, true
+		typool.Put(ty)
 
-        /* check for errors */
-        if err != nil {
-            return err
-        }
+		/* check for errors */
+		if err != nil {
+			return err
+		}
 
-        /* check for cutoff conditions */
-        if !o.CanPretouch(d) {
-            continue
-        }
+		/* check for cutoff conditions */
+		if !o.CanPretouch(d) {
+			continue
+		}
 
-        /* add all the not visited sub-types */
-        for s := range tv {
-            if t = rt.UnpackType(s); !v[t] {
-                q.Enqueue(newty(t, d + 1))
-            }
-        }
-    }
+		/* add all the not visited sub-types */
+		for s := range tv {
+			if t = rt.UnpackType(s); !v[t] {
+				q.Enqueue(newty(t, d+1))
+			}
+		}
+	}
 
-    /* completed with no errors */
-    return nil
+	/* completed with no errors */
+	return nil
 }

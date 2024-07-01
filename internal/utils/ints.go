@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package utils
 
 func MaxInt(a int, b int) int {
-    if a > b {
-        return a
-    } else {
-        return b
-    }
+	if a > b {
+		return a
+	} else {
+		return b
+	}
 }

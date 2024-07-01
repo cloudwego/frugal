@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@
 package decoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/hir`
+	"github.com/cloudwego/frugal/internal/atm/hir"
 )
 
 const (
-    ETAG   = -1
-    EEOF   = -2
-    ESTACK = -3
+	ETAG   = -1
+	EEOF   = -2
+	ESTACK = -3
 )
 
 var (
-    C_skip = hir.RegisterCCall(archSkippingFn(), emu_ccall_skip)
+	C_skip = hir.RegisterCCall(archSkippingFn(), emu_ccall_skip)
 )

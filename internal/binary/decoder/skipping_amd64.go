@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 )
 
 func archSkippingFn() unsafe.Pointer {
-    return *(*unsafe.Pointer)(unsafe.Pointer(&_subr__do_skip))
+	return *(*unsafe.Pointer)(unsafe.Pointer(&_subr__do_skip))
 }

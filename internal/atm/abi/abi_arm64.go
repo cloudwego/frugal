@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 ByteDance Inc.
+ * Copyright 2024 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 package abi
 
 import (
-	`reflect`
-	`unsafe`
+	"reflect"
+	"unsafe"
 
-	`github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 // NOTE: this file is temporary and is used only for emu on arm
 // TODO: delete this file after frugal supports arm
 
-type ARM64ABI struct {}
+type ARM64ABI struct{}
 
 func ArchCreateABI() *ARM64ABI {
 	return &ARM64ABI{}

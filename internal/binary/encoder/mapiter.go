@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package encoder
 
 import (
-    _ `unsafe`
+	_ "unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:noescape
@@ -35,11 +35,11 @@ func mapiterinit(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator)
 
 //go:nosplit
 func mapiterstart(t *rt.GoMapType, h *rt.GoMap, it *rt.GoMapIterator) {
-    *it = rt.GoMapIterator{}
-    mapiterinit(t, h, it)
+	*it = rt.GoMapIterator{}
+	mapiterinit(t, h, it)
 }
 
 var (
-    F_mapiternext  = hir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
-    F_mapiterstart = hir.RegisterGCall(mapiterstart, emu_gcall_mapiterstart)
+	F_mapiternext  = hir.RegisterGCall(mapiternext, emu_gcall_mapiternext)
+	F_mapiterstart = hir.RegisterGCall(mapiterstart, emu_gcall_mapiterstart)
 )

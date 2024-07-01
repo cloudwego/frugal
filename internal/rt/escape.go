@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package rt
 
 import (
-    `unsafe`
+	"unsafe"
 )
 
 // NoEscape hides a pointer from escape analysis. NoEscape is
@@ -25,9 +25,10 @@ import (
 // output depends on the input. NoEscape is inlined and currently
 // compiles down to zero instructions.
 // USE CAREFULLY!
+//
 //go:nosplit
 //goland:noinspection GoVetUnsafePointer
 func NoEscape(p unsafe.Pointer) unsafe.Pointer {
-    x := uintptr(p)
-    return unsafe.Pointer(x ^ 0)
+	x := uintptr(p)
+	return unsafe.Pointer(x ^ 0)
 }

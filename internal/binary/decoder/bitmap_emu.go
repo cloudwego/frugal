@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,23 +17,23 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
+	"github.com/cloudwego/frugal/internal/atm/hir"
 )
 
 func emu_gcall_newFieldBitmap(ctx hir.CallContext) {
-    if !ctx.Verify("", "*") {
-        panic("invalid newFieldBitmap call")
-    } else {
-        ctx.Rp(0, unsafe.Pointer(newFieldBitmap()))
-    }
+	if !ctx.Verify("", "*") {
+		panic("invalid newFieldBitmap call")
+	} else {
+		ctx.Rp(0, unsafe.Pointer(newFieldBitmap()))
+	}
 }
 
 func emu_gcall_FieldBitmap_Free(ctx hir.CallContext) {
-    if !ctx.Verify("*", "") {
-        panic("invalid (*FieldBitmap).Free call")
-    } else {
-        (*FieldBitmap)(ctx.Ap(0)).Free()
-    }
+	if !ctx.Verify("*", "") {
+		panic("invalid (*FieldBitmap).Free call")
+	} else {
+		(*FieldBitmap)(ctx.Ap(0)).Free()
+	}
 }

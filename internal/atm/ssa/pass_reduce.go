@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,15 @@ package ssa
 // Reduce combines CSE, PhiElim, CopyElim and TDCE.
 type Reduce struct{}
 
-var Reductions = []PassDescriptor {
-    { Name: "Common Sub-expression Elimination" , Pass: new(CSE)      },
-    { Name: "Phi Elimination"                   , Pass: new(PhiElim)  },
-    { Name: "Copy Elimination"                  , Pass: new(CopyElim) },
-    { Name: "Trivial Dead Code Elimination"     , Pass: new(TDCE)     },
+var Reductions = []PassDescriptor{
+	{Name: "Common Sub-expression Elimination", Pass: new(CSE)},
+	{Name: "Phi Elimination", Pass: new(PhiElim)},
+	{Name: "Copy Elimination", Pass: new(CopyElim)},
+	{Name: "Trivial Dead Code Elimination", Pass: new(TDCE)},
 }
 
 func (Reduce) Apply(cfg *CFG) {
-    for _, r := range Reductions {
-        r.Pass.Apply(cfg)
-    }
+	for _, r := range Reductions {
+		r.Pass.Apply(cfg)
+	}
 }
-

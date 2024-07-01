@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,121 +17,121 @@
 package encoder
 
 import (
-    `fmt`
-    `sync/atomic`
-    `unsafe`
+	"fmt"
+	"sync/atomic"
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/opts`
-    `github.com/cloudwego/frugal/internal/rt`
-    `github.com/cloudwego/frugal/internal/utils`
-    `github.com/cloudwego/frugal/iov`
+	"github.com/cloudwego/frugal/internal/opts"
+	"github.com/cloudwego/frugal/internal/rt"
+	"github.com/cloudwego/frugal/internal/utils"
+	"github.com/cloudwego/frugal/iov"
 )
 
-type Encoder func (
-    buf unsafe.Pointer,
-    len int,
-    mem iov.BufferWriter,
-    p   unsafe.Pointer,
-    rs  *RuntimeState,
-    st  int,
+type Encoder func(
+	buf unsafe.Pointer,
+	len int,
+	mem iov.BufferWriter,
+	p unsafe.Pointer,
+	rs *RuntimeState,
+	st int,
 ) (int, error)
 
 var (
-    HitCount  uint64 = 0
-    MissCount uint64 = 0
-    TypeCount uint64 = 0
+	HitCount  uint64 = 0
+	MissCount uint64 = 0
+	TypeCount uint64 = 0
 )
 
 var (
-    programCache = utils.CreateProgramCache()
+	programCache = utils.CreateProgramCache()
 )
 
 func encode(vt *rt.GoType, buf unsafe.Pointer, len int, mem iov.BufferWriter, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
-    if enc, err := resolve(vt); err != nil {
-        return -1, err
-    } else {
-        return enc(buf, len, mem, p, rs, st)
-    }
+	if enc, err := resolve(vt); err != nil {
+		return -1, err
+	} else {
+		return enc(buf, len, mem, p, rs, st)
+	}
 }
 
 func resolve(vt *rt.GoType) (Encoder, error) {
-    var err error
-    var val interface{}
+	var err error
+	var val interface{}
 
-    /* fast-path: type is cached */
-    if val = programCache.Get(vt); val != nil {
-        atomic.AddUint64(&HitCount, 1)
-        return val.(Encoder), nil
-    }
+	/* fast-path: type is cached */
+	if val = programCache.Get(vt); val != nil {
+		atomic.AddUint64(&HitCount, 1)
+		return val.(Encoder), nil
+	}
 
-    /* record the cache miss, and compile the type */
-    atomic.AddUint64(&MissCount, 1)
-    val, err = programCache.Compute(vt, compile)
+	/* record the cache miss, and compile the type */
+	atomic.AddUint64(&MissCount, 1)
+	val, err = programCache.Compute(vt, compile)
 
-    /* check for errors */
-    if err != nil {
-        return nil, err
-    }
+	/* check for errors */
+	if err != nil {
+		return nil, err
+	}
 
-    /* record the successful compilation */
-    atomic.AddUint64(&TypeCount, 1)
-    return val.(Encoder), nil
+	/* record the successful compilation */
+	atomic.AddUint64(&TypeCount, 1)
+	return val.(Encoder), nil
 }
 
 func compile(vt *rt.GoType) (interface{}, error) {
-    if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
-        return nil, err
-    } else {
-        return Link(Translate(pp)), nil
-    }
+	if pp, err := CreateCompiler().CompileAndFree(vt.Pack()); err != nil {
+		return nil, err
+	} else {
+		return Link(Translate(pp)), nil
+	}
 }
 
 func mkcompile(opts opts.Options) func(*rt.GoType) (interface{}, error) {
-    return func(vt *rt.GoType) (interface{}, error) {
-        if pp, err := CreateCompiler().Apply(opts).CompileAndFree(vt.Pack()); err != nil {
-            return nil, err
-        } else {
-            return Link(Translate(pp)), nil
-        }
-    }
+	return func(vt *rt.GoType) (interface{}, error) {
+		if pp, err := CreateCompiler().Apply(opts).CompileAndFree(vt.Pack()); err != nil {
+			return nil, err
+		} else {
+			return Link(Translate(pp)), nil
+		}
+	}
 }
 
 func Pretouch(vt *rt.GoType, opts opts.Options) error {
-    if programCache.Get(vt) != nil {
-        return nil
-    } else if _, err := programCache.Compute(vt, mkcompile(opts)); err != nil {
-        return err
-    } else {
-        atomic.AddUint64(&TypeCount, 1)
-        return nil
-    }
+	if programCache.Get(vt) != nil {
+		return nil
+	} else if _, err := programCache.Compute(vt, mkcompile(opts)); err != nil {
+		return err
+	} else {
+		atomic.AddUint64(&TypeCount, 1)
+		return nil
+	}
 }
 
 func EncodedSize(val interface{}) int {
-    if ret, err := EncodeObject(nil, nil, val); err != nil {
-        panic(fmt.Errorf("frugal: cannot measure encoded size: %w", err))
-    } else {
-        return ret
-    }
+	if ret, err := EncodeObject(nil, nil, val); err != nil {
+		panic(fmt.Errorf("frugal: cannot measure encoded size: %w", err))
+	} else {
+		return ret
+	}
 }
 
 func EncodeObject(buf []byte, mem iov.BufferWriter, val interface{}) (ret int, err error) {
-    rst := newRuntimeState()
-    efv := rt.UnpackEface(val)
-    out := (*rt.GoSlice)(unsafe.Pointer(&buf))
+	rst := newRuntimeState()
+	efv := rt.UnpackEface(val)
+	out := (*rt.GoSlice)(unsafe.Pointer(&buf))
 
-    /* check for indirect types */
-    if efv.Type.IsIndirect() {
-        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, efv.Value, rst, 0)
-    } else {
-        /* avoid an extra mallocgc which is expensive for small objects */
-        rst.Val = efv.Value
-        ret, err = encode(efv.Type, out.Ptr, out.Len, mem, unsafe.Pointer(&rst.Val), rst, 0)
-        /* remove reference to avoid leak since rst will be reused */
-        rst.Val = nil
-    }
+	/* check for indirect types */
+	if efv.Type.IsIndirect() {
+		ret, err = encode(efv.Type, out.Ptr, out.Len, mem, efv.Value, rst, 0)
+	} else {
+		/* avoid an extra mallocgc which is expensive for small objects */
+		rst.Val = efv.Value
+		ret, err = encode(efv.Type, out.Ptr, out.Len, mem, unsafe.Pointer(&rst.Val), rst, 0)
+		/* remove reference to avoid leak since rst will be reused */
+		rst.Val = nil
+	}
 
-    /* return the state into pool */
-    freeRuntimeState(rst)
-    return
+	/* return the state into pool */
+	freeRuntimeState(rst)
+	return
 }

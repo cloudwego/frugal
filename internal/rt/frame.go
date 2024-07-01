@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 package rt
 
 type Stack struct {
-    Sp uintptr
-    Nb uintptr
+	Sp uintptr
+	Nb uintptr
 }
 
 type Frame struct {
-    SpTab     []Stack
-    ArgSize   uintptr
-    ArgPtrs   *StackMap
-    LocalPtrs *StackMap
+	SpTab     []Stack
+	ArgSize   uintptr
+	ArgPtrs   *StackMap
+	LocalPtrs *StackMap
 }
