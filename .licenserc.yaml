@@ -5,7 +5,6 @@ header:
 
   paths:
     - "**/*.go"
-    - "**/*.s"
 
   paths-ignore:
     - internal/binary/decoder/native_subr_amd64.go
