@@ -68,12 +68,12 @@ func insertPhiNodes(cfg *CFG) {
 		}
 	}
 
-	/* find out all the variable defination sites */
+	/* find out all the variable definition sites */
 	for q.Enqueue(cfg.Root); !q.Empty(); {
 		p := q.Dequeue().(*BasicBlock)
 		addImmediateDominated(cfg.DominatorOf, p, q)
 
-		/* mark all the defination sites */
+		/* mark all the definition sites */
 		for def := range orig[p.Id] {
 			defs[def] = appendBlock(defs[def], p)
 		}

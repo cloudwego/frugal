@@ -45,7 +45,7 @@ func (SplitCritical) Apply(cfg *CFG) {
 					nb++
 				}
 
-				/* the predecessor have more than 1 successors, this is a critcal edge */
+				/* the predecessor have more than 1 successor, this is a critical edge */
 				if nb > 1 {
 					edges = append(edges, _CrEdge{
 						to:   bb,

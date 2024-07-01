@@ -292,7 +292,7 @@ func (self *Compiler) compileStructField(p *Program, sp int, fv defs.Field, star
 			self.compileStructRequired(p, sp, fv, startpc)
 		}
 
-	/* sequencial types */
+	/* sequential types */
 	case defs.T_map:
 		fallthrough
 	case defs.T_set:

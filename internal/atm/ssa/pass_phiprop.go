@@ -44,7 +44,7 @@ func (self PhiProp) dfs(dag *simple.DirectedGraph, bb *BasicBlock, vis map[int]*
 	vis[bb.Id] = bb
 	path[bb.Id] = struct{}{}
 
-	/* traverse all the sucessors */
+	/* traverse all the successors */
 	for it := bb.Term.Successors(); it.Next(); {
 		v := it.Block()
 		s, d := bb.Id, v.Id
@@ -142,7 +142,7 @@ func (self PhiProp) Apply(cfg *CFG) {
 			var ps float64
 			var pp float64
 
-			/* find the branch with the hightest probability */
+			/* find the branch with the highest probability */
 			for b, r := range p.V {
 				if pp = weight[b.Id][bb.Id]; ps < pp {
 					rs = *r

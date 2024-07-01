@@ -107,7 +107,7 @@ func (self _Renamer) renameblock(cfg *CFG, bb *BasicBlock) {
 		self.renameblock(cfg, p)
 	}
 
-	/* pop the definations */
+	/* pop the definitions */
 	for _, s := range d {
 		self.popr(s)
 	}
@@ -147,7 +147,7 @@ func normalizeRegisters(cfg *CFG) {
 	q := lane.NewQueue()
 	r := make(map[Reg]Reg)
 
-	/* find all the register definations */
+	/* find all the register definitions */
 	for q.Enqueue(cfg.Root); !q.Empty(); {
 		p := q.Dequeue().(*BasicBlock)
 		addImmediateDominated(cfg.DominatorOf, p, q)

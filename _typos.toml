@@ -1,0 +1,9 @@
+# Typo check: https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = ["go.mod", "go.sum", "fuzz/go.mod", "fuzz/go.sum"]
+
+[default.extend-words]
+Pn = "Pn"
+worl = "worl"
+rcall = "rcall"

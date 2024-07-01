@@ -411,7 +411,7 @@ func (self *_Proof) verifyCorrectness() bool {
 			}
 		}
 
-		/* expand all the definations */
+		/* expand all the definitions */
 		for _, v := range sp {
 			if p, ok := v.rhs.(_Stmt); ok {
 				if r, rk := rr.at(v.lhs); rk {

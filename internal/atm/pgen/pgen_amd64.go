@@ -383,7 +383,7 @@ func (self *CodeGen) Generate(s hir.Program, sp uintptr) *Func {
 		self.translate(p, v)
 	}
 
-	/* generate all defered blocks */
+	/* generate all deferred blocks */
 	for _, fp := range self.defs {
 		p.Link(fp.ref)
 		fp.def(p)
@@ -581,7 +581,7 @@ func (self *CodeGen) ref(s string) *x86_64.Label {
 	var k bool
 	var p *x86_64.Label
 
-	/* check for existance */
+	/* check for existence */
 	if p, k = self.jmps[s]; k {
 		return p
 	}

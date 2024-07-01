@@ -400,7 +400,7 @@ func _PASS_SizeCheckMerging(bb *BasicBlock) {
 	}
 }
 
-// Literal Merging Pass: merges all consectutive byte, word or long instructions.
+// Literal Merging Pass: merges all consecutive byte, word or long instructions.
 func _PASS_LiteralMerging(bb *BasicBlock) {
 	p := bb.P
 	i := bb.Src

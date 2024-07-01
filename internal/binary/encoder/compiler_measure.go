@@ -286,7 +286,7 @@ func (self *Compiler) measureField(p *Program, sp int, fv defs.Field, startpc in
 			self.measureStructRequired(p, sp, fv, startpc)
 		}
 
-	/* sequencial types */
+	/* sequential types */
 	case defs.T_map:
 		fallthrough
 	case defs.T_set:

@@ -118,14 +118,14 @@ func (self *_VidMap) define(vid string, reg Reg) {
 	self.m[vid] = reg
 }
 
-// CSE performs the Common Sub-expression Elimintation optimization.
+// CSE performs the Common Sub-expression Elimination optimization.
 type CSE struct{}
 
 func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
 	ins := bb.Ins
 	vals := vm.derive()
 
-	/* scan every instructions */
+	/* scan every instruction */
 	for i, v := range ins {
 		var r Reg
 		var d _Vid
@@ -151,7 +151,7 @@ func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
 				continue
 			}
 
-			/* add to definations if not found */
+			/* add to definitions if not found */
 			if !ok {
 				vals.define(vid, *s)
 				continue
@@ -167,7 +167,7 @@ func (self CSE) dfs(cfg *CFG, bb *BasicBlock, vm *_VidMap) {
 			*s = s.Zero()
 		}
 
-		/* all the definations are been replaced */
+		/* all the definitions are been replaced */
 		if repc == i+len(defs) {
 			bb.Ins = append(bb.Ins[:i], bb.Ins[i+1:]...)
 		}

@@ -24,19 +24,19 @@ func (TDCE) Apply(cfg *CFG) {
 		done := true
 		decl := make(map[Reg]struct{})
 
-		/* Phase 1: Mark all the definations */
+		/* Phase 1: Mark all the definitions */
 		cfg.PostOrder().ForEach(func(bb *BasicBlock) {
 			var ok bool
 			var defs IrDefinitions
 
-			/* mark all definations in Phi nodes */
+			/* mark all definitions in Phi nodes */
 			for _, v := range bb.Phi {
 				for _, r := range v.Definitions() {
 					decl[*r] = struct{}{}
 				}
 			}
 
-			/* mark all definations in instructions if any */
+			/* mark all definitions in instructions if any */
 			for _, v := range bb.Ins {
 				if defs, ok = v.(IrDefinitions); ok {
 					for _, r := range defs.Definitions() {
@@ -45,7 +45,7 @@ func (TDCE) Apply(cfg *CFG) {
 				}
 			}
 
-			/* mark all definations in terminators if any */
+			/* mark all definitions in terminators if any */
 			if defs, ok = bb.Term.(IrDefinitions); ok {
 				for _, r := range defs.Definitions() {
 					decl[*r] = struct{}{}
@@ -87,7 +87,7 @@ func (TDCE) Apply(cfg *CFG) {
 			var ok bool
 			var defs IrDefinitions
 
-			/* replace unused Phi assigments with zero registers */
+			/* replace unused Phi assignments with zero registers */
 			for _, v := range bb.Phi {
 				for _, r := range v.Definitions() {
 					if _, ok = decl[*r]; ok && r.Kind() != K_zero {
@@ -96,7 +96,7 @@ func (TDCE) Apply(cfg *CFG) {
 				}
 			}
 
-			/* replace unused instruction assigments with zero registers */
+			/* replace unused instruction assignments with zero registers */
 			for _, v := range bb.Ins {
 				if defs, ok = v.(IrDefinitions); ok {
 					for _, r := range defs.Definitions() {
@@ -107,7 +107,7 @@ func (TDCE) Apply(cfg *CFG) {
 				}
 			}
 
-			/* replace unused terminator assigments with zero registers */
+			/* replace unused terminator assignments with zero registers */
 			if defs, ok = bb.Term.(IrDefinitions); ok {
 				for _, r := range defs.Definitions() {
 					if _, ok = decl[*r]; ok && r.Kind() != K_zero {
@@ -117,7 +117,7 @@ func (TDCE) Apply(cfg *CFG) {
 			}
 		})
 
-		/* Phase 4: Remove the entire defination if it's all zeros */
+		/* Phase 4: Remove the entire definition if it's all zeros */
 		cfg.PostOrder().ForEach(func(bb *BasicBlock) {
 			phi, ins := bb.Phi, bb.Ins
 			bb.Phi, bb.Ins = bb.Phi[:0], bb.Ins[:0]

@@ -64,7 +64,7 @@ func (self StackLiveness) livein(lr map[Pos]SlotSet, bb *BasicBlock, in map[int]
 				panic("stackmap: invalid spill Op")
 			}
 
-		/* store operaion marks the value is alive since here */
+		/* store operation marks the value is alive since here */
 		case IrSpillStore:
 			{
 				if sl.remove(sp.S) {
@@ -74,7 +74,7 @@ func (self StackLiveness) livein(lr map[Pos]SlotSet, bb *BasicBlock, in map[int]
 				}
 			}
 
-		/* load operaion marks the value is alive until here */
+		/* load operation marks the value is alive until here */
 		case IrSpillReload:
 			{
 				if sl.add(sp.S) {

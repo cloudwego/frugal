@@ -272,7 +272,7 @@ func (self RegAlloc) colorDiffWithReload(rig *simple.UndirectedGraph, reg Reg, r
 		colors[i] = struct{}{}
 	}
 
-	/* choose a different color from it's neightbors */
+	/* choose a different color from it's neighbors */
 	for r := rig.From(int64(reg)); r.Next(); {
 		delete(colors, colormap[Reg(r.Node().ID())])
 	}
@@ -299,7 +299,7 @@ func (self RegAlloc) colorSameWithReg(rig *simple.UndirectedGraph, reloadReg Reg
 		colors[i] = struct{}{}
 	}
 
-	/* choose a different color from it's neightbors */
+	/* choose a different color from it's neighbors */
 	for r := rig.From(int64(reloadReg)); r.Next(); {
 		delete(colors, colormap[Reg(r.Node().ID())])
 	}
@@ -326,7 +326,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
 	coalescemap := make(map[Reg]Reg)
 	invcoalescemap := make(map[Reg][]Reg)
 
-	/* register coalescer */
+	/* register coalesce */
 	coalesce := func(rr []*Reg) {
 		for _, r := range rr {
 			if c, ok := coalescemap[*r]; ok {
@@ -554,7 +554,7 @@ func (self RegAlloc) Apply(cfg *CFG) {
 			}
 		})
 
-		/* try again if coalesce occured */
+		/* try again if coalesce occurred */
 		if len(coalescemap) != 0 {
 			continue
 		}

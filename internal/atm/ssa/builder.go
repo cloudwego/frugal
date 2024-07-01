@@ -75,12 +75,12 @@ func (self *_GraphBuilder) build(p hir.Program) *CFG {
 	ret.Root = ret.CreateBlock()
 	ret.Root.Ins = make([]IrNode, 0, len(_GenericRegs)+len(_PointerRegs)+N_size)
 
-	/* implicit defination of all generic registers */
+	/* implicit definition of all generic registers */
 	for _, v := range _GenericRegs {
 		ret.Root.Ins = append(ret.Root.Ins, &IrConstInt{R: Rv(v), V: 0})
 	}
 
-	/* implicit defination of all pointer registers */
+	/* implicit definition of all pointer registers */
 	for _, v := range _PointerRegs {
 		ret.Root.Ins = append(ret.Root.Ins, &IrConstPtr{R: Rv(v), P: nil, M: Volatile})
 	}
