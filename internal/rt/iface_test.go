@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,33 +17,33 @@
 package rt
 
 import (
-    `testing`
+	"testing"
 )
 
 type FooIface interface {
-    FooMethod()
+	FooMethod()
 }
 
 type FooValue struct {
-    X int
+	X int
 }
 
 func (self FooValue) FooMethod() {
-    println(self.X)
+	println(self.X)
 }
 
 type FooPointer struct {
-    X int
+	X int
 }
 
 func (self *FooPointer) FooMethod() {
-    println(self.X)
+	println(self.X)
 }
 
 func TestIface_Invoke(t *testing.T) {
-    var v FooIface
-    v = FooValue{X: 100}
-    v.FooMethod()
-    v = &FooPointer{X: 200}
-    v.FooMethod()
+	var v FooIface
+	v = FooValue{X: 100}
+	v.FooMethod()
+	v = &FooPointer{X: 200}
+	v.FooMethod()
 }

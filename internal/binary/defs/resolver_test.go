@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,26 +17,26 @@
 package defs
 
 import (
-    `reflect`
-    `testing`
+	"reflect"
+	"testing"
 
-    `github.com/davecgh/go-spew/spew`
-    `github.com/stretchr/testify/require`
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/require"
 )
 
 type NoCopyStringFields struct {
-    NormalString         string `frugal:"1,default,string"`
-    NoCopyString         string `frugal:"2,default,string,nocopy"`
-    TypelessString       string `frugal:"3,default"`
-    TypelessString2      string `frugal:"4,default,"`
-    NoCopyTypelessString string `frugal:"5,default,,nocopy"`
+	NormalString         string `frugal:"1,default,string"`
+	NoCopyString         string `frugal:"2,default,string,nocopy"`
+	TypelessString       string `frugal:"3,default"`
+	TypelessString2      string `frugal:"4,default,"`
+	NoCopyTypelessString string `frugal:"5,default,,nocopy"`
 }
 
 func TestResolver_StringOptions(t *testing.T) {
-    var vv NoCopyStringFields
-    ret, err := ResolveFields(reflect.TypeOf(vv))
-    require.NoError(t, err)
-    spew.Config.SortKeys = true
-    spew.Config.DisablePointerMethods = true
-    spew.Dump(ret)
+	var vv NoCopyStringFields
+	ret, err := ResolveFields(reflect.TypeOf(vv))
+	require.NoError(t, err)
+	spew.Config.SortKeys = true
+	spew.Config.DisablePointerMethods = true
+	spew.Dump(ret)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
+	"github.com/cloudwego/frugal/internal/atm/hir"
 )
 
 //go:noescape
@@ -28,5 +28,5 @@ import (
 func slicebytetostring(buf unsafe.Pointer, ptr unsafe.Pointer, n int) string
 
 var (
-    F_slicebytetostring = hir.RegisterGCall(slicebytetostring, emu_gcall_slicebytetostring)
+	F_slicebytetostring = hir.RegisterGCall(slicebytetostring, emu_gcall_slicebytetostring)
 )

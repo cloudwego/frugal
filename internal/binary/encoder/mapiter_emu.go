@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,22 @@
 package encoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 func emu_gcall_mapiternext(ctx hir.CallContext) {
-    if !ctx.Verify("*", "") {
-        panic("invalid mapiternext call")
-    } else {
-        mapiternext((*rt.GoMapIterator)(ctx.Ap(0)))
-    }
+	if !ctx.Verify("*", "") {
+		panic("invalid mapiternext call")
+	} else {
+		mapiternext((*rt.GoMapIterator)(ctx.Ap(0)))
+	}
 }
 
 func emu_gcall_mapiterstart(ctx hir.CallContext) {
-    if !ctx.Verify("***", "") {
-        panic("invalid mapiterstart call")
-    } else {
-        mapiterstart((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), (*rt.GoMapIterator)(ctx.Ap(2)))
-    }
+	if !ctx.Verify("***", "") {
+		panic("invalid mapiterstart call")
+	} else {
+		mapiterstart((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), (*rt.GoMapIterator)(ctx.Ap(2)))
+	}
 }

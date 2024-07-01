@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,23 +17,23 @@
 package defs
 
 import (
-    `fmt`
-    `reflect`
-    `testing`
+	"fmt"
+	"reflect"
+	"testing"
 
-    `github.com/stretchr/testify/require`
+	"github.com/stretchr/testify/require"
 )
 
 func TestTypes_Parsing(t *testing.T) {
-    var v map[string][]reflect.SliceHeader
-    tt, err := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
-    require.NoError(t, err)
-    fmt.Println(tt)
+	var v map[string][]reflect.SliceHeader
+	tt, err := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
+	require.NoError(t, err)
+	fmt.Println(tt)
 }
 
 func TestTypes_MapKeyType(t *testing.T) {
-    var v map[*reflect.SliceHeader]int
-    tt, err := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
-    require.NoError(t, err)
-    fmt.Println(tt)
+	var v map[*reflect.SliceHeader]int
+	tt, err := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
+	require.NoError(t, err)
+	fmt.Println(tt)
 }

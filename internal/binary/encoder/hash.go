@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package encoder
 
 import (
-    `unsafe`
+	"unsafe"
 )
 
 //go:noescape
@@ -26,19 +26,19 @@ import (
 func strhash(p unsafe.Pointer, h uintptr) uintptr
 
 func mkhash(v int) int {
-    if v != 0 {
-        return v
-    } else {
-        return 1
-    }
+	if v != 0 {
+		return v
+	} else {
+		return 1
+	}
 }
 
 func hash64(h uint64) int {
-    h ^= h >> 33
-    h *= 0x9e3779b97f4a7c15
-    return mkhash(int(h &^ (1 << 63)))
+	h ^= h >> 33
+	h *= 0x9e3779b97f4a7c15
+	return mkhash(int(h &^ (1 << 63)))
 }
 
 func hashstr(p unsafe.Pointer) int {
-    return mkhash(int(strhash(p, 0) &^ (1 << 63)))
+	return mkhash(int(strhash(p, 0) &^ (1 << 63)))
 }

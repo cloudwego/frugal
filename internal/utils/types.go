@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@
 package utils
 
 import (
-    `reflect`
+	"reflect"
 )
 
 var (
-    byteType = reflect.TypeOf(byte(0))
+	byteType = reflect.TypeOf(byte(0))
 )
 
 func IsByteType(vt reflect.Type) bool {
-    return vt == byteType
+	return vt == byteType
 }

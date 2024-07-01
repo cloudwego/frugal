@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,131 +17,131 @@
 package encoder
 
 import (
-    `reflect`
-    `sync`
+	"reflect"
+	"sync"
 
-    `github.com/cloudwego/frugal/internal/opts`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/opts"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 var (
-    programPool        sync.Pool
-    compilerPool       sync.Pool
-    basicBlockPool     sync.Pool
-    graphBuilderPool   sync.Pool
-    runtimeStatePool   sync.Pool
-    optimizerStatePool sync.Pool
+	programPool        sync.Pool
+	compilerPool       sync.Pool
+	basicBlockPool     sync.Pool
+	graphBuilderPool   sync.Pool
+	runtimeStatePool   sync.Pool
+	optimizerStatePool sync.Pool
 )
 
 func newProgram() Program {
-    if v := programPool.Get(); v != nil {
-        return v.(Program)[:0]
-    } else {
-        return make(Program, 0, 16)
-    }
+	if v := programPool.Get(); v != nil {
+		return v.(Program)[:0]
+	} else {
+		return make(Program, 0, 16)
+	}
 }
 
 func freeProgram(p Program) {
-    programPool.Put(p)
+	programPool.Put(p)
 }
 
 func newCompiler() *Compiler {
-    if v := compilerPool.Get(); v == nil {
-        return allocCompiler()
-    } else {
-        return resetCompiler(v.(*Compiler))
-    }
+	if v := compilerPool.Get(); v == nil {
+		return allocCompiler()
+	} else {
+		return resetCompiler(v.(*Compiler))
+	}
 }
 
 func freeCompiler(p *Compiler) {
-    compilerPool.Put(p)
+	compilerPool.Put(p)
 }
 
 func allocCompiler() *Compiler {
-    return &Compiler {
-        o: opts.GetDefaultOptions(),
-        t: make(map[reflect.Type]bool),
-    }
+	return &Compiler{
+		o: opts.GetDefaultOptions(),
+		t: make(map[reflect.Type]bool),
+	}
 }
 
 func resetCompiler(p *Compiler) *Compiler {
-    p.o = opts.GetDefaultOptions()
-    rt.MapClear(p.t)
-    return p
+	p.o = opts.GetDefaultOptions()
+	rt.MapClear(p.t)
+	return p
 }
 
 func newBasicBlock() *BasicBlock {
-    if v := basicBlockPool.Get(); v != nil {
-        return v.(*BasicBlock)
-    } else {
-        return new(BasicBlock)
-    }
+	if v := basicBlockPool.Get(); v != nil {
+		return v.(*BasicBlock)
+	} else {
+		return new(BasicBlock)
+	}
 }
 
 func freeBasicBlock(p *BasicBlock) {
-    basicBlockPool.Put(p)
+	basicBlockPool.Put(p)
 }
 
 func newGraphBuilder() *GraphBuilder {
-    if v := graphBuilderPool.Get(); v == nil {
-        return allocGraphBuilder()
-    } else {
-        return resetGraphBuilder(v.(*GraphBuilder))
-    }
+	if v := graphBuilderPool.Get(); v == nil {
+		return allocGraphBuilder()
+	} else {
+		return resetGraphBuilder(v.(*GraphBuilder))
+	}
 }
 
 func freeGraphBuilder(p *GraphBuilder) {
-    graphBuilderPool.Put(p)
+	graphBuilderPool.Put(p)
 }
 
 func allocGraphBuilder() *GraphBuilder {
-    return &GraphBuilder {
-        Pin   : make(map[int]bool),
-        Graph : make(map[int]*BasicBlock),
-    }
+	return &GraphBuilder{
+		Pin:   make(map[int]bool),
+		Graph: make(map[int]*BasicBlock),
+	}
 }
 
 func resetGraphBuilder(p *GraphBuilder) *GraphBuilder {
-    rt.MapClear(p.Pin)
-    rt.MapClear(p.Graph)
-    return p
+	rt.MapClear(p.Pin)
+	rt.MapClear(p.Graph)
+	return p
 }
 
 func newRuntimeState() *RuntimeState {
-    if v := runtimeStatePool.Get(); v != nil {
-        return v.(*RuntimeState)
-    } else {
-        return new(RuntimeState)
-    }
+	if v := runtimeStatePool.Get(); v != nil {
+		return v.(*RuntimeState)
+	} else {
+		return new(RuntimeState)
+	}
 }
 
 func freeRuntimeState(p *RuntimeState) {
-    runtimeStatePool.Put(p)
+	runtimeStatePool.Put(p)
 }
 
 func newOptimizerState() *_OptimizerState {
-    if v := optimizerStatePool.Get(); v == nil {
-        return allocOptimizerState()
-    } else {
-        return resetOptimizerState(v.(*_OptimizerState))
-    }
+	if v := optimizerStatePool.Get(); v == nil {
+		return allocOptimizerState()
+	} else {
+		return resetOptimizerState(v.(*_OptimizerState))
+	}
 }
 
 func freeOptimizerState(p *_OptimizerState) {
-    optimizerStatePool.Put(p)
+	optimizerStatePool.Put(p)
 }
 
 func allocOptimizerState() *_OptimizerState {
-    return &_OptimizerState {
-        buf  : make([]*BasicBlock, 0, 16),
-        refs : make(map[int]int),
-        mask : make(map[*BasicBlock]bool),
-    }
+	return &_OptimizerState{
+		buf:  make([]*BasicBlock, 0, 16),
+		refs: make(map[int]int),
+		mask: make(map[*BasicBlock]bool),
+	}
 }
 
 func resetOptimizerState(p *_OptimizerState) *_OptimizerState {
-    p.buf = p.buf[:0]
-    rt.MapClear(p.refs)
-    rt.MapClear(p.mask)
-    return p
+	p.buf = p.buf[:0]
+	rt.MapClear(p.refs)
+	rt.MapClear(p.mask)
+	return p
 }

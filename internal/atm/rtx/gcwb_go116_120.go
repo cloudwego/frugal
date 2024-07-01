@@ -2,7 +2,7 @@
 // +build !go1.21
 
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@
 package rtx
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:linkname writeBarrier runtime.writeBarrier
@@ -33,6 +33,6 @@ var writeBarrier uintptr
 func gcWriteBarrier()
 
 var (
-    V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
-    F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
+	V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
+	F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
 )

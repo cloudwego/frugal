@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:noescape
@@ -34,6 +34,6 @@ func makemap(t *rt.GoMapType, hint int, h *rt.GoMap) *rt.GoMap
 func mallocgc(size uintptr, typ *rt.GoType, needzero bool) unsafe.Pointer
 
 var (
-    F_makemap  = hir.RegisterGCall(makemap, emu_gcall_makemap)
-    F_mallocgc = hir.RegisterGCall(mallocgc, emu_gcall_mallocgc)
+	F_makemap  = hir.RegisterGCall(makemap, emu_gcall_makemap)
+	F_mallocgc = hir.RegisterGCall(mallocgc, emu_gcall_mallocgc)
 )

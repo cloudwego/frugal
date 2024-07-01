@@ -1,7 +1,8 @@
+//go:build !go1.17
 // +build !go1.17
 
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,62 +20,65 @@
 package pgen
 
 import (
-    `runtime`
+	"runtime"
 
-    `github.com/cloudwego/iasm/x86_64`
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/atm/rtx`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/atm/rtx"
+	"github.com/cloudwego/iasm/x86_64"
 )
 
 /** Stack Checking **/
 
 const (
-    _M_memcpyargs  = 24
-    _G_stackguard0 = 0x10
+	_M_memcpyargs  = 24
+	_G_stackguard0 = 0x10
 )
 
 func (self *CodeGen) abiStackCheck(p *x86_64.Program, to *x86_64.Label, sp uintptr) {
-    ctxt := self.ctxt
-    size := ctxt.size() + int32(sp)
+	ctxt := self.ctxt
+	size := ctxt.size() + int32(sp)
 
-    /* get the current goroutine */
-    switch runtime.GOOS {
-        case "linux"  : p.MOVQ (Abs(-8), RCX).FS()
-        case "darwin" : p.MOVQ (Abs(0x30), RCX).GS()
-        default       : panic("unsupported operating system")
-    }
+	/* get the current goroutine */
+	switch runtime.GOOS {
+	case "linux":
+		p.MOVQ(Abs(-8), RCX).FS()
+	case "darwin":
+		p.MOVQ(Abs(0x30), RCX).GS()
+	default:
+		panic("unsupported operating system")
+	}
 
-    /* check the stack guard */
-    p.LEAQ (Ptr(RSP, -size), RAX)
-    p.CMPQ (Ptr(RCX, _G_stackguard0), RAX)
-    p.JBE  (to)
+	/* check the stack guard */
+	p.LEAQ(Ptr(RSP, -size), RAX)
+	p.CMPQ(Ptr(RCX, _G_stackguard0), RAX)
+	p.JBE(to)
 }
 
 /** Efficient Block Copy Algorithm **/
 
 func (self *CodeGen) abiBlockCopy(p *x86_64.Program, pd hir.PointerRegister, ps hir.PointerRegister, nb hir.GenericRegister) {
-    rd := self.r(pd)
-    rs := self.r(ps)
-    rl := self.r(nb)
+	rd := self.r(pd)
+	rs := self.r(ps)
+	rl := self.r(nb)
 
-    /* save all the registers, if they will be clobbered */
-    for _, lr := range self.ctxt.regs {
-        if rr := self.r(lr); rtx.R_memmove[rr] {
-            p.MOVQ(rr, self.ctxt.slot(lr))
-        }
-    }
+	/* save all the registers, if they will be clobbered */
+	for _, lr := range self.ctxt.regs {
+		if rr := self.r(lr); rtx.R_memmove[rr] {
+			p.MOVQ(rr, self.ctxt.slot(lr))
+		}
+	}
 
-    /* load the args and call the function */
-    p.MOVQ(rd, Ptr(RSP, 0))
-    p.MOVQ(rs, Ptr(RSP, 8))
-    p.MOVQ(rl, Ptr(RSP, 16))
-    p.MOVQ(uintptr(rtx.F_memmove), RDI)
-    p.CALLQ(RDI)
+	/* load the args and call the function */
+	p.MOVQ(rd, Ptr(RSP, 0))
+	p.MOVQ(rs, Ptr(RSP, 8))
+	p.MOVQ(rl, Ptr(RSP, 16))
+	p.MOVQ(uintptr(rtx.F_memmove), RDI)
+	p.CALLQ(RDI)
 
-    /* restore all the registers, if they were clobbered */
-    for _, lr := range self.ctxt.regs {
-        if rr := self.r(lr); rtx.R_memmove[rr] {
-            p.MOVQ(self.ctxt.slot(lr), rr)
-        }
-    }
+	/* restore all the registers, if they were clobbered */
+	for _, lr := range self.ctxt.regs {
+		if rr := self.r(lr); rtx.R_memmove[rr] {
+			p.MOVQ(self.ctxt.slot(lr), rr)
+		}
+	}
 }

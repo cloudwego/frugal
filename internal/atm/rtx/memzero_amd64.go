@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,59 +17,59 @@
 package rtx
 
 import (
-    `fmt`
-    `unsafe`
+	"fmt"
+	"unsafe"
 
-    `github.com/cloudwego/iasm/x86_64`
-    `github.com/cloudwego/frugal/internal/loader`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/loader"
+	"github.com/cloudwego/frugal/internal/rt"
+	"github.com/cloudwego/iasm/x86_64"
 )
 
 const (
-    ZeroStep    = 16
-    MaxZeroSize = 65536
+	ZeroStep    = 16
+	MaxZeroSize = 65536
 )
 
 func toaddr(p *x86_64.Label) uintptr {
-    if v, err := p.Evaluate(); err != nil {
-        panic(err)
-    } else {
-        return uintptr(v)
-    }
+	if v, err := p.Evaluate(); err != nil {
+		panic(err)
+	} else {
+		return uintptr(v)
+	}
 }
 
 func asmmemzero() MemZeroFn {
-    p := x86_64.DefaultArch.CreateProgram()
-    x := make([]*x86_64.Label, MaxZeroSize / ZeroStep + 1)
+	p := x86_64.DefaultArch.CreateProgram()
+	x := make([]*x86_64.Label, MaxZeroSize/ZeroStep+1)
 
-    /* create all the labels */
-    for i := range x {
-        x[i] = x86_64.CreateLabel(fmt.Sprintf("zero_%d", i * ZeroStep))
-    }
+	/* create all the labels */
+	for i := range x {
+		x[i] = x86_64.CreateLabel(fmt.Sprintf("zero_%d", i*ZeroStep))
+	}
 
-    /* fill backwards */
-    for n := MaxZeroSize; n >= ZeroStep; n -= ZeroStep {
-        p.Link(x[n / ZeroStep])
-        p.MOVDQU(x86_64.XMM15, x86_64.Ptr(x86_64.RDI, int32(n - ZeroStep)))
-    }
+	/* fill backwards */
+	for n := MaxZeroSize; n >= ZeroStep; n -= ZeroStep {
+		p.Link(x[n/ZeroStep])
+		p.MOVDQU(x86_64.XMM15, x86_64.Ptr(x86_64.RDI, int32(n-ZeroStep)))
+	}
 
-    /* finish the function */
-    p.Link(x[0])
-    p.RET()
+	/* finish the function */
+	p.Link(x[0])
+	p.RET()
 
-    /* assemble the function */
-    c := p.Assemble(0)
-    r := make([]uintptr, len(x))
+	/* assemble the function */
+	c := p.Assemble(0)
+	r := make([]uintptr, len(x))
 
-    /* resolve all the labels */
-    for i, v := range x {
-        r[i] = toaddr(v)
-    }
+	/* resolve all the labels */
+	for i, v := range x {
+		r[i] = toaddr(v)
+	}
 
-    /* load the function */
-    defer p.Free()
-    return MemZeroFn {
-        Sz: r,
-        Fn: *(*unsafe.Pointer)(loader.Loader(c).Load("_frugal_memzero", rt.Frame{})),
-    }
+	/* load the function */
+	defer p.Free()
+	return MemZeroFn{
+		Sz: r,
+		Fn: *(*unsafe.Pointer)(loader.Loader(c).Load("_frugal_memzero", rt.Frame{})),
+	}
 }

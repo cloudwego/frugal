@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,141 +20,176 @@ package ssa
 type Lowering struct{}
 
 func (Lowering) Apply(cfg *CFG) {
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        ins := bb.Ins
-        bb.Ins = make([]IrNode, 0, len(ins))
+	cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+		ins := bb.Ins
+		bb.Ins = make([]IrNode, 0, len(ins))
 
-        /* lower every instruction */
-        for _, v := range ins {
-            switch p := v.(type) {
-                default: {
-                    bb.Ins = append(bb.Ins, p)
-                }
+		/* lower every instruction */
+		for _, v := range ins {
+			switch p := v.(type) {
+			default:
+				{
+					bb.Ins = append(bb.Ins, p)
+				}
 
-                /* load from memory */
-                case *IrLoad: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_load {
-                        R: p.R,
-                        N: p.Size,
-                        M: Mem {
-                            M: p.Mem,
-                            I: Rz,
-                            S: 1,
-                            D: 0,
-                        },
-                    })
-                }
+			/* load from memory */
+			case *IrLoad:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_MOV_load{
+						R: p.R,
+						N: p.Size,
+						M: Mem{
+							M: p.Mem,
+							I: Rz,
+							S: 1,
+							D: 0,
+						},
+					})
+				}
 
-                /* store into memory */
-                case *IrStore: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_store_r {
-                        R: p.R,
-                        N: p.Size,
-                        M: Mem {
-                            M: p.Mem,
-                            I: Rz,
-                            S: 1,
-                            D: 0,
-                        },
-                    })
-                }
+			/* store into memory */
+			case *IrStore:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_MOV_store_r{
+						R: p.R,
+						N: p.Size,
+						M: Mem{
+							M: p.Mem,
+							I: Rz,
+							S: 1,
+							D: 0,
+						},
+					})
+				}
 
-                /* load constant into register */
-                case *IrConstInt: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_abs {
-                        R: p.R,
-                        V: p.V,
-                    })
-                }
+			/* load constant into register */
+			case *IrConstInt:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_MOV_abs{
+						R: p.R,
+						V: p.V,
+					})
+				}
 
-                /* load pointer constant into register */
-                case *IrConstPtr: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_MOV_ptr {
-                        R: p.R,
-                        P: p.P,
-                    })
-                }
+			/* load pointer constant into register */
+			case *IrConstPtr:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_MOV_ptr{
+						R: p.R,
+						P: p.P,
+					})
+				}
 
-                /* load effective address */
-                case *IrLEA: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_LEA {
-                        R: p.R,
-                        M: Mem {
-                            M: p.Mem,
-                            I: p.Off,
-                            S: 1,
-                            D: 0,
-                        },
-                    })
-                }
+			/* load effective address */
+			case *IrLEA:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_LEA{
+						R: p.R,
+						M: Mem{
+							M: p.Mem,
+							I: p.Off,
+							S: 1,
+							D: 0,
+						},
+					})
+				}
 
-                /* unary operators */
-                case *IrUnaryExpr: {
-                    switch p.Op {
-                        case IrOpNegate   : bb.Ins = append(bb.Ins, &IrAMD64_NEG    { R: p.R, V: p.V })
-                        case IrOpSwap16   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 2 })
-                        case IrOpSwap32   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 4 })
-                        case IrOpSwap64   : bb.Ins = append(bb.Ins, &IrAMD64_BSWAP  { R: p.R, V: p.V, N: 8 })
-                        case IrOpSx32to64 : bb.Ins = append(bb.Ins, &IrAMD64_MOVSLQ { R: p.R, V: p.V })
-                        default           : panic("unreachable")
-                    }
-                }
+			/* unary operators */
+			case *IrUnaryExpr:
+				{
+					switch p.Op {
+					case IrOpNegate:
+						bb.Ins = append(bb.Ins, &IrAMD64_NEG{R: p.R, V: p.V})
+					case IrOpSwap16:
+						bb.Ins = append(bb.Ins, &IrAMD64_BSWAP{R: p.R, V: p.V, N: 2})
+					case IrOpSwap32:
+						bb.Ins = append(bb.Ins, &IrAMD64_BSWAP{R: p.R, V: p.V, N: 4})
+					case IrOpSwap64:
+						bb.Ins = append(bb.Ins, &IrAMD64_BSWAP{R: p.R, V: p.V, N: 8})
+					case IrOpSx32to64:
+						bb.Ins = append(bb.Ins, &IrAMD64_MOVSLQ{R: p.R, V: p.V})
+					default:
+						panic("unreachable")
+					}
+				}
 
-                /* binary operators */
-                case *IrBinaryExpr: {
-                    switch p.Op {
-                        case IrOpAdd  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAdd })
-                        case IrOpSub  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinSub })
-                        case IrOpMul  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinMul })
-                        case IrOpAnd  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAnd })
-                        case IrOpOr   : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinOr  })
-                        case IrOpXor  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinXor })
-                        case IrOpShr  : bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinShr })
-                        case IrCmpEq  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpEq  })
-                        case IrCmpNe  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpNe  })
-                        case IrCmpLt  : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLt  })
-                        case IrCmpLtu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLtu })
-                        case IrCmpGeu : bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr  { R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpGeu })
-                        default       : panic("unreachable")
-                    }
-                }
+			/* binary operators */
+			case *IrBinaryExpr:
+				{
+					switch p.Op {
+					case IrOpAdd:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAdd})
+					case IrOpSub:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinSub})
+					case IrOpMul:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinMul})
+					case IrOpAnd:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinAnd})
+					case IrOpOr:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinOr})
+					case IrOpXor:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinXor})
+					case IrOpShr:
+						bb.Ins = append(bb.Ins, &IrAMD64_BinOp_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_BinShr})
+					case IrCmpEq:
+						bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpEq})
+					case IrCmpNe:
+						bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpNe})
+					case IrCmpLt:
+						bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLt})
+					case IrCmpLtu:
+						bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpLtu})
+					case IrCmpGeu:
+						bb.Ins = append(bb.Ins, &IrAMD64_CMPQ_rr{R: p.R, X: p.X, Y: p.Y, Op: IrAMD64_CmpGeu})
+					default:
+						panic("unreachable")
+					}
+				}
 
-                /* bit test and set */
-                case *IrBitTestSet: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_BTSQ_rr {
-                        T: p.T,
-                        S: p.S,
-                        X: p.X,
-                        Y: p.Y,
-                    })
-                }
+			/* bit test and set */
+			case *IrBitTestSet:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_BTSQ_rr{
+						T: p.T,
+						S: p.S,
+						X: p.X,
+						Y: p.Y,
+					})
+				}
 
-                /* breakpoint */
-                case *IrBreakpoint: {
-                    bb.Ins = append(bb.Ins, &IrAMD64_INT { 3 })
-                }
-            }
-        }
+			/* breakpoint */
+			case *IrBreakpoint:
+				{
+					bb.Ins = append(bb.Ins, &IrAMD64_INT{3})
+				}
+			}
+		}
 
-        /* lower the terminator */
-        switch p := bb.Term.(type) {
-            default: {
-                panic("invalid terminator: " + bb.Term.String())
-            }
+		/* lower the terminator */
+		switch p := bb.Term.(type) {
+		default:
+			{
+				panic("invalid terminator: " + bb.Term.String())
+			}
 
-            /* branch terminator */
-            case *IrSwitch: {
-                switch t := p.iter().t; len(p.Br) {
-                    case 0  : bb.Term = &IrAMD64_JMP    { To: p.Ln }
-                    case 1  : bb.Term = &IrAMD64_Jcc_ri { X: p.V, Y: t[0].i, To: p.Br[t[0].i], Ln: p.Ln, Op: IrAMD64_CmpEq }
-                    default : break
-                }
-            }
+		/* branch terminator */
+		case *IrSwitch:
+			{
+				switch t := p.iter().t; len(p.Br) {
+				case 0:
+					bb.Term = &IrAMD64_JMP{To: p.Ln}
+				case 1:
+					bb.Term = &IrAMD64_Jcc_ri{X: p.V, Y: t[0].i, To: p.Br[t[0].i], Ln: p.Ln, Op: IrAMD64_CmpEq}
+				default:
+					break
+				}
+			}
 
-            /* return terminator, ABI specific, will be lowered in later pass */
-            case *IrReturn: {
-                break
-            }
-        }
-    })
+		/* return terminator, ABI specific, will be lowered in later pass */
+		case *IrReturn:
+			{
+				break
+			}
+		}
+	})
 }

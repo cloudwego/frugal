@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,54 +17,54 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 func emu_string(ctx hir.CallContext, i int) (v string) {
-    (*rt.GoString)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
-    (*rt.GoString)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
-    return
+	(*rt.GoString)(unsafe.Pointer(&v)).Ptr = ctx.Ap(i)
+	(*rt.GoString)(unsafe.Pointer(&v)).Len = int(ctx.Au(i + 1))
+	return
 }
 
 func emu_gcall_mapassign(ctx hir.CallContext) {
-    if !ctx.Verify("***", "*") {
-        panic("invalid mapassign call")
-    } else {
-        ctx.Rp(0, mapassign((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
-    }
+	if !ctx.Verify("***", "*") {
+		panic("invalid mapassign call")
+	} else {
+		ctx.Rp(0, mapassign((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
+	}
 }
 
 func emu_gcall_mapassign_fast32(ctx hir.CallContext) {
-    if !ctx.Verify("**i", "*") {
-        panic("invalid mapassign_fast32 call")
-    } else {
-        ctx.Rp(0, mapassign_fast32((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), uint32(ctx.Au(2))))
-    }
+	if !ctx.Verify("**i", "*") {
+		panic("invalid mapassign_fast32 call")
+	} else {
+		ctx.Rp(0, mapassign_fast32((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), uint32(ctx.Au(2))))
+	}
 }
 
 func emu_gcall_mapassign_fast64(ctx hir.CallContext) {
-    if !ctx.Verify("**i", "*") {
-        panic("invalid mapassign_fast64 call")
-    } else {
-        ctx.Rp(0, mapassign_fast64((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Au(2)))
-    }
+	if !ctx.Verify("**i", "*") {
+		panic("invalid mapassign_fast64 call")
+	} else {
+		ctx.Rp(0, mapassign_fast64((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Au(2)))
+	}
 }
 
 func emu_gcall_mapassign_faststr(ctx hir.CallContext) {
-    if !ctx.Verify("***i", "*") {
-        panic("invalid mapassign_faststr call")
-    } else {
-        ctx.Rp(0, mapassign_faststr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), emu_string(ctx, 2)))
-    }
+	if !ctx.Verify("***i", "*") {
+		panic("invalid mapassign_faststr call")
+	} else {
+		ctx.Rp(0, mapassign_faststr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), emu_string(ctx, 2)))
+	}
 }
 
 func emu_gcall_mapassign_fast64ptr(ctx hir.CallContext) {
-    if !ctx.Verify("***", "*") {
-        panic("invalid mapassign_fast64 call")
-    } else {
-        ctx.Rp(0, mapassign_fast64ptr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
-    }
+	if !ctx.Verify("***", "*") {
+		panic("invalid mapassign_fast64 call")
+	} else {
+		ctx.Rp(0, mapassign_fast64ptr((*rt.GoMapType)(ctx.Ap(0)), (*rt.GoMap)(ctx.Ap(1)), ctx.Ap(2)))
+	}
 }

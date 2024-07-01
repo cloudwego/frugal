@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package cpu
 
 import (
-    `github.com/klauspost/cpuid/v2`
+	"github.com/klauspost/cpuid/v2"
 )
 
 var (
-    HasMOVBE = cpuid.CPU.Has(cpuid.MOVBE)
+	HasMOVBE = cpuid.CPU.Has(cpuid.MOVBE)
 )

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,33 +20,33 @@ package ssa
 type Rematerialize struct{}
 
 func (Rematerialize) Apply(cfg *CFG) {
-    consts := make(map[Reg]_ConstData)
-    consts[Rz] = constint(0)
-    consts[Pn] = constptr(nil, Const)
+	consts := make(map[Reg]_ConstData)
+	consts[Rz] = constint(0)
+	consts[Pn] = constptr(nil, Const)
 
-    /* Phase 1: Scan all the constants */
-    for _, bb := range cfg.PostOrder().Reversed() {
-        for _, v := range bb.Ins {
-            if r, x, ok := IrArchTryIntoConstInt(v); ok {
-                consts[r] = constint(x)
-            } else if r, p, ok := IrArchTryIntoConstPtr(v); ok {
-                consts[r] = constptr(p, Volatile)
-            }
-        }
-    }
+	/* Phase 1: Scan all the constants */
+	for _, bb := range cfg.PostOrder().Reversed() {
+		for _, v := range bb.Ins {
+			if r, x, ok := IrArchTryIntoConstInt(v); ok {
+				consts[r] = constint(x)
+			} else if r, p, ok := IrArchTryIntoConstPtr(v); ok {
+				consts[r] = constptr(p, Volatile)
+			}
+		}
+	}
 
-    /* Phase 2: Replace register copies with consts if possible */
-    cfg.PostOrder().ForEach(func(bb *BasicBlock) {
-        for i, v := range bb.Ins {
-            if d, s, ok := IrArchTryIntoCopy(v); ok {
-                if cc, ok := consts[s]; ok {
-                    if cc.i {
-                        bb.Ins[i] = IrArchConstInt(d, cc.v)
-                    } else {
-                        bb.Ins[i] = IrArchConstPtr(d, cc.p)
-                    }
-                }
-            }
-        }
-    })
+	/* Phase 2: Replace register copies with consts if possible */
+	cfg.PostOrder().ForEach(func(bb *BasicBlock) {
+		for i, v := range bb.Ins {
+			if d, s, ok := IrArchTryIntoCopy(v); ok {
+				if cc, ok := consts[s]; ok {
+					if cc.i {
+						bb.Ins[i] = IrArchConstInt(d, cc.v)
+					} else {
+						bb.Ins[i] = IrArchConstPtr(d, cc.p)
+					}
+				}
+			}
+		}
+	})
 }

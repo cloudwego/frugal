@@ -2,7 +2,7 @@
 // +build !go1.16 go1.23
 
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@
 package loader
 
 import (
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 // triggers a compilation error
 const (
-    _ = panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
+	_ = panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
 )
 
 func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-    panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
+	panic("Unsupported Go version. Supported versions are 1.16 ~ 1.21")
 }

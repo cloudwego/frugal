@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 package rt
 
 import (
-    `fmt`
-    `runtime`
-    `unsafe`
+	"fmt"
+	"runtime"
+	"unsafe"
 )
 
 func FuncName(p unsafe.Pointer) string {
-    if fn := runtime.FuncForPC(uintptr(p)); fn == nil {
-        return "???"
-    } else if fp := fn.Entry(); fp == uintptr(p) {
-        return fn.Name()
-    } else {
-        return fmt.Sprintf("%s+%#x", fn.Name(), uintptr(p) - fp)
-    }
+	if fn := runtime.FuncForPC(uintptr(p)); fn == nil {
+		return "???"
+	} else if fp := fn.Entry(); fp == uintptr(p) {
+		return fn.Name()
+	} else {
+		return fmt.Sprintf("%s+%#x", fn.Name(), uintptr(p)-fp)
+	}
 }

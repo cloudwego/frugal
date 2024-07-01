@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package tests
 
 import (
-    `os`
-    `syscall`
-    `unsafe`
+	"os"
+	"syscall"
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 //go:nosplit
@@ -30,29 +30,29 @@ func rt_exit(int)
 
 //go:nosplit
 func rt_exit_hook(r int) {
-    if r != 0 {
-        println("Non-zero exit code:", r)
-        println("Now it's time to attach debugger, PID:", os.Getpid())
-        for {
-            _ = true
-        }
-    }
+	if r != 0 {
+		println("Non-zero exit code:", r)
+		println("Now it's time to attach debugger, PID:", os.Getpid())
+		for {
+			_ = true
+		}
+	}
 }
 
 func mprotectpage(addr unsafe.Pointer, prot uintptr) {
-    if _, _, err := syscall.RawSyscall(syscall.SYS_MPROTECT, uintptr(addr) &^ 4095, 4096, prot); err != 0 {
-        panic(err)
-    }
+	if _, _, err := syscall.RawSyscall(syscall.SYS_MPROTECT, uintptr(addr)&^4095, 4096, prot); err != 0 {
+		panic(err)
+	}
 }
 
 func init() {
-    if os.Getenv("FRUGAL_DEBUGGER_HOOK") == "yes" {
-        fp := rt.FuncAddr(rt_exit)
-        to := rt.FuncAddr(rt_exit_hook)
-        mprotectpage(fp, syscall.PROT_READ | syscall.PROT_WRITE)
-        *(*[2]byte)(fp) = [2]byte{0x48, 0xba}
-        *(*uintptr)(unsafe.Pointer(uintptr(fp) + 2)) = uintptr(to)
-        *(*[2]byte)(unsafe.Pointer(uintptr(fp) + 10)) = [2]byte{0xff, 0xe2}
-        mprotectpage(fp, syscall.PROT_READ | syscall.PROT_EXEC)
-    }
+	if os.Getenv("FRUGAL_DEBUGGER_HOOK") == "yes" {
+		fp := rt.FuncAddr(rt_exit)
+		to := rt.FuncAddr(rt_exit_hook)
+		mprotectpage(fp, syscall.PROT_READ|syscall.PROT_WRITE)
+		*(*[2]byte)(fp) = [2]byte{0x48, 0xba}
+		*(*uintptr)(unsafe.Pointer(uintptr(fp) + 2)) = uintptr(to)
+		*(*[2]byte)(unsafe.Pointer(uintptr(fp) + 10)) = [2]byte{0xff, 0xe2}
+		mprotectpage(fp, syscall.PROT_READ|syscall.PROT_EXEC)
+	}
 }

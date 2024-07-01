@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,27 +17,27 @@
 package decoder
 
 import (
-    `unsafe`
+	"unsafe"
 
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/atm/pgen`
-    `github.com/cloudwego/frugal/internal/loader`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/atm/pgen"
+	"github.com/cloudwego/frugal/internal/loader"
 )
 
 type (
-    LinkerAMD64 struct{}
+	LinkerAMD64 struct{}
 )
 
 const (
-    _NativeStackSize = _stack__do_skip
+	_NativeStackSize = _stack__do_skip
 )
 
 func init() {
-    SetLinker(new(LinkerAMD64))
+	SetLinker(new(LinkerAMD64))
 }
 
 func (LinkerAMD64) Link(p hir.Program) Decoder {
-    fn := pgen.CreateCodeGen((Decoder)(nil)).Generate(p, _NativeStackSize)
-    fp := loader.Loader(fn.Code).Load("decoder", fn.Frame)
-    return *(*Decoder)(unsafe.Pointer(&fp))
+	fn := pgen.CreateCodeGen((Decoder)(nil)).Generate(p, _NativeStackSize)
+	fp := loader.Loader(fn.Code).Load("decoder", fn.Frame)
+	return *(*Decoder)(unsafe.Pointer(&fp))
 }

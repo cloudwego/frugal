@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 ByteDance Inc.
+ * Copyright 2022 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 package decoder
 
 import (
-    `github.com/cloudwego/frugal/internal/atm/hir`
-    `github.com/cloudwego/frugal/internal/rt`
+	"github.com/cloudwego/frugal/internal/atm/hir"
+	"github.com/cloudwego/frugal/internal/rt"
 )
 
 func emu_gcall_slicebytetostring(ctx hir.CallContext) {
-    if !ctx.Verify("**i", "*i") {
-        panic("invalid slicebytetostring call")
-    } else {
-        v := slicebytetostring(ctx.Ap(0), ctx.Ap(1), int(ctx.Au(2)))
-        ctx.Rp(0, rt.StringPtr(v))
-        ctx.Ru(1, uint64(len(v)))
-    }
+	if !ctx.Verify("**i", "*i") {
+		panic("invalid slicebytetostring call")
+	} else {
+		v := slicebytetostring(ctx.Ap(0), ctx.Ap(1), int(ctx.Au(2)))
+		ctx.Rp(0, rt.StringPtr(v))
+		ctx.Ru(1, uint64(len(v)))
+	}
 }
