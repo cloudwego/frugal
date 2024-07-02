@@ -25,14 +25,14 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
-	"github.com/cloudwego/frugal/internal/rt"
+	freflect "github.com/cloudwego/frugal/internal/reflect"
 	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
 	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -63,6 +63,7 @@ func TestMain(m *testing.M) {
 }
 
 type FastAPI interface {
+	InitDefault()
 	BLength() int
 	FastRead(buf []byte) (int, error)
 	FastWriteNocopy(buf []byte, binaryWriter bthrift.BinaryWriter) int
@@ -172,17 +173,54 @@ func getNesting2Value() *baseline.Nesting2 {
 	return ret
 }
 
-func BenchmarkMarshalAllSize_ApacheThrift(b *testing.B) {
+func BenchmarkAllSize_BLength_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val
-			var mm = thrift.NewTMemoryBuffer()
+			v := s.val.(FastAPI)
+			assert.Equal(b, v.BLength(), len(s.bytes))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				v.BLength()
+			}
+		})
+	}
+}
+
+func BenchmarkAllSize_BLength_Frugal_JIT(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			v := s.val
+			assert.Equal(b, frugal.EncodedSize(v), len(s.bytes))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				frugal.EncodedSize(v)
+			}
+		})
+	}
+}
+
+func BenchmarkAllSize_BLength_Frugal_Reflect(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			v := s.val
+			assert.Equal(b, freflect.EncodedSize(v), len(s.bytes))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				freflect.EncodedSize(v)
+			}
+		})
+	}
+}
+
+func BenchmarkAllSize_Marshal_ApacheThrift(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			v := s.val
+			mm := thrift.NewTMemoryBuffer()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				mm.Reset()
@@ -192,126 +230,120 @@ func BenchmarkMarshalAllSize_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalAllSize_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Marshal_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val.(FastAPI)
+			v := s.val.(FastAPI)
 			buf := make([]byte, v.BLength())
+			n := v.FastWriteNocopy(buf, nil)
+			require.Equal(b, len(buf), n)
+			require.Equal(b, len(s.bytes), n)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				v.BLength()
+				_ = v.BLength()
 				_ = v.FastWriteNocopy(buf, nil)
 			}
 		})
 	}
 }
 
-func BenchmarkMarshalAllSize_Frugal(b *testing.B) {
+func BenchmarkAllSize_Marshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val
+			v := s.val
 			buf := make([]byte, frugal.EncodedSize(v))
-			act, err := frugal.EncodeObject(buf, nil, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), act)
+			n, err := frugal.EncodeObject(buf, nil, v)
+			require.NoError(b, err)
+			require.Equal(b, len(buf), n)
+			assert.Equal(b, len(s.bytes), n)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				frugal.EncodedSize(v)
+				_ = frugal.EncodedSize(v)
 				_, _ = frugal.EncodeObject(buf, nil, v)
 			}
 		})
 	}
 }
 
-//go:noescape
-//go:linkname typedmemclr runtime.typedmemclr
-//goland:noinspection GoUnusedParameter
-func typedmemclr(typ *rt.GoType, ptr unsafe.Pointer)
-
-func objectmemclr(v interface{}) {
-	p := rt.UnpackEface(v)
-	typedmemclr(rt.PtrElem(p.Type), p.Value)
-}
-
-func BenchmarkUnmarshalAllSize_ApacheThrift(b *testing.B) {
+func BenchmarkAllSize_Marshal_Frugal_Reflect(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
+			v := s.val
+			buf := make([]byte, freflect.EncodedSize(v))
+			n, err := freflect.Encode(buf, v)
+			require.NoError(b, err)
+			require.Equal(b, len(buf), n)
+			assert.Equal(b, len(s.bytes), n)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = freflect.EncodedSize(v)
+				_, _ = freflect.Encode(buf, v)
+			}
+		})
+	}
+}
+
+func objectmemclr(in interface{}) {
+	switch v := in.(type) {
+	case *baseline.Simple:
+		*v = baseline.Simple{}
+	case *baseline.Nesting:
+		*v = baseline.Nesting{}
+	case *baseline.Nesting2:
+		*v = baseline.Nesting2{}
+	default:
+		panic("unknown type")
+	}
+}
+
+func newByEFace(v interface{}) interface{} {
+	return reflect.New(reflect.TypeOf(v).Elem()).Interface()
+}
+
+func BenchmarkAllSize_Unmarshal_ApacheThrift(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			buf := bytes.NewBuffer(s.bytes)
 			mm := thrift.NewTMemoryBuffer()
-			var v = reflect.New(rtype).Interface()
+			v := newByEFace(s.val).(thrift.TStruct)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				mm.Reset()
+				*mm.Buffer = *buf // reset *Buffer to original one
 				objectmemclr(v)
-				_, _ = mm.Write(buf)
-				_ = v.(thrift.TStruct).Read(thrift.NewTBinaryProtocolTransport(mm))
+				_ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
 			}
 		})
 	}
 }
 
-func BenchmarkUnmarshalAllSize_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Unmarshal_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
-			var v = reflect.New(rtype).Interface()
+			v := newByEFace(s.val).(FastAPI)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				objectmemclr(v)
-				_, _ = v.(FastAPI).FastRead(buf)
+				_, _ = v.FastRead(buf)
 			}
 		})
 	}
-
 }
 
-func BenchmarkUnmarshalAllSize_Frugal(b *testing.B) {
+func BenchmarkAllSize_Unmarshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
-			var v = reflect.New(rtype).Interface()
-			act, err := frugal.DecodeObject(buf, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), act)
-			assert.Equal(b, s.val.(FastAPI).BLength(), frugal.EncodedSize(v))
-			b.SetBytes(int64(len(buf)))
+			v := newByEFace(s.val)
+			n, err := frugal.DecodeObject(buf, v)
+			require.NoError(b, err)
+			require.Equal(b, len(buf), n)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				objectmemclr(v)
@@ -321,19 +353,32 @@ func BenchmarkUnmarshalAllSize_Frugal(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
+func BenchmarkAllSize_Unmarshal_Frugal_Reflect(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
+			b.SetBytes(int64(len(s.bytes)))
+			buf := s.bytes
+			v := newByEFace(s.val)
+			n, err := freflect.Decode(buf, v)
+			require.NoError(b, err)
+			require.Equal(b, len(buf), n)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				objectmemclr(v)
+				_, _ = freflect.Decode(buf, v)
+			}
+		})
+	}
+}
+
+func BenchmarkAllSize_Parallel_Marshal_ApacheThrift(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				var v = s.val
-				var mm = thrift.NewTMemoryBuffer()
+				v := s.val
+				mm := thrift.NewTMemoryBuffer()
 				for pb.Next() {
 					mm.Reset()
 					_ = v.(thrift.TStruct).Write(thrift.NewTBinaryProtocolTransport(mm))
@@ -343,19 +388,13 @@ func BenchmarkMarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalAllSize_Parallel_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Parallel_Marshal_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				var v = s.val.(FastAPI)
+				v := s.val.(FastAPI)
 				buf := make([]byte, v.BLength())
 				for pb.Next() {
 					v.BLength()
@@ -366,25 +405,14 @@ func BenchmarkMarshalAllSize_Parallel_KitexFast(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalAllSize_Parallel_Frugal(b *testing.B) {
+func BenchmarkAllSize_Parallel_Marshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
+			frugal.Pretouch(reflect.TypeOf(s.val))
 			b.SetBytes(int64(len(s.bytes)))
-			var v = s.val
-			buf := make([]byte, frugal.EncodedSize(v))
-			act, err := frugal.EncodeObject(buf, nil, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), act)
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				var v = s.val
+				v := s.val
 				buf := make([]byte, frugal.EncodedSize(v))
 				for pb.Next() {
 					frugal.EncodedSize(v)
@@ -395,83 +423,88 @@ func BenchmarkMarshalAllSize_Parallel_Frugal(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalAllSize_Parallel_ApacheThrift(b *testing.B) {
+func BenchmarkAllSize_Parallel_Marshal_Frugal_Reflect(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				v := s.val
+				buf := make([]byte, freflect.EncodedSize(v))
+				for pb.Next() {
+					freflect.EncodedSize(v)
+					_, _ = freflect.Encode(buf, v)
+				}
+			})
+		})
+	}
+}
 
+func BenchmarkAllSize_Parallel_Unmarshal_ApacheThrift(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			buf := bytes.NewBuffer(s.bytes)
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
 				mm := thrift.NewTMemoryBuffer()
-				var v = reflect.New(rtype).Interface()
+				v := newByEFace(s.val).(thrift.TStruct)
 				for pb.Next() {
-					mm.Reset()
+					*mm.Buffer = *buf // reset *Buffer to original one
 					objectmemclr(v)
-					_, _ = mm.Write(buf)
-					_ = v.(thrift.TStruct).Read(thrift.NewTBinaryProtocolTransport(mm))
+					_ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
 				}
 			})
 		})
 	}
 }
 
-func BenchmarkUnmarshalAllSize_Parallel_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Parallel_Unmarshal_KitexFast(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
 			b.SetBytes(int64(len(s.bytes)))
-			rtype := reflect.TypeOf(s.val).Elem()
 			buf := s.bytes
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				var v = reflect.New(rtype).Interface()
+				v := newByEFace(s.val).(FastAPI)
 				for pb.Next() {
 					objectmemclr(v)
-					_, _ = v.(FastAPI).FastRead(buf)
+					_, _ = v.FastRead(buf)
 				}
 			})
 		})
 	}
 }
 
-func BenchmarkUnmarshalAllSize_Parallel_Frugal(b *testing.B) {
+func BenchmarkAllSize_Parallel_Unmarshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			defer func() {
-				if e := recover(); e != nil {
-					b.Fatal(e)
-				}
-			}()
+			frugal.Pretouch(reflect.TypeOf(s.val))
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
-			rtype := reflect.TypeOf(s.val).Elem()
-			var v = reflect.New(rtype).Interface()
-			act, err := frugal.DecodeObject(buf, v)
-			if err != nil {
-				b.Fatal(err)
-			}
-			assert.Equal(b, len(s.bytes), act)
-			assert.Equal(b, s.val.(FastAPI).BLength(), frugal.EncodedSize(v))
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				var v = reflect.New(rtype).Interface()
+				v := newByEFace(s.val)
 				for pb.Next() {
 					objectmemclr(v)
-					// new error object to avoid concurrent write to `err` which fails with -race
-					if _, errDecode := frugal.DecodeObject(buf, v); errDecode != nil {
-						b.Fatal(errDecode)
-					}
+					_, _ = frugal.DecodeObject(buf, v)
+				}
+			})
+		})
+	}
+}
+
+func BenchmarkAllSize_Parallel_Unmarshal_Frugal_Reflect(b *testing.B) {
+	for _, s := range getSamples() {
+		b.Run(s.name, func(b *testing.B) {
+			b.SetBytes(int64(len(s.bytes)))
+			buf := s.bytes
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				v := newByEFace(s.val)
+				for pb.Next() {
+					objectmemclr(v)
+					_, _ = freflect.Decode(buf, v)
 				}
 			})
 		})
