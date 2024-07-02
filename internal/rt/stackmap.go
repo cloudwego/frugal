@@ -149,7 +149,16 @@ type StackMapBuilder struct {
 
 func (self *StackMapBuilder) Build() (p *StackMap) {
 	nb := len(self.b.B)
-	bm := mallocgc(_StackMapSize+uintptr(nb)-1, byteType, false)
+	mallocsz := _StackMapSize + uintptr(nb) - 1 // (*StackMap).B occupies one byte
+
+	// was f**k by go compiler, the code didn't pass compiler checks.
+	// we need one more byte to fix `checkptr: converted pointer straddles multiple allocations`,
+	// which caused by `p = (*StackMap)(bm)` when `bm` is shorter than the len of `StackMap`.
+	// can refactor this pile of crap, but I don't want to.
+	// It works by adding `mallocsz++`
+	mallocsz++
+
+	bm := mallocgc(mallocsz, byteType, false)
 
 	/* initialize as 1 bitmap of N bits */
 	p = (*StackMap)(bm)
