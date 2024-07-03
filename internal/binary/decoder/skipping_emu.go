@@ -68,7 +68,7 @@ func stadd(s *_skipbuf_t, p *int, t defs.Tag) bool {
 func mvbuf(s *unsafe.Pointer, n *int, r *int, nb int) {
 	*n = *n - nb
 	*r = *r + nb
-	*s = unsafe.Pointer(uintptr(*s) + uintptr(nb))
+	*s = unsafe.Add(*s, nb)
 }
 
 func do_skip(st *_skipbuf_t, s unsafe.Pointer, n int, t defs.Tag) (rv int) {
