@@ -62,21 +62,21 @@ func (d *tDecoder) mallocIfPointer(t *tType, p unsafe.Pointer) (ret unsafe.Point
 	return p
 }
 
-func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, fd *fieldDesc, maxdepth int) (int, error) {
+func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdepth int) (int, error) {
 	if maxdepth == 0 {
 		return 0, errDepthLimitExceeded
 	}
 	var bs *bitset
-	if len(fd.requiredFields) > 0 {
+	if len(sd.requiredFields) > 0 {
 		bs = bitsetPool.Get().(*bitset)
 		defer bitsetPool.Put(bs)
-		for _, f := range fd.requiredFields {
+		for _, f := range sd.requiredFields {
 			bs.unset(f.ID)
 		}
 	}
 
 	var ufs *unknownFields
-	if fd.hasUnknownFields {
+	if sd.hasUnknownFields {
 		ufs = unknownFieldsPool.Get().(*unknownFields)
 		defer unknownFieldsPool.Put(ufs)
 		ufs.Reset()
@@ -92,11 +92,11 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, fd *fieldDesc, maxdepth
 		fid := binary.BigEndian.Uint16(b[i:])
 		i += 2
 
-		f := fd.GetField(fid)
+		f := sd.GetField(fid)
 		if f == nil {
 			n, err := skipType(tp, b[i:], maxdepth-1)
 			if err != nil {
-				return i, fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, fd.rt.String(), err)
+				return i, fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
 			if ufs != nil {
 				ufs.Add(i-fieldHeaderLen, n+fieldHeaderLen) // save off and sz, and copy later
@@ -115,7 +115,7 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, fd *fieldDesc, maxdepth
 		} else {
 			n, err := d.decodeType(t, b[i:], p, maxdepth-1)
 			if err != nil {
-				return i, fmt.Errorf("decode field %d of struct %s err: %w", fid, fd.rt.String(), err)
+				return i, fmt.Errorf("decode field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
 			i += n
 		}
@@ -123,13 +123,13 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, fd *fieldDesc, maxdepth
 			bs.set(f.ID)
 		}
 	}
-	for _, f := range fd.requiredFields {
+	for _, f := range sd.requiredFields {
 		if !bs.test(f.ID) {
-			return i, newRequiredFieldNotSetException(lookupFieldName(fd.rt, f.Offset))
+			return i, newRequiredFieldNotSetException(lookupFieldName(sd.rt, f.Offset))
 		}
 	}
 	if ufs != nil && ufs.Size() > 0 {
-		*(*[]byte)(unsafe.Add(base, fd.unknownFieldsOffset)) = ufs.Copy(b)
+		*(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset)) = ufs.Copy(b)
 	}
 	return i, nil
 }
@@ -324,12 +324,12 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		}
 		return i, nil
 	case tSTRUCT:
-		if t.Fd.hasInitFunc {
-			f := t.Fd.initFunc // copy on write, reuse itab of iface
+		if t.Sd.hasInitFunc {
+			f := t.Sd.initFunc // copy on write, reuse itab of iface
 			updateIface(unsafe.Pointer(&f), p)
 			f.InitDefault()
 		}
-		return d.Decode(b, p, t.Fd, maxdepth-1)
+		return d.Decode(b, p, t.Sd, maxdepth-1)
 	}
 	return 0, fmt.Errorf("unknown type: %d", t.T)
 }

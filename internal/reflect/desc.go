@@ -25,24 +25,24 @@ import (
 	"github.com/cloudwego/frugal/internal/binary/defs"
 )
 
-var mapFieldDescWriteMu sync.Mutex
-var fds = newMapFieldDesc()
+var mapStructDescWriteMu sync.Mutex
+var sds = newMapStructDesc()
 
-func getOrcreateFieldDesc(rv reflect.Value) (*fieldDesc, error) {
-	fd := fds.Get(rvTypePtr(rv))
-	if fd != nil {
-		return fd, nil
+func getOrcreateStructDesc(rv reflect.Value) (*structDesc, error) {
+	sd := sds.Get(rvTypePtr(rv))
+	if sd != nil {
+		return sd, nil
 	}
-	return createFieldDesc(rv)
+	return createStructDesc(rv)
 }
 
-func getFieldDesc(rv reflect.Value) *fieldDesc {
-	return fds.Get(rvTypePtr(rv))
+func getStructDesc(rv reflect.Value) *structDesc {
+	return sds.Get(rvTypePtr(rv))
 }
 
 var errType = errors.New("not pointer to struct")
 
-func createFieldDesc(rv reflect.Value) (*fieldDesc, error) {
+func createStructDesc(rv reflect.Value) (*structDesc, error) {
 	rt := rv.Type()
 	if rt.Kind() != reflect.Struct {
 		if rt.Kind() != reflect.Ptr {
@@ -57,38 +57,38 @@ func createFieldDesc(rv reflect.Value) (*fieldDesc, error) {
 		rv = reflect.New(rt).Elem()
 	}
 	abiType := rvTypePtr(rv)
-	mapFieldDescWriteMu.Lock()
-	defer mapFieldDescWriteMu.Unlock()
-	if fd := fds.Get(abiType); fd != nil {
-		return fd, nil
+	mapStructDescWriteMu.Lock()
+	defer mapStructDescWriteMu.Unlock()
+	if sd := sds.Get(abiType); sd != nil {
+		return sd, nil
 	}
-	fd, err := newFieldDescAndPrefetch(rt)
+	sd, err := newStructDescAndPrefetch(rt)
 	if err != nil {
 		return nil, err
 	}
-	fds.Set(abiType, fd)
-	return fd, nil
+	sds.Set(abiType, sd)
+	return sd, nil
 }
 
-var prefetchFieldDescCache = map[reflect.Type]*fieldDesc{}
+var prefetchStructDescCache = map[reflect.Type]*structDesc{}
 
-func newFieldDescAndPrefetch(t reflect.Type) (*fieldDesc, error) {
-	if fd := prefetchFieldDescCache[t]; fd != nil {
-		return fd, nil
+func newStructDescAndPrefetch(t reflect.Type) (*structDesc, error) {
+	if sd := prefetchStructDescCache[t]; sd != nil {
+		return sd, nil
 	}
-	fd, err := newFieldDesc(t)
+	sd, err := newStructDesc(t)
 	if err != nil {
 		return nil, err
 	}
-	prefetchFieldDescCache[t] = fd
-	if err := prefetchSubFieldDesc(fd); err != nil {
-		delete(prefetchFieldDescCache, t)
+	prefetchStructDescCache[t] = sd
+	if err := prefetchSubStructDesc(sd); err != nil {
+		delete(prefetchStructDescCache, t)
 		return nil, err
 	}
-	return fd, nil
+	return sd, nil
 }
 
-func prefetchSubFieldDesc(d *fieldDesc) error {
+func prefetchSubStructDesc(d *structDesc) error {
 	for i := range d.fields {
 		var t *tType
 		f := d.fields[i]
@@ -101,11 +101,11 @@ func prefetchSubFieldDesc(d *fieldDesc) error {
 		} else {
 			continue
 		}
-		fd, err := newFieldDescAndPrefetch(t.RT)
+		sd, err := newStructDescAndPrefetch(t.RT)
 		if err != nil {
 			return err
 		}
-		t.Fd = fd
+		t.Sd = sd
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ type iInitDefault interface {
 	InitDefault()
 }
 
-type fieldDesc struct {
+type structDesc struct {
 	rt reflect.Type // always Kind() == reflect.Struct
 
 	// tmp var for direct type, need to copy to heap before using unsafe.Pointer
@@ -135,7 +135,7 @@ type fieldDesc struct {
 	requiredFields    []*tField
 }
 
-func newFieldDesc(t reflect.Type) (*fieldDesc, error) {
+func newStructDesc(t reflect.Type) (*structDesc, error) {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
@@ -146,7 +146,7 @@ func newFieldDesc(t reflect.Type) (*fieldDesc, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := &fieldDesc{rt: t}
+	d := &structDesc{rt: t}
 	d.rvPool = sync.Pool{
 		New: func() interface{} {
 			rv := reflect.New(t)
@@ -166,7 +166,7 @@ func newFieldDesc(t reflect.Type) (*fieldDesc, error) {
 	return d, nil
 }
 
-func (d *fieldDesc) GetField(fid uint16) *tField {
+func (d *structDesc) GetField(fid uint16) *tField {
 	if fid > d.maxID {
 		return nil
 	}
@@ -177,7 +177,7 @@ func (d *fieldDesc) GetField(fid uint16) *tField {
 	return d.fields[i]
 }
 
-func (d *fieldDesc) fromDefsFields(ff []defs.Field) {
+func (d *structDesc) fromDefsFields(ff []defs.Field) {
 	maxFieldID := uint16(0)
 	for _, f := range ff {
 		if f.ID > maxFieldID {

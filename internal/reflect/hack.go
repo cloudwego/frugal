@@ -164,7 +164,7 @@ func updateIface(p, data unsafe.Pointer) {
 }
 
 // rvTypePtr returns the abi.Type pointer of the given reflect.Value.
-// It used by createOrGetFieldDesc for mapping a struct type to *FieldDesc,
+// It used by createOrGetStructDesc for mapping a struct type to *StructDesc,
 // and also used when Malloc
 func rvTypePtr(rv reflect.Value) uintptr {
 	return (*rvtype)(unsafe.Pointer(&rv)).abiType

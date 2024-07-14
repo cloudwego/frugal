@@ -26,10 +26,10 @@ import (
 func EncodedSize(v interface{}) int {
 	testhackOnce.Do(testhack)
 	rv := reflect.ValueOf(v)
-	fd := getFieldDesc(rv) // copy get and create funcs here for inlining
-	if fd == nil {
+	sd := getStructDesc(rv) // copy get and create funcs here for inlining
+	if sd == nil {
 		var err error
-		fd, err = createFieldDesc(rv)
+		sd, err = createStructDesc(rv)
 		if err != nil {
 			panic(fmt.Sprintf("unexpected err when parse fields: %s", err))
 		}
@@ -38,17 +38,17 @@ func EncodedSize(v interface{}) int {
 	var p unsafe.Pointer
 	if rv.Kind() == reflect.Struct {
 		// unaddressable, need to copy to heap, and then get the ptr
-		prv := fd.rvPool.Get().(*reflect.Value)
-		defer fd.rvPool.Put(prv)
+		prv := sd.rvPool.Get().(*reflect.Value)
+		defer sd.rvPool.Put(prv)
 		(*prv).Elem().Set(rv)
 		p = (*rvtype)(unsafe.Pointer(prv)).ptr // like `rvPtr` without copy
 	} else {
 		// we doesn't support multilevel Pointer like **struct
-		// it checks in createFieldDesc
+		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
 
-	t := &tType{Fd: fd}
+	t := &tType{Sd: sd}
 	n, err := t.EncodedSize(p)
 	if err != nil {
 		panic(fmt.Sprintf("unexpected err: %s", err))
@@ -59,9 +59,9 @@ func EncodedSize(v interface{}) int {
 func Encode(b []byte, v interface{}) (n int, err error) {
 	testhackOnce.Do(testhack)
 	rv := reflect.ValueOf(v)
-	fd := getFieldDesc(rv) // copy get and create funcs here for inlining
-	if fd == nil {
-		fd, err = createFieldDesc(rv)
+	sd := getStructDesc(rv) // copy get and create funcs here for inlining
+	if sd == nil {
+		sd, err = createStructDesc(rv)
 		if err != nil {
 			return 0, err
 		}
@@ -70,17 +70,17 @@ func Encode(b []byte, v interface{}) (n int, err error) {
 	var p unsafe.Pointer
 	if rv.Kind() == reflect.Struct {
 		// unaddressable, need to copy to heap, and then get the ptr
-		prv := fd.rvPool.Get().(*reflect.Value)
-		defer fd.rvPool.Put(prv)
+		prv := sd.rvPool.Get().(*reflect.Value)
+		defer sd.rvPool.Put(prv)
 		(*prv).Elem().Set(rv)
 		p = (*rvtype)(unsafe.Pointer(prv)).ptr // like `rvPtr` without copy
 	} else {
 		// we doesn't support multilevel Pointer like **struct
-		// it checks in createFieldDesc
+		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
 	e := tEncoder{}
-	return e.Encode(b, p, fd)
+	return e.Encode(b, p, sd)
 }
 
 func Decode(b []byte, v interface{}) (int, error) {
@@ -95,12 +95,12 @@ func Decode(b []byte, v interface{}) (int, error) {
 	if rv.Elem().Kind() != reflect.Struct {
 		return 0, errors.New("not a pointer to a struct")
 	}
-	fd, err := getOrcreateFieldDesc(rv)
+	sd, err := getOrcreateStructDesc(rv)
 	if err != nil {
 		return 0, err
 	}
 	d := decoderPool.Get().(*tDecoder)
-	n, err := d.Decode(b, rvUnsafePointer(rv), fd, maxDepthLimit)
+	n, err := d.Decode(b, rvUnsafePointer(rv), sd, maxDepthLimit)
 	decoderPool.Put(d)
 	return n, err
 }

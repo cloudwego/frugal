@@ -21,50 +21,50 @@ import (
 	"unsafe"
 )
 
-// mapFieldDesc represents a read-lock-free hashmap for *fieldDesc like sync.Map.
+// mapStructDesc represents a read-lock-free hashmap for *structDesc like sync.Map.
 // it's NOT designed for writes.
-type mapFieldDesc struct {
+type mapStructDesc struct {
 	p unsafe.Pointer // for atomic, point to hashtable
 }
 
 // XXX: fixed size to make it simple,
 // we may not so many structs that need to rehash it
-const mapFieldDescBuckets = 0xffff
+const mapStructDescBuckets = 0xffff
 
-type mapFieldDescItem struct {
+type mapStructDescItem struct {
 	abiType uintptr
-	fd      *fieldDesc
+	sd      *structDesc
 }
 
-func newMapFieldDesc() *mapFieldDesc {
-	m := &mapFieldDesc{}
-	buckets := make([][]mapFieldDescItem, mapFieldDescBuckets+1) // [0] - [0xffff]
+func newMapStructDesc() *mapStructDesc {
+	m := &mapStructDesc{}
+	buckets := make([][]mapStructDescItem, mapStructDescBuckets+1) // [0] - [0xffff]
 	atomic.StorePointer(&m.p, unsafe.Pointer(&buckets))
 	return m
 }
 
 // Get ...
-func (m *mapFieldDesc) Get(abiType uintptr) *fieldDesc {
-	buckets := *(*[][]mapFieldDescItem)(atomic.LoadPointer(&m.p))
-	dd := buckets[abiType&mapFieldDescBuckets]
+func (m *mapStructDesc) Get(abiType uintptr) *structDesc {
+	buckets := *(*[][]mapStructDescItem)(atomic.LoadPointer(&m.p))
+	dd := buckets[abiType&mapStructDescBuckets]
 	for i := range dd {
 		if dd[i].abiType == abiType {
-			return dd[i].fd
+			return dd[i].sd
 		}
 	}
 	return nil
 }
 
 // Set ...
-// createOrGetFieldDesc will protect calling Set with lock
-func (m *mapFieldDesc) Set(abiType uintptr, fd *fieldDesc) {
-	if m.Get(abiType) == fd {
+// createOrGetStructDesc will protect calling Set with lock
+func (m *mapStructDesc) Set(abiType uintptr, sd *structDesc) {
+	if m.Get(abiType) == sd {
 		return
 	}
-	oldBuckets := *(*[][]mapFieldDescItem)(atomic.LoadPointer(&m.p))
-	newBuckets := make([][]mapFieldDescItem, mapFieldDescBuckets+1)
+	oldBuckets := *(*[][]mapStructDescItem)(atomic.LoadPointer(&m.p))
+	newBuckets := make([][]mapStructDescItem, mapStructDescBuckets+1)
 	copy(newBuckets, oldBuckets)
-	bk := abiType & mapFieldDescBuckets
-	newBuckets[bk] = append(newBuckets[bk], mapFieldDescItem{abiType: abiType, fd: fd})
+	bk := abiType & mapStructDescBuckets
+	newBuckets[bk] = append(newBuckets[bk], mapStructDescItem{abiType: abiType, sd: sd})
 	atomic.StorePointer(&m.p, unsafe.Pointer(&newBuckets))
 }

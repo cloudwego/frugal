@@ -84,7 +84,7 @@ type tType struct {
 	FixedSize  int  // typeToSize[t.T]
 
 	// for tSTRUCT
-	Fd *fieldDesc
+	Sd *structDesc
 
 	// for tLIST, tSET, tMAP, tSTRUCT
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
@@ -188,7 +188,7 @@ func encodedStringSize(p unsafe.Pointer) int {
 }
 
 func (t *tType) EncodedSize(base unsafe.Pointer) (int, error) {
-	fd := t.Fd
+	sd := t.Sd
 	if t.T != 0 { // not from reflect.EncodedSize
 		// for field of a struct, value of a map, or elem of a list,
 		// it's a pointer to struct pointer, then we have to convert it to struct pointer
@@ -197,8 +197,8 @@ func (t *tType) EncodedSize(base unsafe.Pointer) (int, error) {
 	if base == nil {
 		return 1, nil // tSTOP
 	}
-	ret := fd.fixedLenFieldSize
-	for _, f := range fd.varLenFields {
+	ret := sd.fixedLenFieldSize
+	for _, f := range sd.varLenFields {
 		p := unsafe.Add(base, f.Offset)
 		if f.CanSkipEncodeIfNil && *(*unsafe.Pointer)(p) == nil {
 			continue
@@ -226,8 +226,8 @@ func (t *tType) EncodedSize(base unsafe.Pointer) (int, error) {
 		}
 		ret += n
 	}
-	if fd.hasUnknownFields {
-		ret += len(*(*[]byte)(unsafe.Add(base, fd.unknownFieldsOffset)))
+	if sd.hasUnknownFields {
+		ret += len(*(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset)))
 	}
 	ret += 1 // tSTOP
 	return ret, nil

@@ -28,14 +28,14 @@ type tEncoder struct {
 
 // Encode encodes a struct to buf.
 // base is the pointer of the struct
-func (e *tEncoder) Encode(b []byte, base unsafe.Pointer, fd *fieldDesc) (int, error) {
+func (e *tEncoder) Encode(b []byte, base unsafe.Pointer, sd *structDesc) (int, error) {
 	if base == nil {
 		// kitex will encode nil struct with a single byte tSTOP
 		b[0] = byte(tSTOP)
 		return 1, nil
 	}
 	i := 0
-	for _, f := range fd.fields {
+	for _, f := range sd.fields {
 		t := f.Type
 		p := unsafe.Add(base, f.Offset)
 		if f.CanSkipEncodeIfNil && *(*unsafe.Pointer)(p) == nil {
@@ -58,7 +58,7 @@ func (e *tEncoder) Encode(b []byte, base unsafe.Pointer, fd *fieldDesc) (int, er
 			i += encodeSimpleTypes(t.T, b[i:], p)
 		} else if t.T == tSTRUCT {
 			// tSTRUCT always is pointer?
-			n, err := e.Encode(b[i:], *(*unsafe.Pointer)(p), t.Fd)
+			n, err := e.Encode(b[i:], *(*unsafe.Pointer)(p), t.Sd)
 			if err != nil {
 				return i, err
 			}
@@ -71,8 +71,8 @@ func (e *tEncoder) Encode(b []byte, base unsafe.Pointer, fd *fieldDesc) (int, er
 			i += n
 		}
 	}
-	if fd.hasUnknownFields {
-		xb := *(*[]byte)(unsafe.Add(base, fd.unknownFieldsOffset))
+	if sd.hasUnknownFields {
+		xb := *(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset))
 		if len(xb) > 0 {
 			i += copy(b[i:], xb)
 		}
@@ -104,7 +104,7 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 			if kt.SimpleType { // fast path
 				i += encodeSimpleTypes(kt.T, b[i:], kp)
 			} else {
-				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(kp), kt.Fd)
+				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(kp), kt.Sd)
 				if err != nil {
 					return i, err
 				}
@@ -116,7 +116,7 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 				i += encodeSimpleTypes(vt.T, b[i:], vp)
 			} else if vt.T == tSTRUCT {
 				// tSTRUCT always is pointer?
-				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(vp), vt.Fd)
+				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(vp), vt.Sd)
 				if err != nil {
 					return i, err
 				}
@@ -156,7 +156,7 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 				i += encodeSimpleTypes(vt.T, b[i:], vp)
 			} else if vt.T == tSTRUCT {
 				// tSTRUCT always is pointer?
-				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(vp), vt.Fd)
+				n, err := e.Encode(b[i:], *(*unsafe.Pointer)(vp), vt.Sd)
 				if err != nil {
 					return i, err
 				}
