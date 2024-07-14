@@ -138,8 +138,8 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 			b[4], b[3], b[2], b[1] = 0, 0, 0, 0
 			return listHeaderLen, nil
 		}
-		h := (*stringHeader)(p) // use stringHeader, we never touch h.Cap
-		if t.T == tSET {        // for tSET, check duplicated items
+		h := (*sliceHeader)(p)
+		if t.T == tSET { // for tSET, check duplicated items
 			if err := checkUniqueness(t.V, h); err != nil {
 				return listHeaderLen, err
 			}

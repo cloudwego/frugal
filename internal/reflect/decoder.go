@@ -285,9 +285,33 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		}
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
 		h.Data = x
+
+		// pre-allocate space for elements if they're pointers
+		// like
+		// v[i] = &sliceData[i]
+		// instead of
+		// v[i] = new(type)
+		var sliceData unsafe.Pointer
+		if et.IsPointer {
+			sliceData = d.Malloc(l*et.V.Size, et.V.Align, et.V.MallocAbiType)
+		}
+
 		p = x // point to the 1st element, and then decode one by one
 		for j := 0; j < l; j++ {
-			vp := d.mallocIfPointer(et, p)
+			if j != 0 {
+				p = unsafe.Add(p, et.Size) // next element
+			}
+			vp := p // v[j]
+
+			// p = &sliceData[j], see comment of sliceData above
+			if et.IsPointer {
+				if j != 0 {
+					sliceData = unsafe.Add(sliceData, et.V.Size) // next
+				}
+				*(*unsafe.Pointer)(p) = sliceData // v[j] = &sliceData[i]
+				vp = sliceData                    // &v[j]
+			}
+
 			if et.FixedSize > 0 {
 				i += decodeFixedSizeTypes(et.T, b[i:], vp)
 			} else {
@@ -296,9 +320,6 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 					return i, err
 				}
 				i += n
-			}
-			if j != l-1 {
-				p = unsafe.Add(p, et.Size) // next element
 			}
 		}
 		return i, nil

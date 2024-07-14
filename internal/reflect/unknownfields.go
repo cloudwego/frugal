@@ -16,7 +16,10 @@
 
 package reflect
 
-import "sync"
+import (
+	"sync"
+	"unsafe"
+)
 
 type unknownFieldIdx struct {
 	off int
@@ -24,31 +27,35 @@ type unknownFieldIdx struct {
 }
 
 type unknownFields struct {
+	sz   int
 	offs []unknownFieldIdx
 }
 
 func (p *unknownFields) Reset() {
+	p.sz = 0
 	p.offs = p.offs[:0]
 }
 
 func (p *unknownFields) Add(off, sz int) {
+	p.sz += sz
 	p.offs = append(p.offs, unknownFieldIdx{off: off, sz: sz})
 }
 
 func (p *unknownFields) Size() int {
-	sz := 0
-	for i := range p.offs {
-		sz += p.offs[i].sz
-	}
-	return sz
+	return p.sz
 }
 
 func (p *unknownFields) Copy(b []byte) []byte {
-	i := 0
-	ret := make([]byte, p.Size()) // use span?
+	sz := p.Size()
+	ret := []byte{}
+	h := (*sliceHeader)(unsafe.Pointer(&ret))
+	h.Data = mallocgc(uintptr(sz), nil, false) // without zeroing
+	h.Len = sz
+	h.Cap = sz
+	off := 0
 	for _, x := range p.offs {
-		copy(ret[i:], b[x.off:x.off+x.sz])
-		i += x.sz
+		copy(ret[off:], b[x.off:x.off+x.sz])
+		off += x.sz
 	}
 	return ret
 }

@@ -48,36 +48,36 @@ func lookupFieldName(rt reflect.Type, offset uintptr) string {
 	return "unknown"
 }
 
-func checkUniqueness(t *tType, h *stringHeader) error {
+func checkUniqueness(t *tType, h *sliceHeader) error {
 	var uniq bool
 	switch t.T {
 	case tBOOL:
 		var vv []bool
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessBool(vv)
 	case tI08:
 		var vv []int8
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessInt8(vv)
 	case tI16:
 		var vv []int16
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessInt16(vv)
 	case tI32:
 		var vv []int32
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessInt32(vv)
 	case tI64, tENUM:
 		var vv []int64
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessInt64(vv)
 	case tDOUBLE:
 		var vv []float64
-		*(*stringHeader)(unsafe.Pointer(&vv)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
 		uniq = checkUniquenessFloat64(vv)
 	case tSTRING:
 		var ss []string
-		*(*stringHeader)(unsafe.Pointer(&ss)) = *h
+		*(*sliceHeader)(unsafe.Pointer(&ss)) = *h
 		uniq = checkUniquenessString(ss)
 	default: // tSTRUCT?
 		// NOTE: tSTRUCT is not always comparable, and it's not common for set
