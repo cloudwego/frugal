@@ -109,7 +109,7 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
 	}
 
 	/* still not found, do the actual resolving */
-	if fv, ex = doResolveFields(vt); ex != nil {
+	if fv, ex = DoResolveFields(vt); ex != nil {
 		return nil, ex
 	}
 
@@ -118,7 +118,10 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
 	return fv, nil
 }
 
-func doResolveFields(vt reflect.Type) ([]Field, error) {
+// DoResolveFields ... no cache, use ResolveFields instead.
+// it's only used by reflect pkg for less objects,
+// coz reflect pkg has its own cache.
+func DoResolveFields(vt reflect.Type) ([]Field, error) {
 	var err error
 	var ret []Field
 	var mem reflect.Value

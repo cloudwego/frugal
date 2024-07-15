@@ -77,6 +77,7 @@ type tType struct {
 	MallocAbiType uintptr // 0 if a type contains no pointer
 
 	// tmp var for reflect.Type, use `rvWithPtr` to copy-on-write
+	// only used for newMapIter
 	RV reflect.Value
 
 	IsPointer  bool // true if t.Tag == defs.T_pointer
@@ -127,6 +128,11 @@ func newTType(x *defs.Type) *tType {
 		return t
 	}
 	t := &tType{}
+
+	// newTType is always succuess, update cache as soon as it's created
+	// this func is called with lock, no need to add a additional one.
+	ttypes[k] = t
+
 	t.T = ttype(x.Tag())
 	t.WT = t.T
 	t.Tag = x.T
@@ -137,14 +143,14 @@ func newTType(x *defs.Type) *tType {
 	t.Size = int(x.S.Size())
 	t.Align = x.S.Align()
 
-	t.RV = reflect.New(t.RT) // alloc on heap, make it addressable
-	t.RV = t.RV.Elem()
-	switch t.RV.Kind() {
+	switch t.RT.Kind() {
 	case reflect.Array, reflect.Map, reflect.Ptr, reflect.Slice, reflect.String, reflect.Struct:
-		t.MallocAbiType = rvTypePtr(t.RV) // pass to mallocgc
+		t.MallocAbiType = rtTypePtr(t.RT) // pass to mallocgc
 	}
 
 	if t.T == tMAP {
+		t.RV = reflect.New(t.RT) // alloc on heap, make it addressable
+		t.RV = t.RV.Elem()
 		t.MapTmpVarsPool = initOrGetMapTmpVarsPool(t)
 	}
 	t.IsPointer = t.Tag == defs.T_pointer
@@ -158,7 +164,6 @@ func newTType(x *defs.Type) *tType {
 	case tSTRUCT:
 		t.EncodedSizeFunc = t.EncodedSize
 	}
-	ttypes[k] = t
 	if x.K != nil {
 		t.K = newTType(x.K)
 	}
@@ -198,7 +203,8 @@ func (t *tType) EncodedSize(base unsafe.Pointer) (int, error) {
 		return 1, nil // tSTOP
 	}
 	ret := sd.fixedLenFieldSize
-	for _, f := range sd.varLenFields {
+	for _, i := range sd.varLenFields {
+		f := sd.fields[i]
 		p := unsafe.Add(base, f.Offset)
 		if f.CanSkipEncodeIfNil && *(*unsafe.Pointer)(p) == nil {
 			continue
@@ -258,11 +264,9 @@ func (t *tType) encodedMapSize(p unsafe.Pointer) (int, error) {
 		return ret, nil // fast path
 	}
 
-	mv := rvWithPtr(t.RV, p)
-
 	// we already skipped primitive types.
 	// need to handle tSTRING, tMAP, tLIST, tSET or tSTRUCT
-	it := newMapIter(mv)
+	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		// Key
 		// tSTRING, tSTRUCT

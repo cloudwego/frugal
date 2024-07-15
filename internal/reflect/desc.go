@@ -52,11 +52,8 @@ func createStructDesc(rv reflect.Value) (*structDesc, error) {
 		if rt.Kind() != reflect.Struct {
 			return nil, errType
 		}
-		// XXX: only for rvTypePtr
-		// make sure rvTypePtr returns reflect.Struct abiType
-		rv = reflect.New(rt).Elem()
 	}
-	abiType := rvTypePtr(rv)
+	abiType := rtTypePtr(rt)
 	mapStructDescWriteMu.Lock()
 	defer mapStructDescWriteMu.Unlock()
 	if sd := sds.Get(abiType); sd != nil {
@@ -67,6 +64,9 @@ func createStructDesc(rv reflect.Value) (*structDesc, error) {
 		return nil, err
 	}
 	sds.Set(abiType, sd)
+	if rv.Kind() == reflect.Ptr {
+		sds.Set(rvTypePtr(rv), sd) // *struct and struct share the same structDesc
+	}
 	return sd, nil
 }
 
@@ -130,9 +130,9 @@ type structDesc struct {
 	hasUnknownFields    bool // for the _unknownFields feature
 	unknownFieldsOffset uintptr
 
-	fixedLenFieldSize int       // sum of f.EncodedSize() > 0
-	varLenFields      []*tField // list of fields that f.EncodedSize() <= 0
-	requiredFields    []*tField
+	fixedLenFieldSize int   // sum of f.EncodedSize() > 0
+	varLenFields      []int // maps to fields. list of fields that f.EncodedSize() <= 0
+	requiredFieldIDs  []uint16
 }
 
 func newStructDesc(t reflect.Type) (*structDesc, error) {
@@ -142,7 +142,7 @@ func newStructDesc(t reflect.Type) (*structDesc, error) {
 	if t.Kind() != reflect.Struct {
 		return nil, errType
 	}
-	ff, err := defs.ResolveFields(t)
+	ff, err := defs.DoResolveFields(t)
 	if err != nil {
 		return nil, err
 	}
@@ -189,21 +189,23 @@ func (d *structDesc) fromDefsFields(ff []defs.Field) {
 	for i := range d.fieldIdx {
 		d.fieldIdx[i] = -1
 	}
+	fields := make([]tField, len(ff))
 	d.fields = make([]*tField, len(ff))
 	for i, f := range ff {
-		d.fields[i] = &tField{}
+		d.fields[i] = &fields[i]
 		d.fields[i].fromDefsField(f)
 		d.fieldIdx[f.ID] = i
 	}
-	d.varLenFields = make([]*tField, 0, len(ff))
-	for _, f := range d.fields {
+	d.varLenFields = make([]int, 0, len(ff))
+	d.requiredFieldIDs = make([]uint16, 0, len(ff))
+	for i, f := range d.fields {
 		if n := f.EncodedSize(); n > 0 {
 			d.fixedLenFieldSize += n
 		} else {
-			d.varLenFields = append(d.varLenFields, f)
+			d.varLenFields = append(d.varLenFields, i)
 		}
 		if f.Spec == defs.Required {
-			d.requiredFields = append(d.requiredFields, f)
+			d.requiredFieldIDs = append(d.requiredFieldIDs, f.ID)
 		}
 	}
 }

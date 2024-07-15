@@ -96,8 +96,7 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 		}
 		binary.BigEndian.PutUint32(b[2:], uint32(maplen(*(*unsafe.Pointer)(p))))
 		i := mapHeaderLen
-		mv := rvWithPtr(t.RV, p)
-		it := newMapIter(mv)
+		it := newMapIter(rvWithPtr(t.RV, p))
 		for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 			// Key
 			// SimpleType or tSTRUCT

@@ -67,11 +67,11 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		return 0, errDepthLimitExceeded
 	}
 	var bs *bitset
-	if len(sd.requiredFields) > 0 {
+	if len(sd.requiredFieldIDs) > 0 {
 		bs = bitsetPool.Get().(*bitset)
 		defer bitsetPool.Put(bs)
-		for _, f := range sd.requiredFields {
-			bs.unset(f.ID)
+		for _, f := range sd.requiredFieldIDs {
+			bs.unset(f)
 		}
 	}
 
@@ -123,9 +123,9 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 			bs.set(f.ID)
 		}
 	}
-	for _, f := range sd.requiredFields {
-		if !bs.test(f.ID) {
-			return i, newRequiredFieldNotSetException(lookupFieldName(sd.rt, f.Offset))
+	for _, fid := range sd.requiredFieldIDs {
+		if !bs.test(fid) {
+			return i, newRequiredFieldNotSetException(lookupFieldName(sd.rt, sd.GetField(fid).Offset))
 		}
 	}
 	if ufs != nil && ufs.Size() > 0 {

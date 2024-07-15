@@ -65,6 +65,11 @@ func testhack() {
 		panic("compatibility issue found: rvTypePtr")
 	}
 
+	if rtTypePtr(reflect.TypeOf(m1)) != rvTypePtr(reflect.ValueOf(m1)) ||
+		rtTypePtr(reflect.New(rv.Type()).Elem().Type()) != rvTypePtr(rv) {
+		panic("compatibility issue found: rtTypePtr")
+	}
+
 	var f iFoo = &dog{"test"} // update itab
 	if f.Foo() != "test" {
 		panic("never goes here ...")
@@ -152,14 +157,13 @@ func rvPtr(rv reflect.Value) unsafe.Pointer {
 	return (*rvtype)(unsafe.Pointer(&rv)).ptr
 }
 
-type iface struct {
-	tab  uintptr
-	data unsafe.Pointer
-}
-
 // updateIface updates the underlying data ptr of a iface.
 // PLEASE MAKE SURE the iface.tab matches the data pointer
 func updateIface(p, data unsafe.Pointer) {
+	type iface struct {
+		tab  uintptr
+		data unsafe.Pointer
+	}
 	(*iface)(p).data = data
 }
 
@@ -168,6 +172,16 @@ func updateIface(p, data unsafe.Pointer) {
 // and also used when Malloc
 func rvTypePtr(rv reflect.Value) uintptr {
 	return (*rvtype)(unsafe.Pointer(&rv)).abiType
+}
+
+// rtTypePtr returns the abi.Type pointer of the given reflect.Type.
+// *rtype of reflect pkg shares the same data struct with *abi.Type
+func rtTypePtr(rt reflect.Type) uintptr {
+	type iface struct {
+		tab  uintptr
+		data uintptr
+	}
+	return (*iface)(unsafe.Pointer(&rt)).data
 }
 
 // same as reflect.StringHeader with Data type is unsafe.Pointer
