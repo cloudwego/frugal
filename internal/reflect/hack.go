@@ -17,72 +17,109 @@
 package reflect
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
-	"sync"
+	"runtime"
 	"unsafe"
 )
 
-var testhackOnce sync.Once
+var hackErrMsg string
+
+func init() {
+	err := testhack()
+	if err != nil {
+		hackErrMsg = fmt.Sprintf("[BUG] Please upgrade frgual to latest version.\n"+
+			"If the issue still exists kindly report to author.\n"+
+			"Err: %s/%s %s", runtime.Version(), runtime.GOARCH, err)
+	}
+}
+
+func panicIfHackErr() {
+	if len(hackErrMsg) > 0 {
+		panic(hackErrMsg)
+	}
+}
 
 // this func should be called once to test compatibility with Go runtime
-func testhack() {
-	m := map[int]string{7: "hello"}
-	rv := reflect.ValueOf(m)
-	it := newMapIter(rv)
-	kp, vp := it.Next()
-	if *(*int)(kp) != 7 || *(*string)(vp) != "hello" {
-		panic("compatibility issue found: mapIter")
+func testhack() error {
+	{ // mapIter
+		m := map[int]string{7: "hello"}
+		rv := reflect.ValueOf(m)
+		it := newMapIter(rv)
+		kp, vp := it.Next()
+		if *(*int)(kp) != 7 || *(*string)(vp) != "hello" {
+			return errors.New("compatibility issue found: mapIter")
+		}
 	}
 
-	m[8] = "world"
-	m[9] = "!"
-	m[10] = "?"
-	if maplen(rvUnsafePointer(rv)) != 4 {
-		panic("compatibility issue found: maplen")
+	{ // maplen
+		m := map[int]string{}
+		m[8] = "world"
+		m[9] = "!"
+		m[10] = "?"
+		if maplen(rvUnsafePointer(reflect.ValueOf(m))) != 3 {
+			return errors.New("compatibility issue found: maplen")
+		}
 	}
 
-	rv1 := reflect.New(rv.Type()).Elem()
-	// rv1 is indirect value, it doesn't like rv from eface.
-	// so we need to get the addr of rvUnsafePointer
-	tmpp := rvUnsafePointer(rv)
-	rv1 = rvWithPtr(rv1, unsafe.Pointer(&tmpp))
-	if p0, p1 := rvUnsafePointer(rv), rvUnsafePointer(rv1); p0 != p1 {
-		panic(fmt.Sprintf("compatibility issue found: rvWithPtr %p -> %p", p0, p1))
-	}
-	m1, ok := rv1.Interface().(map[int]string)
-	if !ok || !reflect.DeepEqual(m, m1) {
-		panic("compatibility issue found: rvWithPtr (Interface())")
-	}
-
-	m2 := map[int]string{}
-	m3 := map[int]*string{}
-	m4 := map[int]*string{}
-
-	if rvTypePtr(reflect.ValueOf(m1)) != rvTypePtr(reflect.ValueOf(m2)) ||
-		rvTypePtr(reflect.ValueOf(m3)) != rvTypePtr(reflect.ValueOf(m4)) ||
-		rvTypePtr(reflect.ValueOf(m2)) == rvTypePtr(reflect.ValueOf(m4)) {
-		panic("compatibility issue found: rvTypePtr")
+	{ // rvWithPtr
+		m := map[int]string{7: "hello"}
+		rv := reflect.NewAt(reflect.TypeOf(m), unsafe.Pointer(&m)).Elem()
+		rv1 := rvWithPtr(rv, unsafe.Pointer(&m))
+		if p0, p1 := rvUnsafePointer(rv), rvUnsafePointer(rv1); p0 != p1 {
+			return fmt.Errorf("compatibility issue found: rvWithPtr %p -> %p m=%p", p0, p1, &m)
+		}
+		m1, ok := rv1.Interface().(map[int]string)
+		if !ok || !reflect.DeepEqual(m, m1) {
+			return errors.New("compatibility issue found: rvWithPtr (Interface())")
+		}
 	}
 
-	if rtTypePtr(reflect.TypeOf(m1)) != rvTypePtr(reflect.ValueOf(m1)) ||
-		rtTypePtr(reflect.New(rv.Type()).Elem().Type()) != rvTypePtr(rv) {
-		panic("compatibility issue found: rtTypePtr")
+	{ // rvTypePtr, rtTypePtr
+		m1 := map[int]string{}
+		m2 := map[int]*string{}
+		m3 := map[int]*string{}
+		rv := reflect.New(reflect.TypeOf(m1)).Elem()
+
+		if rvTypePtr(reflect.ValueOf(m1)) != rvTypePtr(rv) ||
+			rvTypePtr(reflect.ValueOf(m2)) != rvTypePtr(reflect.ValueOf(m3)) ||
+			rvTypePtr(reflect.ValueOf(m1)) == rvTypePtr(reflect.ValueOf(m2)) {
+			return errors.New("compatibility issue found: rvTypePtr")
+		}
+
+		if rtTypePtr(reflect.TypeOf(m1)) != rtTypePtr(rv.Type()) ||
+			rtTypePtr(reflect.TypeOf(m2)) != rtTypePtr(reflect.TypeOf(m3)) ||
+			rtTypePtr(reflect.TypeOf(m1)) == rtTypePtr(reflect.TypeOf(m3)) {
+			return errors.New("compatibility issue found: rtTypePtr")
+		}
+
+		if rtTypePtr(reflect.TypeOf(m1)) != rvTypePtr(rv) ||
+			rtTypePtr(reflect.TypeOf(m2)) != rvTypePtr(reflect.ValueOf(m3)) {
+			return errors.New("compatibility issue found: rtTypePtr<>rvTypePtr")
+		}
 	}
 
-	var f iFoo = &dog{"test"} // update itab
-	if f.Foo() != "test" {
-		panic("never goes here ...")
+	{
+		f := iFoo(&dog{"test"}) // init itab with iFoo
+		f1 := f                 // copy itab to f1
+
+		//  change f1 data pointer to d
+		d := &dog{sound: "woof"}
+		updateIface(unsafe.Pointer(&f1), unsafe.Pointer(d))
+
+		//  f1 calls d.Foo()
+		if f1.Foo() != d.sound {
+			return fmt.Errorf("compatibility issue found: updateIface %s <> %s", f1.Foo(), d.sound)
+		}
+
+		// f remains unchanged
+		if f.Foo() != "test" {
+			return fmt.Errorf("compatibility issue found: updateIface %s <> %s", f.Foo(), "test")
+		}
 	}
-	f1 := f // copy itab
-	d := &dog{sound: "woof"}
-	updateIface(unsafe.Pointer(&f1), unsafe.Pointer(d)) // update data pointer
-	if f1.Foo() != d.sound {
-		panic("compatibility issue found: updateIface")
-	}
-	if f.Foo() != "test" { // won't change, coz it's copied to f1
-		panic("compatibility issue found: updateIface")
-	}
+
+	return nil
 }
 
 // ↓↓↓ for testing updateIface

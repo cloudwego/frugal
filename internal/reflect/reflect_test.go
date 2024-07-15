@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	testhackOnce.Do(testhack)
+	panicIfHackErr()
 }
 
 func TestMain(m *testing.M) {

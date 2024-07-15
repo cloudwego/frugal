@@ -24,7 +24,7 @@ import (
 )
 
 func EncodedSize(v interface{}) int {
-	testhackOnce.Do(testhack)
+	panicIfHackErr()
 	rv := reflect.ValueOf(v)
 	sd := getStructDesc(rv) // copy get and create funcs here for inlining
 	if sd == nil {
@@ -57,7 +57,7 @@ func EncodedSize(v interface{}) int {
 }
 
 func Encode(b []byte, v interface{}) (n int, err error) {
-	testhackOnce.Do(testhack)
+	panicIfHackErr()
 	rv := reflect.ValueOf(v)
 	sd := getStructDesc(rv) // copy get and create funcs here for inlining
 	if sd == nil {
@@ -84,7 +84,7 @@ func Encode(b []byte, v interface{}) (n int, err error) {
 }
 
 func Decode(b []byte, v interface{}) (int, error) {
-	testhackOnce.Do(testhack)
+	panicIfHackErr()
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr {
 		return 0, errors.New("not a pointer")
