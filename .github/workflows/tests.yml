@@ -3,22 +3,42 @@ name: Tests
 on: [ push, pull_request ]
 
 jobs:
-  unit-benchmark-test:
+  compatibility-test-amd64:
     strategy:
       matrix:
         go: [ "1.17", "1.18", "1.19", "1.20", "1.21", "1.22" ]
         os: [ X64 ]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
+          cache: false # don't use cache for self-hosted runners
+      - name: Test ./...
+        run: go test -race ./...
+      - name: Test ./tests
+        run: cd tests && go test -race
+      - name: Test Benchmark
+        run: go test -bench=. -benchmem -run=none ./... -benchtime=100ms
 
-      - name: Unit Test
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
-
-      - name: Benchmark
-        run: go test -bench=. -benchmem -run=none ./...
+  compatibility-test-arm64:
+    strategy:
+      matrix:
+        go: [ "1.17", "1.18", "1.19", "1.20", "1.21", "1.22" ]
+        os: [ ARM64 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false # don't use cache for self-hosted runners
+      - name: Test ./... # only tests reflect pkg, JIT pkgs is not supported
+        run: go test -race ./internal/reflect
+      - name: Test ./tests
+        run: cd tests && go test -race
+      - name: Test Benchmark
+        run: go test -bench=. -benchmem -run=none ./internal/reflect -benchtime=100ms

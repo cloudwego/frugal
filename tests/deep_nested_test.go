@@ -17,7 +17,6 @@
 package tests
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/cloudwego/frugal"
@@ -95,19 +94,7 @@ var (
 )
 
 func TestDeepNested(t *testing.T) {
-	exit := make(chan int)
-	go func() {
-		for {
-			select {
-			case <-exit:
-				t.Logf("exit gc loop")
-			default:
-				runtime.GC()
-			}
-		}
-	}()
 	for i := 0; i < 100; i++ {
 		frugal.EncodedSize(deepNested)
 	}
-	exit <- 0
 }
