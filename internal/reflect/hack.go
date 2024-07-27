@@ -221,17 +221,29 @@ func rtTypePtr(rt reflect.Type) uintptr {
 	return (*iface)(unsafe.Pointer(&rt)).data
 }
 
-// same as reflect.StringHeader with Data type is unsafe.Pointer
+// same as reflect.StringHeader
 type stringHeader struct {
-	Data unsafe.Pointer
+	Data uintptr
 	Len  int
 }
 
-// same as reflect.SliceHeader with Data type is unsafe.Pointer
+// UnsafePointer ... for passing checkptr
+// `p := unsafe.Pointer(h.Data)` is NOT allowed when testing with -race
+func (h *stringHeader) UnsafePointer() unsafe.Pointer {
+	return *(*unsafe.Pointer)(unsafe.Pointer(h))
+}
+
+// same as reflect.SliceHeader
 type sliceHeader struct {
-	Data unsafe.Pointer
+	Data uintptr
 	Len  int
 	Cap  int
+}
+
+// UnsafePointer ... for passing checkptr
+// `p := unsafe.Pointer(h.Data)` is NOT allowed when testing with -race
+func (h *sliceHeader) UnsafePointer() unsafe.Pointer {
+	return *(*unsafe.Pointer)(unsafe.Pointer(h))
 }
 
 //go:linkname mallocgc runtime.mallocgc

@@ -145,7 +145,7 @@ func (e *tEncoder) encodeContainerType(t *tType, b []byte, p unsafe.Pointer) (in
 		}
 		binary.BigEndian.PutUint32(b[1:], uint32(h.Len))
 		i := listHeaderLen
-		vp := h.Data
+		vp := h.UnsafePointer()
 		// list elements
 		for j := 0; j < h.Len; j++ {
 			if j != 0 {

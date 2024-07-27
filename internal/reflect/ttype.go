@@ -310,7 +310,10 @@ func (t *tType) encodedListSize(p unsafe.Pointer) (int, error) {
 		return listHeaderLen + (h.Len * vt.FixedSize), nil
 	}
 	ret := listHeaderLen
-	vp := unsafe.Pointer(h.Data)
+	if h.Len == 0 {
+		return ret, nil
+	}
+	vp := h.UnsafePointer()
 	for i := 0; i < h.Len; i++ {
 		if i != 0 {
 			vp = unsafe.Add(vp, vt.Size) //  move to next element

@@ -17,6 +17,7 @@
 package reflect
 
 import (
+	"runtime"
 	"sync"
 	"unsafe"
 )
@@ -47,9 +48,10 @@ func (p *unknownFields) Size() int {
 
 func (p *unknownFields) Copy(b []byte) []byte {
 	sz := p.Size()
+	data := mallocgc(uintptr(sz), nil, false) //  without zeroing
 	ret := []byte{}
 	h := (*sliceHeader)(unsafe.Pointer(&ret))
-	h.Data = mallocgc(uintptr(sz), nil, false) // without zeroing
+	h.Data = uintptr(data)
 	h.Len = sz
 	h.Cap = sz
 	off := 0
@@ -57,6 +59,7 @@ func (p *unknownFields) Copy(b []byte) []byte {
 		copy(ret[off:], b[x.off:x.off+x.sz])
 		off += x.sz
 	}
+	runtime.KeepAlive(data)
 	return ret
 }
 
