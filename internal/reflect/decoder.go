@@ -27,6 +27,18 @@ import (
 	"github.com/cloudwego/frugal/internal/binary/defs"
 )
 
+var (
+	zerob   = make([]byte, 0)
+	zerostr = ""
+
+	// for slice, Data should points to zerobase var in `runtime`
+	// so that it can represent as []type{} instead of []type(nil)
+	zeroSliceHeader = *(*sliceHeader)(unsafe.Pointer(&zerob))
+
+	// for string, all fields should be zero
+	zeroStrHeader = *(*stringHeader)(unsafe.Pointer(&zerostr))
+)
+
 const maxDepthLimit = 1023
 
 var decoderPool = sync.Pool{
@@ -169,17 +181,22 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		l := int(binary.BigEndian.Uint32(b))
 		i += 4
 		if l == 0 {
+			if t.Tag == defs.T_binary {
+				*(*sliceHeader)(p) = zeroSliceHeader
+			} else {
+				*(*stringHeader)(p) = zeroStrHeader
+			}
 			return i, nil
 		}
 		x := d.Malloc(l, 1, 0)
 		if t.Tag == defs.T_binary {
 			h := (*sliceHeader)(p)
-			h.Data = x
+			h.Data = uintptr(x)
 			h.Len = l
 			h.Cap = l
 		} else { //  convert to str
 			h := (*stringHeader)(p)
-			h.Data = x
+			h.Data = uintptr(x)
 			h.Len = l
 		}
 		copyn(x, b[i:], l)
@@ -193,7 +210,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		// check types
 		kt := t.K
 		vt := t.V
-		if t0 != kt.T || t1 != vt.T {
+		if t0 != kt.WT || t1 != vt.WT {
 			return 0, errors.New("type mismatch")
 		}
 
@@ -218,11 +235,11 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		// instead of
 		// kp = new(type), decode(b, kp)
 		var sliceK unsafe.Pointer
-		if kt.IsPointer {
+		if kt.IsPointer && l > 0 {
 			sliceK = d.Malloc(l*kt.V.Size, kt.V.Align, kt.V.MallocAbiType)
 		}
 		var sliceV unsafe.Pointer
-		if vt.IsPointer {
+		if vt.IsPointer && l > 0 {
 			sliceV = d.Malloc(l*vt.V.Size, vt.V.Align, vt.V.MallocAbiType)
 		}
 
@@ -271,20 +288,21 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 		// check types
 		et := t.V
-		if et.T != tp {
+		if et.WT != tp {
 			return 0, errors.New("type mismatch")
 		}
 
 		// decode list
 		h := (*sliceHeader)(p) // update the slice field
-		h.Data = unsafe.Pointer(nil)
+		h.Data = 0
 		h.Len = l
 		h.Cap = l
 		if l <= 0 {
+			*(*sliceHeader)(p) = zeroSliceHeader
 			return i, nil
 		}
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
-		h.Data = x
+		h.Data = uintptr(x)
 
 		// pre-allocate space for elements if they're pointers
 		// like

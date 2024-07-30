@@ -18,6 +18,7 @@ package tests
 
 import (
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
@@ -29,6 +30,14 @@ import (
 	"github.com/cloudwego/frugal/internal/binary/defs"
 	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
 )
+
+func init() {
+	go func() { // it checks unsafe pointer issues
+		for {
+			runtime.GC()
+		}
+	}()
+}
 
 type MyNode struct {
 	Name string `thrift:"Name,1" frugal:"1,default,string" json:"Name"`

@@ -89,9 +89,17 @@ func TestDecode(t *testing.T) {
 			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, vFloat64, p1.Double) },
 		},
 		{
-			name:   "case_string",
-			update: func(p0 *TestTypes) { p0.String_ = "str" },
-			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, "str", p1.String_) },
+			name:   "case_string_binary",
+			update: func(p0 *TestTypes) { p0.String_ = "str"; p0.Binary = []byte{1} },
+			test: func(t *testing.T, p1 *TestTypes) {
+				assert.Equal(t, "str", p1.String_)
+				assert.Equal(t, []byte{1}, p1.Binary)
+			},
+		},
+		{
+			name:   "case_zero_len_binary",
+			update: func(p0 *TestTypes) { p0.Binary = []byte{} },
+			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, []byte{}, p1.Binary) },
 		},
 		{
 			name:   "case_enum",
@@ -134,6 +142,19 @@ func TestDecode(t *testing.T) {
 				assert.Equal(t, []int32{1, 2}, p1.L0)
 				assert.Equal(t, []string{"hello", "world"}, p1.L1)
 				assert.Equal(t, []*Msg{{}, {Type: vInt32}}, p1.L2)
+			},
+		},
+		{
+			name: "case_zero_len_list",
+			update: func(p0 *TestTypes) {
+				p0.L0 = []int32{}
+				p0.L1 = []string{}
+				p0.L2 = []*Msg{}
+			},
+			test: func(t *testing.T, p1 *TestTypes) {
+				assert.Equal(t, []int32{}, p1.L0)
+				assert.Equal(t, []string{}, p1.L1)
+				assert.Equal(t, []*Msg{}, p1.L2)
 			},
 		},
 		{
