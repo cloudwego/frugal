@@ -8,14 +8,15 @@ require (
 	github.com/cloudwego/kitex v0.10.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/google/gofuzz v1.0.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
-	github.com/bytedance/gopkg v0.0.0-20240514070511-01b2cbcf35e1 // indirect
+	github.com/bytedance/gopkg v0.0.0-20240711085056-a03554c296f8 // indirect
 	github.com/bytedance/sonic v1.11.8 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
+	github.com/cloudwego/gopkg v0.1.0 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/cloudwego/runtimex v0.1.0 // indirect
 	github.com/cloudwego/thriftgo v0.3.6 // indirect

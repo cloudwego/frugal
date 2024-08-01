@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDecode(t *testing.T) {
-
 	rand.Seed(time.Now().Unix())
 
 	type testcase struct {
@@ -121,14 +121,14 @@ func TestDecode(t *testing.T) {
 			update: func(p0 *TestTypes) {
 				p0.M0 = map[int32]int32{vInt32: vInt32 - 1, 1: 2}
 				p0.M1 = map[int32]string{vInt32 - 2: "hello", 1: "2"}
-				p0.M2 = map[int32]*Msg{vInt32 - 3: nil, 1: &Msg{Type: 2}}
-				p0.M3 = map[string]*Msg{"hello": &Msg{Type: vInt32 - 4}}
+				p0.M2 = map[int32]*Msg{vInt32 - 3: nil, 1: {Type: 2}}
+				p0.M3 = map[string]*Msg{"hello": {Type: vInt32 - 4}}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
 				assert.Equal(t, map[int32]int32{vInt32: vInt32 - 1, 1: 2}, p1.M0)
 				assert.Equal(t, map[int32]string{vInt32 - 2: "hello", 1: "2"}, p1.M1)
-				assert.Equal(t, map[int32]*Msg{vInt32 - 3: &Msg{}, 1: &Msg{Type: 2}}, p1.M2)
-				assert.Equal(t, map[string]*Msg{"hello": &Msg{Type: vInt32 - 4}}, p1.M3)
+				assert.Equal(t, map[int32]*Msg{vInt32 - 3: {}, 1: {Type: 2}}, p1.M2)
+				assert.Equal(t, map[string]*Msg{"hello": {Type: vInt32 - 4}}, p1.M3)
 			},
 		},
 		{
@@ -182,9 +182,10 @@ func TestDecode(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(b), n)
 
-			n, err = skipType(tSTRUCT, b, maxDepthLimit)
+			// verify by gopkg thrift
+			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
 			require.NoError(t, err)
-			require.Equal(t, len(b), n)
+			require.Equal(t, n, len(b))
 
 			p1 := &TestTypes{}
 			n, err = Decode(b, p1)

@@ -77,12 +77,12 @@ func TestEncode(t *testing.T) {
 		},
 		{
 			name:   "case_map_with_string_struct",
-			update: func(p *TestTypesOptional) { p.M3 = map[string]*Msg{"1": nil, "2": &Msg{Type: 3}} }, // 36
+			update: func(p *TestTypesOptional) { p.M3 = map[string]*Msg{"1": nil, "2": {Type: 3}} }, // 36
 			expect: encodedTestTypesOptionalSize + fhdr + mhdr + (shdr + 1 + 1) + (shdr + 1 + encodedMsgSize),
 		},
 		{
 			name:   "case_map_with_i32_list",
-			update: func(p *TestTypesOptional) { p.ML = map[int32][]int32{1: []int32{1, 2}, 2: []int32{3, 4}} },
+			update: func(p *TestTypesOptional) { p.ML = map[int32][]int32{1: {1, 2}, 2: {3, 4}} },
 			expect: encodedTestTypesOptionalSize + fhdr + mhdr + 2*(4+lhdr+2*4),
 		},
 		{
@@ -102,7 +102,7 @@ func TestEncode(t *testing.T) {
 		},
 		{
 			name:   "case_list_with_map",
-			update: func(p *TestTypesOptional) { p.LM = []map[int32]int32{map[int32]int32{1: 2}} },
+			update: func(p *TestTypesOptional) { p.LM = []map[int32]int32{{1: 2}} },
 			expect: encodedTestTypesOptionalSize + fhdr + lhdr + mhdr + 4 + 4,
 		},
 	}

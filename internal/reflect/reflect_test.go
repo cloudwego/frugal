@@ -57,10 +57,10 @@ func initTestTypesForBenchmark() *TestTypesForBenchmark {
 		3: 4,
 	}
 	ret.M1 = map[string]*Msg{
-		"k1":    &Msg{Type: 1},
-		"k1231": &Msg{Type: 2},
-		"k233":  &Msg{Type: 3},
-		"k12":   &Msg{Type: 4},
+		"k1":    {Type: 1},
+		"k1231": {Type: 2},
+		"k233":  {Type: 3},
+		"k12":   {Type: 4},
 	}
 	ret.L0 = []int32{1, 2, 3}
 	ret.L1 = []*Msg{{Type: 1}, {Type: 2}, {Type: 3}}

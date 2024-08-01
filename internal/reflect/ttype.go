@@ -18,6 +18,7 @@ package reflect
 
 import (
 	"reflect"
+	"strconv"
 	"sync"
 	"unsafe"
 
@@ -48,6 +49,29 @@ const (
 	// internal use only
 	tENUM ttype = 0xfe // XXX: kitex issue, int64, but encode as int32 ...
 )
+
+var t2s = [256]string{
+	tBOOL:   "BOOL",
+	tI08:    "I08",
+	tI16:    "I16",
+	tI32:    "I32",
+	tI64:    "I64",
+	tDOUBLE: "DOUBLE",
+	tSTRING: "STRING",
+	tSTRUCT: "STRUCT",
+	tMAP:    "MAP",
+	tSET:    "SET",
+	tLIST:   "LIST",
+	// no tENUM, it's NOT a wiretype
+}
+
+func ttype2str(t ttype) string {
+	ret := t2s[t]
+	if ret == "" {
+		return "unknown[" + strconv.Itoa(int(t)) + "]"
+	}
+	return ret
+}
 
 var simpleTypes = [256]bool{
 	tBOOL:   true,
