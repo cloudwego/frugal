@@ -31,14 +31,15 @@ const (
 
 //go:linkname lastmoduledatap runtime.lastmoduledatap
 //goland:noinspection GoUnusedGlobalVariable
-var lastmoduledatap *_ModuleData
+var lastmoduledatap unsafe.Pointer
 
 //go:linkname moduledataverify1 runtime.moduledataverify1
 func moduledataverify1(_ *_ModuleData)
 
 var (
 	/* retains local reference of all modules to bypass gc */
-	modList = utils.ListNode{}
+	modList0 = utils.ListNode{} // all frugal _ModuleData
+	modList1 = utils.ListNode{} // all runtime.moduledata
 )
 
 func toZigzag(v int) int {
@@ -74,33 +75,23 @@ func encodeVariant(v int) []byte {
 	return r
 }
 
-func registerModule(mod *_ModuleData) {
-	modList.Prepend(unsafe.Pointer(mod))
-	registerModuleLockFree(&lastmoduledatap, mod)
+func registerModule(p *_ModuleData) {
+	mod := asRuntimeModuleData(p)
+	modList0.Prepend(unsafe.Pointer(p))
+	modList1.Prepend(mod)
+	registerModuleLockFree(&lastmoduledatap, mod, rtModuleDataFields["next"].off)
 }
 
-func registerModuleLockFree(tail **_ModuleData, mod *_ModuleData) {
+func registerModuleLockFree(tail *unsafe.Pointer, mod unsafe.Pointer, nextoff uintptr) {
+	// oldmod := tail
+	// tail = mod
+	// oldmod.next = mod
 	for {
-		oldTail := loadModule(tail)
-		if casModule(tail, oldTail, mod) {
-			storeModule(&oldTail.next, mod)
+		oldmod := atomic.LoadPointer(tail)
+		if atomic.CompareAndSwapPointer(tail, oldmod, mod) {
+			p := unsafe.Add(oldmod, nextoff) // &oldmod.next
+			atomic.StorePointer((*unsafe.Pointer)(p), mod)
 			break
 		}
 	}
-}
-
-func loadModule(p **_ModuleData) *_ModuleData {
-	return (*_ModuleData)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(p))))
-}
-
-func storeModule(p **_ModuleData, value *_ModuleData) {
-	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(p)), unsafe.Pointer(value))
-}
-
-func casModule(p **_ModuleData, oldValue *_ModuleData, newValue *_ModuleData) bool {
-	return atomic.CompareAndSwapPointer(
-		(*unsafe.Pointer)(unsafe.Pointer(p)),
-		unsafe.Pointer(oldValue),
-		unsafe.Pointer(newValue),
-	)
 }

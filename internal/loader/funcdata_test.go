@@ -17,32 +17,35 @@
 package loader
 
 import (
-    "testing"
-    "sync"
+	"reflect"
+	"sync"
+	"testing"
+	"unsafe"
 )
 
 func Test_registerModuleLockFree(t *testing.T) {
-    n, parallel := 1000, 8
-    head := _ModuleData{}
-    tail := &head
-    wg := sync.WaitGroup{}
-    wg.Add(parallel)
-    filler := func(n int) {
-        defer wg.Done()
-        for i := 0; i < n; i++ {
-            m := &_ModuleData{}
-            registerModuleLockFree(&tail, m)
-        }
-    }
-    for i := 0; i < parallel; i++ {
-        go filler(n)
-    }
-    wg.Wait()
-    i := 0
-    for p := head.next; p != nil; p = p.next {
-        i += 1
-    }
-    if i != parallel * n {
-        t.Errorf("got %v, expected %v", i, parallel * n)
-    }
+	fnext, _ := reflect.TypeOf(_ModuleData{}).FieldByName("next")
+	n, parallel := 1000, 8
+	head := _ModuleData{}
+	tail := &head
+	wg := sync.WaitGroup{}
+	wg.Add(parallel)
+	filler := func(n int) {
+		defer wg.Done()
+		for i := 0; i < n; i++ {
+			m := &_ModuleData{}
+			registerModuleLockFree((*unsafe.Pointer)(unsafe.Pointer(&tail)), unsafe.Pointer(m), fnext.Offset)
+		}
+	}
+	for i := 0; i < parallel; i++ {
+		go filler(n)
+	}
+	wg.Wait()
+	i := 0
+	for p := head.next; p != nil; p = p.next {
+		i += 1
+	}
+	if i != parallel*n {
+		t.Errorf("got %v, expected %v", i, parallel*n)
+	}
 }
