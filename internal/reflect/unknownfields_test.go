@@ -43,5 +43,4 @@ func TestUnknownFields(t *testing.T) {
 	p.Add(8, 2)
 	assert.Equal(t, 5, p.Size())
 	assert.Equal(t, []byte{'1', '2', '3', '8', '9'}, p.Copy(b))
-
 }

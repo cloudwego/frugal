@@ -136,7 +136,6 @@ type TestTypesWithDefault struct {
 
 func NewTestTypesWithDefault() *TestTypesWithDefault {
 	return &TestTypesWithDefault{
-
 		FBool:   true,
 		FByte:   2,
 		I8:      3,
@@ -197,7 +196,6 @@ type TestTypesForBenchmark struct {
 
 func NewTestTypesForBenchmark() *TestTypesForBenchmark {
 	return &TestTypesForBenchmark{
-
 		B0:   true,
 		Str0: "8",
 		Str3: "9",

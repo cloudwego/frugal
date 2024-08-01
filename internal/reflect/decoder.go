@@ -18,13 +18,13 @@ package reflect
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"unsafe"
 
 	"github.com/cloudwego/frugal/internal/binary/defs"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 var (
@@ -106,7 +106,7 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 
 		f := sd.GetField(fid)
 		if f == nil {
-			n, err := skipType(tp, b[i:], maxdepth-1)
+			n, err := thrift.Binary.Skip(b[i:], thrift.TType(tp))
 			if err != nil {
 				return i, fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
@@ -118,7 +118,7 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		}
 		t := f.Type
 		if t.WT != tp {
-			return i, errors.New("type mismatch")
+			return i, newTypeMismatch(t.WT, tp)
 		}
 		p := unsafe.Add(base, f.Offset) // pointer to the field
 		p = d.mallocIfPointer(t, p)
@@ -177,9 +177,11 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 	}
 	switch t.T {
 	case tSTRING:
-		i := 0
 		l := int(binary.BigEndian.Uint32(b))
-		i += 4
+		if l < 0 {
+			return 0, errNegativeSize
+		}
+		i := 4
 		if l == 0 {
 			if t.Tag == defs.T_binary {
 				*(*sliceHeader)(p) = zeroSliceHeader
@@ -205,13 +207,15 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 	case tMAP:
 		// map header
 		t0, t1, l := ttype(b[0]), ttype(b[1]), int(binary.BigEndian.Uint32(b[2:]))
-		i := 6
+		if l < 0 {
+			return 0, errNegativeSize
+		}
 
 		// check types
 		kt := t.K
 		vt := t.V
 		if t0 != kt.WT || t1 != vt.WT {
-			return 0, errors.New("type mismatch")
+			return 0, newTypeMismatchKV(kt.WT, vt.WT, t0, t1)
 		}
 
 		// decode map
@@ -243,6 +247,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			sliceV = d.Malloc(l*vt.V.Size, vt.V.Align, vt.V.MallocAbiType)
 		}
 
+		i := 6
 		for j := 0; j < l; j++ {
 			p = kp
 			if kt.IsPointer { // p = &sliceK[j]
@@ -284,13 +289,16 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 	case tLIST, tSET: // NOTE: for tSET, it may be map in the future
 		// list header
 		tp, l := ttype(b[0]), int(binary.BigEndian.Uint32(b[1:]))
-		i := 5
-
+		if l < 0 {
+			return 0, errNegativeSize
+		}
 		// check types
 		et := t.V
 		if et.WT != tp {
-			return 0, errors.New("type mismatch")
+			return 0, newTypeMismatch(et.WT, tp)
 		}
+
+		i := 5
 
 		// decode list
 		h := (*sliceHeader)(p) // update the slice field
@@ -350,91 +358,4 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		return d.Decode(b, p, t.Sd, maxdepth-1)
 	}
 	return 0, fmt.Errorf("unknown type: %d", t.T)
-}
-
-func skipstr(b []byte) int {
-	return 4 + int(binary.BigEndian.Uint32(b))
-}
-
-// skipType skips over the value for the given type using Go implementation.
-func skipType(t ttype, b []byte, maxdepth int) (int, error) {
-	if maxdepth == 0 {
-		return 0, errDepthLimitExceeded
-	}
-	if n := typeToSize[t]; n > 0 {
-		return int(n), nil
-	}
-	switch t {
-	case tSTRING:
-		return skipstr(b), nil
-	case tMAP:
-		i := 6
-		kt, vt, sz := ttype(b[0]), ttype(b[1]), int32(binary.BigEndian.Uint32(b[2:]))
-		if sz < 0 {
-			return 0, errInvalidData
-		}
-		ksz, vsz := int(typeToSize[kt]), int(typeToSize[vt])
-		if ksz > 0 && vsz > 0 {
-			return i + (int(sz) * (ksz + vsz)), nil
-		}
-		for j := int32(0); j < sz; j++ {
-			if ksz > 0 {
-				i += ksz
-			} else if kt == tSTRING {
-				i += skipstr(b[i:])
-			} else if n, err := skipType(kt, b[i:], maxdepth-1); err != nil {
-				return i, err
-			} else {
-				i += n
-			}
-			if vsz > 0 {
-				i += vsz
-			} else if vt == tSTRING {
-				i += skipstr(b[i:])
-			} else if n, err := skipType(vt, b[i:], maxdepth-1); err != nil {
-				return i, err
-			} else {
-				i += n
-			}
-		}
-		return i, nil
-	case tLIST, tSET:
-		i := 5
-		vt, sz := ttype(b[0]), int32(binary.BigEndian.Uint32(b[1:]))
-		if sz < 0 {
-			return 0, errInvalidData
-		}
-		if typeToSize[vt] > 0 {
-			return i + int(sz)*int(typeToSize[vt]), nil
-		}
-		for j := int32(0); j < sz; j++ {
-			if vt == tSTRING {
-				i += skipstr(b[i:])
-			} else if n, err := skipType(vt, b[i:], maxdepth-1); err != nil {
-				return i, err
-			} else {
-				i += n
-			}
-		}
-		return i, nil
-	case tSTRUCT:
-		i := 0
-		for {
-			ft := ttype(b[i])
-			i += 1 // ttype
-			if ft == tSTOP {
-				return i, nil
-			}
-			i += 2 // Field ID
-			if typeToSize[ft] > 0 {
-				i += int(typeToSize[ft])
-			} else if n, err := skipType(ft, b[i:], maxdepth-1); err != nil {
-				return i, err
-			} else {
-				i += n
-			}
-		}
-	default:
-		return 0, newUnknownDataTypeException(t)
-	}
 }

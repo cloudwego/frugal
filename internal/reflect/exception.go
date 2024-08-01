@@ -18,11 +18,13 @@ package reflect
 
 import (
 	"fmt"
+
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 var (
-	errDepthLimitExceeded = &tProtocolException{t: thrift_DEPTH_LIMIT, m: "depth limit exceeded"}
-	errInvalidData        = &tProtocolException{t: thrift_INVALID_DATA, m: "invalid data"}
+	errDepthLimitExceeded = thrift.NewProtocolException(thrift.DEPTH_LIMIT, "depth limit exceeded")
+	errNegativeSize       = thrift.NewProtocolException(thrift.NEGATIVE_SIZE, "negative size")
 )
 
 // tProtocolException implements TProtocolException of apache thrift
@@ -31,36 +33,30 @@ type tProtocolException struct {
 	m string
 }
 
-// consts from in github.com/apache/thrift@v0.13.0/lib/go/thrift
-const (
-	thrift_UNKNOWN_PROTOCOL_EXCEPTION = 0
-	thrift_INVALID_DATA               = 1
-	thrift_NEGATIVE_SIZE              = 2
-	thrift_SIZE_LIMIT                 = 3
-	thrift_BAD_VERSION                = 4
-	thrift_NOT_IMPLEMENTED            = 5
-	thrift_DEPTH_LIMIT                = 6
-)
-
-// TypeId implements apache thrift TProtocolException
-func (t *tProtocolException) TypeId() int { return thrift_INVALID_DATA }
-
-// TypeID implements kitex TypeID interface
-func (t *tProtocolException) TypeID() int { return thrift_INVALID_DATA }
-
-func (e *tProtocolException) String() string { return e.m }
-func (e *tProtocolException) Error() string  { return e.m }
-
 func newRequiredFieldNotSetException(name string) error {
-	return &tProtocolException{
-		t: thrift_INVALID_DATA,
-		m: fmt.Sprintf("required field %q is not set", name),
-	}
+	return thrift.NewProtocolException(
+		thrift.INVALID_DATA,
+		fmt.Sprintf("required field %q is not set", name),
+	)
 }
 
 func newUnknownDataTypeException(t ttype) error {
-	return &tProtocolException{
-		t: thrift_INVALID_DATA,
-		m: fmt.Sprintf("unknown data type %d", t),
-	}
+	return thrift.NewProtocolException(
+		thrift.INVALID_DATA,
+		fmt.Sprintf("unknown data type %d", t),
+	)
+}
+
+func newTypeMismatch(expect, got ttype) error {
+	return thrift.NewProtocolException(
+		thrift.INVALID_DATA,
+		fmt.Sprintf("type mismatch. expect %s, got %s",
+			ttype2str(expect), ttype2str(got)))
+}
+
+func newTypeMismatchKV(gotk, gotv, expectk, expectv ttype) error {
+	return thrift.NewProtocolException(
+		thrift.INVALID_DATA,
+		fmt.Sprintf("type mismatch. got map[%s]%s, expect map[%s]%s",
+			ttype2str(expectk), ttype2str(expectv), ttype2str(gotk), ttype2str(gotv)))
 }

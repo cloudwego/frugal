@@ -25,8 +25,10 @@ import (
 	"github.com/cloudwego/frugal/internal/binary/defs"
 )
 
-var mapStructDescWriteMu sync.Mutex
-var sds = newMapStructDesc()
+var (
+	sdsmu sync.Mutex
+	sds   = newMapStructDesc()
+)
 
 func getOrcreateStructDesc(rv reflect.Value) (*structDesc, error) {
 	sd := sds.Get(rvTypePtr(rv))
@@ -54,8 +56,8 @@ func createStructDesc(rv reflect.Value) (*structDesc, error) {
 		}
 	}
 	abiType := rtTypePtr(rt)
-	mapStructDescWriteMu.Lock()
-	defer mapStructDescWriteMu.Unlock()
+	sdsmu.Lock()
+	defer sdsmu.Unlock()
 	if sd := sds.Get(abiType); sd != nil {
 		return sd, nil
 	}
