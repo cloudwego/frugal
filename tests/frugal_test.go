@@ -27,7 +27,7 @@ import (
 
 	"github.com/cloudwego/frugal"
 	"github.com/cloudwego/frugal/debug"
-	"github.com/cloudwego/frugal/internal/binary/defs"
+	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
 )
 

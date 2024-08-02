@@ -28,7 +28,7 @@ import (
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
-	"github.com/cloudwego/frugal/internal/binary/defs"
+	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"

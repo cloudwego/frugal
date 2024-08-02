@@ -16,9 +16,8 @@
 
 package iov
 
+import "github.com/cloudwego/gopkg/protocol/thrift"
+
 // BufferWriter implement zero-copy buffer writing.
-type BufferWriter interface {
-	// WriteDirect appends buf to the underlying buffer chain
-	// without copy. It splits the original buffer at remainingCap.
-	WriteDirect(buf []byte, remainingCap int) error
-}
+// Deprecated: use github.com/cloudwego/gopkg/protocol/thrift.NocopyWriter
+type BufferWriter = thrift.NocopyWriter
