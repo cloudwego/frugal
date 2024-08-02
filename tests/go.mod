@@ -24,7 +24,6 @@ require (
 	github.com/google/pprof v0.0.0-20220608213341-c488b8fa1db3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/oleiade/lane v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	golang.org/x/arch v0.8.0 // indirect

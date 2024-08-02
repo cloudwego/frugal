@@ -17,9 +17,9 @@
 package debug
 
 import (
-	"github.com/cloudwego/frugal/internal/binary/decoder"
-	"github.com/cloudwego/frugal/internal/binary/encoder"
-	"github.com/cloudwego/frugal/internal/loader"
+	"github.com/cloudwego/frugal/internal/jit/decoder"
+	"github.com/cloudwego/frugal/internal/jit/encoder"
+	"github.com/cloudwego/frugal/internal/jit/loader"
 )
 
 // A Stats records statistics about the JIT compiler.

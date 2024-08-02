@@ -22,7 +22,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cloudwego/frugal/internal/binary/defs"
+	"github.com/cloudwego/frugal/internal/defs"
 )
 
 type ttype uint8

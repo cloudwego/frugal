@@ -40,13 +40,6 @@ func newRequiredFieldNotSetException(name string) error {
 	)
 }
 
-func newUnknownDataTypeException(t ttype) error {
-	return thrift.NewProtocolException(
-		thrift.INVALID_DATA,
-		fmt.Sprintf("unknown data type %d", t),
-	)
-}
-
 func newTypeMismatch(expect, got ttype) error {
 	return thrift.NewProtocolException(
 		thrift.INVALID_DATA,

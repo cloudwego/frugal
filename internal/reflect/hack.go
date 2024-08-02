@@ -227,12 +227,6 @@ type stringHeader struct {
 	Len  int
 }
 
-// UnsafePointer ... for passing checkptr
-// `p := unsafe.Pointer(h.Data)` is NOT allowed when testing with -race
-func (h *stringHeader) UnsafePointer() unsafe.Pointer {
-	return *(*unsafe.Pointer)(unsafe.Pointer(h))
-}
-
 // same as reflect.SliceHeader
 type sliceHeader struct {
 	Data uintptr
