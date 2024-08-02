@@ -17,9 +17,6 @@
 package rt
 
 import (
-	"fmt"
-	"reflect"
-	"testing"
 	"unsafe"
 )
 
@@ -48,37 +45,6 @@ func (bv *bitvector) ptrbit(i uintptr) uint8 {
 	return (b >> (i % 8)) & 1
 }
 
-//go:linkname findfunc runtime.findfunc
-func findfunc(_ uintptr) funcInfo
-
-//go:linkname funcdata runtime.funcdata
-func funcdata(_ funcInfo, _ uint8) unsafe.Pointer
-
-//go:linkname stackmapdata runtime.stackmapdata
-func stackmapdata(_ *StackMap, _ int32) bitvector
-
-func stackMap(f interface{}) (*StackMap, *StackMap) {
-	fv := reflect.ValueOf(f)
-	if fv.Kind() != reflect.Func {
-		panic("f must be reflect.Func kind!")
-	}
-	fi := findfunc(fv.Pointer())
-	args := funcdata(fi, uint8(_FUNCDATA_ArgsPointerMaps))
-	locals := funcdata(fi, uint8(_FUNCDATA_LocalsPointerMaps))
-	return (*StackMap)(args), (*StackMap)(locals)
-}
-
-func dumpstackmap(m *StackMap) {
-	for i := int32(0); i < m.N; i++ {
-		fmt.Printf("bitmap #%d/%d: ", i, m.L)
-		bv := stackmapdata(m, i)
-		for j := int32(0); j < bv.n; j++ {
-			fmt.Printf("%d ", bv.ptrbit(uintptr(j)))
-		}
-		fmt.Printf("\n")
-	}
-}
-
 var keepalive struct {
 	s  string
 	i  int
@@ -97,12 +63,4 @@ func stackmaptestfunc(s string, i int, vp unsafe.Pointer, sb interface{}, fv uin
 	keepalive.sb = sb
 	keepalive.fv = fv
 	return
-}
-
-func TestStackMap_Dump(t *testing.T) {
-	args, locals := stackMap(stackmaptestfunc)
-	println("--- args ---")
-	dumpstackmap(args)
-	println("--- locals ---")
-	dumpstackmap(locals)
 }

@@ -1,5 +1,5 @@
-//go:build !go1.16 || go1.23
-// +build !go1.16 go1.23
+//go:build !go1.16 || go1.24
+// +build !go1.16 go1.24
 
 /*
  * Copyright 2022 CloudWeGo Authors
@@ -25,9 +25,9 @@ import (
 
 // triggers a compilation error
 const (
-	_ = panic("Unsupported Go version. Supported versions are 1.17 ~ 1.22")
+	_ = panic("Unsupported Go version. Supported versions are 1.17 ~ 1.23")
 )
 
 func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-	panic("Unsupported Go version. Supported versions are 1.17 ~ 1.22")
+	panic("Unsupported Go version. Supported versions are 1.17 ~ 1.23")
 }
