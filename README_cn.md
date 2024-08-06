@@ -2,50 +2,63 @@
 
 [English](README.md) | 中文
 
-一款基于 JIT 编译的高性能动态 Thrift 编解码器。
+一种无需生成代码、高性能的动态 Thrift 编解码器。
+
+它实现了纯 Go 版本（或reflect版本）和 即时编译（JIT）版本。
+由于在大多数情况下，reflect版本的性能优于 JIT 版本，并且它可以在不同的 CPU 架构上运行，
+因此我们计划从 Go 1.24 开始废弃 JIT 版本。
+
+在 Go 1.24 之前：
+
+* JIT 版本是 `amd64` 的默认编解码器。
+* reflect 版本仅在运行在 `!amd64` 或 `windows` 上时启用
+* 您可以通过指定操作系统环境变量 `FRUGAL_NO_JIT=1` 来启用reflect版本
+
+自 Go 1.24 起：
+
+* reflect 版本成为默认编解码器。
+* JIT 代码将在 go build 时跳过不执行
 
 ## 特点
 
 ### 无需生成代码
 
-传统的 Thrift 编解码方式，要求用户必须要先生成编解码代码，Frugal 通过 JIT 编译技术在运行时动态生成编解码机器代码，避免了这一过程。
+传统的 Thrift 编解码方式，要求用户必须要先生成编解码代码，Frugal 通过反射 struct field tag 动态生成编解码器避免了这一过程。
 
 ### 高性能
 
-基于 JIT 技术 Frugal 可以生成比 Go 语言编译器性能更好的机器代码，在多核场景下，Frugal 的性能可以达到传统编解码方式的 5 倍左右。
+基于 `frugal/tests` 的测试用例，Frugal 的性能 比 Apache Thrift (TBinaryProtocol) 好 1 到 4 倍。
+
+不同的测试用例，结果可能会有些差异。欢迎给我们分享你的测试数据。
+
 
 ```text
-name                                 old time/op    new time/op     delta
-MarshalAllSize_Parallel/small-16       78.8ns ± 0%     14.9ns ± 0%    -81.10%
-MarshalAllSize_Parallel/medium-16      1.34µs ± 0%     0.32µs ± 0%    -76.32%
-MarshalAllSize_Parallel/large-16       37.7µs ± 0%      9.4µs ± 0%    -75.02%
-UnmarshalAllSize_Parallel/small-16      368ns ± 0%       30ns ± 0%    -91.90%
-UnmarshalAllSize_Parallel/medium-16    11.9µs ± 0%      0.8µs ± 0%    -92.98%
-UnmarshalAllSize_Parallel/large-16      233µs ± 0%       21µs ± 0%    -90.99%
+go version go1.22.5 linux/amd64
 
-name                                 old speed      new speed       delta
-MarshalAllSize_Parallel/small-16     7.31GB/s ± 0%  38.65GB/s ± 0%   +428.84%
-MarshalAllSize_Parallel/medium-16    12.9GB/s ± 0%   54.7GB/s ± 0%   +322.10%
-MarshalAllSize_Parallel/large-16     11.7GB/s ± 0%   46.8GB/s ± 0%   +300.26%
-UnmarshalAllSize_Parallel/small-16   1.56GB/s ± 0%  19.31GB/s ± 0%  +1134.41%
-UnmarshalAllSize_Parallel/medium-16  1.46GB/s ± 0%  20.80GB/s ± 0%  +1324.55%
-UnmarshalAllSize_Parallel/large-16   1.89GB/s ± 0%  20.98GB/s ± 0%  +1009.73%
+goos: linux
+goarch: amd64
+pkg: github.com/cloudwego/frugal/tests
+cpu: Intel(R) Xeon(R) Gold 5118 CPU @ 2.30GHz
 
-name                                 old alloc/op   new alloc/op    delta
-MarshalAllSize_Parallel/small-16         112B ± 0%         0B        -100.00%
-MarshalAllSize_Parallel/medium-16        112B ± 0%         0B        -100.00%
-MarshalAllSize_Parallel/large-16         779B ± 0%        57B ± 0%    -92.68%
-UnmarshalAllSize_Parallel/small-16     1.31kB ± 0%     0.10kB ± 0%    -92.76%
-UnmarshalAllSize_Parallel/medium-16      448B ± 0%      3022B ± 0%   +574.55%
-UnmarshalAllSize_Parallel/large-16     1.13MB ± 0%     0.07MB ± 0%    -93.54%
+Marshal_ApacheThrift/small-4          	 2070745	     584.0 ns/op	 998.32 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/medium-4         	   78729	     13680 ns/op	1280.57 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/large-4          	    3097	    376184 ns/op	1179.75 MB/s	     620 B/op	       1 allocs/op
+Marshal_Frugal_JIT/small-4            	 4939591	     242.1 ns/op	2407.83 MB/s	      13 B/op	       0 allocs/op
+Marshal_Frugal_JIT/medium-4           	  160820	      7485 ns/op	2340.29 MB/s	      54 B/op	       0 allocs/op
+Marshal_Frugal_JIT/large-4            	    5370	    214258 ns/op	2071.35 MB/s	     338 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/small-4        	10171197	     117.3 ns/op	4970.90 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/medium-4       	  180207	      6644 ns/op	2636.73 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/large-4        	    6312	    185534 ns/op	2392.04 MB/s	       0 B/op	       0 allocs/op
 
-name                                 old allocs/op  new allocs/op   delta
-MarshalAllSize_Parallel/small-16         1.00 ± 0%       0.00        -100.00%
-MarshalAllSize_Parallel/medium-16        1.00 ± 0%       0.00        -100.00%
-MarshalAllSize_Parallel/large-16         1.00 ± 0%       0.00        -100.00%
-UnmarshalAllSize_Parallel/small-16       6.00 ± 0%       1.00 ± 0%    -83.33%
-UnmarshalAllSize_Parallel/medium-16      6.00 ± 0%      30.00 ± 0%   +400.00%
-UnmarshalAllSize_Parallel/large-16      4.80k ± 0%      0.76k ± 0%    -84.10%
+Unmarshal_ApacheThrift/small-4        	  768525	      1443 ns/op	 403.94 MB/s	    1232 B/op	       5 allocs/op
+Unmarshal_ApacheThrift/medium-4       	   24463	     47067 ns/op	 372.19 MB/s	   44816 B/op	     176 allocs/op
+Unmarshal_ApacheThrift/large-4        	    1053	   1155725 ns/op	 384.00 MB/s	 1135540 B/op	    4433 allocs/op
+Unmarshal_Frugal_JIT/small-4          	 2575767	     466.3 ns/op	1250.36 MB/s	     547 B/op	       2 allocs/op
+Unmarshal_Frugal_JIT/medium-4         	   62128	     19333 ns/op	 906.12 MB/s	   19404 B/op	      89 allocs/op
+Unmarshal_Frugal_JIT/large-4          	    2328	    496431 ns/op	 893.99 MB/s	  495906 B/op	    2283 allocs/op
+Unmarshal_Frugal_Reflect/small-4      	 2770252	     437.2 ns/op	1333.60 MB/s	     544 B/op	       1 allocs/op
+Unmarshal_Frugal_Reflect/medium-4     	   64232	     18183 ns/op	 963.45 MB/s	   19945 B/op	      57 allocs/op
+Unmarshal_Frugal_Reflect/large-4      	    2325	    496415 ns/op	 894.02 MB/s	  511876 B/op	    1467 allocs/op
 ```
 
 ## 用 Frugal 可以做什么？

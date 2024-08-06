@@ -19,7 +19,9 @@
 package frugal
 
 import (
+	"os"
 	"reflect"
+	"strconv"
 	"sync"
 
 	"github.com/cloudwego/frugal/internal/jit/decoder"
@@ -29,6 +31,14 @@ import (
 	"github.com/cloudwego/frugal/internal/opts"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
+
+var nojit bool
+
+func init() {
+	if v, err := strconv.ParseBool(os.Getenv("FRUGAL_NO_JIT")); err == nil {
+		nojit = v
+	}
+}
 
 func jitEncodedSize(val interface{}) int {
 	return encoder.EncodedSize(val)

@@ -50,12 +50,10 @@ func GetStats() Stats {
 			Alloc: int(loader.LoadSize),
 		},
 		Encoder: CacheStats{
-			Hit:  int(encoder.HitCount),
 			Miss: int(encoder.MissCount),
 			Size: int(encoder.TypeCount),
 		},
 		Decoder: CacheStats{
-			Hit:  int(decoder.HitCount),
 			Miss: int(decoder.MissCount),
 			Size: int(decoder.TypeCount),
 		},

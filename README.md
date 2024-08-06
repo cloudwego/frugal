@@ -2,50 +2,61 @@
 
 English | [中文](README_cn.md)
 
-A very fast dynamic Thrift serializer &amp; deserializer based on just-in-time compilation.
+A very fast dynamic Thrift serializer & deserializer without generating code.
+
+It implements a pure Go version (or reflect version) and a just-in-time(JIT) compilation version.
+Since the reflect version performs better than the JIT version in most cases and it works on different cpu architectures,
+so we plan to deprecate the JIT version starting with Go 1.24.
+
+Before Go 1.24:
+* JIT version is the default serializer & deserializer for `amd64`.
+* reflect version is only enabled when running on `!amd64` or `windows`
+* You can enable the reflect version by specifying os env `FRUGAL_NO_JIT=1`
+
+Since Go 1.24:
+* reflect version is the default serializer & deserializer.
+* JIT code will be skipped by go build tags.
+
 
 ## Features
 
 ### Code Generation Free
 
-Traditional Thrift serializer and deserializer are based on generated code which is no longer needed since we can use JIT compilation to dynamically generate machine code.
+Traditional Thrift serializer and deserializer are based on generated code which is no longer needed since we can make use of struct field tags.
 
 ### High Performance
 
-Thanks to JIT compilation, Frugal can generate better machine code than Go language compiler. In multi-core scenarios, Frugal's performance is about 5 times higher than that of traditional serializer and deserializer.
+Based on the test cases in `frugal/tests`, Frugal's performance is 1 to 4 times better than Apache Thrift (TBinaryProtocol).
+
+There may be variations between different test cases. Feel free to share your test cases with us.
 
 ```text
-name                                 old time/op    new time/op     delta
-MarshalAllSize_Parallel/small-16       78.8ns ± 0%     14.9ns ± 0%    -81.10%
-MarshalAllSize_Parallel/medium-16      1.34µs ± 0%     0.32µs ± 0%    -76.32%
-MarshalAllSize_Parallel/large-16       37.7µs ± 0%      9.4µs ± 0%    -75.02%
-UnmarshalAllSize_Parallel/small-16      368ns ± 0%       30ns ± 0%    -91.90%
-UnmarshalAllSize_Parallel/medium-16    11.9µs ± 0%      0.8µs ± 0%    -92.98%
-UnmarshalAllSize_Parallel/large-16      233µs ± 0%       21µs ± 0%    -90.99%
+go version go1.22.5 linux/amd64
 
-name                                 old speed      new speed       delta
-MarshalAllSize_Parallel/small-16     7.31GB/s ± 0%  38.65GB/s ± 0%   +428.84%
-MarshalAllSize_Parallel/medium-16    12.9GB/s ± 0%   54.7GB/s ± 0%   +322.10%
-MarshalAllSize_Parallel/large-16     11.7GB/s ± 0%   46.8GB/s ± 0%   +300.26%
-UnmarshalAllSize_Parallel/small-16   1.56GB/s ± 0%  19.31GB/s ± 0%  +1134.41%
-UnmarshalAllSize_Parallel/medium-16  1.46GB/s ± 0%  20.80GB/s ± 0%  +1324.55%
-UnmarshalAllSize_Parallel/large-16   1.89GB/s ± 0%  20.98GB/s ± 0%  +1009.73%
+goos: linux
+goarch: amd64
+pkg: github.com/cloudwego/frugal/tests
+cpu: Intel(R) Xeon(R) Gold 5118 CPU @ 2.30GHz
 
-name                                 old alloc/op   new alloc/op    delta
-MarshalAllSize_Parallel/small-16         112B ± 0%         0B        -100.00%
-MarshalAllSize_Parallel/medium-16        112B ± 0%         0B        -100.00%
-MarshalAllSize_Parallel/large-16         779B ± 0%        57B ± 0%    -92.68%
-UnmarshalAllSize_Parallel/small-16     1.31kB ± 0%     0.10kB ± 0%    -92.76%
-UnmarshalAllSize_Parallel/medium-16      448B ± 0%      3022B ± 0%   +574.55%
-UnmarshalAllSize_Parallel/large-16     1.13MB ± 0%     0.07MB ± 0%    -93.54%
+Marshal_ApacheThrift/small-4          	 2070745	     584.0 ns/op	 998.32 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/medium-4         	   78729	     13680 ns/op	1280.57 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/large-4          	    3097	    376184 ns/op	1179.75 MB/s	     620 B/op	       1 allocs/op
+Marshal_Frugal_JIT/small-4            	 4939591	     242.1 ns/op	2407.83 MB/s	      13 B/op	       0 allocs/op
+Marshal_Frugal_JIT/medium-4           	  160820	      7485 ns/op	2340.29 MB/s	      54 B/op	       0 allocs/op
+Marshal_Frugal_JIT/large-4            	    5370	    214258 ns/op	2071.35 MB/s	     338 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/small-4        	10171197	     117.3 ns/op	4970.90 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/medium-4       	  180207	      6644 ns/op	2636.73 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal_Reflect/large-4        	    6312	    185534 ns/op	2392.04 MB/s	       0 B/op	       0 allocs/op
 
-name                                 old allocs/op  new allocs/op   delta
-MarshalAllSize_Parallel/small-16         1.00 ± 0%       0.00        -100.00%
-MarshalAllSize_Parallel/medium-16        1.00 ± 0%       0.00        -100.00%
-MarshalAllSize_Parallel/large-16         1.00 ± 0%       0.00        -100.00%
-UnmarshalAllSize_Parallel/small-16       6.00 ± 0%       1.00 ± 0%    -83.33%
-UnmarshalAllSize_Parallel/medium-16      6.00 ± 0%      30.00 ± 0%   +400.00%
-UnmarshalAllSize_Parallel/large-16      4.80k ± 0%      0.76k ± 0%    -84.10%
+Unmarshal_ApacheThrift/small-4        	  768525	      1443 ns/op	 403.94 MB/s	    1232 B/op	       5 allocs/op
+Unmarshal_ApacheThrift/medium-4       	   24463	     47067 ns/op	 372.19 MB/s	   44816 B/op	     176 allocs/op
+Unmarshal_ApacheThrift/large-4        	    1053	   1155725 ns/op	 384.00 MB/s	 1135540 B/op	    4433 allocs/op
+Unmarshal_Frugal_JIT/small-4          	 2575767	     466.3 ns/op	1250.36 MB/s	     547 B/op	       2 allocs/op
+Unmarshal_Frugal_JIT/medium-4         	   62128	     19333 ns/op	 906.12 MB/s	   19404 B/op	      89 allocs/op
+Unmarshal_Frugal_JIT/large-4          	    2328	    496431 ns/op	 893.99 MB/s	  495906 B/op	    2283 allocs/op
+Unmarshal_Frugal_Reflect/small-4      	 2770252	     437.2 ns/op	1333.60 MB/s	     544 B/op	       1 allocs/op
+Unmarshal_Frugal_Reflect/medium-4     	   64232	     18183 ns/op	 963.45 MB/s	   19945 B/op	      57 allocs/op
+Unmarshal_Frugal_Reflect/large-4      	    2325	    496415 ns/op	 894.02 MB/s	  511876 B/op	    1467 allocs/op
 ```
 
 ## What can you do with Frugal ?

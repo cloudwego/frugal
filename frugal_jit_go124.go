@@ -24,9 +24,7 @@ import (
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
-func init() {
-	nojit = true
-}
+const nojit = true
 
 func jitEncodedSize(val interface{}) int {
 	panic("not support JIT for Go version >= go1.24")
