@@ -1,4 +1,4 @@
-//go:build go1.24
+//go:build go1.24 || !amd64 || windows
 
 /*
  * Copyright 2024 CloudWeGo Authors
@@ -43,5 +43,5 @@ func jitDecodeObject(buf []byte, val interface{}) (int, error) {
 // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
 // order to reduce the first-hit latency.
 func Pretouch(vt reflect.Type, options ...Option) error {
-	panic("not support JIT for Go version >= go1.24")
+	return nil // do not panic, legacy code may still use the func
 }

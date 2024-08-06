@@ -1,4 +1,4 @@
-//go:build !go1.24
+//go:build !go1.24 && amd64 && !windows
 
 /*
  * Copyright 2024 CloudWeGo Authors
