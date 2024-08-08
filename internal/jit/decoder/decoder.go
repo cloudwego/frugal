@@ -36,7 +36,6 @@ type Decoder func(
 ) (int, error)
 
 var (
-	HitCount  uint64 = 0
 	MissCount uint64 = 0
 	TypeCount uint64 = 0
 )
@@ -59,7 +58,6 @@ func resolve(vt *rt.GoType) (Decoder, error) {
 
 	/* fast-path: type is cached */
 	if val = programCache.Get(vt); val != nil {
-		atomic.AddUint64(&HitCount, 1)
 		return val.(Decoder), nil
 	}
 

@@ -225,7 +225,6 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		// tmpv = decode(b)
 		// map[tmpk] = tmpv
 		tmp := t.MapTmpVarsPool.Get().(*tmpMapVars)
-		defer t.MapTmpVarsPool.Put(tmp)
 		k := tmp.k
 		v := tmp.v
 		kp := tmp.kp
@@ -247,6 +246,8 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			sliceV = d.Malloc(l*vt.V.Size, vt.V.Align, vt.V.MallocAbiType)
 		}
 
+		var n int
+		var err error
 		i := 6
 		for j := 0; j < l; j++ {
 			p = kp
@@ -260,8 +261,8 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			if kt.FixedSize > 0 {
 				i += decodeFixedSizeTypes(kt.T, b[i:], p)
 			} else {
-				if n, err := d.decodeType(kt, b[i:], p, maxdepth-1); err != nil {
-					return i, err
+				if n, err = d.decodeType(kt, b[i:], p, maxdepth-1); err != nil {
+					break
 				} else {
 					i += n
 				}
@@ -277,14 +278,15 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			if vt.FixedSize > 0 {
 				i += decodeFixedSizeTypes(vt.T, b[i:], p)
 			} else {
-				if n, err := d.decodeType(vt, b[i:], p, maxdepth-1); err != nil {
-					return i, err
+				if n, err = d.decodeType(vt, b[i:], p, maxdepth-1); err != nil {
+					break
 				} else {
 					i += n
 				}
 			}
 			m.SetMapIndex(k, v)
 		}
+		t.MapTmpVarsPool.Put(tmp) // no defer, it may be in hot path
 		return i, nil
 	case tLIST, tSET: // NOTE: for tSET, it may be map in the future
 		// list header
