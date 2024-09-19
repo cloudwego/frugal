@@ -1,4 +1,4 @@
-//go:build go1.18
+//go:build go1.24 || !amd64 || windows
 
 /*
  * Copyright 2024 CloudWeGo Authors
@@ -16,21 +16,7 @@
  * limitations under the License.
  */
 
-package reflect
+package debug
 
-import (
-	"reflect"
-	"unsafe"
-)
-
-type hackMapIter struct {
-	m      reflect.Value
-	hitter hitter // it's a pointer before go1.18
-}
-
-func (iter *hackMapIter) initialized() bool { return iter.hitter.k != nil }
-
-func (iter *hackMapIter) Next() (unsafe.Pointer, unsafe.Pointer) {
-	mapiternext(unsafe.Pointer(&iter.hitter))
-	return iter.hitter.k, iter.hitter.v
-}
+// GetStats returns statistics of the JIT compiler.
+func GetStats() Stats { return Stats{} } // only for JIT

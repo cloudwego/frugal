@@ -1,4 +1,4 @@
-//go:build !go1.21
+//go:build !go1.24 && amd64 && !windows
 
 /*
  * Copyright 2022 CloudWeGo Authors
@@ -16,22 +16,28 @@
  * limitations under the License.
  */
 
-package rtx
+package debug
 
 import (
-	"unsafe"
-
-	"github.com/cloudwego/frugal/internal/jit/rt"
+	"github.com/cloudwego/frugal/internal/jit/decoder"
+	"github.com/cloudwego/frugal/internal/jit/encoder"
+	"github.com/cloudwego/frugal/internal/jit/loader"
 )
 
-//go:linkname writeBarrier runtime.writeBarrier
-var writeBarrier uintptr
-
-//go:nosplit
-//go:linkname gcWriteBarrier runtime.gcWriteBarrier
-func gcWriteBarrier()
-
-var (
-	V_pWriteBarrier  = unsafe.Pointer(&writeBarrier)
-	F_gcWriteBarrier = rt.FuncAddr(gcWriteBarrier)
-)
+// GetStats returns statistics of the JIT compiler.
+func GetStats() Stats {
+	return Stats{
+		Memory: MemStats{
+			Count: int(loader.FnCount),
+			Alloc: int(loader.LoadSize),
+		},
+		Encoder: CacheStats{
+			Miss: int(encoder.MissCount),
+			Size: int(encoder.TypeCount),
+		},
+		Decoder: CacheStats{
+			Miss: int(decoder.MissCount),
+			Size: int(decoder.TypeCount),
+		},
+	}
+}

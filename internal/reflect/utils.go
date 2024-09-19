@@ -192,18 +192,12 @@ func initOrGetMapTmpVarsPool(t *tType) *sync.Pool {
 		New: func() interface{} {
 			m := &tmpMapVars{}
 			m.k = reflect.New(t.K.RT)
-			m.kp = rvUnsafePointer(m.k)
+			m.kp = m.k.UnsafePointer()
 			m.k = m.k.Elem() // make m.k addressable with type t.K.RT
 			m.v = reflect.New(t.V.RT)
-			m.vp = rvUnsafePointer(m.v)
+			m.vp = m.v.UnsafePointer()
 			m.v = m.v.Elem() // make m.v addressable with type t.V.RT
 			return m
 		},
 	}
-}
-
-// rvUnsafePointer backports rv.UnsafePointer for go1.17
-// TODO: remove this func and use rv.UnsafePointer() directly when >= go1.18
-func rvUnsafePointer(rv reflect.Value) unsafe.Pointer {
-	return unsafe.Pointer(rv.Pointer())
 }

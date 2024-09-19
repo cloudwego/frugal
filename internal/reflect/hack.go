@@ -58,7 +58,7 @@ func testhack() error {
 		m[8] = "world"
 		m[9] = "!"
 		m[10] = "?"
-		if maplen(rvUnsafePointer(reflect.ValueOf(m))) != 3 {
+		if maplen(reflect.ValueOf(m).UnsafePointer()) != 3 {
 			return errors.New("compatibility issue found: maplen")
 		}
 	}
@@ -67,7 +67,7 @@ func testhack() error {
 		m := map[int]string{7: "hello"}
 		rv := reflect.NewAt(reflect.TypeOf(m), unsafe.Pointer(&m)).Elem()
 		rv1 := rvWithPtr(rv, unsafe.Pointer(&m))
-		if p0, p1 := rvUnsafePointer(rv), rvUnsafePointer(rv1); p0 != p1 {
+		if p0, p1 := rv.UnsafePointer(), rv1.UnsafePointer(); p0 != p1 {
 			return fmt.Errorf("compatibility issue found: rvWithPtr %p -> %p m=%p", p0, p1, &m)
 		}
 		m1, ok := rv1.Interface().(map[int]string)
@@ -139,8 +139,10 @@ type hitter struct {
 	v unsafe.Pointer
 }
 
-// see hack_go1.17.go, hack_go1.18.go
-// type hackMapIter struct { ... }
+type hackMapIter struct {
+	m      reflect.Value
+	hitter hitter
+}
 
 // mapIter wraps reflect.MapIter for faster unsafe Next()
 type mapIter struct {
@@ -159,13 +161,10 @@ func newMapIter(rv reflect.Value) mapIter {
 }
 
 func (m *mapIter) Next() (unsafe.Pointer, unsafe.Pointer) {
-	p := (*hackMapIter)(unsafe.Pointer(&m.MapIter))
-	if p.initialized() {
-		return p.Next()
-	}
 	// use reflect.Next to initialize hitter
-	// then we no need to bind mapiterinit
+	// then we no need to bind mapiterinit, mapiternext
 	m.MapIter.Next()
+	p := (*hackMapIter)(unsafe.Pointer(&m.MapIter))
 	return p.hitter.k, p.hitter.v
 }
 
@@ -242,7 +241,3 @@ func (h *sliceHeader) UnsafePointer() unsafe.Pointer {
 
 //go:linkname mallocgc runtime.mallocgc
 func mallocgc(size uintptr, typ unsafe.Pointer, needzero bool) unsafe.Pointer
-
-//go:noescape
-//go:linkname mapiternext runtime.mapiternext
-func mapiternext(it unsafe.Pointer)

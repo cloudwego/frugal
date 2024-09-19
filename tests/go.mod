@@ -1,6 +1,6 @@
 module github.com/cloudwego/frugal/tests
 
-go 1.17
+go 1.18
 
 require (
 	github.com/apache/thrift v0.13.0
@@ -12,11 +12,11 @@ require (
 )
 
 require (
-	github.com/bytedance/gopkg v0.0.0-20240711085056-a03554c296f8 // indirect
+	github.com/bytedance/gopkg v0.1.1 // indirect
 	github.com/bytedance/sonic v1.12.0 // indirect
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
-	github.com/cloudwego/gopkg v0.1.0 // indirect
+	github.com/cloudwego/gopkg v0.1.2 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/cloudwego/runtimex v0.1.0 // indirect
 	github.com/cloudwego/thriftgo v0.3.6 // indirect

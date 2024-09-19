@@ -1,5 +1,4 @@
 //go:build go1.18 && !go1.24
-// +build go1.18,!go1.24
 
 /*
  * Copyright 2022 CloudWeGo Authors
