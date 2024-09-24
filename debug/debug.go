@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
+// Package debug is only for JIT encoder/decoder.
+//
+// It's deprecated.
 package debug
-
-import (
-	"github.com/cloudwego/frugal/internal/jit/decoder"
-	"github.com/cloudwego/frugal/internal/jit/encoder"
-	"github.com/cloudwego/frugal/internal/jit/loader"
-)
 
 // A Stats records statistics about the JIT compiler.
 type Stats struct {
@@ -40,22 +37,4 @@ type CacheStats struct {
 	Hit  int
 	Miss int
 	Size int
-}
-
-// GetStats returns statistics of the JIT compiler.
-func GetStats() Stats {
-	return Stats{
-		Memory: MemStats{
-			Count: int(loader.FnCount),
-			Alloc: int(loader.LoadSize),
-		},
-		Encoder: CacheStats{
-			Miss: int(encoder.MissCount),
-			Size: int(encoder.TypeCount),
-		},
-		Decoder: CacheStats{
-			Miss: int(decoder.MissCount),
-			Size: int(decoder.TypeCount),
-		},
-	}
 }

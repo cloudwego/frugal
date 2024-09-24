@@ -100,7 +100,7 @@ func Decode(b []byte, v interface{}) (int, error) {
 		return 0, err
 	}
 	d := decoderPool.Get().(*tDecoder)
-	n, err := d.Decode(b, rvUnsafePointer(rv), sd, maxDepthLimit)
+	n, err := d.Decode(b, rv.UnsafePointer(), sd, maxDepthLimit)
 	decoderPool.Put(d)
 	return n, err
 }

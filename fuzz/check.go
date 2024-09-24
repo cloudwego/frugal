@@ -19,8 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 var TypeSize = map[thrift.TType]int{
@@ -57,42 +56,37 @@ func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err err
 	typ = &Type{TypeID: fieldTypeID}
 	switch fieldTypeID {
 	case thrift.BOOL:
-		_, l, err = bthrift.Binary.ReadBool(buf)
+		_, l, err = thrift.Binary.ReadBool(buf)
 		length += l
 		return
 	case thrift.BYTE:
-		_, l, err = bthrift.Binary.ReadByte(buf)
+		_, l, err = thrift.Binary.ReadByte(buf)
 		length += l
 		return
 	case thrift.I16:
-		_, l, err = bthrift.Binary.ReadI16(buf)
+		_, l, err = thrift.Binary.ReadI16(buf)
 		length += l
 		return
 	case thrift.I32:
-		_, l, err = bthrift.Binary.ReadI32(buf)
+		_, l, err = thrift.Binary.ReadI32(buf)
 		length += l
 		return
 	case thrift.I64:
-		_, l, err = bthrift.Binary.ReadI64(buf)
+		_, l, err = thrift.Binary.ReadI64(buf)
 		length += l
 		return
 	case thrift.DOUBLE:
-		_, l, err = bthrift.Binary.ReadDouble(buf)
+		_, l, err = thrift.Binary.ReadDouble(buf)
 		length += l
 		return
 	case thrift.STRING:
-		_, l, err = bthrift.Binary.ReadString(buf)
+		_, l, err = thrift.Binary.ReadString(buf)
 		length += l
 		return
 	case thrift.STRUCT:
-		_, l, err = bthrift.Binary.ReadStructBegin(buf)
-		length += l
-		if err != nil {
-			return
-		}
 		fields := make(map[int16]*Type)
 		for {
-			_, typeID, id, l, e := bthrift.Binary.ReadFieldBegin(buf[length:])
+			typeID, id, l, e := thrift.Binary.ReadFieldBegin(buf[length:])
 			length += l
 			if e != nil {
 				err = e
@@ -112,22 +106,11 @@ func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err err
 				return
 			}
 			fields[id] = fType
-			l, e = bthrift.Binary.ReadFieldEnd(buf[length:])
-			length += l
-			if e != nil {
-				err = e
-				return
-			}
-		}
-		l, e := bthrift.Binary.ReadStructEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
 		}
 		typ.Fields = fields
 		return
 	case thrift.MAP:
-		keyTypeID, valTypeID, size, l, e := bthrift.Binary.ReadMapBegin(buf)
+		keyTypeID, valTypeID, size, l, e := thrift.Binary.ReadMapBegin(buf)
 		length += l
 		if e != nil {
 			err = e
@@ -172,17 +155,12 @@ func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err err
 		if valTypes.Conflict() {
 			return nil, 0, fmt.Errorf("map value type conflict")
 		}
-		l, e = bthrift.Binary.ReadMapEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-		}
 		// NOTE: considering combine types to one complete type
 		typ.KeyType = keyTypes[0]
 		typ.ValType = valTypes[0]
 		return
 	case thrift.SET:
-		elemTypeID, size, l, e := bthrift.Binary.ReadSetBegin(buf)
+		elemTypeID, size, l, e := thrift.Binary.ReadSetBegin(buf)
 		length += l
 		if e != nil {
 			err = e
@@ -232,16 +210,11 @@ func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err err
 		if elemTypes.Conflict() {
 			return nil, 0, fmt.Errorf("set element type conflict")
 		}
-		l, e = bthrift.Binary.ReadSetEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
-		}
 		// NOTE: considering combine types to one complete type
 		typ.ValType = elemTypes[0]
 		return
 	case thrift.LIST:
-		elemTypeID, size, l, e := bthrift.Binary.ReadListBegin(buf)
+		elemTypeID, size, l, e := thrift.Binary.ReadListBegin(buf)
 		length += l
 		if e != nil {
 			err = e
@@ -268,11 +241,6 @@ func Check(buf []byte, fieldTypeID thrift.TType) (typ *Type, length int, err err
 		}
 		if elemTypes.Conflict() {
 			return nil, 0, fmt.Errorf("list element type conflict")
-		}
-		l, e = bthrift.Binary.ReadListEnd(buf[length:])
-		length += l
-		if e != nil {
-			err = e
 		}
 		// NOTE: considering combine types to one complete type
 		typ.ValType = elemTypes[0]

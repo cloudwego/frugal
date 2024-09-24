@@ -19,8 +19,8 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal/fuzz"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/cloudwego/thriftgo/parser"
 	"github.com/cloudwego/thriftgo/semantic"
 )

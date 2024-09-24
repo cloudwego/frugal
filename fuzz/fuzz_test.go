@@ -27,9 +27,9 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/bytedance/gopkg/util/gctuner"
 	"github.com/cloudwego/frugal"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 const (

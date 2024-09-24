@@ -1,4 +1,4 @@
-// +build go1.20,!go1.21
+//go:build go1.20 && !go1.21
 
 /*
  * Copyright 2023 ByteDance Inc.
@@ -19,64 +19,64 @@
 package loader
 
 import (
-    `github.com/cloudwego/frugal/internal/jit/rt`
+	"github.com/cloudwego/frugal/internal/jit/rt"
 )
 
 type _Func struct {
-    entryOff    uint32
-    nameoff     int32
-    args        int32
-    deferreturn uint32
-    pcsp        uint32
-    pcfile      uint32
-    pcln        uint32
-    npcdata     uint32
-    cuOffset    uint32
-    startLine   int32
-    funcID      uint8
-    flag        uint8
-    _           [1]byte
-    nfuncdata   uint8
-    pcdata      [2]uint32
-    argptrs     uint32
-    localptrs   uint32
+	entryOff    uint32
+	nameoff     int32
+	args        int32
+	deferreturn uint32
+	pcsp        uint32
+	pcfile      uint32
+	pcln        uint32
+	npcdata     uint32
+	cuOffset    uint32
+	startLine   int32
+	funcID      uint8
+	flag        uint8
+	_           [1]byte
+	nfuncdata   uint8
+	pcdata      [2]uint32
+	argptrs     uint32
+	localptrs   uint32
 }
 
 type _ModuleData struct {
-    pcHeader              *_PCHeader
-    funcnametab           []byte
-    cutab                 []uint32
-    filetab               []byte
-    pctab                 []byte
-    pclntable             []byte
-    ftab                  []_FuncTab
-    findfunctab           uintptr
-    minpc, maxpc          uintptr
-    text, etext           uintptr
-    noptrdata, enoptrdata uintptr
-    data, edata           uintptr
-    bss, ebss             uintptr
-    noptrbss, enoptrbss   uintptr
-    covctrs, ecovctrs     uintptr
-    end, gcdata, gcbss    uintptr
-    types, etypes         uintptr
-    rodata                uintptr
-    gofunc                uintptr
-    textsectmap           [][3]uintptr
-    typelinks             []int32
-    itablinks             []*rt.GoItab
-    ptab                  [][2]int32
-    pluginpath            string
-    pkghashes             []struct{}
-    modulename            string
-    modulehashes          []struct{}
-    hasmain               uint8
-    gcdatamask, gcbssmask _BitVector
-    typemap               map[int32]*rt.GoType
-    bad                   bool
-    next                  *_ModuleData
+	pcHeader              *_PCHeader
+	funcnametab           []byte
+	cutab                 []uint32
+	filetab               []byte
+	pctab                 []byte
+	pclntable             []byte
+	ftab                  []_FuncTab
+	findfunctab           uintptr
+	minpc, maxpc          uintptr
+	text, etext           uintptr
+	noptrdata, enoptrdata uintptr
+	data, edata           uintptr
+	bss, ebss             uintptr
+	noptrbss, enoptrbss   uintptr
+	covctrs, ecovctrs     uintptr
+	end, gcdata, gcbss    uintptr
+	types, etypes         uintptr
+	rodata                uintptr
+	gofunc                uintptr
+	textsectmap           [][3]uintptr
+	typelinks             []int32
+	itablinks             []*rt.GoItab
+	ptab                  [][2]int32
+	pluginpath            string
+	pkghashes             []struct{}
+	modulename            string
+	modulehashes          []struct{}
+	hasmain               uint8
+	gcdatamask, gcbssmask _BitVector
+	typemap               map[int32]*rt.GoType
+	bad                   bool
+	next                  *_ModuleData
 }
 
 const (
-    _ModuleMagic = 0xfffffff1
+	_ModuleMagic = 0xfffffff1
 )

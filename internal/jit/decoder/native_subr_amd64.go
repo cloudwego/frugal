@@ -1,5 +1,4 @@
 //go:build !noasm || !appengine
-// +build !noasm !appengine
 
 /*
  * Copyright 2024 CloudWeGo Authors

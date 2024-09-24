@@ -20,8 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 type Requiredness int
@@ -72,7 +71,7 @@ var (
 )
 
 func fuzzDynamicStruct(typ *Type) (reflect.Type, error) {
-	tc := &TypeConstructor{bthrift.Binary}
+	tc := &TypeConstructor{thrift.Binary}
 	ts, err := tc.GetType(typ)
 	if err != nil {
 		return nil, err
@@ -86,7 +85,7 @@ type TypeSpec struct {
 }
 
 type TypeConstructor struct {
-	bp bthrift.BTProtocol
+	bp thrift.BinaryProtocol
 }
 
 func (t *TypeConstructor) GetType(typ *Type) (ts *TypeSpec, err error) {
@@ -184,7 +183,7 @@ func BuildTypeSpec(t thrift.TType, requiredness Requiredness, keySpec, valSpec *
 		typ = reflect.StructOf(nil)
 		tag = "ANONYMOUS"
 	default:
-		panic("unreachable code" + t.String())
+		panic("unreachable code: " + strconv.Itoa(int(t)))
 	}
 	if PointerMap[requiredness][typ.Kind()] {
 		typ = reflect.PointerTo(typ)

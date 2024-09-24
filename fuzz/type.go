@@ -15,7 +15,7 @@
 package fuzz
 
 import (
-	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 type Type struct {
