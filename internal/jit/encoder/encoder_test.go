@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
@@ -62,6 +63,25 @@ func TestEncoder_Encode(t *testing.T) {
 	mm := bytes.NewBufferString("\x80\x01\x00\x01\x00\x00\x00\x01a\x00\x00\x00\x00")
 	mm.Write(buf)
 	println("Base64 Encoded Message:", base64.StdEncoding.EncodeToString(mm.Bytes()))
+}
+
+func TestEncoder_Encode_NocopyWriter(t *testing.T) {
+	p := &TranslatorTestStruct{
+		H: make([]byte, 16<<10), // it should trigger NocopyWriter
+	}
+	sz := EncodedSize(p)
+	require.Less(t, 16<<10, sz)
+
+	b := make([]byte, sz)
+
+	var w interface{} = &bytes.Buffer{}
+	// for >=go1.22, nw != (0x0, 0x0)
+	// it keeps data pointer with nil itab like (0x0,0xc0000fe1e0)
+	nw, _ := w.(thrift.NocopyWriter)
+
+	ret, err := EncodeObject(b, nw, p)
+	require.Equal(t, sz, ret)
+	require.NoError(t, err)
 }
 
 type StructSeekTest struct {

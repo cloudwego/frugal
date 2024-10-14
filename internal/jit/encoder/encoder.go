@@ -41,9 +41,7 @@ var (
 	TypeCount uint64 = 0
 )
 
-var (
-	programCache = utils.CreateProgramCache()
-)
+var programCache = utils.CreateProgramCache()
 
 func encode(vt *rt.GoType, buf unsafe.Pointer, len int, mem thrift.NocopyWriter, p unsafe.Pointer, rs *RuntimeState, st int) (int, error) {
 	if enc, err := resolve(vt); err != nil {
@@ -65,9 +63,7 @@ func resolve(vt *rt.GoType) (Encoder, error) {
 	/* record the cache miss, and compile the type */
 	atomic.AddUint64(&MissCount, 1)
 	val, err = programCache.Compute(vt, compile)
-
-	/* check for errors */
-	if err != nil {
+	/* check for errors */ if err != nil {
 		return nil, err
 	}
 
@@ -117,6 +113,15 @@ func EncodeObject(buf []byte, mem thrift.NocopyWriter, val interface{}) (ret int
 	rst := newRuntimeState()
 	efv := rt.UnpackEface(val)
 	out := (*rt.GoSlice)(unsafe.Pointer(&buf))
+
+	if mem == nil {
+		// starting from go1.22,
+		// even though `mem`==nil, it may equal to (0x0, 0xc0000fe1e0).
+		// it keeps original data pointer with itab = nil.
+		// this would cause JIT panic when we only use data pointer to call its methods.
+		// updating `mem` to nil, (0x0, 0xc0000fe1e0) -> (0x0, 0x0), is a quick fix for this case.
+		mem = nil
+	}
 
 	/* check for indirect types */
 	if efv.Type.IsIndirect() {

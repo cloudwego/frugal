@@ -136,6 +136,7 @@ func (self *Program) i64(op OpCode, iv int64) { self.ins(Instr{Op: op, Iv: iv}) 
 func (self *Program) str(op OpCode, sv string) {
 	self.ins(Instr{Op: op, Iv: int64(len(sv)), Pr: rt.StringPtr(sv)})
 }
+
 func (self *Program) rtt(op OpCode, vt reflect.Type) {
 	self.ins(Instr{Op: op, Pr: unsafe.Pointer(rt.UnpackType(vt))})
 }

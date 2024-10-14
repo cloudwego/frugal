@@ -216,7 +216,7 @@ func Optimize(p Program) Program {
 	}
 
 	/* sort the blocks by entry point */
-	sort.Slice(ctx.buf, func(i int, j int) bool {
+	sort.Slice(ctx.buf, func(i, j int) bool {
 		return ctx.buf[i].Src < ctx.buf[j].Src
 	})
 
