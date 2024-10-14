@@ -539,7 +539,7 @@ func translate_OP_unique_int(p *hir.Builder) {
 	}
 }
 
-func translate_OP_unique_small(p *hir.Builder, nb int64, dv int64, ld func(hir.PointerRegister, int64, hir.GenericRegister) *hir.Ir) {
+func translate_OP_unique_small(p *hir.Builder, nb, dv int64, ld func(hir.PointerRegister, int64, hir.GenericRegister) *hir.Ir) {
 	p.ADDPI(RS, BmOffset, ET)
 	p.BZERO(nb, ET)
 	p.LP(WP, 0, EP)

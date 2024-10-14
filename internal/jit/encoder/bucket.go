@@ -33,9 +33,7 @@ func (self _Bucket) String() string {
 	return rt.StringFrom(self.p, int(self.v))
 }
 
-var (
-	bucketPool sync.Pool
-)
+var bucketPool sync.Pool
 
 const (
 	_BucketSize = unsafe.Sizeof(_Bucket{})
