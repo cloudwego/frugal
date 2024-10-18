@@ -74,6 +74,25 @@ func (d *tDecoder) mallocIfPointer(t *tType, p unsafe.Pointer) (ret unsafe.Point
 	return p
 }
 
+var hextable = "0123456789abcdef"
+
+func dump4bytes(b []byte) string {
+	_ = b[3]
+	return "{" + string([]byte{
+		hextable[(b[0]>>4)&0xf],
+		hextable[b[0]&0xf],
+		' ',
+		hextable[(b[1]>>4)&0xf],
+		hextable[b[1]&0xf],
+		' ',
+		hextable[(b[2]>>4)&0xf],
+		hextable[b[2]&0xf],
+		' ',
+		hextable[(b[3]>>4)&0xf],
+		hextable[b[3]&0xf],
+	}) + "}"
+}
+
 func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdepth int) (int, error) {
 	if maxdepth == 0 {
 		return 0, errDepthLimitExceeded
@@ -124,6 +143,14 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		p = d.mallocIfPointer(t, p)
 		if t.FixedSize > 0 {
 			i += decodeFixedSizeTypes(t.T, b[i:], p)
+			if t.T == tENUM {
+				println("DEBUG tENUM",
+					lookupFieldName(sd.rt, f.Offset),
+					dump4bytes(b[i-4:]),
+					p,
+					*(*int64)(p),
+				)
+			}
 		} else {
 			n, err := d.decodeType(t, b[i:], p, maxdepth-1)
 			if err != nil {
