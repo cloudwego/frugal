@@ -27,9 +27,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecode(t *testing.T) {
+func init() {
 	rand.Seed(time.Now().Unix())
+}
 
+func TestDecode(t *testing.T) {
 	type testcase struct {
 		name   string
 		update func(p *TestTypes)
@@ -188,6 +190,108 @@ func TestDecode(t *testing.T) {
 			require.Equal(t, n, len(b))
 
 			p1 := &TestTypes{}
+			n, err = Decode(b, p1)
+			require.NoError(t, err)
+			require.Equal(t, len(b), n)
+
+			testf(t, p1) // test by testcase func
+		})
+	}
+}
+
+func TestDecodeOptional(t *testing.T) {
+	type testcase struct {
+		name   string
+		update func(p *TestTypesOptional)
+		test   func(t *testing.T, p1 *TestTypesOptional)
+	}
+
+	var (
+		vInt16   = int16(rand.Uint32() & 0xffff)
+		vInt32   = int32(rand.Uint32())
+		vInt64   = int64(rand.Uint64())
+		vFloat64 = math.Float64frombits(rand.Uint64())
+		vTrue    = true
+		vString  = "hello"
+		vByte    = int8(0x55)
+		vEnum    = Numberz(int32(rand.Uint32()))
+	)
+
+	for math.IsNaN(vFloat64) { // fix test failure
+		vFloat64 = math.Float64frombits(rand.Uint64())
+	}
+
+	testcases := []testcase{
+		{
+			name:   "case_bool",
+			update: func(p0 *TestTypesOptional) { p0.FBool = &vTrue },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vTrue, *p1.FBool) },
+		},
+		{
+			name:   "case_string",
+			update: func(p0 *TestTypesOptional) { p0.String_ = &vString },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vString, *p1.String_) },
+		},
+		{
+			name:   "case_byte",
+			update: func(p0 *TestTypesOptional) { p0.FByte = &vByte },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vByte, *p1.FByte) },
+		},
+		{
+			name:   "case_int8",
+			update: func(p0 *TestTypesOptional) { p0.I8 = &vByte },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vByte, *p1.I8) },
+		},
+		{
+			name:   "case_int16",
+			update: func(p0 *TestTypesOptional) { p0.I16 = &vInt16 },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vInt16, *p1.I16) },
+		},
+		{
+			name:   "case_int32",
+			update: func(p0 *TestTypesOptional) { p0.I32 = &vInt32 },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vInt32, *p1.I32) },
+		},
+		{
+			name:   "case_int64",
+			update: func(p0 *TestTypesOptional) { p0.I64 = &vInt64 },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vInt64, *p1.I64) },
+		},
+		{
+			name:   "case_float64",
+			update: func(p0 *TestTypesOptional) { p0.Double = &vFloat64 },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vFloat64, *p1.Double) },
+		},
+		{
+			name:   "case_enum",
+			update: func(p0 *TestTypesOptional) { p0.Enum = &vEnum },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vEnum, *p1.Enum) },
+		},
+		{
+			name:   "case_typedef",
+			update: func(p0 *TestTypesOptional) { p0.UID = &vInt64 },
+			test:   func(t *testing.T, p1 *TestTypesOptional) { assert.Equal(t, vInt64, *p1.UID) },
+		},
+	}
+	for _, tc := range testcases {
+		name := tc.name
+		updatef := tc.update
+		testf := tc.test
+		t.Run(name, func(t *testing.T) {
+			p0 := NewTestTypesOptional()
+			updatef(p0) // update by testcase func
+
+			b := make([]byte, EncodedSize(p0))
+			n, err := Encode(b, p0)
+			require.NoError(t, err)
+			require.Equal(t, len(b), n)
+
+			// verify by gopkg thrift
+			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
+			require.NoError(t, err)
+			require.Equal(t, n, len(b))
+
+			p1 := &TestTypesOptional{}
 			n, err = Decode(b, p1)
 			require.NoError(t, err)
 			require.Equal(t, len(b), n)
