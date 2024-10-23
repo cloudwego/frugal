@@ -37,3 +37,25 @@ func TestTypes_MapKeyType(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Println(tt)
 }
+
+func TestTypes_Enum(t *testing.T) {
+	type EnumType int64
+	type Int32 int32
+	type StructWithEnum struct {
+		A EnumType  `frugal:"1,optional,EnumType"`
+		B *EnumType `frugal:"2,optional,EnumType"`
+		C Int32     `frugal:"3,optional,Int32"`
+		D int64     `frugal:"4,optional,i64"`
+	}
+	ff, err := DoResolveFields(reflect.TypeOf(StructWithEnum{}))
+	require.NoError(t, err)
+	require.Len(t, ff, 4)
+	require.True(t, ff[0].Type.IsEnum())
+	require.Equal(t, ff[0].Type.T, T_enum)
+	require.True(t, ff[1].Type.IsEnum())
+	require.Equal(t, ff[1].Type.T, T_pointer)
+	require.Equal(t, ff[1].Type.V.T, T_enum)
+	require.False(t, ff[2].Type.IsEnum())
+	require.False(t, ff[3].Type.IsEnum())
+
+}

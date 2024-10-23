@@ -127,6 +127,17 @@ func (self *Type) Tag() Tag {
 	}
 }
 
+func (self *Type) IsEnum() bool {
+	switch self.T {
+	case T_enum:
+		return true
+	case T_pointer:
+		return self.V.IsEnum()
+	default:
+		return false
+	}
+}
+
 func (self *Type) Free() {
 	typePool.Put(self)
 }

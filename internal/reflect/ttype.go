@@ -160,7 +160,7 @@ func newTType(x *defs.Type) *tType {
 	t.T = ttype(x.Tag())
 	t.WT = t.T
 	t.Tag = x.T
-	if t.Tag == defs.T_enum {
+	if x.IsEnum() {
 		t.T = tENUM
 	}
 	t.RT = x.S
