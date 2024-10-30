@@ -27,12 +27,13 @@ import (
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/cloudwego/frugal"
-	freflect "github.com/cloudwego/frugal/internal/reflect"
-	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
-	"github.com/cloudwego/kitex/pkg/protocol/bthrift"
+	"github.com/cloudwego/frugal/tests/baseline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cloudwego/frugal"
+	freflect "github.com/cloudwego/frugal/internal/reflect"
+	gthrift "github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 func TestMain(m *testing.M) {
@@ -62,11 +63,11 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-type FastAPI interface {
+type FastCodec interface {
 	InitDefault()
 	BLength() int
 	FastRead(buf []byte) (int, error)
-	FastWriteNocopy(buf []byte, binaryWriter bthrift.BinaryWriter) int
+	FastWriteNocopy(buf []byte, w gthrift.NocopyWriter) int
 }
 
 type Sample struct {
@@ -173,12 +174,12 @@ func getNesting2Value() *baseline.Nesting2 {
 	return ret
 }
 
-func BenchmarkAllSize_BLength_KitexFast(b *testing.B) {
+func BenchmarkAllSize_BLength_FastCodec(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
-			v := s.val.(FastAPI)
-			assert.Equal(b, v.BLength(), len(s.bytes))
+			v := s.val.(FastCodec)
+			assert.Equal(b, len(s.bytes), v.BLength())
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				v.BLength()
@@ -230,11 +231,11 @@ func BenchmarkAllSize_Marshal_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkAllSize_Marshal_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Marshal_FastCodec(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
-			v := s.val.(FastAPI)
+			v := s.val.(FastCodec)
 			buf := make([]byte, v.BLength())
 			n := v.FastWriteNocopy(buf, nil)
 			require.Equal(b, len(buf), n)
@@ -320,12 +321,12 @@ func BenchmarkAllSize_Unmarshal_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkAllSize_Unmarshal_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Unmarshal_FastCodec(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
-			v := newByEFace(s.val).(FastAPI)
+			v := newByEFace(s.val).(FastCodec)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				objectmemclr(v)
@@ -388,13 +389,13 @@ func BenchmarkAllSize_Parallel_Marshal_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkAllSize_Parallel_Marshal_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Parallel_Marshal_FastCodec(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				v := s.val.(FastAPI)
+				v := s.val.(FastCodec)
 				buf := make([]byte, v.BLength())
 				for pb.Next() {
 					v.BLength()
@@ -459,14 +460,14 @@ func BenchmarkAllSize_Parallel_Unmarshal_ApacheThrift(b *testing.B) {
 	}
 }
 
-func BenchmarkAllSize_Parallel_Unmarshal_KitexFast(b *testing.B) {
+func BenchmarkAllSize_Parallel_Unmarshal_FastCodec(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				v := newByEFace(s.val).(FastAPI)
+				v := newByEFace(s.val).(FastCodec)
 				for pb.Next() {
 					objectmemclr(v)
 					_, _ = v.FastRead(buf)

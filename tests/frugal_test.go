@@ -28,7 +28,7 @@ import (
 	"github.com/cloudwego/frugal"
 	"github.com/cloudwego/frugal/debug"
 	"github.com/cloudwego/frugal/internal/defs"
-	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
+	"github.com/cloudwego/frugal/tests/baseline"
 )
 
 func init() {

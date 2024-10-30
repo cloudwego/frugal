@@ -29,7 +29,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
 	"github.com/cloudwego/frugal/internal/defs"
-	"github.com/cloudwego/frugal/tests/kitex_gen/baseline"
+	"github.com/cloudwego/frugal/tests/baseline"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -180,7 +180,6 @@ func TestMarshalEnum(t *testing.T) {
 	buf := make([]byte, nb)
 	ret, err := frugal.EncodeObject(buf, nil, v)
 	require.NoError(t, err)
-	println("Encoded Size:", ret)
 	require.Equal(t, nb, ret)
 	require.Equal(t, []byte{0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00}, buf)
 	spew.Dump(buf)
@@ -192,14 +191,11 @@ func TestMarshalCompare(t *testing.T) {
 	mm := thrift.NewTMemoryBuffer()
 	err := v.Write(thrift.NewTBinaryProtocolTransport(mm))
 	require.NoError(t, err)
-	println("Expected Size :", mm.Len())
-	nb := frugal.EncodedSize(v)
-	println("Measured Size :", nb)
+	nb := frugal.EncodedSize(&v)
 	require.Equal(t, mm.Len(), nb)
 	buf := make([]byte, nb)
 	ret, err := frugal.EncodeObject(buf, nil, v)
 	require.NoError(t, err)
-	println("Encoded Size  :", ret)
 	require.Equal(t, nb, ret)
 	buf = buf[:ret]
 	comparestruct(mm.Bytes(), buf)
@@ -211,14 +207,11 @@ func TestMarshalWithDefaultCompare(t *testing.T) {
 	mm := thrift.NewTMemoryBuffer()
 	err := v.Write(thrift.NewTBinaryProtocolTransport(mm))
 	require.NoError(t, err)
-	println("Expected Size :", mm.Len())
 	nb := frugal.EncodedSize(v)
-	println("Measured Size :", nb)
 	require.Equal(t, mm.Len(), nb)
 	buf := make([]byte, nb)
 	ret, err := frugal.EncodeObject(buf, nil, v)
 	require.NoError(t, err)
-	println("Encoded Size  :", ret)
 	require.Equal(t, nb, ret)
 	buf = buf[:ret]
 	comparestruct(mm.Bytes(), buf)
@@ -230,7 +223,6 @@ func TestUnmarshalEnum(t *testing.T) {
 	buf := []byte{0x08, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00}
 	ret, err := frugal.DecodeObject(buf, &v)
 	require.NoError(t, err)
-	println("Decoded Size :", ret)
 	require.Equal(t, len(buf), ret)
 	require.Equal(t, EnumTestStruct{X: baseline.Enums_ValueC}, v)
 	spew.Dump(v)
@@ -242,7 +234,6 @@ func TestUnmarshalCompare(t *testing.T) {
 	var v2 baseline.Nesting2
 	loaddata(t, &v)
 	nb := frugal.EncodedSize(v)
-	println("Estimated Size:", nb)
 	buf := make([]byte, nb)
 	_, err := frugal.EncodeObject(buf, nil, v)
 	require.NoError(t, err)
@@ -265,7 +256,7 @@ func BenchmarkMarshalVanilla(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshalKitexFast(b *testing.B) {
+func BenchmarkMarshalFastCodec(b *testing.B) {
 	var v baseline.Nesting2
 	b.SetBytes(int64(len(loaddata(b, &v))))
 	buf := make([]byte, v.BLength())
@@ -288,7 +279,7 @@ func BenchmarkMarshalFrugal(b *testing.B) {
 	}
 }
 
-func BenchmarkLengthKitexFast(b *testing.B) {
+func BenchmarkLengthFastCodec(b *testing.B) {
 	var v baseline.Nesting2
 	b.SetBytes(int64(len(loaddata(b, &v))))
 	b.ResetTimer()
@@ -320,7 +311,7 @@ func BenchmarkUnmarshalVanilla(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalKitexFast(b *testing.B) {
+func BenchmarkUnmarshalFastCodec(b *testing.B) {
 	buf := loaddata(b, nil)
 	b.SetBytes(int64(len(buf)))
 	b.ResetTimer()
