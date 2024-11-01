@@ -51,6 +51,11 @@ func TestDecode(t *testing.T) {
 
 	testcases := []testcase{
 		{
+			name:   "case_default",
+			update: func(p0 *TestTypes) {},
+			test:   func(t *testing.T, p1 *TestTypes) {},
+		},
+		{
 			name:   "case_bool",
 			update: func(p0 *TestTypes) { p0.FBool = true },
 			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, true, p1.FBool) },
@@ -179,10 +184,10 @@ func TestDecode(t *testing.T) {
 			p0 := NewTestTypes()
 			updatef(p0) // update by testcase func
 
-			b := make([]byte, EncodedSize(p0))
-			n, err := Encode(b, p0)
+			n := EncodedSize(p0)
+			b, err := Append(nil, p0)
 			require.NoError(t, err)
-			require.Equal(t, len(b), n)
+			require.Equal(t, n, len(b))
 
 			// verify by gopkg thrift
 			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
@@ -281,10 +286,10 @@ func TestDecodeOptional(t *testing.T) {
 			p0 := NewTestTypesOptional()
 			updatef(p0) // update by testcase func
 
-			b := make([]byte, EncodedSize(p0))
-			n, err := Encode(b, p0)
+			n := EncodedSize(p0)
+			b, err := Append(nil, p0)
 			require.NoError(t, err)
-			require.Equal(t, len(b), n)
+			require.Equal(t, n, len(b))
 
 			// verify by gopkg thrift
 			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
@@ -310,20 +315,17 @@ func TestDecodeRequired(t *testing.T) {
 	}
 	v := true
 	p0 := &S0{}
-	b := make([]byte, 10)
-	n, err := Encode(b, p0)
+	b, err := Append(nil, p0)
 	require.NoError(t, err)
-	b = b[:n]
 	p1 := &S1{}
 	_, err = Decode(b, p1)
 	require.Equal(t, newRequiredFieldNotSetException("V"), err)
 
 	p0.V = &v
-	n, err = Encode(b[:10], p0)
+	b, err = Append(nil, p0)
 	require.NoError(t, err)
-	b = b[:n]
 
-	n, err = Decode(b, p1)
+	n, err := Decode(b, p1)
 	require.NoError(t, err)
 	require.Equal(t, len(b), n)
 	require.Equal(t, true, p1.V)
@@ -333,31 +335,26 @@ func TestDecodeUnknownFields(t *testing.T) {
 	type Msg0 struct {
 		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
 		S0 string `thrift:"s0,3" frugal:"3,default,string"`
-		S1 string `thrift:"s1,4" frugal:"4,default,string"`
-		I1 int32  `thrift:"i1,5" frugal:"5,default,i32"`
 	}
 
-	type Msg1 struct { // without S0, I1
-		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
-		S1 string `thrift:"s1,4" frugal:"4,default,string"`
+	type Msg1 struct { // without S0
+		I0 int32 `thrift:"i0,2" frugal:"2,default,i32"`
 
 		_unknownFields []byte
 	}
 
-	msg := Msg0{I0: 1, S0: "s0", S1: "s1", I1: 2}
+	msg := Msg0{I0: 1, S0: "s0"}
 	b := make([]byte, EncodedSize(msg))
-	_, _ = Encode(b, msg)
+	_, _ = Append(b[:0], msg)
 
 	p := &Msg1{}
 	_, _ = Decode(b, p)
 
 	assert.Equal(t, msg.I0, p.I0)
-	assert.Equal(t, msg.S1, p.S1)
 
-	sz := fieldHeaderLen + strHeaderLen + len(msg.S0) + fieldHeaderLen + 4
+	sz := fieldHeaderLen + strHeaderLen + len(msg.S0)
 	testb := make([]byte, sz)
 	testb = appendStringField(testb[:0], 3, msg.S0)
-	testb = appendInt32Field(testb, 5, uint32(msg.I1))
 	assert.Equal(t, sz, len(testb))
 	assert.Equal(t, testb, p._unknownFields)
 }

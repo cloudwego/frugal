@@ -50,6 +50,10 @@ func lookupFieldName(rt reflect.Type, offset uintptr) string {
 	return "unknown"
 }
 
+func withFieldErr(err error, sd *structDesc, f *tField) error {
+	return fmt.Errorf("%q field %d err: %w", sd.Name(), f.ID, err)
+}
+
 func checkUniqueness(t *tType, h *sliceHeader) error {
 	var uniq bool
 	switch t.T {
@@ -200,4 +204,33 @@ func initOrGetMapTmpVarsPool(t *tType) *sync.Pool {
 			return m
 		},
 	}
+}
+
+func appendUint16(b []byte, v uint16) []byte {
+	return append(b,
+		byte(v>>8),
+		byte(v),
+	)
+}
+
+func appendUint32(b []byte, v uint32) []byte {
+	return append(b,
+		byte(v>>24),
+		byte(v>>16),
+		byte(v>>8),
+		byte(v),
+	)
+}
+
+func appendUint64(b []byte, v uint64) []byte {
+	return append(b,
+		byte(v>>56),
+		byte(v>>48),
+		byte(v>>40),
+		byte(v>>32),
+		byte(v>>24),
+		byte(v>>16),
+		byte(v>>8),
+		byte(v),
+	)
 }

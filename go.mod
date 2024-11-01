@@ -1,6 +1,6 @@
 module github.com/cloudwego/frugal
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cloudwego/gopkg v0.1.2

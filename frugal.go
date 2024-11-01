@@ -17,6 +17,8 @@
 package frugal
 
 import (
+	"fmt"
+
 	"github.com/cloudwego/frugal/internal/opts"
 	"github.com/cloudwego/frugal/internal/reflect"
 	"github.com/cloudwego/gopkg/protocol/thrift"
@@ -34,7 +36,13 @@ func EncodedSize(val interface{}) int {
 // buf must be large enough to contain the entire serialization result.
 func EncodeObject(buf []byte, w thrift.NocopyWriter, val interface{}) (int, error) {
 	if !jit || opts.NoJIT {
-		return reflect.Encode(buf, val) // TODO: impl thrift.NocopyWriter
+		ret, err := reflect.Append(buf[:0], val)
+		if len(ret) > len(buf) {
+			return 0, fmt.Errorf("index out of range [%d] with length %d.\n"+
+				"Please make sure the input will not be changed after calling EncodedSize or during EncodeObject(concurrency issues).",
+				len(ret), len(buf))
+		}
+		return len(ret), err
 	}
 	return jitEncodeObject(buf, w, val)
 }

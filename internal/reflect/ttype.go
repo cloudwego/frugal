@@ -62,7 +62,7 @@ var t2s = [256]string{
 	tMAP:    "MAP",
 	tSET:    "SET",
 	tLIST:   "LIST",
-	// no tENUM, it's NOT a wiretype
+	tENUM:   "ENUM",
 }
 
 func ttype2str(t ttype) string {
@@ -83,6 +83,8 @@ var simpleTypes = [256]bool{
 	tENUM:   true,
 	tSTRING: true,
 }
+
+type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 
 type tType struct {
 	T ttype
@@ -113,6 +115,7 @@ type tType struct {
 
 	// for tLIST, tSET, tMAP, tSTRUCT
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
+	AppendFunc      appendFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -193,6 +196,16 @@ func newTType(x *defs.Type) *tType {
 	}
 	if x.V != nil {
 		t.V = newTType(x.V)
+	}
+	switch t.T {
+	case tLIST, tSET:
+		updateListAppendFunc(t)
+	case tMAP:
+		updateMapAppendFunc(t)
+	case tSTRUCT:
+		t.AppendFunc = appendStruct
+	default:
+		t.AppendFunc = appendAny
 	}
 	if t.IsPointer && t.V.IsPointer {
 		// XXX: make it simple... not support it, it's not common
