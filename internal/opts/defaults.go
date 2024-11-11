@@ -29,6 +29,8 @@ const (
 var (
 	MaxInlineDepth  = parseOrDefault("FRUGAL_MAX_INLINE_DEPTH", _DefaultMaxInlineDepth, 1)
 	MaxInlineILSize = parseOrDefault("FRUGAL_MAX_INLINE_IL_SIZE", _DefaultMaxInlineILSize, 256)
+
+	NoJIT, _ = strconv.ParseBool(os.Getenv("FRUGAL_NO_JIT"))
 )
 
 func parseOrDefault(key string, def int, min int) int {

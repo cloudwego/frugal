@@ -22,12 +22,19 @@ import (
 	"github.com/cloudwego/frugal/internal/opts"
 )
 
+// Option is the property setter function for opts.Options.
+type Option func(*opts.Options)
+
+// NoJIT disables JIT encoder and decoder explicitly.
+//
+// This function will be deprecated along with the JIT implementation in the future.
+func NoJIT(v bool) {
+	opts.NoJIT = v
+}
+
 const (
 	_MinILSize = 1024
 )
-
-// Option is the property setter function for opts.Options.
-type Option func(*opts.Options)
 
 // WithMaxInlineDepth sets the maximum inlining depth for the JIT compiler.
 //

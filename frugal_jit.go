@@ -19,9 +19,7 @@
 package frugal
 
 import (
-	"os"
 	"reflect"
-	"strconv"
 	"sync"
 
 	"github.com/cloudwego/frugal/internal/jit/decoder"
@@ -32,13 +30,7 @@ import (
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
-var nojit bool
-
-func init() {
-	if v, err := strconv.ParseBool(os.Getenv("FRUGAL_NO_JIT")); err == nil {
-		nojit = v
-	}
-}
+const jit = true
 
 func jitEncodedSize(val interface{}) int {
 	return encoder.EncodedSize(val)
@@ -74,7 +66,7 @@ func newty(ty *rt.GoType, d int) *_Ty {
 // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
 // order to reduce the first-hit latency.
 func Pretouch(vt reflect.Type, options ...Option) error {
-	if nojit {
+	if opts.NoJIT {
 		return nil
 	}
 	d := 0
