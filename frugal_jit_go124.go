@@ -21,10 +21,16 @@ package frugal
 import (
 	"reflect"
 
+	"github.com/cloudwego/frugal/internal/opts"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
-const nojit = true
+const jit = false // not implemented for go1.24 || !amd64 || windows
+
+func init() {
+	// force set opts.NoJIT true coz jit not available
+	opts.NoJIT = true
+}
 
 func jitEncodedSize(val interface{}) int {
 	panic("not support JIT for Go version >= go1.24")

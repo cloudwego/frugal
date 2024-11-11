@@ -20,6 +20,8 @@ type Options struct {
 	MaxInlineDepth   int
 	MaxInlineILSize  int
 	MaxPretouchDepth int
+
+	NoJIT bool
 }
 
 func (self *Options) CanInline(sp int, pc int) bool {
@@ -35,5 +37,7 @@ func GetDefaultOptions() Options {
 		MaxInlineDepth:   MaxInlineDepth,
 		MaxInlineILSize:  MaxInlineILSize,
 		MaxPretouchDepth: 0,
+
+		NoJIT: NoJIT,
 	}
 }

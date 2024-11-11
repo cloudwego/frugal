@@ -17,13 +17,14 @@
 package frugal
 
 import (
+	"github.com/cloudwego/frugal/internal/opts"
 	"github.com/cloudwego/frugal/internal/reflect"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 // EncodedSize measures the encoded size of val.
 func EncodedSize(val interface{}) int {
-	if nojit {
+	if !jit || opts.NoJIT {
 		return reflect.EncodedSize(val)
 	}
 	return jitEncodedSize(val)
@@ -32,7 +33,7 @@ func EncodedSize(val interface{}) int {
 // EncodeObject serializes val into buf with Thrift Binary Protocol, with optional Zero-Copy thrift.NocopyWriter.
 // buf must be large enough to contain the entire serialization result.
 func EncodeObject(buf []byte, w thrift.NocopyWriter, val interface{}) (int, error) {
-	if nojit {
+	if !jit || opts.NoJIT {
 		return reflect.Encode(buf, val) // TODO: impl thrift.NocopyWriter
 	}
 	return jitEncodeObject(buf, w, val)
@@ -40,7 +41,7 @@ func EncodeObject(buf []byte, w thrift.NocopyWriter, val interface{}) (int, erro
 
 // DecodeObject deserializes buf into val with Thrift Binary Protocol.
 func DecodeObject(buf []byte, val interface{}) (int, error) {
-	if nojit {
+	if !jit || opts.NoJIT {
 		return reflect.Decode(buf, val)
 	}
 	return jitDecodeObject(buf, val)
