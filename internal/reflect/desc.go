@@ -168,6 +168,10 @@ func newStructDesc(t reflect.Type) (*structDesc, error) {
 	return d, nil
 }
 
+func (d *structDesc) Name() string {
+	return d.rt.String()
+}
+
 func (d *structDesc) GetField(fid uint16) *tField {
 	if fid > d.maxID {
 		return nil

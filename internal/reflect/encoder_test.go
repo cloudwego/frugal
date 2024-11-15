@@ -112,9 +112,9 @@ func TestEncode(t *testing.T) {
 			p := NewTestTypesOptional()
 			tc.update(p)
 			assert.Equal(t, tc.expect, EncodedSize(p))
-			n, err := Encode(b, p)
+			x, err := Append(b[:0], p)
 			if assert.NoError(t, err) {
-				assert.Equal(t, tc.expect, n)
+				assert.Equal(t, tc.expect, len(x))
 			}
 		})
 	}
@@ -123,10 +123,9 @@ func TestEncode(t *testing.T) {
 func TestEncodeStructOther(t *testing.T) {
 	assert.Equal(t, encodedMsgSize, EncodedSize(Msg{})) // indirect type
 	assert.Equal(t, 1, EncodedSize((*Msg)(nil)))        // nil
-	b := make([]byte, encodedMsgSize)
-	n, err := Encode(b, Msg{})
+	b, err := Append(nil, Msg{})
 	assert.NoError(t, err)
-	assert.Equal(t, encodedMsgSize, n)
+	assert.Equal(t, encodedMsgSize, len(b))
 }
 
 func TestEncodeUnknownFields(t *testing.T) {
@@ -140,9 +139,9 @@ func TestEncodeUnknownFields(t *testing.T) {
 	m := &Msg1{I0: 123, S1: "Hello"}
 	m._unknownFields = []byte("helloworld")
 
-	b := make([]byte, EncodedSize(m))
-	i, err := Encode(b, m)
+	n := EncodedSize(m)
+	b, err := Append(nil, m)
 	require.NoError(t, err)
-	assert.Equal(t, i, len(b))
+	assert.Equal(t, n, len(b))
 	assert.Contains(t, string(b), string(append([]byte("helloworld")[:], byte(tSTOP))))
 }

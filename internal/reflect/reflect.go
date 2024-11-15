@@ -56,14 +56,16 @@ func EncodedSize(v interface{}) int {
 	return n
 }
 
-func Encode(b []byte, v interface{}) (n int, err error) {
+func Append(b []byte, v interface{}) ([]byte, error) {
 	panicIfHackErr()
+
+	var err error
 	rv := reflect.ValueOf(v)
 	sd := getStructDesc(rv) // copy get and create funcs here for inlining
 	if sd == nil {
 		sd, err = createStructDesc(rv)
 		if err != nil {
-			return 0, err
+			return b, err
 		}
 	}
 	// get underlying pointer
@@ -79,8 +81,7 @@ func Encode(b []byte, v interface{}) (n int, err error) {
 		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
-	e := tEncoder{}
-	return e.Encode(b, p, sd)
+	return appendStruct(&tType{Sd: sd}, b, p)
 }
 
 func Decode(b []byte, v interface{}) (int, error) {

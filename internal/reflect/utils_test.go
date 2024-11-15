@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func P[T any](v T) *T { return &v }
+
 func TestCheckUniqueness(t *testing.T) {
 	{ // tBOOL
 		typ := &tType{T: tBOOL, RT: reflect.TypeOf(bool(true))}

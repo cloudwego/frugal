@@ -273,15 +273,16 @@ func BenchmarkAllSize_Marshal_Frugal_Reflect(b *testing.B) {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			v := s.val
-			buf := make([]byte, freflect.EncodedSize(v))
-			n, err := freflect.Encode(buf, v)
+			n := freflect.EncodedSize(v)
+			buf, err := freflect.Append(make([]byte, 0, n), v)
 			require.NoError(b, err)
 			require.Equal(b, len(buf), n)
 			assert.Equal(b, len(s.bytes), n)
+			buf = buf[:0]
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = freflect.EncodedSize(v)
-				_, _ = freflect.Encode(buf, v)
+				_, _ = freflect.Append(buf, v)
 			}
 		})
 	}
@@ -431,10 +432,10 @@ func BenchmarkAllSize_Parallel_Marshal_Frugal_Reflect(b *testing.B) {
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
 				v := s.val
-				buf := make([]byte, freflect.EncodedSize(v))
+				buf := make([]byte, 0, freflect.EncodedSize(v))
 				for pb.Next() {
 					freflect.EncodedSize(v)
-					_, _ = freflect.Encode(buf, v)
+					_, _ = freflect.Append(buf, v)
 				}
 			})
 		})

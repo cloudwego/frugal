@@ -81,13 +81,13 @@ func appendStringField(b []byte, fid uint16, s string) []byte {
 	return append(b, s...)
 }
 
-func BenchmarkEncode(b *testing.B) {
+func BenchmarkAppend(b *testing.B) {
 	p := initTestTypesForBenchmark()
 	n := EncodedSize(p)
-	buf := make([]byte, n)
+	buf := make([]byte, 0, n)
 	b.SetBytes(int64(n))
 	for i := 0; i < b.N; i++ {
-		_, _ = Encode(buf, p)
+		_, _ = Append(buf, p)
 	}
 }
 
@@ -107,9 +107,10 @@ func BenchmarkDecode(b *testing.B) {
 	if n <= 0 {
 		b.Fatal(n)
 	}
+	var err error
 	buf := make([]byte, n)
 	b.SetBytes(int64(n))
-	_, err := Encode(buf, p)
+	buf, err = Append(buf[:0], p)
 	require.NoError(b, err)
 
 	p0 := NewTestTypesForBenchmark()
