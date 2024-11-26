@@ -17,6 +17,7 @@
 package reflect
 
 import (
+	"bytes"
 	"math"
 	"math/rand"
 	"testing"
@@ -357,4 +358,49 @@ func TestDecodeUnknownFields(t *testing.T) {
 	testb = appendStringField(testb[:0], 3, msg.S0)
 	assert.Equal(t, sz, len(testb))
 	assert.Equal(t, testb, p._unknownFields)
+}
+
+func TestDecodeNoCopy(t *testing.T) {
+	type Msg struct {
+		A string `frugal:"1,default,string,nocopy"`
+		B string `frugal:"2,default,string"`
+		C []byte `frugal:"3,default,binary,nocopy"`
+	}
+
+	strA := "strA"
+	strB := "strB"
+	strC := "strC"
+	sz := 3*(fieldHeaderLen+strHeaderLen) + len(strA) + len(strB) + len(strC)
+	b := make([]byte, 0, sz)
+	b = appendStringField(b, 1, strA)
+	b = appendStringField(b, 2, strB)
+	b = appendStringField(b, 3, strC)
+	b = append(b, 0) // tSTOP
+
+	p := &Msg{}
+	_, err := Decode(b, p)
+	require.NoError(t, err)
+
+	assert.Equal(t, strA, p.A)
+	assert.Equal(t, strB, p.B)
+	assert.Equal(t, strC, string(p.C))
+
+	// update original buffer
+	// coz it's nocopy, the fields of p will be changed implicitly as well.
+	// update strA -> xtrA, strB -> xtrB, strC -> xtrC
+	for _, s := range []string{strA, strB, strC} {
+		i := bytes.Index(b, []byte(s))
+		b[i] = 'x'
+	}
+	assert.Equal(t, "xtrA", p.A)
+	assert.Equal(t, "strB", p.B) // p.B has no `nocopy` option
+	assert.Equal(t, "xtrC", string(p.C))
+
+	type Msg2 struct {
+		A int32 `frugal:"4,default,i32,nocopy"`
+	}
+	p2 := &Msg2{}
+	_, err = Decode(b, p2)
+	require.Error(t, err)
+	_ = p2
 }

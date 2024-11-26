@@ -221,10 +221,10 @@ type tField struct {
 	Offset uintptr
 	Type   *tType
 
-	Opts    defs.Options
 	Spec    defs.Requiredness
 	Default unsafe.Pointer
 
+	NoCopy             bool
 	CanSkipEncodeIfNil bool
 	CanSkipIfDefault   bool
 }
@@ -263,11 +263,15 @@ func (f *tField) fromDefsField(x defs.Field) {
 	f.ID = x.ID
 	f.Offset = uintptr(x.F)
 	f.Type = newTType(x.Type)
-	f.Opts = x.Opts
 	f.Spec = x.Spec
 
 	t := f.Type
 
+	f.NoCopy = (x.Opts & defs.NoCopy) != 0
+	if f.NoCopy && f.Type.WT != tSTRING {
+		// never goes here, defs will check the tag
+		panic("[BUG] nocopy on non-STRING type")
+	}
 	// for map or slice, t.IsPointer() is false,
 	// but we can consider the types as pointer as per lang spec
 	// for defs.T_binary, actually it's []byte, like tLIST
