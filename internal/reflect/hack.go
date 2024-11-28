@@ -239,5 +239,19 @@ func (h *sliceHeader) UnsafePointer() unsafe.Pointer {
 	return *(*unsafe.Pointer)(unsafe.Pointer(h))
 }
 
+var (
+	emptyslice = make([]byte, 0)
+
+	// for slice, Data should points to zerobase var in `runtime`
+	// so that it can represent as []type{} instead of []type(nil)
+	zerobase = ((*sliceHeader)(unsafe.Pointer(&emptyslice))).Data
+)
+
+func (h *sliceHeader) Zero() {
+	h.Len = 0
+	h.Cap = 0
+	h.Data = zerobase
+}
+
 //go:linkname mallocgc runtime.mallocgc
 func mallocgc(size uintptr, typ unsafe.Pointer, needzero bool) unsafe.Pointer

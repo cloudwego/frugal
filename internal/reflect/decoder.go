@@ -125,7 +125,13 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		if t.FixedSize > 0 {
 			i += decodeFixedSizeTypes(t.T, b[i:], p)
 		} else {
-			n, err := d.decodeType(t, b[i:], p, maxdepth-1)
+			var n int
+			var err error
+			if f.NoCopy {
+				n, err = decodeStringNoCopy(t, b[i:], p)
+			} else {
+				n, err = d.decodeType(t, b[i:], p, maxdepth-1)
+			}
 			if err != nil {
 				return i, fmt.Errorf("decode field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
@@ -168,6 +174,39 @@ func decodeFixedSizeTypes(t ttype, b []byte, p unsafe.Pointer) int {
 	}
 }
 
+func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error) {
+	l := int(binary.BigEndian.Uint32(b))
+	if l < 0 {
+		err = errNegativeSize
+		return
+	}
+	i += 4
+	if l == 0 {
+		if t.Tag == defs.T_binary {
+			*(*[]byte)(p) = []byte{}
+		} else {
+			*(*string)(p) = ""
+		}
+		return
+	}
+
+	// assert len, panic if []byte shorter than expected.
+	_ = b[i+l-1]
+
+	if t.Tag == defs.T_binary {
+		h := (*sliceHeader)(p)
+		h.Data = uintptr(unsafe.Pointer(&b[i]))
+		h.Len = l
+		h.Cap = l
+	} else { //  convert to str
+		h := (*stringHeader)(p)
+		h.Data = uintptr(unsafe.Pointer(&b[i]))
+		h.Len = l
+	}
+	i += l
+	return
+}
+
 func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int) (int, error) {
 	if maxdepth == 0 {
 		return 0, errDepthLimitExceeded
@@ -184,12 +223,16 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		i := 4
 		if l == 0 {
 			if t.Tag == defs.T_binary {
-				*(*sliceHeader)(p) = zeroSliceHeader
+				*(*[]byte)(p) = []byte{}
 			} else {
-				*(*stringHeader)(p) = zeroStrHeader
+				*(*string)(p) = ""
 			}
 			return i, nil
 		}
+
+		// assert len, panic if []byte shorter than expected.
+		_ = b[i+l-1]
+
 		x := d.Malloc(l, 1, 0)
 		if t.Tag == defs.T_binary {
 			h := (*sliceHeader)(p)
@@ -304,15 +347,14 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 		// decode list
 		h := (*sliceHeader)(p) // update the slice field
-		h.Data = 0
-		h.Len = l
-		h.Cap = l
 		if l <= 0 {
-			*(*sliceHeader)(p) = zeroSliceHeader
+			h.Zero()
 			return i, nil
 		}
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
 		h.Data = uintptr(x)
+		h.Len = l
+		h.Cap = l
 
 		// pre-allocate space for elements if they're pointers
 		// like
