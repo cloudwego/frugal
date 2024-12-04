@@ -92,23 +92,36 @@ func newStructDescAndPrefetch(t reflect.Type) (*structDesc, error) {
 
 func prefetchSubStructDesc(d *structDesc) error {
 	for i := range d.fields {
-		var t *tType
 		f := d.fields[i]
-		if f.Type.T == tSTRUCT {
-			t = f.Type
-		} else if f.Type.T == tMAP && f.Type.V.T == tSTRUCT {
-			t = f.Type.V
-		} else if f.Type.T == tLIST && f.Type.V.T == tSTRUCT {
-			t = f.Type.V
-		} else {
-			continue
+		switch f.Type.T {
+		case tSTRUCT, tMAP, tLIST, tSET:
+			if err := fetchStructDesc(f.Type); err != nil {
+				return err
+			}
 		}
-		sd, err := newStructDescAndPrefetch(t.RT)
+	}
+	return nil
+}
+
+func fetchStructDesc(t *tType) error {
+	if t.T == tMAP {
+		err := fetchStructDesc(t.K)
 		if err != nil {
 			return err
 		}
-		t.Sd = sd
+		return fetchStructDesc(t.V)
 	}
+	if t.T == tLIST || t.T == tSET {
+		return fetchStructDesc(t.V)
+	}
+	if t.T != tSTRUCT || t.Sd != nil {
+		return nil
+	}
+	sd, err := newStructDescAndPrefetch(t.RT)
+	if err != nil {
+		return err
+	}
+	t.Sd = sd
 	return nil
 }
 
