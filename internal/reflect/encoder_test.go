@@ -145,3 +145,28 @@ func TestEncodeUnknownFields(t *testing.T) {
 	assert.Equal(t, n, len(b))
 	assert.Contains(t, string(b), string(append([]byte("helloworld")[:], byte(tSTOP))))
 }
+
+func TestNestedListMapStruct(t *testing.T) {
+	type Msg1 struct {
+		A string `frugal:"1,default,string"`
+		B string `frugal:"2,default,string"`
+	}
+	type Msg2 struct {
+		Msgs []map[string]*Msg1 `thrift:"item_list,2" frugal:"2,default,list<map<string:Msg1>>" json:"item_list"`
+	}
+	p := &Msg2{}
+	p.Msgs = make([]map[string]*Msg1, 0, 1)
+	p.Msgs = append(p.Msgs, map[string]*Msg1{})
+	p.Msgs[0]["32"] = &Msg1{A: "Hello", B: "World"}
+
+	b := make([]byte, EncodedSize(p))
+	x, err := Append(b[:0], p)
+	require.NoError(t, err)
+	require.Equal(t, len(x), len(b))
+
+	p2 := &Msg2{}
+	i, err := Decode(x, p2)
+	require.NoError(t, err)
+	require.Equal(t, i, len(b))
+	require.Equal(t, p, p2)
+}
