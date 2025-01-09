@@ -31,9 +31,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cloudwego/frugal"
+	"github.com/cloudwego/frugal/internal/opts"
 	freflect "github.com/cloudwego/frugal/internal/reflect"
 	gthrift "github.com/cloudwego/gopkg/protocol/thrift"
+
+	"github.com/cloudwego/frugal/internal/jit"
+	jitDecoder "github.com/cloudwego/frugal/internal/jit/decoder"
+	jitEncoder "github.com/cloudwego/frugal/internal/jit/encoder"
 )
 
 func TestMain(m *testing.M) {
@@ -193,10 +197,10 @@ func BenchmarkAllSize_BLength_Frugal_JIT(b *testing.B) {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			v := s.val
-			assert.Equal(b, frugal.EncodedSize(v), len(s.bytes))
+			assert.Equal(b, jitEncoder.EncodedSize(v), len(s.bytes))
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				frugal.EncodedSize(v)
+				jitEncoder.EncodedSize(v)
 			}
 		})
 	}
@@ -254,15 +258,15 @@ func BenchmarkAllSize_Marshal_Frugal_JIT(b *testing.B) {
 		b.Run(s.name, func(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			v := s.val
-			buf := make([]byte, frugal.EncodedSize(v))
-			n, err := frugal.EncodeObject(buf, nil, v)
+			buf := make([]byte, jitEncoder.EncodedSize(v))
+			n, err := jitEncoder.EncodeObject(buf, nil, v)
 			require.NoError(b, err)
 			require.Equal(b, len(buf), n)
 			assert.Equal(b, len(s.bytes), n)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = frugal.EncodedSize(v)
-				_, _ = frugal.EncodeObject(buf, nil, v)
+				_ = jitEncoder.EncodedSize(v)
+				_, _ = jitEncoder.EncodeObject(buf, nil, v)
 			}
 		})
 	}
@@ -343,13 +347,13 @@ func BenchmarkAllSize_Unmarshal_Frugal_JIT(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
 			v := newByEFace(s.val)
-			n, err := frugal.DecodeObject(buf, v)
+			n, err := jitDecoder.DecodeObject(buf, v)
 			require.NoError(b, err)
 			require.Equal(b, len(buf), n)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				objectmemclr(v)
-				_, _ = frugal.DecodeObject(buf, v)
+				_, _ = jitDecoder.DecodeObject(buf, v)
 			}
 		})
 	}
@@ -410,15 +414,15 @@ func BenchmarkAllSize_Parallel_Marshal_FastCodec(b *testing.B) {
 func BenchmarkAllSize_Parallel_Marshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			frugal.Pretouch(reflect.TypeOf(s.val))
+			jit.Pretouch(reflect.TypeOf(s.val), opts.GetDefaultOptions())
 			b.SetBytes(int64(len(s.bytes)))
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
 				v := s.val
-				buf := make([]byte, frugal.EncodedSize(v))
+				buf := make([]byte, jitEncoder.EncodedSize(v))
 				for pb.Next() {
-					frugal.EncodedSize(v)
-					_, _ = frugal.EncodeObject(buf, nil, v)
+					jitEncoder.EncodedSize(v)
+					_, _ = jitEncoder.EncodeObject(buf, nil, v)
 				}
 			})
 		})
@@ -481,7 +485,7 @@ func BenchmarkAllSize_Parallel_Unmarshal_FastCodec(b *testing.B) {
 func BenchmarkAllSize_Parallel_Unmarshal_Frugal_JIT(b *testing.B) {
 	for _, s := range getSamples() {
 		b.Run(s.name, func(b *testing.B) {
-			frugal.Pretouch(reflect.TypeOf(s.val))
+			jit.Pretouch(reflect.TypeOf(s.val), opts.GetDefaultOptions())
 			b.SetBytes(int64(len(s.bytes)))
 			buf := s.bytes
 			b.ResetTimer()
@@ -489,7 +493,7 @@ func BenchmarkAllSize_Parallel_Unmarshal_Frugal_JIT(b *testing.B) {
 				v := newByEFace(s.val)
 				for pb.Next() {
 					objectmemclr(v)
-					_, _ = frugal.DecodeObject(buf, v)
+					_, _ = jitDecoder.DecodeObject(buf, v)
 				}
 			})
 		})

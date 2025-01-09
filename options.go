@@ -28,8 +28,19 @@ type Option func(*opts.Options)
 // NoJIT disables JIT encoder and decoder explicitly.
 //
 // This function will be deprecated along with the JIT implementation in the future.
+//
+// Deprecated: JIT is disabled by default.
 func NoJIT(v bool) {
 	opts.NoJIT = v
+
+	println(`
+frugal.NoJIT is deprecated. JIT is disabled by default since v0.2.4.
+If you still want to use JIT, please specify frugal_jit tag for go build to enable it.
+
+Please do note that:
+The JIT implementation is no longer maintained,
+DO NOT submit any issues or pull requests.
+`)
 }
 
 const (
@@ -45,6 +56,8 @@ const (
 // Set this option to "0" disables this limit, which means inlining everything.
 //
 // The default value of this option is "2".
+//
+// Deprecated: only for JIT
 func WithMaxInlineDepth(depth int) Option {
 	if depth < 0 {
 		panic(fmt.Sprintf("frugal: invalid inline depth: %d", depth))
@@ -63,6 +76,8 @@ func WithMaxInlineDepth(depth int) Option {
 // IL buffer.
 //
 // The default value of this option is "50000".
+//
+// Deprecated: only for JIT
 func WithMaxInlineILSize(size int) Option {
 	if size != 0 && size < _MinILSize {
 		panic(fmt.Sprintf("frugal: invalid inline IL size: %d", size))
@@ -84,6 +99,8 @@ func WithMaxInlineILSize(size int) Option {
 //
 // This option is only available when performing pretouch, otherwise it is
 // ignored and do not have any effect.
+//
+// Deprecated: only for JIT
 func WithMaxPretouchDepth(depth int) Option {
 	if depth < 0 {
 		panic(fmt.Sprintf("frugal: invalid pretouch depth: %d", depth))
@@ -101,6 +118,8 @@ func WithMaxPretouchDepth(depth int) Option {
 // The default value of this option is "2".
 //
 // Returns the old opts.MaxInlineDepth value.
+//
+// Deprecated: only for JIT
 func SetMaxInlineDepth(depth int) int {
 	depth, opts.MaxInlineDepth = opts.MaxInlineDepth, depth
 	return depth
@@ -115,6 +134,8 @@ func SetMaxInlineDepth(depth int) int {
 // The default value of this option is "50000".
 //
 // Returns the old opts.MaxInlineILSize value.
+//
+// Deprecated: only for JIT
 func SetMaxInlineILSize(size int) int {
 	size, opts.MaxInlineILSize = opts.MaxInlineILSize, size
 	return size

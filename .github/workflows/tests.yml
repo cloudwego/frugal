@@ -3,7 +3,7 @@ name: Tests
 on: [ push, pull_request ]
 
 jobs:
-  compatibility-test-amd64:
+  unittest-amd64:
     strategy:
       matrix:
         go: [ "1.18", "1.19", "1.20", "1.21", "1.22", "1.23" ]
@@ -23,7 +23,7 @@ jobs:
       - name: Test Benchmark
         run: go test -bench=. -benchmem -run=none ./... -benchtime=100ms
 
-  compatibility-test-arm64:
+  unittest-arm64:
     strategy:
       matrix:
         go: [ "1.18", "1.19", "1.20", "1.21", "1.22", "1.23" ]
@@ -42,3 +42,21 @@ jobs:
         run: cd tests && go test -race
       - name: Test Benchmark
         run: go test -bench=. -benchmem -run=none ./internal/reflect -benchtime=100ms
+
+  buildtag-amd64:
+    strategy:
+      matrix:
+        go: [ "1.18", "1.23" ]
+        os: [ X64 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false # don't use cache for self-hosted runners
+      - name: Build without frugal_jit
+        run: go build -v ./...
+      - name: Build with frugal_jit
+        run: go build -v -tags=frugal_jit ./...
