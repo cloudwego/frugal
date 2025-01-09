@@ -1,4 +1,4 @@
-//go:build go1.24 || !amd64 || windows
+//go:build !frugal_jit
 
 /*
  * Copyright 2024 CloudWeGo Authors

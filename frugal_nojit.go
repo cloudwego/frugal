@@ -1,4 +1,4 @@
-//go:build go1.24 || !amd64 || windows
+//go:build !frugal_jit
 
 /*
  * Copyright 2024 CloudWeGo Authors
@@ -21,27 +21,21 @@ package frugal
 import (
 	"reflect"
 
-	"github.com/cloudwego/frugal/internal/opts"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
-const jit = false // not implemented for go1.24 || !amd64 || windows
-
-func init() {
-	// force set opts.NoJIT true coz jit not available
-	opts.NoJIT = true
-}
+const nojit = true
 
 func jitEncodedSize(val interface{}) int {
-	panic("not support JIT for Go version >= go1.24")
+	panic("not supported")
 }
 
 func jitEncodeObject(buf []byte, w thrift.NocopyWriter, val interface{}) (int, error) {
-	panic("not support JIT for Go version >= go1.24")
+	panic("not supported")
 }
 
 func jitDecodeObject(buf []byte, val interface{}) (int, error) {
-	panic("not support JIT for Go version >= go1.24")
+	panic("not supported")
 }
 
 // Pretouch compiles vt ahead-of-time to avoid JIT compilation on-the-fly, in
