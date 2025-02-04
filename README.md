@@ -4,20 +4,6 @@ English | [中文](README_cn.md)
 
 A very fast dynamic Thrift serializer & deserializer without generating code.
 
-It implements a pure Go version (or reflect version) and a just-in-time(JIT) compilation version.
-Since the reflect version performs better than the JIT version in most cases and it works on different cpu architectures,
-so we plan to deprecate the JIT version starting with Go 1.24.
-
-Before Go 1.24:
-* JIT version is the default serializer & deserializer for `amd64`.
-* reflect version is only enabled when running on `!amd64` or `windows`
-* You can enable the reflect version by specifying os env `FRUGAL_NO_JIT=1`
-
-Since Go 1.24:
-* reflect version is the default serializer & deserializer.
-* JIT code will be skipped by go build tags.
-
-
 ## Features
 
 ### Code Generation Free
@@ -26,37 +12,31 @@ Traditional Thrift serializer and deserializer are based on generated code which
 
 ### High Performance
 
-Based on the test cases in `frugal/tests`, Frugal's performance is 1 to 4 times better than Apache Thrift (TBinaryProtocol).
+Based on the test cases in `frugal/tests`, Frugal's performance is 3 to 4 times better than Apache Thrift (TBinaryProtocol).
 
 There may be variations between different test cases. Feel free to share your test cases with us.
 
 ```text
-go version go1.22.5 linux/amd64
+go version go1.23.5 linux/amd64
 
 goos: linux
 goarch: amd64
 pkg: github.com/cloudwego/frugal/tests
 cpu: Intel(R) Xeon(R) Gold 5118 CPU @ 2.30GHz
 
-Marshal_ApacheThrift/small-4          	 2070745	     584.0 ns/op	 998.32 MB/s	     112 B/op	       1 allocs/op
-Marshal_ApacheThrift/medium-4         	   78729	     13680 ns/op	1280.57 MB/s	     112 B/op	       1 allocs/op
-Marshal_ApacheThrift/large-4          	    3097	    376184 ns/op	1179.75 MB/s	     620 B/op	       1 allocs/op
-Marshal_Frugal_JIT/small-4            	 4939591	     242.1 ns/op	2407.83 MB/s	      13 B/op	       0 allocs/op
-Marshal_Frugal_JIT/medium-4           	  160820	      7485 ns/op	2340.29 MB/s	      54 B/op	       0 allocs/op
-Marshal_Frugal_JIT/large-4            	    5370	    214258 ns/op	2071.35 MB/s	     338 B/op	       0 allocs/op
-Marshal_Frugal_Reflect/small-4        	10171197	     117.3 ns/op	4970.90 MB/s	       0 B/op	       0 allocs/op
-Marshal_Frugal_Reflect/medium-4       	  180207	      6644 ns/op	2636.73 MB/s	       0 B/op	       0 allocs/op
-Marshal_Frugal_Reflect/large-4        	    6312	    185534 ns/op	2392.04 MB/s	       0 B/op	       0 allocs/op
+Marshal_ApacheThrift/small-4        	 2825868	     422.0 ns/op	1381.54 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/medium-4       	  126256	      9537 ns/op	1836.78 MB/s	     112 B/op	       1 allocs/op
+Marshal_ApacheThrift/large-4        	    2757	    413741 ns/op	1072.66 MB/s	   52150 B/op	      67 allocs/op
+Marshal_Frugal/small-4              	12832788	     93.39 ns/op	6242.72 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal/medium-4             	  323967	      3706 ns/op	4726.97 MB/s	       0 B/op	       0 allocs/op
+Marshal_Frugal/large-4              	   12500	     96084 ns/op	4618.94 MB/s	       0 B/op	       0 allocs/op
 
-Unmarshal_ApacheThrift/small-4        	  768525	      1443 ns/op	 403.94 MB/s	    1232 B/op	       5 allocs/op
-Unmarshal_ApacheThrift/medium-4       	   24463	     47067 ns/op	 372.19 MB/s	   44816 B/op	     176 allocs/op
-Unmarshal_ApacheThrift/large-4        	    1053	   1155725 ns/op	 384.00 MB/s	 1135540 B/op	    4433 allocs/op
-Unmarshal_Frugal_JIT/small-4          	 2575767	     466.3 ns/op	1250.36 MB/s	     547 B/op	       2 allocs/op
-Unmarshal_Frugal_JIT/medium-4         	   62128	     19333 ns/op	 906.12 MB/s	   19404 B/op	      89 allocs/op
-Unmarshal_Frugal_JIT/large-4          	    2328	    496431 ns/op	 893.99 MB/s	  495906 B/op	    2283 allocs/op
-Unmarshal_Frugal_Reflect/small-4      	 2770252	     437.2 ns/op	1333.60 MB/s	     544 B/op	       1 allocs/op
-Unmarshal_Frugal_Reflect/medium-4     	   64232	     18183 ns/op	 963.45 MB/s	   19945 B/op	      57 allocs/op
-Unmarshal_Frugal_Reflect/large-4      	    2325	    496415 ns/op	 894.02 MB/s	  511876 B/op	    1467 allocs/op
+Unmarshal_ApacheThrift/small-4      	 1288263	     923.1 ns/op	 631.60 MB/s	    1232 B/op	       5 allocs/op
+Unmarshal_ApacheThrift/medium-4     	   38652	     30080 ns/op	 582.38 MB/s	   44816 B/op	     176 allocs/op
+Unmarshal_ApacheThrift/large-4      	    1442	    783341 ns/op	 566.55 MB/s	 1135536 B/op	    4433 allocs/op
+Unmarshal_Frugal/small-4            	 4491027	     252.2 ns/op	2311.66 MB/s	     544 B/op	       1 allocs/op
+Unmarshal_Frugal/medium-4           	  106743	     10438 ns/op	1678.30 MB/s	   19908 B/op	      57 allocs/op
+Unmarshal_Frugal/large-4            	    3896	    266877 ns/op	1662.95 MB/s	  510888 B/op	    1460 allocs/op
 ```
 
 ## What can you do with Frugal ?
