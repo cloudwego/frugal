@@ -31,8 +31,6 @@ type Option func(*opts.Options)
 //
 // Deprecated: JIT is disabled by default.
 func NoJIT(v bool) {
-	opts.NoJIT = v
-
 	println(`
 frugal.NoJIT is deprecated. JIT is disabled by default since v0.2.4.
 If you still want to use JIT, please specify frugal_jit tag for go build to enable it.
