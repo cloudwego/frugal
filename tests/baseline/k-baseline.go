@@ -669,13 +669,6 @@ func (p *Nesting2) BLength() int {
 	off += 3
 	off += 4 + len(p.String_)
 
-	// p.SetNesting ID:10 thrift.SET
-	off += 3
-	off += 5
-	for _, v := range p.SetNesting {
-		off += v.BLength()
-	}
-
 	// p.I32 ID:11 thrift.I32
 	off += 3
 	off += 4
@@ -742,13 +735,6 @@ func (p *Nesting2) FastAppend(b []byte) []byte {
 	b = append(b, 11, 0, 9)
 	b = x.AppendI32(b, int32(len(p.String_)))
 	b = append(b, p.String_...)
-
-	// p.SetNesting
-	b = append(b, 14, 0, 10)
-	b = x.AppendListBegin(b, thrift.STRUCT, len(p.SetNesting))
-	for _, v := range p.SetNesting {
-		b = v.FastAppend(b)
-	}
 
 	// p.I32
 	b = append(b, 8, 0, 11)
@@ -856,22 +842,6 @@ func (p *Nesting2) FastRead(b []byte) (off int, err error) {
 			off += l
 			if err != nil {
 				goto ReadFieldError
-			}
-		case 0xa0e: // p.SetNesting ID:10 thrift.SET
-			var sz int
-			_, sz, l, err = x.ReadListBegin(b[off:])
-			off += l
-			if err != nil {
-				goto ReadFieldError
-			}
-			p.SetNesting = make([]*Nesting, sz)
-			for i := 0; i < sz; i++ {
-				p.SetNesting[i] = NewNesting()
-				l, err = p.SetNesting[i].FastRead(b[off:])
-				off += l
-				if err != nil {
-					goto ReadFieldError
-				}
 			}
 		case 0xb08: // p.I32 ID:11 thrift.I32
 			p.I32, l, err = x.ReadI32(b[off:])
