@@ -16,28 +16,27 @@
 
 不同的测试用例，结果可能会有些差异。欢迎给我们分享你的测试数据。
 
-
 ```text
-go version go1.23.5 linux/amd64
+go version go1.23.6 linux/amd64
 
 goos: linux
 goarch: amd64
 pkg: github.com/cloudwego/frugal/tests
 cpu: Intel(R) Xeon(R) Gold 5118 CPU @ 2.30GHz
 
-Marshal_ApacheThrift/small-4             2825868         422.0 ns/op    1381.54 MB/s         112 B/op          1 allocs/op
-Marshal_ApacheThrift/medium-4             126256          9537 ns/op    1836.78 MB/s         112 B/op          1 allocs/op
-Marshal_ApacheThrift/large-4                2757        413741 ns/op    1072.66 MB/s       52150 B/op         67 allocs/op
-Marshal_Frugal/small-4                  12832788         93.39 ns/op    6242.72 MB/s           0 B/op          0 allocs/op
-Marshal_Frugal/medium-4                   323967          3706 ns/op    4726.97 MB/s           0 B/op          0 allocs/op
-Marshal_Frugal/large-4                     12500         96084 ns/op    4618.94 MB/s           0 B/op          0 allocs/op
+Marshal_ApacheThrift/small-4             3468714         346.1 ns/op    1684.32 MB/s           0 B/op          0 allocs/op
+Marshal_ApacheThrift/medium-4             128386          9343 ns/op    1875.07 MB/s           0 B/op          0 allocs/op
+Marshal_ApacheThrift/large-4                7208        164521 ns/op    1845.68 MB/s         109 B/op          0 allocs/op
+Marshal_Frugal/small-4                  13032746         92.45 ns/op    6306.09 MB/s           0 B/op          0 allocs/op
+Marshal_Frugal/medium-4                   327564          3669 ns/op    4774.38 MB/s           0 B/op          0 allocs/op
+Marshal_Frugal/large-4                     18751         64212 ns/op    4728.90 MB/s           0 B/op          0 allocs/op
 
-Unmarshal_ApacheThrift/small-4           1288263         923.1 ns/op     631.60 MB/s        1232 B/op          5 allocs/op
-Unmarshal_ApacheThrift/medium-4            38652         30080 ns/op     582.38 MB/s       44816 B/op        176 allocs/op
-Unmarshal_ApacheThrift/large-4              1442        783341 ns/op     566.55 MB/s     1135536 B/op       4433 allocs/op
-Unmarshal_Frugal/small-4                 4491027         252.2 ns/op    2311.66 MB/s         544 B/op          1 allocs/op
-Unmarshal_Frugal/medium-4                 106743         10438 ns/op    1678.30 MB/s       19908 B/op         57 allocs/op
-Unmarshal_Frugal/large-4                    3896        266877 ns/op    1662.95 MB/s      510888 B/op       1460 allocs/op
+Unmarshal_ApacheThrift/small-4           1548732         774.1 ns/op     753.15 MB/s        1120 B/op          4 allocs/op
+Unmarshal_ApacheThrift/medium-4            42676         30665 ns/op     571.27 MB/s       44704 B/op        175 allocs/op
+Unmarshal_ApacheThrift/large-4              2106        515642 ns/op     588.88 MB/s      775936 B/op       3030 allocs/op
+Unmarshal_Frugal/small-4                 4963635         266.2 ns/op    2189.92 MB/s         544 B/op          1 allocs/op
+Unmarshal_Frugal/medium-4                  99786         11321 ns/op    1547.45 MB/s       19908 B/op         57 allocs/op
+Unmarshal_Frugal/large-4                    5838        197987 ns/op    1533.69 MB/s      349252 B/op        997 allocs/op
 ```
 
 ## 用 Frugal 可以做什么？
