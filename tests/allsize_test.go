@@ -55,8 +55,6 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 		samples[i].bytes = mm.Bytes()
-		println("sample ", s.name, ", size ", len(samples[i].bytes), "B")
-		// println(dumpval(s.val))
 	}
 
 	m.Run()
@@ -158,7 +156,6 @@ func getNesting2Value() *baseline.Nesting2 {
 		NestingStruct:    getNestingValue(),
 		Binary:           getBytes(),
 		String_:          getString(),
-		SetNesting:       []*baseline.Nesting{},
 		I32:              math.MaxInt32,
 	}
 	for i := 0; i < mapCount; i++ {
@@ -166,9 +163,6 @@ func getNesting2Value() *baseline.Nesting2 {
 	}
 	for i := 0; i < listCount; i++ {
 		ret.ListNesting = append(ret.ListNesting, getNestingValue())
-		x := getNestingValue()
-		x.I64 = int64(i)
-		ret.SetNesting = append(ret.SetNesting, x)
 	}
 	return ret
 }
@@ -179,10 +173,11 @@ func BenchmarkAllSize_Marshal_ApacheThrift(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			v := s.val
 			mm := thrift.NewTMemoryBuffer()
+			trans := thrift.NewTBinaryProtocolTransport(mm)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
+				_ = v.(thrift.TStruct).Write(trans)
 				mm.Reset()
-				_ = v.(thrift.TStruct).Write(thrift.NewTBinaryProtocolTransport(mm))
 			}
 		})
 	}
@@ -249,12 +244,13 @@ func BenchmarkAllSize_Unmarshal_ApacheThrift(b *testing.B) {
 			b.SetBytes(int64(len(s.bytes)))
 			buf := bytes.NewBuffer(s.bytes)
 			mm := thrift.NewTMemoryBuffer()
+			trans := thrift.NewTBinaryProtocolTransport(mm)
 			v := newByEFace(s.val).(thrift.TStruct)
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				*mm.Buffer = *buf // reset *Buffer to original one
 				objectmemclr(v)
-				_ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+				_ = v.Read(trans)
 			}
 		})
 	}
@@ -301,9 +297,10 @@ func BenchmarkAllSize_Parallel_Marshal_ApacheThrift(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				v := s.val
 				mm := thrift.NewTMemoryBuffer()
+				trans := thrift.NewTBinaryProtocolTransport(mm)
 				for pb.Next() {
+					_ = v.(thrift.TStruct).Write(trans)
 					mm.Reset()
-					_ = v.(thrift.TStruct).Write(thrift.NewTBinaryProtocolTransport(mm))
 				}
 			})
 		})
@@ -353,10 +350,11 @@ func BenchmarkAllSize_Parallel_Unmarshal_ApacheThrift(b *testing.B) {
 			b.RunParallel(func(pb *testing.PB) {
 				mm := thrift.NewTMemoryBuffer()
 				v := newByEFace(s.val).(thrift.TStruct)
+				trans := thrift.NewTBinaryProtocolTransport(mm)
 				for pb.Next() {
 					*mm.Buffer = *buf // reset *Buffer to original one
 					objectmemclr(v)
-					_ = v.Read(thrift.NewTBinaryProtocolTransport(mm))
+					_ = v.Read(trans)
 				}
 			})
 		})

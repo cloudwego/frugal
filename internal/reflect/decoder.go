@@ -27,18 +27,6 @@ import (
 	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
-var (
-	zerob   = make([]byte, 0)
-	zerostr = ""
-
-	// for slice, Data should points to zerobase var in `runtime`
-	// so that it can represent as []type{} instead of []type(nil)
-	zeroSliceHeader = *(*sliceHeader)(unsafe.Pointer(&zerob))
-
-	// for string, all fields should be zero
-	zeroStrHeader = *(*stringHeader)(unsafe.Pointer(&zerostr))
-)
-
 const maxDepthLimit = 1023
 
 var decoderPool = sync.Pool{

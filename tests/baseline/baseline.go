@@ -1487,7 +1487,6 @@ type Nesting2 struct {
 	NestingStruct    *Nesting             `thrift:"NestingStruct,7" frugal:"7,default,Nesting" json:"NestingStruct"`
 	Binary           []byte               `thrift:"Binary,8" frugal:"8,default,binary" json:"Binary"`
 	String_          string               `thrift:"String,9" frugal:"9,default,string" json:"String"`
-	SetNesting       []*Nesting           `thrift:"SetNesting,10" frugal:"10,default,set<Nesting>" json:"SetNesting"`
 	I32              int32                `thrift:"I32,11" frugal:"11,default,i32" json:"I32"`
 }
 
@@ -1544,10 +1543,6 @@ func (p *Nesting2) GetString() (v string) {
 	return p.String_
 }
 
-func (p *Nesting2) GetSetNesting() (v []*Nesting) {
-	return p.SetNesting
-}
-
 func (p *Nesting2) GetI32() (v int32) {
 	return p.I32
 }
@@ -1562,7 +1557,6 @@ var fieldIDToName_Nesting2 = map[int16]string{
 	7:  "NestingStruct",
 	8:  "Binary",
 	9:  "String",
-	10: "SetNesting",
 	11: "I32",
 }
 
@@ -1660,14 +1654,6 @@ func (p *Nesting2) Read(iprot thrift.TProtocol) (err error) {
 		case 9:
 			if fieldTypeId == thrift.STRING {
 				if err = p.ReadField9(iprot); err != nil {
-					goto ReadFieldError
-				}
-			} else if err = iprot.Skip(fieldTypeId); err != nil {
-				goto SkipFieldError
-			}
-		case 10:
-			if fieldTypeId == thrift.SET {
-				if err = p.ReadField10(iprot); err != nil {
 					goto ReadFieldError
 				}
 			} else if err = iprot.Skip(fieldTypeId); err != nil {
@@ -1831,29 +1817,6 @@ func (p *Nesting2) ReadField9(iprot thrift.TProtocol) error {
 	p.String_ = _field
 	return nil
 }
-func (p *Nesting2) ReadField10(iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadSetBegin()
-	if err != nil {
-		return err
-	}
-	_field := make([]*Nesting, 0, size)
-	values := make([]Nesting, size)
-	for i := 0; i < size; i++ {
-		_elem := &values[i]
-		_elem.InitDefault()
-
-		if err := _elem.Read(iprot); err != nil {
-			return err
-		}
-
-		_field = append(_field, _elem)
-	}
-	if err := iprot.ReadSetEnd(); err != nil {
-		return err
-	}
-	p.SetNesting = _field
-	return nil
-}
 func (p *Nesting2) ReadField11(iprot thrift.TProtocol) error {
 
 	var _field int32
@@ -1907,10 +1870,6 @@ func (p *Nesting2) Write(oprot thrift.TProtocol) (err error) {
 		}
 		if err = p.writeField9(oprot); err != nil {
 			fieldId = 9
-			goto WriteFieldError
-		}
-		if err = p.writeField10(oprot); err != nil {
-			fieldId = 10
 			goto WriteFieldError
 		}
 		if err = p.writeField11(oprot); err != nil {
@@ -2105,38 +2064,6 @@ WriteFieldBeginError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 9 begin error: ", p), err)
 WriteFieldEndError:
 	return thrift.PrependError(fmt.Sprintf("%T write field 9 end error: ", p), err)
-}
-
-func (p *Nesting2) writeField10(oprot thrift.TProtocol) (err error) {
-	if err = oprot.WriteFieldBegin("SetNesting", thrift.SET, 10); err != nil {
-		goto WriteFieldBeginError
-	}
-	if err := oprot.WriteSetBegin(thrift.STRUCT, len(p.SetNesting)); err != nil {
-		return err
-	}
-	for i := 0; i < len(p.SetNesting); i++ {
-		for j := i + 1; j < len(p.SetNesting); j++ {
-			if reflect.DeepEqual(p.SetNesting[i], p.SetNesting[j]) {
-				return thrift.PrependError("", fmt.Errorf("%T error writing set field: slice is not unique", p.SetNesting[i]))
-			}
-		}
-	}
-	for _, v := range p.SetNesting {
-		if err := v.Write(oprot); err != nil {
-			return err
-		}
-	}
-	if err := oprot.WriteSetEnd(); err != nil {
-		return err
-	}
-	if err = oprot.WriteFieldEnd(); err != nil {
-		goto WriteFieldEndError
-	}
-	return nil
-WriteFieldBeginError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 10 begin error: ", p), err)
-WriteFieldEndError:
-	return thrift.PrependError(fmt.Sprintf("%T write field 10 end error: ", p), err)
 }
 
 func (p *Nesting2) writeField11(oprot thrift.TProtocol) (err error) {

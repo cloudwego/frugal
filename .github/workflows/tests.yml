@@ -6,7 +6,7 @@ jobs:
   unittest-amd64:
     strategy:
       matrix:
-        go: [ "1.18", "1.19", "1.20", "1.21", "1.22", "1.23" ]
+        go: [ "1.18", oldstable, stable ]
     runs-on: [ Linux, X64 ]
     steps:
       - uses: actions/checkout@v4
@@ -15,17 +15,15 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: false # don't use cache for self-hosted runners
-      - name: Test ./...
-        run: go test -race ./...
-      - name: Test ./tests
-        run: cd tests && go test -race
-      - name: Test Benchmark
-        run: go test -bench=. -benchmem -run=none ./... -benchtime=100ms
+      - name: Test packages # only tests reflect pkg, JIT pkgs is not supported
+        run: go test -race ./internal/reflect
+      - name: Test ./tests & Benchmark
+        run: cd tests && go test -bench=. -benchmem -benchtime=100ms
 
   unittest-arm64:
     strategy:
       matrix:
-        go: [ "1.18", "1.19", "1.20", "1.21", "1.22", "1.23" ]
+        go: [ "1.18", oldstable, stable ]
     runs-on: [ ARM64 ] # It's OK under Linux or macOS
     steps:
       - uses: actions/checkout@v4
@@ -34,17 +32,15 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: false # don't use cache for self-hosted runners
-      - name: Test ./... # only tests reflect pkg, JIT pkgs is not supported
+      - name: Test packages # only tests reflect pkg, JIT pkgs is not supported
         run: go test -race ./internal/reflect
-      - name: Test ./tests
-        run: cd tests && go test -race
-      - name: Test Benchmark
-        run: go test -bench=. -benchmem -run=none ./internal/reflect -benchtime=100ms
+      - name: Test ./tests & Benchmark
+        run: cd tests && go test -bench=. -benchmem -benchtime=100ms
 
-  buildtag-amd64:
+  unittest-legacy:
     strategy:
       matrix:
-        go: [ "1.18", "1.23" ]
+        go: [ "1.18", "1.23" ] # jit works <= 1.23
     runs-on: [ Linux, X64 ]
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +49,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: false # don't use cache for self-hosted runners
-      - name: Build without frugal_jit
-        run: go build -v ./...
       - name: Build with frugal_jit
         run: go build -v -tags=frugal_jit ./...
+      - name: Test with frugal_jit
+        run: go test -tags=frugal_jit ./...

@@ -69,11 +69,6 @@ func initTestTypesForBenchmark() *TestTypesForBenchmark {
 	return ret
 }
 
-func appendInt32Field(b []byte, fid uint16, v uint32) []byte {
-	b = append(b, byte(tI32), byte(fid>>8), byte(fid)) // type and fid
-	return append(b, byte(v>>24), byte(v>>16), byte(v>>8), byte(v))
-}
-
 func appendStringField(b []byte, fid uint16, s string) []byte {
 	l := uint32(len(s))
 	b = append(b, byte(tSTRING), byte(fid>>8), byte(fid), // type and fid

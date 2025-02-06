@@ -27,12 +27,6 @@ var (
 	errNegativeSize       = thrift.NewProtocolException(thrift.NEGATIVE_SIZE, "negative size")
 )
 
-// tProtocolException implements TProtocolException of apache thrift
-type tProtocolException struct {
-	t int
-	m string
-}
-
 func newRequiredFieldNotSetException(name string) error {
 	return thrift.NewProtocolException(
 		thrift.INVALID_DATA,
