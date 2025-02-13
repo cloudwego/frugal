@@ -1,3 +1,5 @@
+//go:build amd64
+
 /*
  * Copyright 2022 CloudWeGo Authors
  *

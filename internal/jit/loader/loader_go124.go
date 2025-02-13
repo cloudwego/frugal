@@ -1,7 +1,7 @@
-//go:build !go1.16 || go1.24
+//go:build go1.24
 
 /*
- * Copyright 2022 CloudWeGo Authors
+ * Copyright 2025 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,7 @@
 
 package loader
 
-import (
-	"github.com/cloudwego/frugal/internal/jit/rt"
-)
-
-func init() {
-	panic("Unsupported Go version. Supported versions are 1.17 ~ 1.23")
-}
-
-func registerFunction(_ string, _ uintptr, _ uintptr, _ rt.Frame) {
-	panic("Unsupported Go version. Supported versions are 1.17 ~ 1.23")
-}
+// For fixing golangci-lint ast parse
+type _PCHeader struct{}
+type _FuncTab struct{}
+type _BitVector struct{}

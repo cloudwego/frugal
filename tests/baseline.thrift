@@ -42,7 +42,6 @@ struct Nesting2 {
     7: Nesting NestingStruct
     8: binary Binary
     9: string String
-    10: set<Nesting> SetNesting
     11: i32 I32
 }
 
