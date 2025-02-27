@@ -93,7 +93,7 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		i += 2
 
 		f := sd.GetField(fid)
-		if f == nil {
+		if f == nil || f.Type.WT != tp {
 			n, err := thrift.Binary.Skip(b[i:], thrift.TType(tp))
 			if err != nil {
 				return i, fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)
@@ -104,11 +104,9 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 			i += n
 			continue
 		}
-		t := f.Type
-		if t.WT != tp {
-			return i, newTypeMismatch(t.WT, tp)
-		}
 		p := unsafe.Add(base, f.Offset) // pointer to the field
+
+		t := f.Type
 		p = d.mallocIfPointer(t, p)
 		if t.FixedSize > 0 {
 			i += decodeFixedSizeTypes(t.T, b[i:], p)
