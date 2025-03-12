@@ -29,7 +29,7 @@ import (
 func copyn(dst unsafe.Pointer, src []byte, n int) {
 	var b []byte
 	hdr := (*sliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = uintptr(dst)
+	hdr.Data = dst
 	hdr.Cap = n
 	hdr.Len = n
 	copy(b, src)
@@ -233,4 +233,27 @@ func appendUint64(b []byte, v uint64) []byte {
 		byte(v>>8),
 		byte(v),
 	)
+}
+
+// shortcut of binary.BigEndian.Uint16(b)
+func decodeU16(b []byte) uint16 {
+	_ = b[1]
+	return uint16(b[1]) | uint16(b[0])<<8
+}
+
+// shortcut of binary.BigEndian.Uint32(b)
+func decodeU32(b []byte) uint32 {
+	_ = b[3]
+	return uint32(b[3]) | uint32(b[2])<<8 | uint32(b[1])<<16 | uint32(b[0])<<24
+}
+
+// shortcut of binary.BigEndian.Uint64(b)
+func decodeU64(b []byte) uint64 {
+	_ = b[7]
+	return uint64(b[7]) | uint64(b[6])<<8 | uint64(b[5])<<16 | uint64(b[4])<<24 |
+		uint64(b[3])<<32 | uint64(b[2])<<40 | uint64(b[1])<<48 | uint64(b[0])<<56
+}
+
+func decodeEnum(b []byte) int64 {
+	return int64(int32(decodeU32(b)))
 }

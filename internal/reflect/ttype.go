@@ -48,21 +48,38 @@ const (
 
 	// internal use only
 	tENUM ttype = 0xfe // XXX: kitex issue, int64, but encode as int32 ...
+
+	// tOTHER, tBINARY, tPTR will not be used when encoding or decoding.
+	// It's only for generating code
+	tOTHER  = ttype(0xe0) // mapping list, set, map, struct to tOTHER reusing the same func
+	tBINARY = ttype(0xe1) // for map type like map[int][]byte when decoding
+	tPTR    = ttype(0xe2) // for map type like map[int]unsafe.Pointer
 )
 
 var t2s = [256]string{
-	tBOOL:   "BOOL",
-	tI08:    "I08",
-	tI16:    "I16",
-	tI32:    "I32",
-	tI64:    "I64",
-	tDOUBLE: "DOUBLE",
-	tSTRING: "STRING",
-	tSTRUCT: "STRUCT",
-	tMAP:    "MAP",
-	tSET:    "SET",
-	tLIST:   "LIST",
-	tENUM:   "ENUM",
+	tBOOL:   "tBOOL",
+	tI08:    "tI08",
+	tI16:    "tI16",
+	tI32:    "tI32",
+	tI64:    "tI64",
+	tDOUBLE: "tDOUBLE",
+	tSTRING: "tSTRING",
+	tSTRUCT: "tSTRUCT",
+	tMAP:    "tMAP",
+	tSET:    "tSET",
+	tLIST:   "tLIST",
+	tENUM:   "tENUM",
+
+	tBINARY: "tBINARY",
+	tOTHER:  "tOTHER",
+	tPTR:    "tPTR",
+}
+
+func ttype2wiretype(t ttype) ttype {
+	if t == tENUM {
+		return tI32
+	}
+	return t
 }
 
 func ttype2str(t ttype) string {
@@ -85,6 +102,8 @@ var simpleTypes = [256]bool{
 }
 
 type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
+
+type decodeFuncType func(d *tDecoder, t *tType, b []byte, p unsafe.Pointer, maxdepth int) (int, error)
 
 type tType struct {
 	T ttype
@@ -116,6 +135,7 @@ type tType struct {
 	// for tLIST, tSET, tMAP, tSTRUCT
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
 	AppendFunc      appendFuncType
+	DecodeFunc      decodeFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -183,25 +203,37 @@ func newTType(x *defs.Type) *tType {
 	t.IsPointer = t.Tag == defs.T_pointer
 	t.SimpleType = simpleTypes[t.T]
 	t.FixedSize = int(typeToSize[t.T])
-	switch t.T {
-	case tMAP:
-		t.EncodedSizeFunc = t.encodedMapSize
-	case tLIST, tSET:
-		t.EncodedSizeFunc = t.encodedListSize
-	case tSTRUCT:
-		t.EncodedSizeFunc = t.EncodedSize
-	}
+
 	if x.K != nil {
 		t.K = newTType(x.K)
 	}
 	if x.V != nil {
 		t.V = newTType(x.V)
 	}
+
+	switch t.T {
+	case tSTRING:
+		t.DecodeFunc = decoderString
+
+	case tMAP:
+		t.EncodedSizeFunc = t.encodedMapSize
+		t.DecodeFunc = decodeMapAny
+
+	case tLIST, tSET:
+		t.EncodedSizeFunc = t.encodedListSize
+		t.DecodeFunc = decodeListAny
+
+	case tSTRUCT:
+		t.EncodedSizeFunc = t.EncodedSize
+		t.DecodeFunc = decodeStruct
+	}
+
 	switch t.T {
 	case tLIST, tSET:
 		updateListAppendFunc(t)
 	case tMAP:
 		updateMapAppendFunc(t)
+		updateMapDecodeFunc(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
 	default:
@@ -350,7 +382,7 @@ func (t *tType) encodedListSize(p unsafe.Pointer) (int, error) {
 	if h.Len == 0 {
 		return ret, nil
 	}
-	vp := h.UnsafePointer()
+	vp := h.Data
 	for i := 0; i < h.Len; i++ {
 		if i != 0 {
 			vp = unsafe.Add(vp, vt.Size) //  move to next element

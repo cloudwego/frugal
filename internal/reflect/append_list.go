@@ -42,9 +42,7 @@ func appendListHeader(t *tType, b []byte, p unsafe.Pointer) ([]byte, uint32, uns
 	}
 	h := (*sliceHeader)(p)
 	n := uint32(h.Len)
-	return append(b, byte(t.WT),
-			byte(n>>24), byte(n>>16), byte(n>>8), byte(n)),
-		n, h.UnsafePointer()
+	return append(b, byte(t.WT), byte(n>>24), byte(n>>16), byte(n>>8), byte(n)), n, h.Data
 }
 
 func appendListAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {

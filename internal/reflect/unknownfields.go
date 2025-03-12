@@ -51,7 +51,7 @@ func (p *unknownFields) Copy(b []byte) []byte {
 	data := mallocgc(uintptr(sz), nil, false) //  without zeroing
 	ret := []byte{}
 	h := (*sliceHeader)(unsafe.Pointer(&ret))
-	h.Data = uintptr(data)
+	h.Data = data
 	h.Len = sz
 	h.Cap = sz
 	off := 0
