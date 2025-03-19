@@ -6,4 +6,4 @@ extend-exclude = ["go.mod", "go.sum", "fuzz/go.mod", "fuzz/go.sum"]
 [default.extend-words]
 Pn = "Pn"
 worl = "worl"
-rcall = "rcall"
+typ = "typ"
