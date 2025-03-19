@@ -61,3 +61,21 @@ func TestAppendMapAnyAny(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, p0, p1)
 }
+
+func BenchmarkEncodeMap_Simple(b *testing.B) {
+	type TestStruct struct {
+		M map[int64]int64 `frugal:"1,optional,map<i64:i64>"`
+	}
+	p := &TestStruct{M: map[int64]int64{}}
+	for i := int64(0); i < 50; i++ {
+		p.M[i] = i
+	}
+	b.ResetTimer()
+	buf := make([]byte, 0, 4<<10)
+	for i := 0; i < b.N; i++ {
+		_, err := Append(buf, p)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}

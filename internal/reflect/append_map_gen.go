@@ -22,217 +22,165 @@ import "unsafe"
 // Template and code can be found in append_map_gen_test.go.
 
 func init() {
-	registerMapAppendFunc(tBYTE, tBYTE, appendMap_I08_I08)
-	registerMapAppendFunc(tBYTE, tI16, appendMap_I08_I16)
-	registerMapAppendFunc(tBYTE, tI32, appendMap_I08_I32)
-	registerMapAppendFunc(tBYTE, tI64, appendMap_I08_I64)
-	registerMapAppendFunc(tBYTE, tDOUBLE, appendMap_I08_I64)
-	registerMapAppendFunc(tBYTE, tENUM, appendMap_I08_ENUM)
-	registerMapAppendFunc(tBYTE, tSTRING, appendMap_I08_STRING)
-	registerMapAppendFunc(tBYTE, tSTRUCT, appendMap_I08_Other)
-	registerMapAppendFunc(tBYTE, tMAP, appendMap_I08_Other)
-	registerMapAppendFunc(tBYTE, tSET, appendMap_I08_Other)
-	registerMapAppendFunc(tBYTE, tLIST, appendMap_I08_Other)
-	registerMapAppendFunc(tI16, tBYTE, appendMap_I16_I08)
-	registerMapAppendFunc(tI16, tI16, appendMap_I16_I16)
-	registerMapAppendFunc(tI16, tI32, appendMap_I16_I32)
-	registerMapAppendFunc(tI16, tI64, appendMap_I16_I64)
-	registerMapAppendFunc(tI16, tDOUBLE, appendMap_I16_I64)
-	registerMapAppendFunc(tI16, tENUM, appendMap_I16_ENUM)
-	registerMapAppendFunc(tI16, tSTRING, appendMap_I16_STRING)
-	registerMapAppendFunc(tI16, tSTRUCT, appendMap_I16_Other)
-	registerMapAppendFunc(tI16, tMAP, appendMap_I16_Other)
-	registerMapAppendFunc(tI16, tSET, appendMap_I16_Other)
-	registerMapAppendFunc(tI16, tLIST, appendMap_I16_Other)
-	registerMapAppendFunc(tI32, tBYTE, appendMap_I32_I08)
-	registerMapAppendFunc(tI32, tI16, appendMap_I32_I16)
-	registerMapAppendFunc(tI32, tI32, appendMap_I32_I32)
-	registerMapAppendFunc(tI32, tI64, appendMap_I32_I64)
-	registerMapAppendFunc(tI32, tDOUBLE, appendMap_I32_I64)
-	registerMapAppendFunc(tI32, tENUM, appendMap_I32_ENUM)
-	registerMapAppendFunc(tI32, tSTRING, appendMap_I32_STRING)
-	registerMapAppendFunc(tI32, tSTRUCT, appendMap_I32_Other)
-	registerMapAppendFunc(tI32, tMAP, appendMap_I32_Other)
-	registerMapAppendFunc(tI32, tSET, appendMap_I32_Other)
-	registerMapAppendFunc(tI32, tLIST, appendMap_I32_Other)
-	registerMapAppendFunc(tI64, tBYTE, appendMap_I64_I08)
-	registerMapAppendFunc(tI64, tI16, appendMap_I64_I16)
-	registerMapAppendFunc(tI64, tI32, appendMap_I64_I32)
-	registerMapAppendFunc(tI64, tI64, appendMap_I64_I64)
-	registerMapAppendFunc(tI64, tDOUBLE, appendMap_I64_I64)
-	registerMapAppendFunc(tI64, tENUM, appendMap_I64_ENUM)
-	registerMapAppendFunc(tI64, tSTRING, appendMap_I64_STRING)
-	registerMapAppendFunc(tI64, tSTRUCT, appendMap_I64_Other)
-	registerMapAppendFunc(tI64, tMAP, appendMap_I64_Other)
-	registerMapAppendFunc(tI64, tSET, appendMap_I64_Other)
-	registerMapAppendFunc(tI64, tLIST, appendMap_I64_Other)
-	registerMapAppendFunc(tDOUBLE, tBYTE, appendMap_I64_I08)
-	registerMapAppendFunc(tDOUBLE, tI16, appendMap_I64_I16)
-	registerMapAppendFunc(tDOUBLE, tI32, appendMap_I64_I32)
-	registerMapAppendFunc(tDOUBLE, tI64, appendMap_I64_I64)
-	registerMapAppendFunc(tDOUBLE, tDOUBLE, appendMap_I64_I64)
-	registerMapAppendFunc(tDOUBLE, tENUM, appendMap_I64_ENUM)
-	registerMapAppendFunc(tDOUBLE, tSTRING, appendMap_I64_STRING)
-	registerMapAppendFunc(tDOUBLE, tSTRUCT, appendMap_I64_Other)
-	registerMapAppendFunc(tDOUBLE, tMAP, appendMap_I64_Other)
-	registerMapAppendFunc(tDOUBLE, tSET, appendMap_I64_Other)
-	registerMapAppendFunc(tDOUBLE, tLIST, appendMap_I64_Other)
-	registerMapAppendFunc(tENUM, tBYTE, appendMap_ENUM_I08)
-	registerMapAppendFunc(tENUM, tI16, appendMap_ENUM_I16)
-	registerMapAppendFunc(tENUM, tI32, appendMap_ENUM_I32)
-	registerMapAppendFunc(tENUM, tI64, appendMap_ENUM_I64)
-	registerMapAppendFunc(tENUM, tDOUBLE, appendMap_ENUM_I64)
-	registerMapAppendFunc(tENUM, tENUM, appendMap_ENUM_ENUM)
-	registerMapAppendFunc(tENUM, tSTRING, appendMap_ENUM_STRING)
-	registerMapAppendFunc(tENUM, tSTRUCT, appendMap_ENUM_Other)
-	registerMapAppendFunc(tENUM, tMAP, appendMap_ENUM_Other)
-	registerMapAppendFunc(tENUM, tSET, appendMap_ENUM_Other)
-	registerMapAppendFunc(tENUM, tLIST, appendMap_ENUM_Other)
-	registerMapAppendFunc(tSTRING, tBYTE, appendMap_STRING_I08)
-	registerMapAppendFunc(tSTRING, tI16, appendMap_STRING_I16)
-	registerMapAppendFunc(tSTRING, tI32, appendMap_STRING_I32)
-	registerMapAppendFunc(tSTRING, tI64, appendMap_STRING_I64)
-	registerMapAppendFunc(tSTRING, tDOUBLE, appendMap_STRING_I64)
-	registerMapAppendFunc(tSTRING, tENUM, appendMap_STRING_ENUM)
-	registerMapAppendFunc(tSTRING, tSTRING, appendMap_STRING_STRING)
-	registerMapAppendFunc(tSTRING, tSTRUCT, appendMap_STRING_Other)
-	registerMapAppendFunc(tSTRING, tMAP, appendMap_STRING_Other)
-	registerMapAppendFunc(tSTRING, tSET, appendMap_STRING_Other)
-	registerMapAppendFunc(tSTRING, tLIST, appendMap_STRING_Other)
-	registerMapAppendFunc(tSTRUCT, tBYTE, appendMap_Other_I08)
-	registerMapAppendFunc(tSTRUCT, tI16, appendMap_Other_I16)
-	registerMapAppendFunc(tSTRUCT, tI32, appendMap_Other_I32)
-	registerMapAppendFunc(tSTRUCT, tI64, appendMap_Other_I64)
-	registerMapAppendFunc(tSTRUCT, tDOUBLE, appendMap_Other_I64)
-	registerMapAppendFunc(tSTRUCT, tENUM, appendMap_Other_ENUM)
-	registerMapAppendFunc(tSTRUCT, tSTRING, appendMap_Other_STRING)
-	registerMapAppendFunc(tSTRUCT, tSTRUCT, appendMap_Other_Other)
-	registerMapAppendFunc(tSTRUCT, tMAP, appendMap_Other_Other)
-	registerMapAppendFunc(tSTRUCT, tSET, appendMap_Other_Other)
-	registerMapAppendFunc(tSTRUCT, tLIST, appendMap_Other_Other)
-	registerMapAppendFunc(tMAP, tBYTE, appendMap_Other_I08)
-	registerMapAppendFunc(tMAP, tI16, appendMap_Other_I16)
-	registerMapAppendFunc(tMAP, tI32, appendMap_Other_I32)
-	registerMapAppendFunc(tMAP, tI64, appendMap_Other_I64)
-	registerMapAppendFunc(tMAP, tDOUBLE, appendMap_Other_I64)
-	registerMapAppendFunc(tMAP, tENUM, appendMap_Other_ENUM)
-	registerMapAppendFunc(tMAP, tSTRING, appendMap_Other_STRING)
-	registerMapAppendFunc(tMAP, tSTRUCT, appendMap_Other_Other)
-	registerMapAppendFunc(tMAP, tMAP, appendMap_Other_Other)
-	registerMapAppendFunc(tMAP, tSET, appendMap_Other_Other)
-	registerMapAppendFunc(tMAP, tLIST, appendMap_Other_Other)
-	registerMapAppendFunc(tSET, tBYTE, appendMap_Other_I08)
-	registerMapAppendFunc(tSET, tI16, appendMap_Other_I16)
-	registerMapAppendFunc(tSET, tI32, appendMap_Other_I32)
-	registerMapAppendFunc(tSET, tI64, appendMap_Other_I64)
-	registerMapAppendFunc(tSET, tDOUBLE, appendMap_Other_I64)
-	registerMapAppendFunc(tSET, tENUM, appendMap_Other_ENUM)
-	registerMapAppendFunc(tSET, tSTRING, appendMap_Other_STRING)
-	registerMapAppendFunc(tSET, tSTRUCT, appendMap_Other_Other)
-	registerMapAppendFunc(tSET, tMAP, appendMap_Other_Other)
-	registerMapAppendFunc(tSET, tSET, appendMap_Other_Other)
-	registerMapAppendFunc(tSET, tLIST, appendMap_Other_Other)
-	registerMapAppendFunc(tLIST, tBYTE, appendMap_Other_I08)
-	registerMapAppendFunc(tLIST, tI16, appendMap_Other_I16)
-	registerMapAppendFunc(tLIST, tI32, appendMap_Other_I32)
-	registerMapAppendFunc(tLIST, tI64, appendMap_Other_I64)
-	registerMapAppendFunc(tLIST, tDOUBLE, appendMap_Other_I64)
-	registerMapAppendFunc(tLIST, tENUM, appendMap_Other_ENUM)
-	registerMapAppendFunc(tLIST, tSTRING, appendMap_Other_STRING)
-	registerMapAppendFunc(tLIST, tSTRUCT, appendMap_Other_Other)
-	registerMapAppendFunc(tLIST, tMAP, appendMap_Other_Other)
-	registerMapAppendFunc(tLIST, tSET, appendMap_Other_Other)
-	registerMapAppendFunc(tLIST, tLIST, appendMap_Other_Other)
+	registerMapAppendFunc(tI08, tI08, appendMap_tI08_tI08)
+	registerMapAppendFunc(tI08, tI16, appendMap_tI08_tI16)
+	registerMapAppendFunc(tI08, tI32, appendMap_tI08_tI32)
+	registerMapAppendFunc(tI08, tI64, appendMap_tI08_tI64)
+	registerMapAppendFunc(tI08, tDOUBLE, appendMap_tI08_tI64)
+	registerMapAppendFunc(tI08, tENUM, appendMap_tI08_tENUM)
+	registerMapAppendFunc(tI08, tSTRING, appendMap_tI08_tSTRING)
+	registerMapAppendFunc(tI08, tSTRUCT, appendMap_tI08_tOTHER)
+	registerMapAppendFunc(tI08, tMAP, appendMap_tI08_tOTHER)
+	registerMapAppendFunc(tI08, tSET, appendMap_tI08_tOTHER)
+	registerMapAppendFunc(tI08, tLIST, appendMap_tI08_tOTHER)
+	registerMapAppendFunc(tI16, tI08, appendMap_tI16_tI08)
+	registerMapAppendFunc(tI16, tI16, appendMap_tI16_tI16)
+	registerMapAppendFunc(tI16, tI32, appendMap_tI16_tI32)
+	registerMapAppendFunc(tI16, tI64, appendMap_tI16_tI64)
+	registerMapAppendFunc(tI16, tDOUBLE, appendMap_tI16_tI64)
+	registerMapAppendFunc(tI16, tENUM, appendMap_tI16_tENUM)
+	registerMapAppendFunc(tI16, tSTRING, appendMap_tI16_tSTRING)
+	registerMapAppendFunc(tI16, tSTRUCT, appendMap_tI16_tOTHER)
+	registerMapAppendFunc(tI16, tMAP, appendMap_tI16_tOTHER)
+	registerMapAppendFunc(tI16, tSET, appendMap_tI16_tOTHER)
+	registerMapAppendFunc(tI16, tLIST, appendMap_tI16_tOTHER)
+	registerMapAppendFunc(tI32, tI08, appendMap_tI32_tI08)
+	registerMapAppendFunc(tI32, tI16, appendMap_tI32_tI16)
+	registerMapAppendFunc(tI32, tI32, appendMap_tI32_tI32)
+	registerMapAppendFunc(tI32, tI64, appendMap_tI32_tI64)
+	registerMapAppendFunc(tI32, tDOUBLE, appendMap_tI32_tI64)
+	registerMapAppendFunc(tI32, tENUM, appendMap_tI32_tENUM)
+	registerMapAppendFunc(tI32, tSTRING, appendMap_tI32_tSTRING)
+	registerMapAppendFunc(tI32, tSTRUCT, appendMap_tI32_tOTHER)
+	registerMapAppendFunc(tI32, tMAP, appendMap_tI32_tOTHER)
+	registerMapAppendFunc(tI32, tSET, appendMap_tI32_tOTHER)
+	registerMapAppendFunc(tI32, tLIST, appendMap_tI32_tOTHER)
+	registerMapAppendFunc(tI64, tI08, appendMap_tI64_tI08)
+	registerMapAppendFunc(tI64, tI16, appendMap_tI64_tI16)
+	registerMapAppendFunc(tI64, tI32, appendMap_tI64_tI32)
+	registerMapAppendFunc(tI64, tI64, appendMap_tI64_tI64)
+	registerMapAppendFunc(tI64, tDOUBLE, appendMap_tI64_tI64)
+	registerMapAppendFunc(tI64, tENUM, appendMap_tI64_tENUM)
+	registerMapAppendFunc(tI64, tSTRING, appendMap_tI64_tSTRING)
+	registerMapAppendFunc(tI64, tSTRUCT, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tI64, tMAP, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tI64, tSET, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tI64, tLIST, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tDOUBLE, tI08, appendMap_tI64_tI08)
+	registerMapAppendFunc(tDOUBLE, tI16, appendMap_tI64_tI16)
+	registerMapAppendFunc(tDOUBLE, tI32, appendMap_tI64_tI32)
+	registerMapAppendFunc(tDOUBLE, tI64, appendMap_tI64_tI64)
+	registerMapAppendFunc(tDOUBLE, tDOUBLE, appendMap_tI64_tI64)
+	registerMapAppendFunc(tDOUBLE, tENUM, appendMap_tI64_tENUM)
+	registerMapAppendFunc(tDOUBLE, tSTRING, appendMap_tI64_tSTRING)
+	registerMapAppendFunc(tDOUBLE, tSTRUCT, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tDOUBLE, tMAP, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tDOUBLE, tSET, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tDOUBLE, tLIST, appendMap_tI64_tOTHER)
+	registerMapAppendFunc(tENUM, tI08, appendMap_tENUM_tI08)
+	registerMapAppendFunc(tENUM, tI16, appendMap_tENUM_tI16)
+	registerMapAppendFunc(tENUM, tI32, appendMap_tENUM_tI32)
+	registerMapAppendFunc(tENUM, tI64, appendMap_tENUM_tI64)
+	registerMapAppendFunc(tENUM, tDOUBLE, appendMap_tENUM_tI64)
+	registerMapAppendFunc(tENUM, tENUM, appendMap_tENUM_tENUM)
+	registerMapAppendFunc(tENUM, tSTRING, appendMap_tENUM_tSTRING)
+	registerMapAppendFunc(tENUM, tSTRUCT, appendMap_tENUM_tOTHER)
+	registerMapAppendFunc(tENUM, tMAP, appendMap_tENUM_tOTHER)
+	registerMapAppendFunc(tENUM, tSET, appendMap_tENUM_tOTHER)
+	registerMapAppendFunc(tENUM, tLIST, appendMap_tENUM_tOTHER)
+	registerMapAppendFunc(tSTRING, tI08, appendMap_tSTRING_tI08)
+	registerMapAppendFunc(tSTRING, tI16, appendMap_tSTRING_tI16)
+	registerMapAppendFunc(tSTRING, tI32, appendMap_tSTRING_tI32)
+	registerMapAppendFunc(tSTRING, tI64, appendMap_tSTRING_tI64)
+	registerMapAppendFunc(tSTRING, tDOUBLE, appendMap_tSTRING_tI64)
+	registerMapAppendFunc(tSTRING, tENUM, appendMap_tSTRING_tENUM)
+	registerMapAppendFunc(tSTRING, tSTRING, appendMap_tSTRING_tSTRING)
+	registerMapAppendFunc(tSTRING, tSTRUCT, appendMap_tSTRING_tOTHER)
+	registerMapAppendFunc(tSTRING, tMAP, appendMap_tSTRING_tOTHER)
+	registerMapAppendFunc(tSTRING, tSET, appendMap_tSTRING_tOTHER)
+	registerMapAppendFunc(tSTRING, tLIST, appendMap_tSTRING_tOTHER)
 }
 
-func appendMap_I08_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]byte)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		b = append(b, *((*byte)(vp)))
+		b = append(b, k)
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]uint16)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = append(b, k)
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]uint32)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = append(b, k)
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]uint64)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = append(b, k)
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]int64)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = append(b, k)
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[byte]string)(p) {
 		n--
-		b = append(b, *((*byte)(kp)))
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = append(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I08_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI08_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -241,7 +189,7 @@ func appendMap_I08_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b = append(b, *((*byte)(kp)))
+		b = append(b, *(*byte)(kp))
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {
@@ -254,94 +202,86 @@ func appendMap_I08_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]byte)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		b = append(b, *((*byte)(vp)))
+		b = appendUint16(b, k)
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]uint16)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = appendUint16(b, k)
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]uint32)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = appendUint16(b, k)
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]uint64)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = appendUint16(b, k)
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]int64)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = appendUint16(b, k)
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint16]string)(p) {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = appendUint16(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I16_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI16_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -350,7 +290,7 @@ func appendMap_I16_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b = appendUint16(b, *((*uint16)(kp)))
+		b = appendUint16(b, *(*uint16)(kp))
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {
@@ -363,94 +303,86 @@ func appendMap_I16_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]byte)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		b = append(b, *((*byte)(vp)))
+		b = appendUint32(b, k)
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]uint16)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = appendUint32(b, k)
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]uint32)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = appendUint32(b, k)
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]uint64)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = appendUint32(b, k)
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]int64)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = appendUint32(b, k)
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint32]string)(p) {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = appendUint32(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I32_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI32_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -459,7 +391,7 @@ func appendMap_I32_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b = appendUint32(b, *((*uint32)(kp)))
+		b = appendUint32(b, *(*uint32)(kp))
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {
@@ -472,94 +404,86 @@ func appendMap_I32_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]byte)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		b = append(b, *((*byte)(vp)))
+		b = appendUint64(b, k)
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]uint16)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = appendUint64(b, k)
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]uint32)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = appendUint64(b, k)
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]uint64)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = appendUint64(b, k)
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]int64)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = appendUint64(b, k)
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[uint64]string)(p) {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = appendUint64(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_I64_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tI64_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -568,7 +492,7 @@ func appendMap_I64_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b = appendUint64(b, *((*uint64)(kp)))
+		b = appendUint64(b, *(*uint64)(kp))
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {
@@ -581,94 +505,86 @@ func appendMap_I64_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]byte)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		b = append(b, *((*byte)(vp)))
+		b = appendUint32(b, uint32(k))
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]uint16)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = appendUint32(b, uint32(k))
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]uint32)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = appendUint32(b, uint32(k))
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]uint64)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = appendUint32(b, uint32(k))
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]int64)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = appendUint32(b, uint32(k))
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[int64]string)(p) {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = appendUint32(b, uint32(k))
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_ENUM_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tENUM_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -677,7 +593,7 @@ func appendMap_ENUM_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b = appendUint32(b, uint32(*((*int64)(kp))))
+		b = appendUint32(b, uint32(*(*int64)(kp)))
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {
@@ -690,111 +606,92 @@ func appendMap_ENUM_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tI08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]byte)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		b = append(b, *((*byte)(vp)))
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = append(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tI16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]uint16)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		b = appendUint16(b, *((*uint16)(vp)))
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint16(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tI32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]uint32)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		b = appendUint32(b, *((*uint32)(vp)))
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint32(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tI64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]uint64)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		b = appendUint64(b, *((*uint64)(vp)))
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint64(b, v)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]int64)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		b = appendUint32(b, uint32(*((*int64)(vp))))
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint32(b, uint32(v))
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tSTRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
 	}
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
+	for k, v := range *(*map[string]string)(p) {
 		n--
-		s = *((*string)(kp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
 
-func appendMap_STRING_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendMap_tSTRING_tOTHER(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
 		return b, nil
@@ -804,173 +701,9 @@ func appendMap_STRING_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		s = *((*string)(kp))
+		s = *(*string)(kp)
 		b = appendUint32(b, uint32(len(s)))
 		b = append(b, s...)
-		if t.V.IsPointer {
-			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
-		} else {
-			b, err = t.V.AppendFunc(t.V, b, vp)
-		}
-		if err != nil {
-			return b, err
-		}
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		b = append(b, *((*byte)(vp)))
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		b = appendUint16(b, *((*uint16)(vp)))
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		b = appendUint32(b, *((*uint32)(vp)))
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		b = appendUint64(b, *((*uint64)(vp)))
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		b = appendUint32(b, uint32(*((*int64)(vp))))
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	var s string
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
-		s = *((*string)(vp))
-		b = appendUint32(b, uint32(len(s)))
-		b = append(b, s...)
-	}
-	return b, checkMapN(n)
-}
-
-func appendMap_Other_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
-	if n == 0 {
-		return b, nil
-	}
-	var err error
-	it := newMapIter(rvWithPtr(t.RV, p))
-	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
-		n--
-		if t.K.IsPointer {
-			b, err = t.K.AppendFunc(t.K, b, *(*unsafe.Pointer)(kp))
-		} else {
-			b, err = t.K.AppendFunc(t.K, b, kp)
-		}
-		if err != nil {
-			return b, err
-		}
 		if t.V.IsPointer {
 			b, err = t.V.AppendFunc(t.V, b, *(*unsafe.Pointer)(vp))
 		} else {

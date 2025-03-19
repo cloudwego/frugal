@@ -404,3 +404,22 @@ func TestDecodeNoCopy(t *testing.T) {
 	require.Error(t, err)
 	_ = p2
 }
+
+func BenchmarkDecodeMap_Simple(b *testing.B) {
+	type TestStruct struct {
+		M map[int64]int64 `frugal:"1,optional,map<i64:i64>"`
+	}
+	p := &TestStruct{M: map[int64]int64{}}
+	for i := int64(0); i < 50; i++ {
+		p.M[i] = i
+	}
+	buf, _ := Append(nil, p)
+	*p = TestStruct{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Decode(buf, p)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
