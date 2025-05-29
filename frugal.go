@@ -60,6 +60,8 @@ func XEncodeObject(b *xbuf.XWriteBuffer, val interface{}) error {
 	return reflect.XWrite(b, val)
 }
 
-func XDecodeObject(b *xbuf.XReadBuffer, val interface{}) error {
+func XDecodeObject(buf [][]byte, val interface{}) error {
+	b := xbuf.NewXReadBuffer(buf)
+	defer b.Free()
 	return reflect.XRead(b, val)
 }
