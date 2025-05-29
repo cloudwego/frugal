@@ -22,6 +22,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/protocol/thrift"
+
 	"github.com/cloudwego/frugal/internal/defs"
 )
 
@@ -86,6 +88,8 @@ var simpleTypes = [256]bool{
 
 type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 
+type xwriteFuncType func(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error
+
 type tType struct {
 	T ttype
 	K *tType
@@ -116,6 +120,9 @@ type tType struct {
 	// for tLIST, tSET, tMAP, tSTRUCT
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
 	AppendFunc      appendFuncType
+
+	// for tLIST, tSET, tMAP, tSTRUCT
+	XWriteFunc xwriteFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -200,12 +207,15 @@ func newTType(x *defs.Type) *tType {
 	switch t.T {
 	case tLIST, tSET:
 		updateListAppendFunc(t)
+		updateXWriteListFunc(t)
 	case tMAP:
 		updateMapAppendFunc(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
+		t.XWriteFunc = xwriteStruct
 	default:
 		t.AppendFunc = appendAny
+		t.XWriteFunc = xwriteAny
 	}
 	if t.IsPointer && t.V.IsPointer {
 		// XXX: make it simple... not support it, it's not common

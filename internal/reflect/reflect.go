@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"reflect"
 	"unsafe"
+
+	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 func EncodedSize(v interface{}) int {
@@ -82,6 +84,34 @@ func Append(b []byte, v interface{}) ([]byte, error) {
 		p = rvPtr(rv)
 	}
 	return appendStruct(&tType{Sd: sd}, b, p)
+}
+
+func XWrite(b *thrift.XWriteBuffer, v interface{}) error {
+	panicIfHackErr()
+
+	var err error
+	rv := reflect.ValueOf(v)
+	sd := getStructDesc(rv) // copy get and create funcs here for inlining
+	if sd == nil {
+		sd, err = createStructDesc(rv)
+		if err != nil {
+			return err
+		}
+	}
+	// get underlying pointer
+	var p unsafe.Pointer
+	if rv.Kind() == reflect.Struct {
+		// unaddressable, need to copy to heap, and then get the ptr
+		prv := sd.rvPool.Get().(*reflect.Value)
+		defer sd.rvPool.Put(prv)
+		(*prv).Elem().Set(rv)
+		p = (*rvtype)(unsafe.Pointer(prv)).ptr // like `rvPtr` without copy
+	} else {
+		// we doesn't support multilevel Pointer like **struct
+		// it checks in createStructDesc
+		p = rvPtr(rv)
+	}
+	return xwriteStruct(&tType{Sd: sd}, b, p)
 }
 
 func Decode(b []byte, v interface{}) (int, error) {
