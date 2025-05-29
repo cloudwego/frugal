@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/cloudwego/gopkg/xbuf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,7 +66,9 @@ func initTestTypesForBenchmark() *TestTypesForBenchmark {
 	ret.L0 = []int32{1, 2, 3}
 	ret.L1 = []*Msg{{Type: 1}, {Type: 2}, {Type: 3}}
 	ret.Set0 = []int32{1, 2, 3}
-	ret.Set1 = []string{"AAAA", "BB", "CCCCC"}
+	v1 := string(make([]byte, 4000))
+	v2 := string(make([]byte, 10000))
+	ret.Set1 = []string{"AAAA", v1, v2}
 	return ret
 }
 
@@ -83,6 +86,16 @@ func BenchmarkAppend(b *testing.B) {
 	b.SetBytes(int64(n))
 	for i := 0; i < b.N; i++ {
 		_, _ = Append(buf, p)
+	}
+}
+
+func BenchmarkXWrite(b *testing.B) {
+	p := initTestTypesForBenchmark()
+	for i := 0; i < b.N; i++ {
+		buf := xbuf.NewXWriteBuffer()
+		_ = XWrite(buf, p)
+		_ = buf.Bytes()
+		buf.Free()
 	}
 }
 

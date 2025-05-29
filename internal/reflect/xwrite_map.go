@@ -20,6 +20,7 @@ import (
 	"unsafe"
 
 	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
 )
 
 var mapXWriteFuncs = map[struct{ k, v ttype }]xwriteFuncType{}
@@ -41,18 +42,18 @@ func registerMapXWriteFunc(k, v ttype, f xwriteFuncType) {
 	mapXWriteFuncs[struct{ k, v ttype }{k: k, v: v}] = f
 }
 
-func xwriteMapHeader(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) uint32 {
+func xwriteMapHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) uint32 {
 	var n uint32
 	if *(*unsafe.Pointer)(p) != nil {
 		n = uint32(maplen(*(*unsafe.Pointer)(p)))
 	}
-	thrift.XBuffer.WriteMapBegin(b, thrift.TType(t.K.WT), thrift.TType(t.V.WT), int(n))
+	thrift.Binary.WriteMapBegin(b.MallocN(6), thrift.TType(t.K.WT), thrift.TType(t.V.WT), int(n))
 	return n
 }
 
 // this func will be replaced by funcs defined in xwrite_map_gen.go
 // see init() in xwrite_map_gen.go for details.
-func xwriteMapAnyAny(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
+func xwriteMapAnyAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 	n := xwriteMapHeader(t, b, p)
 	if n == 0 {
 		return nil

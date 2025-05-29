@@ -17,15 +17,19 @@
 package reflect
 
 import (
+	"encoding/binary"
 	"unsafe"
 
-	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/unsafex"
+	"github.com/cloudwego/gopkg/xbuf"
 )
 
-func xwriteStruct(t *tType, b *thrift.XWriteBuffer, base unsafe.Pointer) error {
+const nocopyWriteThreshold = 4096
+
+func xwriteStruct(t *tType, b *xbuf.XWriteBuffer, base unsafe.Pointer) error {
 	sd := t.Sd
 	if base == nil {
-		thrift.XBuffer.WriteFieldStop(b)
+		b.MallocN(1)[0] = byte(tSTOP)
 		return nil
 	}
 	var err error
@@ -40,7 +44,8 @@ func xwriteStruct(t *tType, b *thrift.XWriteBuffer, base unsafe.Pointer) error {
 		}
 
 		// field header
-		thrift.XBuffer.WriteFieldBegin(b, thrift.TType(t.WT), int16(f.ID))
+		buf := b.MallocN(3)
+		buf[0], buf[1], buf[2] = byte(t.WT), byte(f.ID>>8), byte(f.ID)
 
 		// field value
 		// the following code should be the same as func `appendAny`
@@ -52,18 +57,25 @@ func xwriteStruct(t *tType, b *thrift.XWriteBuffer, base unsafe.Pointer) error {
 		if t.SimpleType { // fast path
 			switch t.T {
 			case tBYTE, tBOOL:
-				thrift.XBuffer.WriteByte(b, *(*int8)(p)) // for tBOOL, true -> 1, false -> 0
+				b.MallocN(1)[0] = *(*byte)(p) // for tBOOL, true -> 1, false -> 0
 			case tI16:
-				thrift.XBuffer.WriteI16(b, *((*int16)(p)))
+				binary.BigEndian.PutUint16(b.MallocN(2), *((*uint16)(p)))
 			case tI32:
-				thrift.XBuffer.WriteI32(b, *((*int32)(p)))
+				binary.BigEndian.PutUint32(b.MallocN(4), *((*uint32)(p)))
 			case tENUM:
-				thrift.XBuffer.WriteI32(b, int32(*((*int64)(p))))
+				binary.BigEndian.PutUint32(b.MallocN(4), uint32(*((*int64)(p))))
 			case tI64, tDOUBLE:
-				thrift.XBuffer.WriteI64(b, *((*int64)(p)))
+				binary.BigEndian.PutUint64(b.MallocN(8), *((*uint64)(p)))
 			case tSTRING:
 				s := *((*string)(p))
-				thrift.XBuffer.WriteString(b, s)
+				if len(s) < nocopyWriteThreshold {
+					buf := b.MallocN(len(s) + 4)
+					binary.BigEndian.PutUint32(buf, uint32(len(s)))
+					copy(buf[4:], s)
+				} else {
+					binary.BigEndian.PutUint32(b.MallocN(4), uint32(len(s)))
+					b.WriteDirect(unsafex.StringToBinary(s))
+				}
 			}
 		} else {
 			err = t.XWriteFunc(t, b, p)
@@ -75,32 +87,39 @@ func xwriteStruct(t *tType, b *thrift.XWriteBuffer, base unsafe.Pointer) error {
 	if sd.hasUnknownFields {
 		xb := *(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset))
 		if len(xb) > 0 {
-			thrift.XBuffer.RawWrite(b, xb)
+			b.WriteDirect(xb)
 		}
 	}
-	thrift.XBuffer.WriteFieldStop(b)
+	b.MallocN(1)[0] = byte(tSTOP)
 	return nil
 }
 
-func xwriteAny(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
+func xwriteAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 	if t.IsPointer {
 		p = *(*unsafe.Pointer)(p)
 	}
 	if t.SimpleType {
 		switch t.T {
 		case tBYTE, tBOOL:
-			thrift.XBuffer.WriteByte(b, *(*int8)(p)) // for tBOOL, true -> 1, false -> 0
+			b.MallocN(1)[0] = *(*byte)(p) // for tBOOL, true -> 1, false -> 0
 		case tI16:
-			thrift.XBuffer.WriteI16(b, *((*int16)(p)))
+			binary.BigEndian.PutUint16(b.MallocN(2), *((*uint16)(p)))
 		case tI32:
-			thrift.XBuffer.WriteI32(b, *((*int32)(p)))
+			binary.BigEndian.PutUint32(b.MallocN(4), *((*uint32)(p)))
 		case tENUM:
-			thrift.XBuffer.WriteI32(b, int32(*((*int64)(p))))
+			binary.BigEndian.PutUint32(b.MallocN(4), uint32(*((*int64)(p))))
 		case tI64, tDOUBLE:
-			thrift.XBuffer.WriteI64(b, *((*int64)(p)))
+			binary.BigEndian.PutUint64(b.MallocN(8), *((*uint64)(p)))
 		case tSTRING:
 			s := *((*string)(p))
-			thrift.XBuffer.WriteString(b, s)
+			if len(s) < nocopyWriteThreshold {
+				buf := b.MallocN(len(s) + 4)
+				binary.BigEndian.PutUint32(buf, uint32(len(s)))
+				copy(buf[4:], s)
+			} else {
+				binary.BigEndian.PutUint32(b.MallocN(4), uint32(len(s)))
+				b.WriteDirect(unsafex.StringToBinary(s))
+			}
 		}
 		return nil
 	} else {

@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,20 +45,27 @@ func TestXWriteMapAnyAny(t *testing.T) {
 	}
 
 	p0 := &TestStruct{
-		M1: map[EnumKey]int8{11: 1, 12: 2},
-		M2: map[EnumKey]int16{21: 1, 22: 2},
-		M3: map[EnumKey]int32{31: 1, 32: 2},
-		M4: map[EnumKey]int64{41: 1, 42: 2},
-		M5: map[EnumKey]EnumType{51: 1, 52: 2},
-		M6: map[EnumKey]string{61: "1", 62: "2"},
-		M7: map[EnumKey]*EmptyStruct{71: {}, 72: {}},
+		M1: map[EnumKey]int8{11: 1},
+		M2: map[EnumKey]int16{21: 1},
+		M3: map[EnumKey]int32{31: 1},
+		M4: map[EnumKey]int64{41: 1},
+		M5: map[EnumKey]EnumType{51: 1},
+		M6: map[EnumKey]string{61: "1"},
+		M7: map[EnumKey]*EmptyStruct{71: {}},
 	}
 
-	b := thrift.NewXWriteBuffer()
-	err := XWrite(b, p0)
+	buf, err := Append(nil, p0)
+	require.NoError(t, err)
+	_ = buf
+
+	b := xbuf.NewXWriteBuffer()
+	err = XWrite(b, p0)
 	require.NoError(t, err)
 	bufs := b.Bytes()
 	_ = bufs
+
+	require.Equal(t, string(buf), string(bufs[0]))
+
 	b.Free()
 
 	//p1 := &TestStruct{}

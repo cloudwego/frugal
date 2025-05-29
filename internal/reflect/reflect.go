@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
 )
 
 func EncodedSize(v interface{}) int {
@@ -86,7 +86,7 @@ func Append(b []byte, v interface{}) ([]byte, error) {
 	return appendStruct(&tType{Sd: sd}, b, p)
 }
 
-func XWrite(b *thrift.XWriteBuffer, v interface{}) error {
+func XWrite(b *xbuf.XWriteBuffer, v interface{}) error {
 	panicIfHackErr()
 
 	var err error

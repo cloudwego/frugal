@@ -22,7 +22,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
 
 	"github.com/cloudwego/frugal/internal/defs"
 )
@@ -88,7 +88,7 @@ var simpleTypes = [256]bool{
 
 type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 
-type xwriteFuncType func(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error
+type xwriteFuncType func(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error
 
 type tType struct {
 	T ttype

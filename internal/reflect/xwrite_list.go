@@ -20,6 +20,7 @@ import (
 	"unsafe"
 
 	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
 )
 
 var xwriteListFuncs = map[ttype]xwriteFuncType{}
@@ -40,18 +41,18 @@ func registerXWriteListFunc(t ttype, f xwriteFuncType) {
 	xwriteListFuncs[t] = f
 }
 
-func xwriteListHeader(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) (uint32, unsafe.Pointer) {
+func xwriteListHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) (uint32, unsafe.Pointer) {
 	if *(*unsafe.Pointer)(p) == nil {
-		thrift.XBuffer.WriteListBegin(b, thrift.TType(t.WT), 0)
+		thrift.Binary.WriteListBegin(b.MallocN(5), thrift.TType(t.WT), 0)
 		return 0, nil
 	}
 	h := (*sliceHeader)(p)
 	n := h.Len
-	thrift.XBuffer.WriteListBegin(b, thrift.TType(t.WT), n)
+	thrift.Binary.WriteListBegin(b.MallocN(5), thrift.TType(t.WT), n)
 	return uint32(n), h.UnsafePointer()
 }
 
-func xwriteListAny(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
+func xwriteListAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 	t = t.V
 	n, vp := xwriteListHeader(t, b, p)
 	if n == 0 {
