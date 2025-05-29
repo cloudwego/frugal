@@ -54,10 +54,12 @@ func TestXWriteMapAnyAny(t *testing.T) {
 		M7: map[EnumKey]*EmptyStruct{71: {}, 72: {}},
 	}
 
-	b := &thrift.XWriteBuffer{}
-	err := XWrite(nil, p0)
+	b := thrift.NewXWriteBuffer()
+	err := XWrite(b, p0)
 	require.NoError(t, err)
-	_ = b
+	bufs := b.Bytes()
+	_ = bufs
+	b.Free()
 
 	//p1 := &TestStruct{}
 	//_, err = Decode(b, p1)

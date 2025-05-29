@@ -65,11 +65,11 @@ func TestGenXWriteListCode(t *testing.T) {
 		L6: []string{"61", "62"},
 		L7: []*Msg{{X: 71, Y: 72}, {X: 73, Y: 74}},
 	}
-	b = &thrift.XWriteBuffer{}
+	b = thrift.NewXWriteBuffer()
 	err = XWrite(b, p0)
 	require.NoError(t, err)
-	bufs, pool := b.Freeze()
-	defer pool.Free()
+	bufs := b.Bytes()
+	defer b.Free()
 	_ = bufs
 
 	/*

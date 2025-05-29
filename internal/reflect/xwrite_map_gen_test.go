@@ -40,10 +40,12 @@ func TestGenXWriteMapCode(t *testing.T) {
 
 	doTest := func(t *testing.T, p0, p1 interface{}) {
 		t.Helper()
-		b := &thrift.XWriteBuffer{}
+		b := thrift.NewXWriteBuffer()
 		err := XWrite(b, p0)
 		require.NoError(t, err)
-		_ = b
+		bufs := b.Bytes()
+		_ = bufs
+		b.Free()
 		//_, err = Decode(b, p1)
 		//require.NoError(t, err)
 		//require.Equal(t, p0, p1)
