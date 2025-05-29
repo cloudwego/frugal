@@ -135,3 +135,25 @@ func Decode(b []byte, v interface{}) (int, error) {
 	decoderPool.Put(d)
 	return n, err
 }
+
+func XRead(b *xbuf.XReadBuffer, v interface{}) error {
+	panicIfHackErr()
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("not a pointer")
+	}
+	if rv.IsNil() {
+		return errors.New("can't decode nil pointer")
+	}
+	if rv.Elem().Kind() != reflect.Struct {
+		return errors.New("not a pointer to a struct")
+	}
+	sd, err := getOrcreateStructDesc(rv)
+	if err != nil {
+		return err
+	}
+	d := decoderPool.Get().(*tDecoder)
+	err = d.XRead(b, rv.UnsafePointer(), sd, maxDepthLimit)
+	decoderPool.Put(d)
+	return err
+}

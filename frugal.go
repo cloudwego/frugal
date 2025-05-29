@@ -19,8 +19,10 @@ package frugal
 import (
 	"fmt"
 
-	"github.com/cloudwego/frugal/internal/reflect"
 	"github.com/cloudwego/gopkg/protocol/thrift"
+	"github.com/cloudwego/gopkg/xbuf"
+
+	"github.com/cloudwego/frugal/internal/reflect"
 )
 
 // EncodedSize measures the encoded size of val.
@@ -52,4 +54,12 @@ func DecodeObject(buf []byte, val interface{}) (int, error) {
 		return reflect.Decode(buf, val)
 	}
 	return jitDecodeObject(buf, val)
+}
+
+func XEncodeObject(b *xbuf.XWriteBuffer, val interface{}) error {
+	return reflect.XWrite(b, val)
+}
+
+func XDecodeObject(b *xbuf.XReadBuffer, val interface{}) error {
+	return reflect.XRead(b, val)
 }
