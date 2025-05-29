@@ -210,6 +210,7 @@ func newTType(x *defs.Type) *tType {
 		updateXWriteListFunc(t)
 	case tMAP:
 		updateMapAppendFunc(t)
+		updateXWriteMapFunc(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
 		t.XWriteFunc = xwriteStruct

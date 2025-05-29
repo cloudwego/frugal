@@ -49,7 +49,7 @@ func xwriteList_I08(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size)
 		}
-		thrift.XBuffer.WriteByte(b, *((*int8)(p)))
+		thrift.XBuffer.WriteByte(b, *((*int8)(vp)))
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func xwriteList_I16(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size)
 		}
-		thrift.XBuffer.WriteI16(b, *((*int16)(p)))
+		thrift.XBuffer.WriteI16(b, *((*int16)(vp)))
 	}
 	return nil
 }
@@ -79,7 +79,7 @@ func xwriteList_I32(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size)
 		}
-		thrift.XBuffer.WriteI32(b, *((*int32)(p)))
+		thrift.XBuffer.WriteI32(b, *((*int32)(vp)))
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func xwriteList_I64(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size)
 		}
-		thrift.XBuffer.WriteI64(b, *((*int64)(p)))
+		thrift.XBuffer.WriteI64(b, *((*int64)(vp)))
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func xwriteList_ENUM(t *tType, b *thrift.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size)
 		}
-		thrift.XBuffer.WriteI32(b, int32(*((*int64)(p))))
+		thrift.XBuffer.WriteI32(b, int32(*((*int64)(vp))))
 	}
 	return nil
 }
