@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 CloudWeGo Authors
+ * Copyright 2025 CloudWeGo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,18 +58,20 @@ func TestGridWriteMapAnyAny(t *testing.T) {
 	require.NoError(t, err)
 	_ = buf
 
-	b := gridbuf.NewWriteBuffer()
-	err = GridWrite(b, p0)
+	gwritebuf := gridbuf.NewWriteBuffer()
+	err = GridWrite(gwritebuf, p0)
 	require.NoError(t, err)
-	bufs := b.Bytes()
-	_ = bufs
+	bufs := gwritebuf.Bytes()
 
 	require.Equal(t, string(buf), string(bufs[0]))
 
-	b.Free()
+	greadbuf := gridbuf.NewReadBuffer(bufs)
 
-	//p1 := &TestStruct{}
-	//_, err = Decode(b, p1)
-	//require.NoError(t, err)
-	//require.Equal(t, p0, p1)
+	p1 := &TestStruct{}
+	err = GridRead(greadbuf, p1)
+	require.NoError(t, err)
+	require.Equal(t, p0, p1)
+
+	greadbuf.Free()
+	gwritebuf.Free()
 }

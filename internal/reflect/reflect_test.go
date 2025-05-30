@@ -66,9 +66,7 @@ func initTestTypesForBenchmark() *TestTypesForBenchmark {
 	ret.L0 = []int32{1, 2, 3}
 	ret.L1 = []*Msg{{Type: 1}, {Type: 2}, {Type: 3}}
 	ret.Set0 = []int32{1, 2, 3}
-	v1 := string(make([]byte, 4000))
-	v2 := string(make([]byte, 10000))
-	ret.Set1 = []string{"AAAA", v1, v2}
+	ret.Set1 = []string{"AAAA", "BB", "CCCCC"}
 	return ret
 }
 
