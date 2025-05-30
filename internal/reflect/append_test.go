@@ -19,6 +19,7 @@ package reflect
 import (
 	"testing"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,6 +50,16 @@ func TestAppendStruct(t *testing.T) {
 	require.NoError(t, err)
 	p1 := &TestStruct{}
 	_, err = Decode(b, p1)
+	require.NoError(t, err)
+	require.Equal(t, p0, p1)
+
+	wb := gridbuf.NewWriteBuffer()
+	err = GridWrite(wb, p0)
+	require.NoError(t, err)
+	p1 = &TestStruct{}
+
+	rb := gridbuf.NewReadBuffer(wb.Bytes())
+	err = GridRead(rb, p1)
 	require.NoError(t, err)
 	require.Equal(t, p0, p1)
 }

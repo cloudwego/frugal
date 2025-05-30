@@ -52,6 +52,9 @@ func (d *tDecoder) GridRead(b *gridbuf.ReadBuffer, base unsafe.Pointer, sd *stru
 
 		f := sd.GetField(fid)
 		if f == nil || f.Type.WT != tp {
+			if sd.hasUnknownFields {
+				ufs = append(ufs, byte(tp), byte(fid>>8), byte(fid))
+			}
 			ufs, err = thrift.GridBuffer.Skip(b, thrift.TType(tp), ufs, sd.hasUnknownFields)
 			if err != nil {
 				return fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)

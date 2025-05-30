@@ -120,11 +120,38 @@ func BenchmarkDecode(b *testing.B) {
 	require.NoError(b, err)
 
 	p0 := NewTestTypesForBenchmark()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p0.InitDefault()
 		_, _ = Decode(buf, p0)
 		if checkBenchmarkDecodeResult {
 			require.Equal(b, p0, p)
 		}
+	}
+}
+
+func BenchmarkGridRead(b *testing.B) {
+	p := initTestTypesForBenchmark()
+	n := EncodedSize(p)
+	if n <= 0 {
+		b.Fatal(n)
+	}
+	var err error
+	buf := make([]byte, n)
+	b.SetBytes(int64(n))
+	buf, err = Append(buf[:0], p)
+	require.NoError(b, err)
+
+	p0 := NewTestTypesForBenchmark()
+	bs := [][]byte{buf}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p0.InitDefault()
+		rb := gridbuf.NewReadBuffer(bs)
+		_ = GridRead(rb, p0)
+		if checkBenchmarkDecodeResult {
+			require.Equal(b, p0, p)
+		}
+		rb.Free()
 	}
 }

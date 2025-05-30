@@ -19,6 +19,7 @@ package reflect
 import (
 	"testing"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +109,7 @@ func TestEncode(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name+"_append", func(t *testing.T) {
 			p := NewTestTypesOptional()
 			tc.update(p)
 			assert.Equal(t, tc.expect, EncodedSize(p))
@@ -116,6 +117,20 @@ func TestEncode(t *testing.T) {
 			if assert.NoError(t, err) {
 				assert.Equal(t, tc.expect, len(x))
 			}
+		})
+		t.Run(tc.name+"_grid_write", func(t *testing.T) {
+			p := NewTestTypesOptional()
+			tc.update(p)
+			wb := gridbuf.NewWriteBuffer()
+			err := GridWrite(wb, p)
+			assert.NoError(t, err)
+
+			bs := wb.Bytes()
+			var l int
+			for _, b := range bs {
+				l += len(b)
+			}
+			assert.Equal(t, tc.expect, l)
 		})
 	}
 }
@@ -126,6 +141,16 @@ func TestEncodeStructOther(t *testing.T) {
 	b, err := Append(nil, Msg{})
 	assert.NoError(t, err)
 	assert.Equal(t, encodedMsgSize, len(b))
+
+	wb := gridbuf.NewWriteBuffer()
+	err = GridWrite(wb, Msg{})
+	assert.NoError(t, err)
+	bs := wb.Bytes()
+	var l int
+	for _, b := range bs {
+		l += len(b)
+	}
+	assert.Equal(t, encodedMsgSize, l)
 }
 
 func TestEncodeUnknownFields(t *testing.T) {
@@ -144,6 +169,17 @@ func TestEncodeUnknownFields(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, n, len(b))
 	assert.Contains(t, string(b), string(append([]byte("helloworld")[:], byte(tSTOP))))
+
+	wb := gridbuf.NewWriteBuffer()
+	err = GridWrite(wb, m)
+	assert.NoError(t, err)
+	bs := wb.Bytes()
+	var cbs []byte
+	for _, b := range bs {
+		cbs = append(cbs, b...)
+	}
+	assert.Equal(t, n, len(cbs))
+	assert.Contains(t, string(cbs), string(append([]byte("helloworld")[:], byte(tSTOP))))
 }
 
 func TestNestedListMapStruct(t *testing.T) {
@@ -168,5 +204,16 @@ func TestNestedListMapStruct(t *testing.T) {
 	i, err := Decode(x, p2)
 	require.NoError(t, err)
 	require.Equal(t, i, len(b))
+	require.Equal(t, p, p2)
+
+	wb := gridbuf.NewWriteBuffer()
+	err = GridWrite(wb, p)
+	require.NoError(t, err)
+	bs := wb.Bytes()
+
+	p2 = &Msg2{}
+	rb := gridbuf.NewReadBuffer(bs)
+	err = GridRead(rb, p2)
+	require.NoError(t, err)
 	require.Equal(t, p, p2)
 }
