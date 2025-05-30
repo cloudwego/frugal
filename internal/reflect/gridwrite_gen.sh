@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FRUGAL_GEN_APPEND_MAP_FILE="xwrite_map_gen.go"
-FRUGAL_GEN_APPEND_LIST_FILE="xwrite_list_gen.go"
+FRUGAL_GEN_APPEND_MAP_FILE="gridwrite_map_gen.go"
+FRUGAL_GEN_APPEND_LIST_FILE="gridwrite_list_gen.go"
 
 rm -f $FRUGAL_GEN_APPEND_MAP_FILE
 rm -f $FRUGAL_GEN_APPEND_LIST_FILE
 
-exec go test -v -run=TestGenXWrite -gencode=true
+exec go test -v -run=TestGenGridWrite -gencode=true

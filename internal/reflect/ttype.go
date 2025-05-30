@@ -22,7 +22,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cloudwego/gopkg/xbuf"
+	"github.com/cloudwego/gopkg/gridbuf"
 
 	"github.com/cloudwego/frugal/internal/defs"
 )
@@ -88,7 +88,7 @@ var simpleTypes = [256]bool{
 
 type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 
-type xwriteFuncType func(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error
+type gridWriteFuncType func(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error
 
 type tType struct {
 	T ttype
@@ -122,7 +122,7 @@ type tType struct {
 	AppendFunc      appendFuncType
 
 	// for tLIST, tSET, tMAP, tSTRUCT
-	XWriteFunc xwriteFuncType
+	GridWriteFunc gridWriteFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -207,16 +207,16 @@ func newTType(x *defs.Type) *tType {
 	switch t.T {
 	case tLIST, tSET:
 		updateListAppendFunc(t)
-		updateXWriteListFunc(t)
+		updateGridWriteListFunc(t)
 	case tMAP:
 		updateMapAppendFunc(t)
-		updateXWriteMapFunc(t)
+		updateGridWriteMapFunc(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
-		t.XWriteFunc = xwriteStruct
+		t.GridWriteFunc = gridWriteStruct
 	default:
 		t.AppendFunc = appendAny
-		t.XWriteFunc = xwriteAny
+		t.GridWriteFunc = gridWriteAny
 	}
 	if t.IsPointer && t.V.IsPointer {
 		// XXX: make it simple... not support it, it's not common

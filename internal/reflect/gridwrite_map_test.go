@@ -19,15 +19,15 @@ package reflect
 import (
 	"testing"
 
-	"github.com/cloudwego/gopkg/xbuf"
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/stretchr/testify/require"
 )
 
-func TestXWriteMapAnyAny(t *testing.T) {
-	var funcs map[struct{ k, v ttype }]xwriteFuncType
-	funcs, mapXWriteFuncs = mapXWriteFuncs, nil // reset mapXWriteFuncs to use xwriteMapAnyAny
+func TestGridWriteMapAnyAny(t *testing.T) {
+	var funcs map[struct{ k, v ttype }]gridWriteFuncType
+	funcs, mapGridWriteFuncs = mapGridWriteFuncs, nil // reset mapGridWriteFuncs to use gridWriteMapAnyAny
 	defer func() {
-		mapXWriteFuncs = funcs
+		mapGridWriteFuncs = funcs
 	}()
 
 	type EnumKey int64
@@ -58,8 +58,8 @@ func TestXWriteMapAnyAny(t *testing.T) {
 	require.NoError(t, err)
 	_ = buf
 
-	b := xbuf.NewXWriteBuffer()
-	err = XWrite(b, p0)
+	b := gridbuf.NewWriteBuffer()
+	err = GridWrite(b, p0)
 	require.NoError(t, err)
 	bufs := b.Bytes()
 	_ = bufs

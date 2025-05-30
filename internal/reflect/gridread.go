@@ -7,13 +7,13 @@ import (
 	"unsafe"
 
 	"github.com/bytedance/gopkg/lang/dirtmake"
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
-	"github.com/cloudwego/gopkg/xbuf"
 
 	"github.com/cloudwego/frugal/internal/defs"
 )
 
-func (d *tDecoder) XRead(b *xbuf.XReadBuffer, base unsafe.Pointer, sd *structDesc, maxdepth int) (err error) {
+func (d *tDecoder) GridRead(b *gridbuf.ReadBuffer, base unsafe.Pointer, sd *structDesc, maxdepth int) (err error) {
 	if maxdepth == 0 {
 		return errDepthLimitExceeded
 	}
@@ -36,7 +36,7 @@ func (d *tDecoder) XRead(b *xbuf.XReadBuffer, base unsafe.Pointer, sd *structDes
 
 		f := sd.GetField(fid)
 		if f == nil || f.Type.WT != tp {
-			ufs, err = thrift.XBuffer.Skip(b, thrift.TType(tp), ufs, sd.hasUnknownFields)
+			ufs, err = thrift.GridBuffer.Skip(b, thrift.TType(tp), ufs, sd.hasUnknownFields)
 			if err != nil {
 				return fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
@@ -47,9 +47,9 @@ func (d *tDecoder) XRead(b *xbuf.XReadBuffer, base unsafe.Pointer, sd *structDes
 		t := f.Type
 		p = d.mallocIfPointer(t, p)
 		if t.FixedSize > 0 {
-			xreadFixedSizeTypes(t.T, b, p)
+			gridReadFixedSizeTypes(t.T, b, p)
 		} else {
-			err = d.xreadType(t, b, p, maxdepth-1)
+			err = d.gridReadType(t, b, p, maxdepth-1)
 			if err != nil {
 				return fmt.Errorf("decode field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
@@ -69,7 +69,7 @@ func (d *tDecoder) XRead(b *xbuf.XReadBuffer, base unsafe.Pointer, sd *structDes
 	return nil
 }
 
-func xreadFixedSizeTypes(t ttype, b *xbuf.XReadBuffer, p unsafe.Pointer) {
+func gridReadFixedSizeTypes(t ttype, b *gridbuf.ReadBuffer, p unsafe.Pointer) {
 	switch t {
 	case tBOOL, tBYTE:
 		*(*byte)(p) = b.ReadN(1)[0] // XXX: for tBOOL 1->true, 2->true/false
@@ -86,13 +86,13 @@ func xreadFixedSizeTypes(t ttype, b *xbuf.XReadBuffer, p unsafe.Pointer) {
 	}
 }
 
-func (d *tDecoder) xreadType(t *tType, b *xbuf.XReadBuffer, p unsafe.Pointer, maxdepth int) (err error) {
+func (d *tDecoder) gridReadType(t *tType, b *gridbuf.ReadBuffer, p unsafe.Pointer, maxdepth int) (err error) {
 	if maxdepth == 0 {
 		err = errDepthLimitExceeded
 		return
 	}
 	if t.FixedSize > 0 {
-		xreadFixedSizeTypes(t.T, b, p)
+		gridReadFixedSizeTypes(t.T, b, p)
 		return
 	}
 	switch t.T {
@@ -177,9 +177,9 @@ func (d *tDecoder) xreadType(t *tType, b *xbuf.XReadBuffer, p unsafe.Pointer, ma
 				p = sliceK
 			}
 			if kt.FixedSize > 0 {
-				xreadFixedSizeTypes(kt.T, b, p)
+				gridReadFixedSizeTypes(kt.T, b, p)
 			} else {
-				if err = d.xreadType(kt, b, p, maxdepth-1); err != nil {
+				if err = d.gridReadType(kt, b, p, maxdepth-1); err != nil {
 					break
 				}
 			}
@@ -192,9 +192,9 @@ func (d *tDecoder) xreadType(t *tType, b *xbuf.XReadBuffer, p unsafe.Pointer, ma
 				p = sliceV
 			}
 			if vt.FixedSize > 0 {
-				xreadFixedSizeTypes(vt.T, b, p)
+				gridReadFixedSizeTypes(vt.T, b, p)
 			} else {
-				if err = d.xreadType(vt, b, p, maxdepth-1); err != nil {
+				if err = d.gridReadType(vt, b, p, maxdepth-1); err != nil {
 					break
 				}
 			}
@@ -252,9 +252,9 @@ func (d *tDecoder) xreadType(t *tType, b *xbuf.XReadBuffer, p unsafe.Pointer, ma
 			}
 
 			if et.FixedSize > 0 {
-				xreadFixedSizeTypes(et.T, b, vp)
+				gridReadFixedSizeTypes(et.T, b, vp)
 			} else {
-				err = d.xreadType(et, b, vp, maxdepth-1)
+				err = d.gridReadType(et, b, vp, maxdepth-1)
 				if err != nil {
 					return err
 				}
@@ -267,7 +267,7 @@ func (d *tDecoder) xreadType(t *tType, b *xbuf.XReadBuffer, p unsafe.Pointer, ma
 			updateIface(unsafe.Pointer(&f), p)
 			f.InitDefault()
 		}
-		return d.XRead(b, p, t.Sd, maxdepth-1)
+		return d.GridRead(b, p, t.Sd, maxdepth-1)
 	}
 	return fmt.Errorf("unknown type: %d", t.T)
 }

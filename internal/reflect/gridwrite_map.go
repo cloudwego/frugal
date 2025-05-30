@@ -19,30 +19,30 @@ package reflect
 import (
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
-	"github.com/cloudwego/gopkg/xbuf"
 )
 
-var mapXWriteFuncs = map[struct{ k, v ttype }]xwriteFuncType{}
+var mapGridWriteFuncs = map[struct{ k, v ttype }]gridWriteFuncType{}
 
-func updateXWriteMapFunc(t *tType) {
+func updateGridWriteMapFunc(t *tType) {
 	if t.T != tMAP {
 		panic("[bug] type mismatch, got: " + ttype2str(t.T))
 	}
 
-	f, ok := mapXWriteFuncs[struct{ k, v ttype }{k: t.K.T, v: t.V.T}]
+	f, ok := mapGridWriteFuncs[struct{ k, v ttype }{k: t.K.T, v: t.V.T}]
 	if ok {
-		t.XWriteFunc = f
+		t.GridWriteFunc = f
 		return
 	}
-	t.XWriteFunc = xwriteMapAnyAny
+	t.GridWriteFunc = gridWriteMapAnyAny
 }
 
-func registerMapXWriteFunc(k, v ttype, f xwriteFuncType) {
-	mapXWriteFuncs[struct{ k, v ttype }{k: k, v: v}] = f
+func registerMapGridWriteFunc(k, v ttype, f gridWriteFuncType) {
+	mapGridWriteFuncs[struct{ k, v ttype }{k: k, v: v}] = f
 }
 
-func xwriteMapHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) uint32 {
+func gridWriteMapHeader(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) uint32 {
 	var n uint32
 	if *(*unsafe.Pointer)(p) != nil {
 		n = uint32(maplen(*(*unsafe.Pointer)(p)))
@@ -51,10 +51,10 @@ func xwriteMapHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) uint32 {
 	return n
 }
 
-// this func will be replaced by funcs defined in xwrite_map_gen.go
-// see init() in xwrite_map_gen.go for details.
-func xwriteMapAnyAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
-	n := xwriteMapHeader(t, b, p)
+// this func will be replaced by funcs defined in gridWrite_map_gen.go
+// see init() in gridWrite_map_gen.go for details.
+func gridWriteMapAnyAny(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error {
+	n := gridWriteMapHeader(t, b, p)
 	if n == 0 {
 		return nil
 	}
@@ -63,11 +63,11 @@ func xwriteMapAnyAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		err = xwriteAny(t.K, b, kp)
+		err = gridWriteAny(t.K, b, kp)
 		if err != nil {
 			return err
 		}
-		err = xwriteAny(t.V, b, vp)
+		err = gridWriteAny(t.V, b, vp)
 		if err != nil {
 			return err
 		}

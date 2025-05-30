@@ -19,8 +19,8 @@ package frugal
 import (
 	"fmt"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
-	"github.com/cloudwego/gopkg/xbuf"
 
 	"github.com/cloudwego/frugal/internal/reflect"
 )
@@ -56,12 +56,12 @@ func DecodeObject(buf []byte, val interface{}) (int, error) {
 	return jitDecodeObject(buf, val)
 }
 
-func XEncodeObject(b *xbuf.XWriteBuffer, val interface{}) error {
-	return reflect.XWrite(b, val)
+func GridEncodeObject(b *gridbuf.WriteBuffer, val interface{}) error {
+	return reflect.GridWrite(b, val)
 }
 
-func XDecodeObject(buf [][]byte, val interface{}) error {
-	b := xbuf.NewXReadBuffer(buf)
+func GridDecodeObject(buf [][]byte, val interface{}) error {
+	b := gridbuf.NewReadBuffer(buf)
 	defer b.Free()
-	return reflect.XRead(b, val)
+	return reflect.GridRead(b, val)
 }

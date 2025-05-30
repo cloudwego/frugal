@@ -19,29 +19,29 @@ package reflect
 import (
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
-	"github.com/cloudwego/gopkg/xbuf"
 )
 
-var xwriteListFuncs = map[ttype]xwriteFuncType{}
+var gridWriteListFuncs = map[ttype]gridWriteFuncType{}
 
-func updateXWriteListFunc(t *tType) {
+func updateGridWriteListFunc(t *tType) {
 	if t.T != tLIST && t.T != tSET {
 		panic("[bug] type mismatch, got: " + ttype2str(t.T))
 	}
-	f, ok := xwriteListFuncs[t.V.T]
+	f, ok := gridWriteListFuncs[t.V.T]
 	if ok {
-		t.XWriteFunc = f
+		t.GridWriteFunc = f
 		return
 	}
-	t.XWriteFunc = xwriteListAny
+	t.GridWriteFunc = gridWriteListAny
 }
 
-func registerXWriteListFunc(t ttype, f xwriteFuncType) {
-	xwriteListFuncs[t] = f
+func registerGridWriteListFunc(t ttype, f gridWriteFuncType) {
+	gridWriteListFuncs[t] = f
 }
 
-func xwriteListHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) (uint32, unsafe.Pointer) {
+func gridWriteListHeader(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) (uint32, unsafe.Pointer) {
 	if *(*unsafe.Pointer)(p) == nil {
 		thrift.Binary.WriteListBegin(b.MallocN(5), thrift.TType(t.WT), 0)
 		return 0, nil
@@ -52,9 +52,9 @@ func xwriteListHeader(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) (uint32,
 	return uint32(n), h.UnsafePointer()
 }
 
-func xwriteListAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
+func gridWriteListAny(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error {
 	t = t.V
-	n, vp := xwriteListHeader(t, b, p)
+	n, vp := gridWriteListHeader(t, b, p)
 	if n == 0 {
 		return nil
 	}
@@ -63,7 +63,7 @@ func xwriteListAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size) // move to next element
 		}
-		err = xwriteAny(t, b, vp)
+		err = gridWriteAny(t, b, vp)
 		if err != nil {
 			return err
 		}

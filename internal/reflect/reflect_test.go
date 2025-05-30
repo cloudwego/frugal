@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/cloudwego/gopkg/xbuf"
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -89,11 +89,11 @@ func BenchmarkAppend(b *testing.B) {
 	}
 }
 
-func BenchmarkXWrite(b *testing.B) {
+func BenchmarkGridWrite(b *testing.B) {
 	p := initTestTypesForBenchmark()
 	for i := 0; i < b.N; i++ {
-		buf := xbuf.NewXWriteBuffer()
-		_ = XWrite(buf, p)
+		buf := gridbuf.NewWriteBuffer()
+		_ = GridWrite(buf, p)
 		_ = buf.Bytes()
 		buf.Free()
 	}

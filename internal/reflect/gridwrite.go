@@ -20,13 +20,13 @@ import (
 	"encoding/binary"
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/unsafex"
-	"github.com/cloudwego/gopkg/xbuf"
 )
 
 const nocopyWriteThreshold = 4096
 
-func xwriteStruct(t *tType, b *xbuf.XWriteBuffer, base unsafe.Pointer) error {
+func gridWriteStruct(t *tType, b *gridbuf.WriteBuffer, base unsafe.Pointer) error {
 	sd := t.Sd
 	if base == nil {
 		b.MallocN(1)[0] = byte(tSTOP)
@@ -78,7 +78,7 @@ func xwriteStruct(t *tType, b *xbuf.XWriteBuffer, base unsafe.Pointer) error {
 				}
 			}
 		} else {
-			err = t.XWriteFunc(t, b, p)
+			err = t.GridWriteFunc(t, b, p)
 			if err != nil {
 				return withFieldErr(err, sd, f)
 			}
@@ -94,7 +94,7 @@ func xwriteStruct(t *tType, b *xbuf.XWriteBuffer, base unsafe.Pointer) error {
 	return nil
 }
 
-func xwriteAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
+func gridWriteAny(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error {
 	if t.IsPointer {
 		p = *(*unsafe.Pointer)(p)
 	}
@@ -123,6 +123,6 @@ func xwriteAny(t *tType, b *xbuf.XWriteBuffer, p unsafe.Pointer) error {
 		}
 		return nil
 	} else {
-		return t.XWriteFunc(t, b, p)
+		return t.GridWriteFunc(t, b, p)
 	}
 }

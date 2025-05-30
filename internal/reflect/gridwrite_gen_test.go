@@ -2,7 +2,7 @@ package reflect
 
 import "strings"
 
-func getXWriteCode(typ ttype, t, p string) string {
+func getGridWriteCode(typ ttype, t, p string) string {
 	t2c := map[ttype]string{
 		tBYTE:   "b.MallocN(1)[0] = *(*byte)({p})",
 		tI16:    "binary.BigEndian.PutUint16(b.MallocN(2), *((*uint16)({p})))",
@@ -22,9 +22,9 @@ func getXWriteCode(typ ttype, t, p string) string {
 
 		// tSTRUCT, tMAP, tSET, tLIST -> tOTHER
 		tOTHER: `if {t}.IsPointer {
-		err = {t}.XWriteFunc({t}, b, *(*unsafe.Pointer)({p}))
+		err = {t}.GridWriteFunc({t}, b, *(*unsafe.Pointer)({p}))
 	} else {
-		err = {t}.XWriteFunc({t}, b, {p})
+		err = {t}.GridWriteFunc({t}, b, {p})
 	}
 	if err != nil {
 		return err

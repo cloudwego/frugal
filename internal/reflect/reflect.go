@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/cloudwego/gopkg/xbuf"
+	"github.com/cloudwego/gopkg/gridbuf"
 )
 
 func EncodedSize(v interface{}) int {
@@ -86,7 +86,7 @@ func Append(b []byte, v interface{}) ([]byte, error) {
 	return appendStruct(&tType{Sd: sd}, b, p)
 }
 
-func XWrite(b *xbuf.XWriteBuffer, v interface{}) error {
+func GridWrite(b *gridbuf.WriteBuffer, v interface{}) error {
 	panicIfHackErr()
 
 	var err error
@@ -111,7 +111,7 @@ func XWrite(b *xbuf.XWriteBuffer, v interface{}) error {
 		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
-	return xwriteStruct(&tType{Sd: sd}, b, p)
+	return gridWriteStruct(&tType{Sd: sd}, b, p)
 }
 
 func Decode(b []byte, v interface{}) (int, error) {
@@ -136,7 +136,7 @@ func Decode(b []byte, v interface{}) (int, error) {
 	return n, err
 }
 
-func XRead(b *xbuf.XReadBuffer, v interface{}) error {
+func GridRead(b *gridbuf.ReadBuffer, v interface{}) error {
 	panicIfHackErr()
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr {
@@ -153,7 +153,7 @@ func XRead(b *xbuf.XReadBuffer, v interface{}) error {
 		return err
 	}
 	d := decoderPool.Get().(*tDecoder)
-	err = d.XRead(b, rv.UnsafePointer(), sd, maxDepthLimit)
+	err = d.GridRead(b, rv.UnsafePointer(), sd, maxDepthLimit)
 	decoderPool.Put(d)
 	return err
 }
