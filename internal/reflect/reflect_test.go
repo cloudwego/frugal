@@ -96,7 +96,7 @@ func BenchmarkEncode(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				n := EncodedSize(p)
-				buf := mcache.Malloc(n, n)
+				buf := mcache.Malloc(0, n)
 				_, _ = Append(buf, p)
 				mcache.Free(buf)
 			}
