@@ -16,7 +16,11 @@
 
 package reflect
 
-import "unsafe"
+import (
+	"unsafe"
+
+	"github.com/cloudwego/gopkg/gridbuf"
+)
 
 var listAppendFuncs = map[ttype]appendFuncType{}
 
@@ -36,20 +40,26 @@ func registerListAppendFunc(t ttype, f appendFuncType) {
 	listAppendFuncs[t] = f
 }
 
-func appendListHeader(t *tType, b []byte, p unsafe.Pointer) ([]byte, uint32, unsafe.Pointer) {
+func appendListHeader(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, uint32, unsafe.Pointer) {
 	if *(*unsafe.Pointer)(p) == nil {
+		if cap(b)-len(b) < 5 {
+			b = gb.NewBuffer(b, 5)
+		}
 		return append(b, byte(t.WT), 0, 0, 0, 0), 0, nil
 	}
 	h := (*sliceHeader)(p)
 	n := uint32(h.Len)
+	if cap(b)-len(b) < 5 {
+		b = gb.NewBuffer(b, 5)
+	}
 	return append(b, byte(t.WT),
 			byte(n>>24), byte(n>>16), byte(n>>8), byte(n)),
 		n, h.UnsafePointer()
 }
 
-func appendListAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendListAny(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error) {
 	t = t.V
-	b, n, vp := appendListHeader(t, b, p)
+	b, n, vp := appendListHeader(t, b, p, gb)
 	if n == 0 {
 		return b, nil
 	}
@@ -58,7 +68,7 @@ func appendListAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 		if i != 0 {
 			vp = unsafe.Add(vp, t.Size) // move to next element
 		}
-		b, err = appendAny(t, b, vp)
+		b, err = appendAny(t, b, vp, gb)
 		if err != nil {
 			return b, err
 		}

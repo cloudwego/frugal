@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,7 +182,7 @@ func TestDecode(t *testing.T) {
 		name := tc.name
 		updatef := tc.update
 		testf := tc.test
-		t.Run(name, func(t *testing.T) {
+		t.Run(name+"_append_decode", func(t *testing.T) {
 			p0 := NewTestTypes()
 			updatef(p0) // update by testcase func
 
@@ -200,6 +201,29 @@ func TestDecode(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(b), n)
 
+			testf(t, p1) // test by testcase func
+		})
+		t.Run(name+"_grid_write_read", func(t *testing.T) {
+			p0 := NewTestTypes()
+			updatef(p0) // update by testcase func
+
+			b, err := Append(nil, p0)
+			require.NoError(t, err)
+
+			wb := gridbuf.NewWriteBuffer()
+			err = GridWrite(wb, p0)
+			require.NoError(t, err)
+			bs := wb.Bytes()
+
+			rb := gridbuf.NewReadBuffer(bs)
+			ufs, err := thrift.GridBuffer.Skip(rb, thrift.TType(tSTRUCT), nil, true)
+			require.NoError(t, err)
+			require.Equal(t, len(ufs), len(b))
+
+			p1 := &TestTypes{}
+			rb = gridbuf.NewReadBuffer(bs)
+			err = GridRead(rb, p1)
+			require.NoError(t, err)
 			testf(t, p1) // test by testcase func
 		})
 	}
@@ -283,7 +307,7 @@ func TestDecodeOptional(t *testing.T) {
 		name := tc.name
 		updatef := tc.update
 		testf := tc.test
-		t.Run(name, func(t *testing.T) {
+		t.Run(name+"_append_decode", func(t *testing.T) {
 			p0 := NewTestTypesOptional()
 			updatef(p0) // update by testcase func
 
@@ -302,6 +326,29 @@ func TestDecodeOptional(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(b), n)
 
+			testf(t, p1) // test by testcase func
+		})
+		t.Run(name+"_grid_write_read", func(t *testing.T) {
+			p0 := NewTestTypesOptional()
+			updatef(p0) // update by testcase func
+
+			b, err := Append(nil, p0)
+			require.NoError(t, err)
+
+			wb := gridbuf.NewWriteBuffer()
+			err = GridWrite(wb, p0)
+			require.NoError(t, err)
+			bs := wb.Bytes()
+
+			rb := gridbuf.NewReadBuffer(bs)
+			ufs, err := thrift.GridBuffer.Skip(rb, thrift.TType(tSTRUCT), nil, true)
+			require.NoError(t, err)
+			require.Equal(t, len(ufs), len(b))
+
+			p1 := &TestTypesOptional{}
+			rb = gridbuf.NewReadBuffer(bs)
+			err = GridRead(rb, p1)
+			require.NoError(t, err)
 			testf(t, p1) // test by testcase func
 		})
 	}
@@ -332,6 +379,34 @@ func TestDecodeRequired(t *testing.T) {
 	require.Equal(t, true, p1.V)
 }
 
+func TestGridReadWriteRequired(t *testing.T) {
+	type S0 struct {
+		V *bool `frugal:"1,optional,bool"`
+	}
+	type S1 struct {
+		V bool `frugal:"1,required,bool"`
+	}
+	v := true
+	p0 := &S0{}
+	wb := gridbuf.NewWriteBuffer()
+	err := GridWrite(wb, p0)
+	require.NoError(t, err)
+	p1 := &S1{}
+	rb := gridbuf.NewReadBuffer(wb.Bytes())
+	err = GridRead(rb, p1)
+	require.Equal(t, newRequiredFieldNotSetException("V"), err)
+
+	p0.V = &v
+	wb = gridbuf.NewWriteBuffer()
+	err = GridWrite(wb, p0)
+	require.NoError(t, err)
+
+	rb = gridbuf.NewReadBuffer(wb.Bytes())
+	err = GridRead(rb, p1)
+	require.NoError(t, err)
+	require.Equal(t, true, p1.V)
+}
+
 func TestDecodeUnknownFields(t *testing.T) {
 	type Msg0 struct {
 		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
@@ -350,6 +425,36 @@ func TestDecodeUnknownFields(t *testing.T) {
 
 	p := &Msg1{}
 	_, _ = Decode(b, p)
+
+	assert.Equal(t, msg.I0, p.I0)
+
+	sz := fieldHeaderLen + strHeaderLen + len(msg.S0)
+	testb := make([]byte, sz)
+	testb = appendStringField(testb[:0], 3, msg.S0)
+	assert.Equal(t, sz, len(testb))
+	assert.Equal(t, testb, p._unknownFields)
+}
+
+func TestGridReadWriteUnknownFields(t *testing.T) {
+	type Msg0 struct {
+		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
+		S0 string `thrift:"s0,3" frugal:"3,default,string"`
+	}
+
+	type Msg1 struct { // without S0
+		I0 int32 `thrift:"i0,2" frugal:"2,default,i32"`
+
+		_unknownFields []byte
+	}
+
+	msg := Msg0{I0: 1, S0: "s0"}
+	wb := gridbuf.NewWriteBuffer()
+	_ = GridWrite(wb, msg)
+	bs := wb.Bytes()
+
+	p := &Msg1{}
+	rb := gridbuf.NewReadBuffer(bs)
+	_ = GridRead(rb, p)
 
 	assert.Equal(t, msg.I0, p.I0)
 

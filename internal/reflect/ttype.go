@@ -22,6 +22,8 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/gridbuf"
+
 	"github.com/cloudwego/frugal/internal/defs"
 )
 
@@ -84,7 +86,9 @@ var simpleTypes = [256]bool{
 	tSTRING: true,
 }
 
-type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
+type appendFuncType func(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error)
+
+type gridWriteFuncType func(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error
 
 type tType struct {
 	T ttype

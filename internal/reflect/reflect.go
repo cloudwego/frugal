@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"reflect"
 	"unsafe"
+
+	"github.com/cloudwego/gopkg/gridbuf"
 )
 
 func EncodedSize(v interface{}) int {
@@ -81,7 +83,41 @@ func Append(b []byte, v interface{}) ([]byte, error) {
 		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
-	return appendStruct(&tType{Sd: sd}, b, p)
+	return appendStruct(&tType{Sd: sd}, b, p, nil)
+}
+
+func GridWrite(gb *gridbuf.WriteBuffer, v interface{}) error {
+	panicIfHackErr()
+
+	var err error
+	rv := reflect.ValueOf(v)
+	sd := getStructDesc(rv) // copy get and create funcs here for inlining
+	if sd == nil {
+		sd, err = createStructDesc(rv)
+		if err != nil {
+			return err
+		}
+	}
+	// get underlying pointer
+	var p unsafe.Pointer
+	if rv.Kind() == reflect.Struct {
+		// unaddressable, need to copy to heap, and then get the ptr
+		prv := sd.rvPool.Get().(*reflect.Value)
+		defer sd.rvPool.Put(prv)
+		(*prv).Elem().Set(rv)
+		p = (*rvtype)(unsafe.Pointer(prv)).ptr // like `rvPtr` without copy
+	} else {
+		// we doesn't support multilevel Pointer like **struct
+		// it checks in createStructDesc
+		p = rvPtr(rv)
+	}
+
+	b, err := appendStruct(&tType{Sd: sd}, nil, p, gb)
+	if err != nil {
+		return err
+	}
+	gb.NewBuffer(b, -1)
+	return nil
 }
 
 func Decode(b []byte, v interface{}) (int, error) {
@@ -104,4 +140,26 @@ func Decode(b []byte, v interface{}) (int, error) {
 	n, err := d.Decode(b, rv.UnsafePointer(), sd, maxDepthLimit)
 	decoderPool.Put(d)
 	return n, err
+}
+
+func GridRead(b *gridbuf.ReadBuffer, v interface{}) error {
+	panicIfHackErr()
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return errors.New("not a pointer")
+	}
+	if rv.IsNil() {
+		return errors.New("can't decode nil pointer")
+	}
+	if rv.Elem().Kind() != reflect.Struct {
+		return errors.New("not a pointer to a struct")
+	}
+	sd, err := getOrcreateStructDesc(rv)
+	if err != nil {
+		return err
+	}
+	d := decoderPool.Get().(*tDecoder)
+	err = d.GridRead(b, rv.UnsafePointer(), sd, maxDepthLimit)
+	decoderPool.Put(d)
+	return err
 }

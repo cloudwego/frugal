@@ -21,6 +21,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/bytedance/gopkg/lang/mcache"
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,12 +46,15 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func initTestTypesForBenchmark() *TestTypesForBenchmark {
+func initTestTypesForBenchmark(size ...int) *TestTypesForBenchmark {
 	b1 := true
 	s1 := "hello"
 	ret := NewTestTypesForBenchmark()
 	ret.B1 = &b1
 	ret.Str1 = &s1
+	if len(size) > 0 {
+		ret.Str2 = string(make([]byte, size[0]))
+	}
 	ret.Msg1 = &Msg{Type: 1}
 	ret.M0 = map[int32]int32{
 		1: 2,
@@ -76,13 +81,36 @@ func appendStringField(b []byte, fid uint16, s string) []byte {
 	return append(b, s...)
 }
 
-func BenchmarkAppend(b *testing.B) {
-	p := initTestTypesForBenchmark()
-	n := EncodedSize(p)
-	buf := make([]byte, 0, n)
-	b.SetBytes(int64(n))
-	for i := 0; i < b.N; i++ {
-		_, _ = Append(buf, p)
+func BenchmarkEncode(b *testing.B) {
+	tcases := []struct {
+		size int
+	}{
+		{size: 100},
+		{size: 1024},
+		{size: 4096},
+		{size: 1024 * 1024},
+	}
+	for _, tcase := range tcases {
+		b.Run(fmt.Sprintf("size_%d_append", tcase.size), func(b *testing.B) {
+			p := initTestTypesForBenchmark(tcase.size)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				n := EncodedSize(p)
+				buf := mcache.Malloc(0, n)
+				_, _ = Append(buf, p)
+				mcache.Free(buf)
+			}
+		})
+		b.Run(fmt.Sprintf("size_%d_grib_write", tcase.size), func(b *testing.B) {
+			p := initTestTypesForBenchmark(tcase.size)
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				buf := gridbuf.NewWriteBuffer()
+				_ = GridWrite(buf, p)
+				_ = buf.Bytes()
+				buf.Free()
+			}
+		})
 	}
 }
 
@@ -97,23 +125,71 @@ func BenchmarkEncodedSize(b *testing.B) {
 const checkBenchmarkDecodeResult = false
 
 func BenchmarkDecode(b *testing.B) {
-	p := initTestTypesForBenchmark()
-	n := EncodedSize(p)
-	if n <= 0 {
-		b.Fatal(n)
+	tcases := []struct {
+		size int
+	}{
+		{size: 100},
+		{size: 1024},
+		{size: 4096},
+		{size: 1024 * 1024},
 	}
-	var err error
-	buf := make([]byte, n)
-	b.SetBytes(int64(n))
-	buf, err = Append(buf[:0], p)
-	require.NoError(b, err)
+	for _, tcase := range tcases {
+		p := initTestTypesForBenchmark(tcase.size)
+		n := EncodedSize(p)
+		buf := make([]byte, n)
+		buf, _ = Append(buf[:0], p)
+		bs := [][]byte{buf}
+		b.Run(fmt.Sprintf("size_%d_decode", tcase.size), func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				p0 := NewTestTypesForBenchmark()
+				_, _ = Decode(buf, p0)
+				if checkBenchmarkDecodeResult {
+					require.Equal(b, p0, p)
+				}
+			}
+		})
+		b.Run(fmt.Sprintf("size_%d_grid_read", tcase.size), func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				p0 := NewTestTypesForBenchmark()
+				rb := gridbuf.NewReadBuffer(bs)
+				_ = GridRead(rb, p0)
+				rb.Free()
+				if checkBenchmarkDecodeResult {
+					require.Equal(b, p0, p)
+				}
+			}
+		})
 
-	p0 := NewTestTypesForBenchmark()
-	for i := 0; i < b.N; i++ {
-		p0.InitDefault()
-		_, _ = Decode(buf, p0)
-		if checkBenchmarkDecodeResult {
-			require.Equal(b, p0, p)
-		}
+		nbuf1 := buf[:len(buf)/2]
+		nbuf2 := buf[len(buf)/2:]
+		bs = [][]byte{nbuf1, nbuf2}
+		b.Run(fmt.Sprintf("size_%d_decode_split", tcase.size), func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				p0 := NewTestTypesForBenchmark()
+				buf := mcache.Malloc(n, n)
+				copy(buf, nbuf1)
+				copy(buf[len(nbuf1):], nbuf2)
+				_, _ = Decode(buf, p0)
+				mcache.Free(buf)
+				if checkBenchmarkDecodeResult {
+					require.Equal(b, p0, p)
+				}
+			}
+		})
+		b.Run(fmt.Sprintf("size_%d_grid_read_split", tcase.size), func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				p0 := NewTestTypesForBenchmark()
+				rb := gridbuf.NewReadBuffer(bs)
+				_ = GridRead(rb, p0)
+				rb.Free()
+				if checkBenchmarkDecodeResult {
+					require.Equal(b, p0, p)
+				}
+			}
+		})
 	}
 }

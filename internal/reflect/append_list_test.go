@@ -20,6 +20,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/stretchr/testify/require"
 )
@@ -28,8 +29,10 @@ func TestAppendListAny(t *testing.T) {
 	typ := &tType{T: tLIST}
 	typ.V = &tType{T: tI64, WT: tI64, Size: 8, SimpleType: true}
 	v := []int64{1, 2}
-	b, err := appendListAny(typ, nil, unsafe.Pointer(&v))
+	gb := gridbuf.NewWriteBuffer()
+	b, err := appendListAny(typ, nil, unsafe.Pointer(&v), gb)
 	require.NoError(t, err)
+	gb.NewBuffer(b, -1)
 
 	x := thrift.BinaryProtocol{}
 	expectb := x.AppendListBegin(nil, thrift.I64, 2)
@@ -39,8 +42,10 @@ func TestAppendListAny(t *testing.T) {
 
 	// empty case
 	v = nil
-	b, err = appendListAny(typ, nil, unsafe.Pointer(&v))
+	gb = gridbuf.NewWriteBuffer()
+	b, err = appendListAny(typ, nil, unsafe.Pointer(&v), gb)
 	require.NoError(t, err)
+	gb.NewBuffer(b, -1)
 	expectb = x.AppendListBegin(nil, thrift.I64, 0)
 	require.Equal(t, expectb, b)
 }

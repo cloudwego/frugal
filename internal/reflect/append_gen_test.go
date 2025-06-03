@@ -50,19 +50,32 @@ var (
 
 func getAppendCode(typ ttype, t, p string) string {
 	t2c := map[ttype]string{
-		tBYTE:   "b = append(b, *((*byte)({p})))",
-		tI16:    "b = appendUint16(b, *((*uint16)({p})))",
-		tI32:    "b = appendUint32(b, *((*uint32)({p})))",
-		tI64:    "b = appendUint64(b, *((*uint64)({p})))",
-		tDOUBLE: "b = appendUint64(b, *((*uint64)({p})))",
-		tENUM:   "b = appendUint32(b, uint32(*((*int64)({p}))))",
-		tSTRING: "s = *((*string)({p})); b = appendUint32(b, uint32(len(s))); b = append(b, s...)",
+		tBYTE:   "if cap(b)-len(b) < 1 {\n\tb = gb.NewBuffer(b, 1)\n}\nb = append(b, *((*byte)({p})))",
+		tI16:    "if cap(b)-len(b) < 2 {\n\tb = gb.NewBuffer(b, 2)\n}\nb = appendUint16(b, *((*uint16)({p})))",
+		tI32:    "if cap(b)-len(b) < 4 {\n\tb = gb.NewBuffer(b, 4)\n}\nb = appendUint32(b, *((*uint32)({p})))",
+		tI64:    "if cap(b)-len(b) < 8 {\n\tb = gb.NewBuffer(b, 8)\n}\nb = appendUint64(b, *((*uint64)({p})))",
+		tDOUBLE: "if cap(b)-len(b) < 8 {\n\tb = gb.NewBuffer(b, 8)\n}\nb = appendUint64(b, *((*uint64)({p})))",
+		tENUM:   "if cap(b)-len(b) < 8 {\n\tb = gb.NewBuffer(b, 8)\n}\nb = appendUint32(b, uint32(*((*int64)({p}))))",
+		tSTRING: `s = *((*string)({p}))
+				if len(s) < nocopyWriteThreshold {
+					if cap(b)-len(b) < len(s)+4 {
+						b = gb.NewBuffer(b, len(s)+4)
+					}
+					b = appendUint32(b, uint32(len(s)))
+					b = append(b, s...)
+				} else {
+					if cap(b)-len(b) < 4 {
+						b = gb.NewBuffer(b, 4)
+					}
+					b = appendUint32(b, uint32(len(s)))
+					b = gb.WriteDirect(b, unsafex.StringToBinary(s))
+				}`,
 
 		// tSTRUCT, tMAP, tSET, tLIST -> tOTHER
 		tOTHER: `if {t}.IsPointer {
-		b, err = {t}.AppendFunc({t}, b, *(*unsafe.Pointer)({p}))
+		b, err = {t}.AppendFunc({t}, b, *(*unsafe.Pointer)({p}), gb)
 	} else {
-		b, err = {t}.AppendFunc({t}, b, {p})
+		b, err = {t}.AppendFunc({t}, b, {p}, gb)
 	}
 	if err != nil {
 		return b, err

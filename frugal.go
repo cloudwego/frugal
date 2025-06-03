@@ -19,8 +19,10 @@ package frugal
 import (
 	"fmt"
 
-	"github.com/cloudwego/frugal/internal/reflect"
+	"github.com/cloudwego/gopkg/gridbuf"
 	"github.com/cloudwego/gopkg/protocol/thrift"
+
+	"github.com/cloudwego/frugal/internal/reflect"
 )
 
 // EncodedSize measures the encoded size of val.
@@ -52,4 +54,14 @@ func DecodeObject(buf []byte, val interface{}) (int, error) {
 		return reflect.Decode(buf, val)
 	}
 	return jitDecodeObject(buf, val)
+}
+
+func GridEncodeObject(b *gridbuf.WriteBuffer, val interface{}) error {
+	return reflect.GridWrite(b, val)
+}
+
+func GridDecodeObject(buf [][]byte, val interface{}) error {
+	b := gridbuf.NewReadBuffer(buf)
+	defer b.Free()
+	return reflect.GridRead(b, val)
 }
