@@ -83,10 +83,10 @@ func Append(b []byte, v interface{}) ([]byte, error) {
 		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
-	return appendStruct(&tType{Sd: sd}, b, p)
+	return appendStruct(&tType{Sd: sd}, b, p, nil)
 }
 
-func GridWrite(b *gridbuf.WriteBuffer, v interface{}) error {
+func GridWrite(gb *gridbuf.WriteBuffer, v interface{}) error {
 	panicIfHackErr()
 
 	var err error
@@ -111,7 +111,13 @@ func GridWrite(b *gridbuf.WriteBuffer, v interface{}) error {
 		// it checks in createStructDesc
 		p = rvPtr(rv)
 	}
-	return gridWriteStruct(&tType{Sd: sd}, b, p)
+
+	b, err := appendStruct(&tType{Sd: sd}, nil, p, gb)
+	if err != nil {
+		return err
+	}
+	gb.NewBuffer(b, -1)
+	return nil
 }
 
 func Decode(b []byte, v interface{}) (int, error) {

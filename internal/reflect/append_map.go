@@ -19,6 +19,8 @@ package reflect
 import (
 	"errors"
 	"unsafe"
+
+	"github.com/cloudwego/gopkg/gridbuf"
 )
 
 var mapAppendFuncs = map[struct{ k, v ttype }]appendFuncType{}
@@ -47,10 +49,13 @@ func checkMapN(n uint32) error {
 	return errors.New("map size changed during encoding")
 }
 
-func appendMapHeader(t *tType, b []byte, p unsafe.Pointer) ([]byte, uint32) {
+func appendMapHeader(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, uint32) {
 	var n uint32
 	if *(*unsafe.Pointer)(p) != nil {
 		n = uint32(maplen(*(*unsafe.Pointer)(p)))
+	}
+	if cap(b)-len(b) < 6 {
+		b = gb.NewBuffer(b, 6)
 	}
 	return append(b, byte(t.K.WT), byte(t.V.WT),
 		byte(n>>24), byte(n>>16), byte(n>>8), byte(n)), n
@@ -58,8 +63,8 @@ func appendMapHeader(t *tType, b []byte, p unsafe.Pointer) ([]byte, uint32) {
 
 // this func will be replaced by funcs defined in append_map_gen.go
 // see init() in append_map_gen.go for details.
-func appendMapAnyAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
-	b, n := appendMapHeader(t, b, p)
+func appendMapAnyAny(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p, gb)
 	if n == 0 {
 		return b, nil
 	}
@@ -68,11 +73,11 @@ func appendMapAnyAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	it := newMapIter(rvWithPtr(t.RV, p))
 	for kp, vp := it.Next(); kp != nil; kp, vp = it.Next() {
 		n--
-		b, err = appendAny(t.K, b, kp)
+		b, err = appendAny(t.K, b, kp, gb)
 		if err != nil {
 			return b, err
 		}
-		b, err = appendAny(t.V, b, vp)
+		b, err = appendAny(t.V, b, vp, gb)
 		if err != nil {
 			return b, err
 		}

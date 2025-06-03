@@ -86,7 +86,7 @@ var simpleTypes = [256]bool{
 	tSTRING: true,
 }
 
-type appendFuncType func(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
+type appendFuncType func(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error)
 
 type gridWriteFuncType func(t *tType, b *gridbuf.WriteBuffer, p unsafe.Pointer) error
 
@@ -120,9 +120,6 @@ type tType struct {
 	// for tLIST, tSET, tMAP, tSTRUCT
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
 	AppendFunc      appendFuncType
-
-	// for tLIST, tSET, tMAP, tSTRUCT
-	GridWriteFunc gridWriteFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -207,16 +204,12 @@ func newTType(x *defs.Type) *tType {
 	switch t.T {
 	case tLIST, tSET:
 		updateListAppendFunc(t)
-		updateGridWriteListFunc(t)
 	case tMAP:
 		updateMapAppendFunc(t)
-		updateGridWriteMapFunc(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
-		t.GridWriteFunc = gridWriteStruct
 	default:
 		t.AppendFunc = appendAny
-		t.GridWriteFunc = gridWriteAny
 	}
 	if t.IsPointer && t.V.IsPointer {
 		// XXX: make it simple... not support it, it's not common

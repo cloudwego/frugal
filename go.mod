@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bytedance/gopkg v0.1.1
-	github.com/cloudwego/gopkg v0.1.5-0.20250530071447-b6645e3cf59d
+	github.com/cloudwego/gopkg v0.1.5-0.20250603090252-7f38c731bb28
 	github.com/cloudwego/iasm v0.2.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/stretchr/testify v1.9.0

@@ -16,11 +16,21 @@
 
 package reflect
 
-import "unsafe"
+import (
+	"unsafe"
 
-func appendStruct(t *tType, b []byte, base unsafe.Pointer) ([]byte, error) {
+	"github.com/cloudwego/gopkg/gridbuf"
+	"github.com/cloudwego/gopkg/unsafex"
+)
+
+const nocopyWriteThreshold = 4096
+
+func appendStruct(t *tType, b []byte, base unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error) {
 	sd := t.Sd
 	if base == nil {
+		if cap(b)-len(b) < 1 {
+			b = gb.NewBuffer(b, 1)
+		}
 		return append(b, byte(tSTOP)), nil
 	}
 	var err error
@@ -35,6 +45,9 @@ func appendStruct(t *tType, b []byte, base unsafe.Pointer) ([]byte, error) {
 		}
 
 		// field header
+		if cap(b)-len(b) < 3 {
+			b = gb.NewBuffer(b, 3)
+		}
 		b = append(b, byte(t.WT), byte(f.ID>>8), byte(f.ID))
 
 		// field value
@@ -47,22 +60,48 @@ func appendStruct(t *tType, b []byte, base unsafe.Pointer) ([]byte, error) {
 		if t.SimpleType { // fast path
 			switch t.T {
 			case tBYTE, tBOOL:
+				if cap(b)-len(b) < 1 {
+					b = gb.NewBuffer(b, 1)
+				}
 				b = append(b, *(*byte)(p)) // for tBOOL, true -> 1, false -> 0
 			case tI16:
+				if cap(b)-len(b) < 2 {
+					b = gb.NewBuffer(b, 2)
+				}
 				b = appendUint16(b, *((*uint16)(p)))
 			case tI32:
+				if cap(b)-len(b) < 4 {
+					b = gb.NewBuffer(b, 4)
+				}
 				b = appendUint32(b, *((*uint32)(p)))
 			case tENUM:
+				if cap(b)-len(b) < 4 {
+					b = gb.NewBuffer(b, 4)
+				}
 				b = appendUint32(b, uint32(*((*int64)(p))))
 			case tI64, tDOUBLE:
+				if cap(b)-len(b) < 8 {
+					b = gb.NewBuffer(b, 8)
+				}
 				b = appendUint64(b, *((*uint64)(p)))
 			case tSTRING:
 				s := *((*string)(p))
-				b = appendUint32(b, uint32(len(s)))
-				b = append(b, s...)
+				if len(s) < nocopyWriteThreshold {
+					if cap(b)-len(b) < len(s)+4 {
+						b = gb.NewBuffer(b, len(s)+4)
+					}
+					b = appendUint32(b, uint32(len(s)))
+					b = append(b, s...)
+				} else {
+					if cap(b)-len(b) < 4 {
+						b = gb.NewBuffer(b, 4)
+					}
+					b = appendUint32(b, uint32(len(s)))
+					b = gb.WriteDirect(b, unsafex.StringToBinary(s))
+				}
 			}
 		} else {
-			b, err = t.AppendFunc(t, b, p)
+			b, err = t.AppendFunc(t, b, p, gb)
 			if err != nil {
 				return b, withFieldErr(err, sd, f)
 			}
@@ -71,35 +110,67 @@ func appendStruct(t *tType, b []byte, base unsafe.Pointer) ([]byte, error) {
 	if sd.hasUnknownFields {
 		xb := *(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset))
 		if len(xb) > 0 {
+			if cap(b)-len(b) < len(xb) {
+				b = gb.NewBuffer(b, len(xb))
+			}
 			b = append(b, xb...)
 		}
+	}
+	if cap(b)-len(b) < 1 {
+		b = gb.NewBuffer(b, 1)
 	}
 	return append(b, byte(tSTOP)), nil
 }
 
-func appendAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+func appendAny(t *tType, b []byte, p unsafe.Pointer, gb *gridbuf.WriteBuffer) ([]byte, error) {
 	if t.IsPointer {
 		p = *(*unsafe.Pointer)(p)
 	}
 	if t.SimpleType {
 		switch t.T {
 		case tBYTE, tBOOL:
+			if cap(b)-len(b) < 1 {
+				b = gb.NewBuffer(b, 1)
+			}
 			b = append(b, *(*byte)(p)) // for tBOOL, true -> 1, false -> 0
 		case tI16:
+			if cap(b)-len(b) < 2 {
+				b = gb.NewBuffer(b, 2)
+			}
 			b = appendUint16(b, *((*uint16)(p)))
 		case tI32:
+			if cap(b)-len(b) < 4 {
+				b = gb.NewBuffer(b, 4)
+			}
 			b = appendUint32(b, *((*uint32)(p)))
 		case tENUM:
+			if cap(b)-len(b) < 4 {
+				b = gb.NewBuffer(b, 4)
+			}
 			b = appendUint32(b, uint32(*((*int64)(p))))
 		case tI64, tDOUBLE:
+			if cap(b)-len(b) < 8 {
+				b = gb.NewBuffer(b, 8)
+			}
 			b = appendUint64(b, *((*uint64)(p)))
 		case tSTRING:
 			s := *((*string)(p))
-			b = appendUint32(b, uint32(len(s)))
-			b = append(b, s...)
+			if len(s) < nocopyWriteThreshold {
+				if cap(b)-len(b) < len(s)+4 {
+					b = gb.NewBuffer(b, len(s)+4)
+				}
+				b = appendUint32(b, uint32(len(s)))
+				b = append(b, s...)
+			} else {
+				if cap(b)-len(b) < 4 {
+					b = gb.NewBuffer(b, 4)
+				}
+				b = appendUint32(b, uint32(len(s)))
+				b = gb.WriteDirect(b, unsafex.StringToBinary(s))
+			}
 		}
 		return b, nil
 	} else {
-		return t.AppendFunc(t, b, p)
+		return t.AppendFunc(t, b, p, gb)
 	}
 }
