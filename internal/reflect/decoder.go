@@ -181,12 +181,12 @@ func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error)
 
 	if t.Tag == defs.T_binary {
 		h := (*sliceHeader)(p)
-		h.Data = uintptr(unsafe.Pointer(&b[i]))
+		h.Data = unsafe.Pointer(&b[i])
 		h.Len = l
 		h.Cap = l
 	} else { //  convert to str
 		h := (*stringHeader)(p)
-		h.Data = uintptr(unsafe.Pointer(&b[i]))
+		h.Data = unsafe.Pointer(&b[i])
 		h.Len = l
 	}
 	i += l
@@ -222,17 +222,18 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		x := d.Malloc(l, 1, 0)
 		if t.Tag == defs.T_binary {
 			h := (*sliceHeader)(p)
-			h.Data = uintptr(x)
+			h.Data = x
 			h.Len = l
 			h.Cap = l
 		} else { //  convert to str
 			h := (*stringHeader)(p)
-			h.Data = uintptr(x)
+			h.Data = x
 			h.Len = l
 		}
 		copyn(x, b[i:], l)
 		i += l
 		return i, nil
+
 	case tMAP:
 		// map header
 		t0, t1, l := ttype(b[0]), ttype(b[1]), int(binary.BigEndian.Uint32(b[2:]))
@@ -259,7 +260,6 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		kp := tmp.kp
 		vp := tmp.vp
 		m := reflect.MakeMapWithSize(t.RT, l)
-		*((*uintptr)(p)) = m.Pointer() // p = make(t.RT, l)
 
 		// pre-allocate space for keys and values if they're pointers
 		// like
@@ -279,35 +279,35 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		var err error
 		i := 6
 		for j := 0; j < l; j++ {
-			p = kp
-			if kt.IsPointer { // p = &sliceK[j]
+			tmp := kp
+			if kt.IsPointer { // tmp = &sliceK[j]
 				if j != 0 {
 					sliceK = unsafe.Add(sliceK, kt.V.Size) // next
 				}
-				*(*unsafe.Pointer)(p) = sliceK
-				p = sliceK
+				*(*unsafe.Pointer)(tmp) = sliceK
+				tmp = sliceK
 			}
 			if kt.FixedSize > 0 {
-				i += decodeFixedSizeTypes(kt.T, b[i:], p)
+				i += decodeFixedSizeTypes(kt.T, b[i:], tmp)
 			} else {
-				if n, err = d.decodeType(kt, b[i:], p, maxdepth-1); err != nil {
+				if n, err = d.decodeType(kt, b[i:], tmp, maxdepth-1); err != nil {
 					break
 				} else {
 					i += n
 				}
 			}
-			p = vp
-			if vt.IsPointer { // p = &sliceV[j]
+			tmp = vp
+			if vt.IsPointer { // tmp = &sliceV[j]
 				if j != 0 { // next
 					sliceV = unsafe.Add(sliceV, vt.V.Size)
 				}
-				*(*unsafe.Pointer)(p) = sliceV
-				p = sliceV
+				*(*unsafe.Pointer)(tmp) = sliceV
+				tmp = sliceV
 			}
 			if vt.FixedSize > 0 {
-				i += decodeFixedSizeTypes(vt.T, b[i:], p)
+				i += decodeFixedSizeTypes(vt.T, b[i:], tmp)
 			} else {
-				if n, err = d.decodeType(vt, b[i:], p, maxdepth-1); err != nil {
+				if n, err = d.decodeType(vt, b[i:], tmp, maxdepth-1); err != nil {
 					break
 				} else {
 					i += n
@@ -315,8 +315,14 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			}
 			m.SetMapIndex(k, v)
 		}
-		t.MapTmpVarsPool.Put(tmp) // no defer, it may be in hot path
-		return i, nil
+
+		if err == nil {
+			// update map field
+			*(*unsafe.Pointer)(p) = m.UnsafePointer()
+		}
+		t.MapTmpVarsPool.Put(tmp) // not using defer for better performance
+		return i, err
+
 	case tLIST, tSET: // NOTE: for tSET, it may be map in the future
 		// list header
 		tp, l := ttype(b[0]), int(binary.BigEndian.Uint32(b[1:]))
@@ -338,7 +344,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			return i, nil
 		}
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
-		h.Data = uintptr(x)
+		h.Data = x
 		h.Len = l
 		h.Cap = l
 
@@ -379,6 +385,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			}
 		}
 		return i, nil
+
 	case tSTRUCT:
 		if t.Sd.hasInitFunc {
 			f := t.Sd.initFunc // copy on write, reuse itab of iface

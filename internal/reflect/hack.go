@@ -222,21 +222,15 @@ func rtTypePtr(rt reflect.Type) uintptr {
 
 // same as reflect.StringHeader
 type stringHeader struct {
-	Data uintptr
+	Data unsafe.Pointer
 	Len  int
 }
 
 // same as reflect.SliceHeader
 type sliceHeader struct {
-	Data uintptr
+	Data unsafe.Pointer
 	Len  int
 	Cap  int
-}
-
-// UnsafePointer ... for passing checkptr
-// `p := unsafe.Pointer(h.Data)` is NOT allowed when testing with -race
-func (h *sliceHeader) UnsafePointer() unsafe.Pointer {
-	return *(*unsafe.Pointer)(unsafe.Pointer(h))
 }
 
 var (

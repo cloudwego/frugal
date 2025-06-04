@@ -19,7 +19,6 @@ package reflect
 import (
 	"fmt"
 	"reflect"
-	"runtime"
 	"sync"
 	"unsafe"
 )
@@ -29,11 +28,10 @@ import (
 func copyn(dst unsafe.Pointer, src []byte, n int) {
 	var b []byte
 	hdr := (*sliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = uintptr(dst)
+	hdr.Data = dst
 	hdr.Cap = n
 	hdr.Len = n
 	copy(b, src)
-	runtime.KeepAlive(dst)
 }
 
 // only be used when NewRequiredFieldNotSetException
