@@ -86,8 +86,8 @@ func T_int() Tag {
 	}
 }
 
-func (self Tag) IsWireTag() bool {
-	return wireTags[self]
+func (t Tag) IsWireTag() bool {
+	return wireTags[t]
 }
 
 type Type struct {
@@ -114,36 +114,36 @@ func resetType(p *Type) *Type {
 	return p
 }
 
-func (self *Type) Tag() Tag {
-	switch self.T {
+func (t *Type) Tag() Tag {
+	switch t.T {
 	case T_enum:
 		return T_i32
 	case T_binary:
 		return T_string
 	case T_pointer:
-		return self.V.Tag()
+		return t.V.Tag()
 	default:
-		return self.T
+		return t.T
 	}
 }
 
-func (self *Type) IsEnum() bool {
-	switch self.T {
+func (t *Type) IsEnum() bool {
+	switch t.T {
 	case T_enum:
 		return true
 	case T_pointer:
-		return self.V.IsEnum()
+		return t.V.IsEnum()
 	default:
 		return false
 	}
 }
 
-func (self *Type) Free() {
-	typePool.Put(self)
+func (t *Type) Free() {
+	typePool.Put(t)
 }
 
-func (self *Type) String() string {
-	switch self.T {
+func (t *Type) String() string {
+	switch t.T {
 	case T_bool:
 		return "bool"
 	case T_i8:
@@ -159,26 +159,26 @@ func (self *Type) String() string {
 	case T_string:
 		return "string"
 	case T_struct:
-		return self.S.Name()
+		return t.S.Name()
 	case T_map:
-		return fmt.Sprintf("map<%s:%s>", self.K.String(), self.V.String())
+		return fmt.Sprintf("map<%s:%s>", t.K.String(), t.V.String())
 	case T_set:
-		return fmt.Sprintf("set<%s>", self.V.String())
+		return fmt.Sprintf("set<%s>", t.V.String())
 	case T_list:
-		return fmt.Sprintf("list<%s>", self.V.String())
+		return fmt.Sprintf("list<%s>", t.V.String())
 	case T_enum:
 		return "enum"
 	case T_binary:
 		return "binary"
 	case T_pointer:
-		return "*" + self.V.String()
+		return "*" + t.V.String()
 	default:
-		return fmt.Sprintf("Type(Tag(%d))", self.T)
+		return fmt.Sprintf("Type(Tag(%d))", t.T)
 	}
 }
 
-func (self *Type) IsKeyType() bool {
-	switch self.T {
+func (t *Type) IsKeyType() bool {
+	switch t.T {
 	case T_bool:
 		return true
 	case T_i8:
@@ -196,18 +196,18 @@ func (self *Type) IsKeyType() bool {
 	case T_enum:
 		return true
 	case T_pointer:
-		return self.V.T == T_struct
+		return t.V.T == T_struct
 	default:
 		return false
 	}
 }
 
-func (self *Type) IsValueType() bool {
-	return self.T != T_pointer || self.V.T == T_struct
+func (t *Type) IsValueType() bool {
+	return t.T != T_pointer || t.V.T == T_struct
 }
 
-func (self *Type) IsSimpleType() bool {
-	switch self.T {
+func (t *Type) IsSimpleType() bool {
+	switch t.T {
 	case T_bool:
 		return true
 	case T_i8:
@@ -447,11 +447,12 @@ func doParseSlice(vt reflect.Type, et reflect.Type, def string, i *int, rt *Type
 	}
 
 	/* identify "set" or "list" */
-	if tok == "set" {
+	switch tok {
+	case "set":
 		rt.T = T_set
-	} else if tok == "list" {
+	case "list":
 		rt.T = T_list
-	} else {
+	default:
 		return nil, ESyntax(*i-len(tok), def, `"set" or "list" expected`)
 	}
 

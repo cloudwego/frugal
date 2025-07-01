@@ -47,7 +47,7 @@ type tDecoder struct {
 func (d *tDecoder) Malloc(n, align int, abiType uintptr) unsafe.Pointer {
 	if n > defaultDecoderMemSize/8 || abiType != 0 {
 		// too large, or it needs GC to scan (MallocAbiType != 0 of tType)
-		return mallocgc(uintptr(n), unsafe.Pointer(abiType), abiType != 0)
+		return mallocgc(uintptr(n), abiType, abiType != 0)
 	}
 	return d.s.Malloc(n, align) // only for noscan objects like string.Data, []int etc...
 }

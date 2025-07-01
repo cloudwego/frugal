@@ -38,3 +38,8 @@ type CacheStats struct {
 	Miss int
 	Size int
 }
+
+// GetStats ...
+//
+// Deprecated: It was for IT
+func GetStats() Stats { return Stats{} }

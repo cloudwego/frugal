@@ -17,23 +17,8 @@
 package opts
 
 type Options struct {
-	MaxInlineDepth   int
-	MaxInlineILSize  int
-	MaxPretouchDepth int
-}
-
-func (self *Options) CanInline(sp int, pc int) bool {
-	return (self.MaxInlineDepth > sp || self.MaxInlineDepth == 0) && (self.MaxInlineILSize > pc || self.MaxInlineILSize == 0)
-}
-
-func (self *Options) CanPretouch(d int) bool {
-	return self.MaxPretouchDepth > d || self.MaxPretouchDepth == 0
 }
 
 func GetDefaultOptions() Options {
-	return Options{
-		MaxInlineDepth:   MaxInlineDepth,
-		MaxInlineILSize:  MaxInlineILSize,
-		MaxPretouchDepth: 0,
-	}
+	return Options{}
 }

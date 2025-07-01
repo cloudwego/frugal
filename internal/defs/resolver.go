@@ -41,12 +41,12 @@ const (
 	Optional
 )
 
-func (self Options) String() string {
-	nb := bits.OnesCount8(uint8(self))
+func (o Options) String() string {
+	nb := bits.OnesCount8(uint8(o))
 	ret := make([]string, 0, nb)
 
 	/* check for "nocopy" option */
-	if self&NoCopy != 0 {
+	if o&NoCopy != 0 {
 		ret = append(ret, "nocopy")
 	}
 
@@ -57,8 +57,8 @@ func (self Options) String() string {
 	)
 }
 
-func (self Requiredness) String() string {
-	switch self {
+func (r Requiredness) String() string {
+	switch r {
 	case Default:
 		return "default"
 	case Required:

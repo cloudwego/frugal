@@ -7,49 +7,15 @@ jobs:
     strategy:
       matrix:
         go: [ "1.18", oldstable, stable ]
-    runs-on: [ Linux, X64 ]
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
-          cache: false # don't use cache for self-hosted runners
-      - name: Test packages # only tests reflect pkg, JIT pkgs is not supported
-        run: go test -race ./internal/reflect
+      - name: Test packages
+        run: go test -race ./...
       - name: Test ./tests & Benchmark
         run: cd tests && go test -bench=. -benchmem -benchtime=100ms
-
-  unittest-arm64:
-    strategy:
-      matrix:
-        go: [ "1.18", oldstable, stable ]
-    runs-on: [ ARM64 ] # It's OK under Linux or macOS
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go }}
-          cache: false # don't use cache for self-hosted runners
-      - name: Test packages # only tests reflect pkg, JIT pkgs is not supported
-        run: go test -race ./internal/reflect
-      - name: Test ./tests & Benchmark
-        run: cd tests && go test -bench=. -benchmem -benchtime=100ms
-
-  unittest-legacy:
-    strategy:
-      matrix:
-        go: [ "1.18", "1.23" ] # jit works <= 1.23
-    runs-on: [ Linux, X64 ]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go }}
-          cache: false # don't use cache for self-hosted runners
-      - name: Build with frugal_jit
-        run: go build -v -tags=frugal_jit ./...
-      - name: Test with frugal_jit
-        run: go test -tags=frugal_jit ./...
