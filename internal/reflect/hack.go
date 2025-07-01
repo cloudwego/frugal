@@ -248,4 +248,4 @@ func (h *sliceHeader) Zero() {
 }
 
 //go:linkname mallocgc runtime.mallocgc
-func mallocgc(size uintptr, typ unsafe.Pointer, needzero bool) unsafe.Pointer
+func mallocgc(size uintptr, typ uintptr, needzero bool) unsafe.Pointer

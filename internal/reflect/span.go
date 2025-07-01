@@ -32,7 +32,7 @@ type span struct {
 func (s *span) init() {
 	sz := defaultDecoderMemSize
 	s.p = 0
-	s.b = mallocgc(uintptr(sz), nil, false)
+	s.b = mallocgc(uintptr(sz), 0, false)
 	s.n = sz
 }
 
@@ -44,7 +44,7 @@ func (s *span) Malloc(n, align int) unsafe.Pointer {
 			sz = n + mask
 		}
 		s.p = 0
-		s.b = mallocgc(uintptr(sz), nil, false)
+		s.b = mallocgc(uintptr(sz), 0, false)
 		s.n = sz
 	}
 	ret := unsafe.Add(s.b, s.p) // b[p:]

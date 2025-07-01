@@ -26,8 +26,8 @@ type TypeError struct {
 	Type reflect.Type
 }
 
-func (self TypeError) Error() string {
-	return fmt.Sprintf("TypeError(%s): %s", self.Type, self.Note)
+func (e TypeError) Error() string {
+	return fmt.Sprintf("TypeError(%s): %s", e.Type, e.Note)
 }
 
 type SyntaxError struct {
@@ -36,8 +36,8 @@ type SyntaxError struct {
 	Reason string
 }
 
-func (self SyntaxError) Error() string {
-	return fmt.Sprintf("Syntax error at position %d: %s", self.Pos, self.Reason)
+func (e SyntaxError) Error() string {
+	return fmt.Sprintf("Syntax error at position %d: %s", e.Pos, e.Reason)
 }
 
 func EType(vt reflect.Type, note string) TypeError {

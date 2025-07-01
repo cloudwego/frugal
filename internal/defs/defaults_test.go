@@ -31,8 +31,8 @@ type CtorTestStruct struct {
 	Z int
 }
 
-func (self *CtorTestStruct) InitDefault() {
-	*self = CtorTestStruct{
+func (p *CtorTestStruct) InitDefault() {
+	*p = CtorTestStruct{
 		X: 1,
 		Y: 2,
 		Z: 3,
