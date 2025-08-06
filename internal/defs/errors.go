@@ -56,7 +56,9 @@ func ESyntax(pos int, src string, reason string) SyntaxError {
 }
 
 func ESetList(pos int, src string, vt reflect.Type) SyntaxError {
-	return ESyntax(pos, src, fmt.Sprintf(`ambiguous type between set<%s> and list<%s>, please specify in the "frugal" tag`, vt, vt))
+	return ESyntax(pos, src,
+		fmt.Sprintf(`ambiguous type between set<%s> and list<%s>,`+
+			` please specify in the "frugal" or "thrift" tag`, vt, vt))
 }
 
 func EUseOther(vt reflect.Type, alt string) TypeError {

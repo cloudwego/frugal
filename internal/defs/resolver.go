@@ -45,12 +45,12 @@ func (o Options) String() string {
 	nb := bits.OnesCount8(uint8(o))
 	ret := make([]string, 0, nb)
 
-	/* check for "nocopy" option */
+	// check for "nocopy" option
 	if o&NoCopy != 0 {
 		ret = append(ret, "nocopy")
 	}
 
-	/* join them together */
+	// join them together
 	return fmt.Sprintf(
 		"{%s}",
 		strings.Join(ret, ","),
@@ -89,33 +89,57 @@ func ResolveFields(vt reflect.Type) ([]Field, error) {
 	var ex error
 	var fv []Field
 
-	/* attempt to find in cache */
+	// attempt to find in cache
 	fieldsLock.RLock()
 	fv, ok = fieldsCache[vt]
 	fieldsLock.RUnlock()
 
-	/* check if it exists */
+	// check if it exists
 	if ok {
 		return fv, nil
 	}
 
-	/* retry with write lock */
+	// retry with write lock
 	fieldsLock.Lock()
 	defer fieldsLock.Unlock()
 
-	/* try again */
+	// try again
 	if fv, ok = fieldsCache[vt]; ok {
 		return fv, nil
 	}
 
-	/* still not found, do the actual resolving */
+	// still not found, do the actual resolving
 	if fv, ex = DoResolveFields(vt); ex != nil {
 		return nil, ex
 	}
 
-	/* update cache */
+	// update cache
 	fieldsCache[vt] = fv
 	return fv, nil
+}
+
+// lookupStructTag extracts and parses frugal or thrift struct tag values.
+// It prioritizes "frugal" tags over "thrift" tags. For thrift tags, the first
+// element (field name) is ignored. All values are trimmed of whitespace.
+// Returns the parsed tag values and true if a tag was found, or nil and false otherwise.
+func lookupStructTag(tag reflect.StructTag) ([]string, bool) {
+	if s, ok := tag.Lookup("frugal"); ok {
+		return trimSpaces(strings.Split(s, ",")), true
+	}
+	if s, ok := tag.Lookup("thrift"); ok {
+		if ss := strings.Split(s, ","); len(ss) > 0 {
+			// ignore the field name tag
+			return trimSpaces(ss[1:]), true
+		}
+	}
+	return nil, false
+}
+
+func trimSpaces(ss []string) []string {
+	for i, s := range ss {
+		ss[i] = strings.TrimSpace(s)
+	}
+	return ss
 }
 
 // DoResolveFields ... no cache, use ResolveFields instead.
@@ -126,17 +150,17 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 	var ret []Field
 	var mem reflect.Value
 
-	/* field ID map and default values */
+	// field ID map and default values
 	val := reflect.New(vt)
 	ids := make(map[uint64]struct{}, vt.NumField())
 
-	/* check for default values */
+	// check for default values
 	if def, ok := val.Interface().(DefaultInitializer); ok {
 		mem = val.Elem()
 		def.InitDefault()
 	}
 
-	/* traverse all the fields */
+	// traverse all the fields
 	for i := 0; i < vt.NumField(); i++ {
 		var ok bool
 		var pt *Type
@@ -148,28 +172,41 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 		var rv reflect.Value
 		var sf reflect.StructField
 
-		/* extract the field, ignore anonymous or private fields */
+		// extract the field, ignore anonymous or private fields
 		if sf = vt.Field(i); sf.Anonymous || sf.PkgPath != "" {
 			continue
 		}
 
-		/* ignore fields that does not declare the "frugal" tag */
-		if tv, ok = sf.Tag.Lookup("frugal"); !ok {
+		// ignore fields that does not declare the "frugal" tag
+		if ft, ok = lookupStructTag(sf.Tag); !ok {
 			continue
 		}
 
-		/* must have at least 2 fields: ID and Requiredness */
-		if ft = strings.Split(tv, ","); len(ft) < 2 {
+		// must have at least 1 field: ID
+		if len(ft) == 0 {
 			return nil, fmt.Errorf("invalid tag for field %s.%s", vt, sf.Name)
 		}
 
-		/* parse the field index */
-		if id, err = strconv.ParseUint(strings.TrimSpace(ft[0]), 10, 16); err != nil {
+		// parse the field ID
+		if id, err = strconv.ParseUint(ft[0], 10, 16); err != nil {
 			return nil, fmt.Errorf("invalid field number for field %s.%s: %w", vt, sf.Name, err)
 		}
+		ft = ft[1:]
 
-		/* convert the requiredness of this field */
-		switch strings.TrimSpace(ft[1]) {
+		// check for duplicates
+		if _, ok = ids[id]; !ok {
+			ids[id] = struct{}{}
+		} else {
+			return nil, fmt.Errorf("duplicated field ID %d for field %s.%s", id, vt, sf.Name)
+		}
+
+		// parse requiredness which is optional if only one field
+		if len(ft) == 0 {
+			tv, ft = "default", nil // for thrift tag no requireness means default
+		} else {
+			tv, ft = ft[0], ft[1:]
+		}
+		switch tv {
 		case "default":
 			rx = Default
 		case "required":
@@ -180,31 +217,24 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 			return nil, fmt.Errorf("invalid requiredness for field %s.%s", vt, sf.Name)
 		}
 
-		/* check for duplicates */
-		if _, ok = ids[id]; !ok {
-			ids[id] = struct{}{}
-		} else {
-			return nil, fmt.Errorf("duplicated field ID %d for field %s.%s", id, vt, sf.Name)
-		}
+		// types and other options are optional
 
-		/* types and other options are optional */
-		if len(ft) == 2 {
+		// parse the type descriptor
+		if len(ft) == 0 {
 			tv, ft = "", nil
 		} else {
-			tv, ft = strings.TrimSpace(ft[2]), ft[3:]
+			tv, ft = ft[0], ft[1:]
 		}
-
-		/* parse the type descriptor */
 		if pt, err = ParseType(sf.Type, tv); err != nil {
 			return nil, fmt.Errorf("cannot parse type descriptor: %w", err)
 		}
 
-		/* only optional fields or structs can be pointers */
+		// only optional fields or structs can be pointers
 		if rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
 			return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
 		}
 
-		/* scan for the options */
+		// scan for the options
 		for _, opt := range ft {
 			switch opt {
 			default:
@@ -212,7 +242,7 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 					return nil, fmt.Errorf("invalid option: %s", opt)
 				}
 
-			/* "nocopy" option enables zero-copy string decoding */
+			// "nocopy" option enables zero-copy string decoding
 			case "nocopy":
 				{
 					if pt.Tag() != T_string {
@@ -226,12 +256,12 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 			}
 		}
 
-		/* get the default value if any */
+		// get the default value if any
 		if mem.IsValid() {
 			rv = mem.FieldByIndex(sf.Index)
 		}
 
-		/* add to result */
+		// add to result
 		ret = append(ret, Field{
 			F:       int(sf.Offset),
 			ID:      uint16(id),
@@ -242,7 +272,7 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 		})
 	}
 
-	/* sort the field by ID */
+	// sort the field by ID
 	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret, nil
 }
