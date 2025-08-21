@@ -24,21 +24,32 @@ import (
 
 func TestBitset(t *testing.T) {
 	s := &bitset{}
-	for i := uint16(0); i < ^uint16(0); i++ {
-		if i%2 == 0 {
-			s.set(i)
-		}
-		if i%4 == 0 {
-			s.unset(i)
-		}
+	for i := 0; i <= 0xffff; i++ {
+		s.set(uint16(i))
 	}
-	for i := uint16(0); i < ^uint16(0); i++ {
-		if i%4 == 0 {
-			require.False(t, s.test(i))
-		} else if i%2 == 0 {
-			require.True(t, s.test(i))
-		} else {
-			require.False(t, s.test(i))
-		}
+	for i := 0; i <= 0xffff; i++ {
+		require.True(t, s.test(uint16(i)))
+	}
+	for i, v := range s.data { // all bits set
+		require.Equal(t, ^uint64(0), v, i)
+	}
+	for i := 0; i <= 0xffff; i++ {
+		s.unset(uint16(i))
+	}
+	for i, v := range s.data { // all bits unset
+		require.Equal(t, uint64(0), v, i)
+	}
+}
+
+func BenchmarkBitset(b *testing.B) {
+	s := &bitset{}
+	for i := 0; i < b.N; i++ {
+		s.set(uint16(i))
+	}
+	for i := 0; i < b.N; i++ {
+		s.test(uint16(i))
+	}
+	for i := 0; i < b.N; i++ {
+		s.unset(uint16(i))
 	}
 }

@@ -19,7 +19,7 @@ package reflect
 import "sync"
 
 type bitset struct {
-	data [1024]uint64 // 635536 bits for field id
+	data [1024]uint64 // 65536 bits for field id
 }
 
 var bitsetPool = sync.Pool{
@@ -29,16 +29,16 @@ var bitsetPool = sync.Pool{
 }
 
 func (s *bitset) set(i uint16) {
-	x, y := i>>8, i&7 // i/64, i%64
+	x, y := i>>6, i&63 // i/64, i%64
 	s.data[x] |= 1 << y
 }
 
 func (s *bitset) unset(i uint16) {
-	x, y := i>>8, i&7 // i/64, i%64
-	s.data[x] &= ^(1 << y)
+	x, y := i>>6, i&63 // i/64, i%64
+	s.data[x] &^= (1 << y)
 }
 
 func (s *bitset) test(i uint16) bool {
-	x, y := i>>8, i&7 //  i/64, i%64
+	x, y := i>>6, i&63 //  i/64, i%64
 	return (s.data[x] & (1 << y)) != 0
 }
