@@ -76,6 +76,7 @@ type TestTypes struct {
 	S1      []string          `thrift:"S1,41,default,set<string>" json:"S1"`
 	LM      []map[int32]int32 `thrift:"LM,50,default,list<map<i32:i32>>" json:"LM"`
 	ML      map[int32][]int32 `thrift:"ML,60,default,map<i32:list<i32>>" json:"ML"`
+	MS      map[int32][]int32 `thrift:"MS,61,default,map<i32:set<i32>>" json:"MS"`
 }
 
 func NewTestTypes() *TestTypes {

@@ -143,14 +143,17 @@ func (t *tType) Equal(p0, p1 unsafe.Pointer) bool {
 }
 
 type ttypesK struct {
-	T defs.Tag
+	T string
 	S reflect.Type
 }
 
 var ttypes = map[ttypesK]*tType{} // cache for less in-use objects
 
 func newTType(x *defs.Type) *tType {
-	k := ttypesK{T: x.T, S: x.S}
+	// Cache key must distinguish between types that have identical Go reflect.Type but different Thrift semantics.
+	// For example, map<i32, set<i32>> and map<i32, list<i32>> both map to map[int32][]int32 in Go,
+	// but represent different wire formats (SET vs LIST). Using x.String() ensures unique cache entries.
+	k := ttypesK{T: x.String(), S: x.S}
 	if t := ttypes[k]; t != nil {
 		return t
 	}

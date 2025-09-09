@@ -27,7 +27,7 @@ import (
 const encodedMsgSize = 15
 
 // NewTestTypes().BLength()
-const encodedTestTypesSize = 176
+const encodedTestTypesSize = 185
 
 // NewTestTypesOptional().BLength()
 const encodedTestTypesOptionalSize = 1

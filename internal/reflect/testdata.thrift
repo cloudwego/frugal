@@ -37,6 +37,7 @@ struct TestTypes {
   41: set<string> S1;
   50: list<map<i32, i32>> LM;
   60: map<i32, list<i32>> ML;
+  61: map<i32, set<i32>> MS;
 }
 
 struct TestTypesOptional {
