@@ -131,12 +131,16 @@ func TestDecode(t *testing.T) {
 				p0.M1 = map[int32]string{vInt32 - 2: "hello", 1: "2"}
 				p0.M2 = map[int32]*Msg{vInt32 - 3: nil, 1: {Type: 2}}
 				p0.M3 = map[string]*Msg{"hello": {Type: vInt32 - 4}}
+				p0.ML = map[int32][]int32{100: {1, 2, 3}}
+				p0.MS = map[int32][]int32{101: {4, 5, 6}}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
 				assert.Equal(t, map[int32]int32{vInt32: vInt32 - 1, 1: 2}, p1.M0)
 				assert.Equal(t, map[int32]string{vInt32 - 2: "hello", 1: "2"}, p1.M1)
 				assert.Equal(t, map[int32]*Msg{vInt32 - 3: {}, 1: {Type: 2}}, p1.M2)
 				assert.Equal(t, map[string]*Msg{"hello": {Type: vInt32 - 4}}, p1.M3)
+				assert.Equal(t, map[int32][]int32{100: {1, 2, 3}}, p1.ML)
+				assert.Equal(t, map[int32][]int32{101: {4, 5, 6}}, p1.MS)
 			},
 		},
 		{
