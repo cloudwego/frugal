@@ -18,11 +18,14 @@ package reflect
 
 import (
 	"bytes"
+	"io"
 	"math"
 	"math/rand"
 	"testing"
 	"time"
+	"unsafe"
 
+	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/cloudwego/gopkg/protocol/thrift"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -407,4 +410,36 @@ func TestDecodeNoCopy(t *testing.T) {
 	_, err = Decode(b, p2)
 	require.Error(t, err)
 	_ = p2
+}
+
+func TestDecodeStringShortBuffer(t *testing.T) {
+	decoder := &tDecoder{}
+	typ := &tType{T: tSTRING, Tag: defs.T_string}
+	var result string
+	ptr := unsafe.Pointer(&result)
+
+	// io.ErrShortBuffer: decodeType
+	data := []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l'} // length=5, only 4 bytes
+	n, err := decoder.decodeType(typ, data, ptr, 1)
+	assert.Equal(t, io.ErrShortBuffer, err)
+	assert.LessOrEqual(t, n, len(data))
+
+	// io.ErrShortBuffer: decodeStringNoCopy
+	n, err = decodeStringNoCopy(typ, data, ptr)
+	assert.Equal(t, io.ErrShortBuffer, err)
+	assert.LessOrEqual(t, n, len(data))
+
+	// Normal case: decodeType
+	data = []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'}
+	result = ""
+	n, err = decoder.decodeType(typ, data, ptr, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, len(data), n)
+	assert.Equal(t, "hello", result)
+
+	// Normal case: decodeStringNoCopy
+	n, err = decodeStringNoCopy(typ, data, ptr)
+	assert.NoError(t, err)
+	assert.Equal(t, len(data), n)
+	assert.Equal(t, "hello", result)
 }

@@ -19,6 +19,7 @@ package reflect
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -161,7 +162,7 @@ func decodeFixedSizeTypes(t ttype, b []byte, p unsafe.Pointer) int {
 }
 
 func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error) {
-	l := int(binary.BigEndian.Uint32(b))
+	l := int(int32(binary.BigEndian.Uint32(b)))
 	if l < 0 {
 		err = errNegativeSize
 		return
@@ -176,8 +177,9 @@ func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error)
 		return
 	}
 
-	// assert len, panic if []byte shorter than expected.
-	_ = b[i+l-1]
+	if i+l-1 >= len(b) {
+		return i, io.ErrShortBuffer
+	}
 
 	if t.Tag == defs.T_binary {
 		h := (*sliceHeader)(p)
@@ -202,7 +204,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 	}
 	switch t.T {
 	case tSTRING:
-		l := int(binary.BigEndian.Uint32(b))
+		l := int(int32(binary.BigEndian.Uint32(b)))
 		if l < 0 {
 			return 0, errNegativeSize
 		}
@@ -216,8 +218,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			return i, nil
 		}
 
-		// assert len, panic if []byte shorter than expected.
-		_ = b[i+l-1]
+		if i+l-1 >= len(b) {
+			return i, io.ErrShortBuffer
+		}
 
 		x := d.Malloc(l, 1, 0)
 		if t.Tag == defs.T_binary {
@@ -236,7 +239,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 	case tMAP:
 		// map header
-		t0, t1, l := ttype(b[0]), ttype(b[1]), int(binary.BigEndian.Uint32(b[2:]))
+		t0, t1, l := ttype(b[0]), ttype(b[1]), int(int32(binary.BigEndian.Uint32(b[2:])))
 		if l < 0 {
 			return 0, errNegativeSize
 		}
@@ -325,7 +328,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 	case tLIST, tSET: // NOTE: for tSET, it may be map in the future
 		// list header
-		tp, l := ttype(b[0]), int(binary.BigEndian.Uint32(b[1:]))
+		tp, l := ttype(b[0]), int(int32(binary.BigEndian.Uint32(b[1:])))
 		if l < 0 {
 			return 0, errNegativeSize
 		}
