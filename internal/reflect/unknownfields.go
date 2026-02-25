@@ -48,11 +48,7 @@ func (p *unknownFields) Size() int {
 func (p *unknownFields) Copy(b []byte) []byte {
 	sz := p.Size()
 	data := mallocgc(uintptr(sz), 0, false) //  without zeroing
-	ret := []byte{}
-	h := (*sliceHeader)(unsafe.Pointer(&ret))
-	h.Data = data
-	h.Len = sz
-	h.Cap = sz
+	ret := unsafe.Slice((*byte)(data), sz)
 	off := 0
 	for _, x := range p.offs {
 		copy(ret[off:], b[x.off:x.off+x.sz])

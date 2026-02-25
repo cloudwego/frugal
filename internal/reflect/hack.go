@@ -150,14 +150,8 @@ type mapIter struct {
 }
 
 // newMapIter creates reflect.MapIter for reflect.Value.
-// for go1.17, go1.18, rv.MapRange() will cause one more allocation
-// for >=go1.19, can use rv.MapRange() directly.
-// see: https://github.com/golang/go/commit/c5edd5f616b4ee4bbaefdb1579c6078e7ed7e84e
-// TODO: remove this func, and use mapIter{rv.MapRange()} when >=go1.19
 func newMapIter(rv reflect.Value) mapIter {
-	ret := mapIter{}
-	(*hackMapIter)(unsafe.Pointer(&ret.MapIter)).m = rv
-	return ret
+	return mapIter{*rv.MapRange()}
 }
 
 func (m *mapIter) Next() (unsafe.Pointer, unsafe.Pointer) {
@@ -220,26 +214,16 @@ func rtTypePtr(rt reflect.Type) uintptr {
 	return (*iface)(unsafe.Pointer(&rt)).data
 }
 
-// same as reflect.StringHeader
-type stringHeader struct {
-	Data unsafe.Pointer
-	Len  int
-}
-
-// same as reflect.SliceHeader
 type sliceHeader struct {
 	Data unsafe.Pointer
 	Len  int
 	Cap  int
 }
 
-var (
-	emptyslice = make([]byte, 0)
-
-	// for slice, Data should points to zerobase var in `runtime`
-	// so that it can represent as []type{} instead of []type(nil)
-	zerobase = ((*sliceHeader)(unsafe.Pointer(&emptyslice))).Data
-)
+// zerobase is the Data pointer of an empty slice.
+// For slice, Data should point to the zerobase var in `runtime`
+// so that it can represent as []type{} instead of []type(nil).
+var zerobase = unsafe.Pointer(unsafe.SliceData(make([]byte, 0)))
 
 func (h *sliceHeader) Zero() {
 	h.Len = 0

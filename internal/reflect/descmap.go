@@ -16,15 +16,13 @@
 
 package reflect
 
-import (
-	"sync/atomic"
-	"unsafe"
-)
+import "sync/atomic"
 
 // mapStructDesc represents a read-lock-free hashmap for *structDesc like sync.Map.
 // it's NOT designed for writes.
+// Each slot is an atomic.Pointer so that Set only reallocs the target slot.
 type mapStructDesc struct {
-	p unsafe.Pointer // for atomic, point to hashtable
+	slots [mapStructDescBuckets + 1]atomic.Pointer[[]mapStructDescItem]
 }
 
 // XXX: fixed size to make it simple,
@@ -37,19 +35,18 @@ type mapStructDescItem struct {
 }
 
 func newMapStructDesc() *mapStructDesc {
-	m := &mapStructDesc{}
-	buckets := make([][]mapStructDescItem, mapStructDescBuckets+1) // [0] - [0xffff]
-	atomic.StorePointer(&m.p, unsafe.Pointer(&buckets))
-	return m
+	return &mapStructDesc{}
 }
 
 // Get ...
 func (m *mapStructDesc) Get(abiType uintptr) *structDesc {
-	buckets := *(*[][]mapStructDescItem)(atomic.LoadPointer(&m.p))
-	dd := buckets[abiType&mapStructDescBuckets]
-	for i := range dd {
-		if dd[i].abiType == abiType {
-			return dd[i].sd
+	slot := m.slots[abiType&mapStructDescBuckets].Load()
+	if slot == nil {
+		return nil
+	}
+	for i := range *slot {
+		if (*slot)[i].abiType == abiType {
+			return (*slot)[i].sd
 		}
 	}
 	return nil
@@ -61,10 +58,21 @@ func (m *mapStructDesc) Set(abiType uintptr, sd *structDesc) {
 	if m.Get(abiType) == sd {
 		return
 	}
-	oldBuckets := *(*[][]mapStructDescItem)(atomic.LoadPointer(&m.p))
-	newBuckets := make([][]mapStructDescItem, mapStructDescBuckets+1)
-	copy(newBuckets, oldBuckets)
 	bk := abiType & mapStructDescBuckets
-	newBuckets[bk] = append(newBuckets[bk], mapStructDescItem{abiType: abiType, sd: sd})
-	atomic.StorePointer(&m.p, unsafe.Pointer(&newBuckets))
+	var old []mapStructDescItem
+	if p := m.slots[bk].Load(); p != nil {
+		old = *p
+	}
+	// alloc cap=len+1 upfront so append below won't realloc.
+	items := make([]mapStructDescItem, len(old), len(old)+1)
+	copy(items, old)
+	for i := range items {
+		if items[i].abiType == abiType {
+			items[i].sd = sd
+			m.slots[bk].Store(&items)
+			return
+		}
+	}
+	items = append(items, mapStructDescItem{abiType: abiType, sd: sd})
+	m.slots[bk].Store(&items)
 }
