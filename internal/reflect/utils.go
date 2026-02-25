@@ -23,17 +23,6 @@ import (
 	"unsafe"
 )
 
-// copyn copies n bytes from src to dst addr.
-// it mainly used by decoder of tSTRING
-func copyn(dst unsafe.Pointer, src []byte, n int) {
-	var b []byte
-	hdr := (*sliceHeader)(unsafe.Pointer(&b))
-	hdr.Data = dst
-	hdr.Cap = n
-	hdr.Len = n
-	copy(b, src)
-}
-
 // only be used when NewRequiredFieldNotSetException
 func lookupFieldName(rt reflect.Type, offset uintptr) string {
 	for rt.Kind() == reflect.Ptr {
@@ -56,33 +45,19 @@ func checkUniqueness(t *tType, h *sliceHeader) error {
 	var uniq bool
 	switch t.T {
 	case tBOOL:
-		var vv []bool
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessBool(vv)
+		uniq = checkUnique(unsafe.Slice((*bool)(h.Data), h.Len))
 	case tI08:
-		var vv []int8
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessInt8(vv)
+		uniq = checkUnique(unsafe.Slice((*int8)(h.Data), h.Len))
 	case tI16:
-		var vv []int16
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessInt16(vv)
+		uniq = checkUnique(unsafe.Slice((*int16)(h.Data), h.Len))
 	case tI32:
-		var vv []int32
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessInt32(vv)
+		uniq = checkUnique(unsafe.Slice((*int32)(h.Data), h.Len))
 	case tI64, tENUM:
-		var vv []int64
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessInt64(vv)
+		uniq = checkUnique(unsafe.Slice((*int64)(h.Data), h.Len))
 	case tDOUBLE:
-		var vv []float64
-		*(*sliceHeader)(unsafe.Pointer(&vv)) = *h
-		uniq = checkUniquenessFloat64(vv)
+		uniq = checkUnique(unsafe.Slice((*float64)(h.Data), h.Len))
 	case tSTRING:
-		var ss []string
-		*(*sliceHeader)(unsafe.Pointer(&ss)) = *h
-		uniq = checkUniquenessString(ss)
+		uniq = checkUnique(unsafe.Slice((*string)(h.Data), h.Len))
 	default: // tSTRUCT?
 		// NOTE: tSTRUCT is not always comparable, and it's not common for set
 		return nil
@@ -93,83 +68,9 @@ func checkUniqueness(t *tType, h *sliceHeader) error {
 	return nil
 }
 
-// XXX: checkUniqueness funcs use generics when we start to use newer go versions.
-func checkUniquenessBool(vv []bool) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessInt8(vv []int8) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessInt16(vv []int16) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessInt32(vv []int32) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessInt64(vv []int64) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessFloat64(vv []float64) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
-			if vv[i] == vv[j] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func checkUniquenessString(vv []string) bool {
-	l := len(vv)
-	for i := 0; i < l; i++ {
-		for j := i + 1; j < l; j++ {
+func checkUnique[T comparable](vv []T) bool {
+	for i := range vv {
+		for j := i + 1; j < len(vv); j++ {
 			if vv[i] == vv[j] {
 				return false
 			}
