@@ -18,10 +18,10 @@ package defs
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 type NoCopyStringFields struct {
@@ -35,10 +35,8 @@ type NoCopyStringFields struct {
 func TestResolver_StringOptions(t *testing.T) {
 	var vv NoCopyStringFields
 	ret, err := ResolveFields(reflect.TypeOf(vv))
-	require.NoError(t, err)
-	spew.Config.SortKeys = true
-	spew.Config.DisablePointerMethods = true
-	spew.Dump(ret)
+	assert.Nil(t, err)
+	assert.Equal(t, 5, len(ret))
 }
 
 func TestLookupStructTag(t *testing.T) {
@@ -83,8 +81,8 @@ func TestLookupStructTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, ok := lookupStructTag(tt.tag)
-			require.Equal(t, tt.ok, ok)
-			require.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.ok, ok)
+			assert.DeepEqual(t, tt.expected, result)
 		})
 	}
 }
@@ -103,17 +101,17 @@ type DuplicateIDFields struct {
 func TestResolveFields_ThriftTagRequiredness(t *testing.T) {
 	var vv ThriftTagFields
 	ret, err := ResolveFields(reflect.TypeOf(vv))
-	require.NoError(t, err)
-	require.Len(t, ret, 3)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(ret))
 
-	require.Equal(t, Required, ret[0].Spec)
-	require.Equal(t, Default, ret[1].Spec)
-	require.Equal(t, Optional, ret[2].Spec)
+	assert.Equal(t, Required, ret[0].Spec)
+	assert.Equal(t, Default, ret[1].Spec)
+	assert.Equal(t, Optional, ret[2].Spec)
 }
 
 func TestResolveFields_DuplicateID(t *testing.T) {
 	var vv DuplicateIDFields
 	_, err := ResolveFields(reflect.TypeOf(vv))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "duplicated field ID 1")
+	assert.True(t, err != nil)
+	assert.True(t, strings.Contains(err.Error(), "duplicated field ID 1"))
 }

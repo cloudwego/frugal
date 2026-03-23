@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func init() {
@@ -106,14 +106,14 @@ func BenchmarkDecode(b *testing.B) {
 	buf := make([]byte, n)
 	b.SetBytes(int64(n))
 	buf, err = Append(buf[:0], p)
-	require.NoError(b, err)
+	assert.Nil(b, err)
 
 	p0 := NewTestTypesForBenchmark()
 	for i := 0; i < b.N; i++ {
 		p0.InitDefault()
 		_, _ = Decode(buf, p0)
 		if checkBenchmarkDecodeResult {
-			require.Equal(b, p0, p)
+			assert.DeepEqual(b, p0, p)
 		}
 	}
 }

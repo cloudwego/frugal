@@ -21,20 +21,20 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestTypes_Parsing(t *testing.T) {
 	var v map[string][]reflect.SliceHeader
 	tt, err := ParseType(reflect.TypeOf(v), "map<string:set<foo.SliceHeader>>")
-	require.NoError(t, err)
+	assert.Nil(t, err)
 	fmt.Println(tt)
 }
 
 func TestTypes_MapKeyType(t *testing.T) {
 	var v map[*reflect.SliceHeader]int
 	tt, err := ParseType(reflect.TypeOf(v), "map<foo.SliceHeader:i64>")
-	require.NoError(t, err)
+	assert.Nil(t, err)
 	fmt.Println(tt)
 }
 
@@ -48,14 +48,14 @@ func TestTypes_Enum(t *testing.T) {
 		D int64     `frugal:"4,optional,i64"`
 	}
 	ff, err := DoResolveFields(reflect.TypeOf(StructWithEnum{}))
-	require.NoError(t, err)
-	require.Len(t, ff, 4)
-	require.True(t, ff[0].Type.IsEnum())
-	require.Equal(t, ff[0].Type.T, T_enum)
-	require.True(t, ff[1].Type.IsEnum())
-	require.Equal(t, ff[1].Type.T, T_pointer)
-	require.Equal(t, ff[1].Type.V.T, T_enum)
-	require.False(t, ff[2].Type.IsEnum())
-	require.False(t, ff[3].Type.IsEnum())
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(ff))
+	assert.True(t, ff[0].Type.IsEnum())
+	assert.Equal(t, T_enum, ff[0].Type.T)
+	assert.True(t, ff[1].Type.IsEnum())
+	assert.Equal(t, T_pointer, ff[1].Type.T)
+	assert.Equal(t, T_enum, ff[1].Type.V.T)
+	assert.True(t, !ff[2].Type.IsEnum())
+	assert.True(t, !ff[3].Type.IsEnum())
 
 }

@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 const appendListFileName = "append_list_gen.go"
@@ -65,12 +65,12 @@ func TestGenAppendListCode(t *testing.T) {
 		L7: []*Msg{{X: 71, Y: 72}, {X: 73, Y: 74}},
 	}
 	b, err = Append(nil, p0)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	p1 = &TestStruct{}
 	_, err = Decode(b, p1)
-	require.NoError(t, err)
-	require.Equal(t, p0, p1)
+	assert.Nil(t, err)
+	assert.DeepEqual(t, p0, p1)
 
 	// Empty list
 	p0 = &TestStruct{
@@ -83,12 +83,12 @@ func TestGenAppendListCode(t *testing.T) {
 		L7: []*Msg{},
 	}
 	b, err = Append(nil, p0)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	p1 = &TestStruct{}
 	_, err = Decode(b, p1)
-	require.NoError(t, err)
-	require.Equal(t, p0, p1)
+	assert.Nil(t, err)
+	assert.DeepEqual(t, p0, p1)
 
 }
 

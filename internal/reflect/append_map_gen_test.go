@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 const appendMapFileName = "append_map_gen.go"
@@ -37,13 +37,13 @@ func TestGenAppendMapCode(t *testing.T) {
 	type EnumType int64
 	type EmptyStruct struct{}
 
-	doTest := func(t *testing.T, p0, p1 interface{}) {
+	doTest := func(t *testing.T, p0, p1 any) {
 		t.Helper()
 		b, err := Append(nil, p0)
-		require.NoError(t, err)
+		assert.Nil(t, err)
 		_, err = Decode(b, p1)
-		require.NoError(t, err)
-		require.Equal(t, p0, p1)
+		assert.Nil(t, err)
+		assert.DeepEqual(t, p0, p1)
 	}
 
 	{

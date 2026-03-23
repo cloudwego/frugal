@@ -21,7 +21,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func P[T any](v T) *T { return &v }
@@ -30,50 +30,50 @@ func TestCheckUniqueness(t *testing.T) {
 	{ // tBOOL
 		typ := &tType{T: tBOOL, RT: reflect.TypeOf(bool(true))}
 		vv := []bool{true, false}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []bool{true, true}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tI08
 		typ := &tType{T: tI08, RT: reflect.TypeOf(int8(0))}
 		vv := []int8{1, 2}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []int8{1, 1}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tI16
 		typ := &tType{T: tI16, RT: reflect.TypeOf(int16(0))}
 		vv := []int16{1, 2}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []int16{1, 1}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tI32
 		typ := &tType{T: tI32, RT: reflect.TypeOf(int32(0))}
 		vv := []int32{1, 2}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []int32{1, 1}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tI64
 		typ := &tType{T: tI64, RT: reflect.TypeOf(int64(0))}
 		vv := []int64{1, 2}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []int64{1, 1}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tDOUBLE
 		typ := &tType{T: tDOUBLE, RT: reflect.TypeOf(float64(0))}
 		vv := []float64{1, 2}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []float64{1, 1}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 	{ // tSTRING
 		typ := &tType{T: tSTRING, RT: reflect.TypeOf(string(""))}
 		vv := []string{"1", "2"}
-		assert.NoError(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.Nil(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
 		vv = []string{"1", "1"}
-		assert.Error(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))))
+		assert.True(t, checkUniqueness(typ, (*sliceHeader)(unsafe.Pointer(&vv))) != nil)
 	}
 }

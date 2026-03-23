@@ -21,8 +21,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 type CtorTestStruct struct {
@@ -42,9 +41,7 @@ func (p *CtorTestStruct) InitDefault() {
 func TestDefaults_Resolve(t *testing.T) {
 	fp := (*CtorTestStruct).InitDefault
 	fa := **(**unsafe.Pointer)(unsafe.Pointer(&fp))
-	spew.Dump(fa)
 	fn, err := GetDefaultInitializer(reflect.TypeOf(CtorTestStruct{}))
-	require.NoError(t, err)
-	spew.Dump(fn)
-	require.Equal(t, fa, fn)
+	assert.Nil(t, err)
+	assert.Equal(t, fa, fn)
 }
