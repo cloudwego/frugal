@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestUnknownFields(t *testing.T) {
@@ -30,17 +30,17 @@ func TestUnknownFields(t *testing.T) {
 	p.Reset()
 
 	assert.Equal(t, 0, p.Size())
-	assert.Equal(t, []byte{}, p.Copy(b))
+	assert.BytesEqual(t, []byte{}, p.Copy(b))
 
 	p.Add(1, 1)
 	assert.Equal(t, 1, p.Size())
-	assert.Equal(t, []byte{'1'}, p.Copy(b))
+	assert.BytesEqual(t, []byte{'1'}, p.Copy(b))
 
 	p.Add(2, 2)
 	assert.Equal(t, 3, p.Size())
-	assert.Equal(t, []byte{'1', '2', '3'}, p.Copy(b))
+	assert.BytesEqual(t, []byte{'1', '2', '3'}, p.Copy(b))
 
 	p.Add(8, 2)
 	assert.Equal(t, 5, p.Size())
-	assert.Equal(t, []byte{'1', '2', '3', '8', '9'}, p.Copy(b))
+	assert.BytesEqual(t, []byte{'1', '2', '3', '8', '9'}, p.Copy(b))
 }

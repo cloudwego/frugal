@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestAppendStruct(t *testing.T) {
@@ -46,9 +46,9 @@ func TestAppendStruct(t *testing.T) {
 	}
 
 	b, err := Append(nil, p0)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 	p1 := &TestStruct{}
 	_, err = Decode(b, p1)
-	require.NoError(t, err)
-	require.Equal(t, p0, p1)
+	assert.Nil(t, err)
+	assert.DeepEqual(t, p0, p1)
 }

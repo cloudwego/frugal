@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestSpan(t *testing.T) {
@@ -28,32 +28,32 @@ func TestSpan(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		// reset align to 8
 		p := s.Malloc(16, 8)
-		require.Equal(t, uintptr(0), uintptr(p)%8)
+		assert.Equal(t, uintptr(0), uintptr(p)%8)
 
 		n0 := s.p
 		p = s.Malloc(8, 4)
 		n1 := s.p
-		require.Equal(t, uintptr(0), uintptr(p)%4)
-		require.Equal(t, n0+8, n1) // coz it's already 8 byte aligned
+		assert.Equal(t, uintptr(0), uintptr(p)%4)
+		assert.Equal(t, n0+8, n1) // coz it's already 8 byte aligned
 
 		p = s.Malloc(4, 2)
 		n2 := s.p
-		require.Equal(t, uintptr(0), uintptr(p)%2)
-		require.Equal(t, n1+4, n2) // coz it's already 4 byte aligned
+		assert.Equal(t, uintptr(0), uintptr(p)%2)
+		assert.Equal(t, n1+4, n2) // coz it's already 4 byte aligned
 
 		_ = s.Malloc(2, 1)
 		n3 := s.p
-		require.Equal(t, n2+2, n3) // coz it's already 2 byte aligned
+		assert.Equal(t, n2+2, n3) // coz it's already 2 byte aligned
 
 		p = s.Malloc(8, 8)
 		n4 := s.p
-		require.Equal(t, uintptr(0), uintptr(p)%8)
-		require.Equal(t, n3+8+2, n4) // 4 + 2 % 8 == 6, 8 - 6 = 2
+		assert.Equal(t, uintptr(0), uintptr(p)%8)
+		assert.Equal(t, n3+8+2, n4) // 4 + 2 % 8 == 6, 8 - 6 = 2
 	}
 
 	// test large malloc
 	p := s.Malloc(2*defaultDecoderMemSize, 2)
-	require.Equal(t, uintptr(0), uintptr(p)%2)
+	assert.Equal(t, uintptr(0), uintptr(p)%2)
 	p = s.Malloc(4, 4)
-	require.Equal(t, uintptr(0), uintptr(p)%4)
+	assert.Equal(t, uintptr(0), uintptr(p)%4)
 }

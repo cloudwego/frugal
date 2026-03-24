@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestMapStructDesc_GetEmpty(t *testing.T) {

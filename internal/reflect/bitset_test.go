@@ -19,7 +19,7 @@ package reflect
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestBitset(t *testing.T) {
@@ -28,16 +28,16 @@ func TestBitset(t *testing.T) {
 		s.set(uint16(i))
 	}
 	for i := 0; i <= 0xffff; i++ {
-		require.True(t, s.test(uint16(i)))
+		assert.True(t, s.test(uint16(i)))
 	}
 	for i, v := range s.data { // all bits set
-		require.Equal(t, ^uint64(0), v, i)
+		assert.Equal(t, ^uint64(0), v, i)
 	}
 	for i := 0; i <= 0xffff; i++ {
 		s.unset(uint16(i))
 	}
 	for i, v := range s.data { // all bits unset
-		require.Equal(t, uint64(0), v, i)
+		assert.Equal(t, uint64(0), v, i)
 	}
 }
 

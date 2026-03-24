@@ -17,10 +17,10 @@
 package reflect
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/cloudwego/frugal/internal/assert"
 )
 
 // NewMsg().BLength()
@@ -37,9 +37,9 @@ const encodedTestTypesWithDefault = 25
 
 func TestEncode(t *testing.T) {
 	// default NewXXXX cases
-	require.Equal(t, encodedTestTypesSize, EncodedSize(NewTestTypes()))
-	require.Equal(t, encodedTestTypesWithDefault, EncodedSize(NewTestTypesWithDefault()))
-	require.Equal(t, encodedTestTypesOptionalSize, EncodedSize(NewTestTypesOptional()))
+	assert.Equal(t, encodedTestTypesSize, EncodedSize(NewTestTypes()))
+	assert.Equal(t, encodedTestTypesWithDefault, EncodedSize(NewTestTypesWithDefault()))
+	assert.Equal(t, encodedTestTypesOptionalSize, EncodedSize(NewTestTypesOptional()))
 
 	type testcase struct {
 		name   string
@@ -113,9 +113,8 @@ func TestEncode(t *testing.T) {
 			tc.update(p)
 			assert.Equal(t, tc.expect, EncodedSize(p))
 			x, err := Append(b[:0], p)
-			if assert.NoError(t, err) {
-				assert.Equal(t, tc.expect, len(x))
-			}
+			assert.Nil(t, err)
+			assert.Equal(t, tc.expect, len(x))
 		})
 	}
 }
@@ -124,7 +123,7 @@ func TestEncodeStructOther(t *testing.T) {
 	assert.Equal(t, encodedMsgSize, EncodedSize(Msg{})) // indirect type
 	assert.Equal(t, 1, EncodedSize((*Msg)(nil)))        // nil
 	b, err := Append(nil, Msg{})
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, encodedMsgSize, len(b))
 }
 
@@ -141,9 +140,9 @@ func TestEncodeUnknownFields(t *testing.T) {
 
 	n := EncodedSize(m)
 	b, err := Append(nil, m)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, n, len(b))
-	assert.Contains(t, string(b), string(append([]byte("helloworld")[:], byte(tSTOP))))
+	assert.True(t, strings.Contains(string(b), string(append([]byte("helloworld")[:], byte(tSTOP)))))
 }
 
 func TestNestedListMapStruct(t *testing.T) {
@@ -161,12 +160,12 @@ func TestNestedListMapStruct(t *testing.T) {
 
 	b := make([]byte, EncodedSize(p))
 	x, err := Append(b[:0], p)
-	require.NoError(t, err)
-	require.Equal(t, len(x), len(b))
+	assert.Nil(t, err)
+	assert.Equal(t, len(x), len(b))
 
 	p2 := &Msg2{}
 	i, err := Decode(x, p2)
-	require.NoError(t, err)
-	require.Equal(t, i, len(b))
-	require.Equal(t, p, p2)
+	assert.Nil(t, err)
+	assert.Equal(t, i, len(b))
+	assert.DeepEqual(t, p, p2)
 }

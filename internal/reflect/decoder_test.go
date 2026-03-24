@@ -25,10 +25,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cloudwego/frugal/internal/assert"
 	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/cloudwego/gopkg/protocol/thrift"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -104,13 +103,13 @@ func TestDecode(t *testing.T) {
 			update: func(p0 *TestTypes) { p0.String_ = "str"; p0.Binary = []byte{1} },
 			test: func(t *testing.T, p1 *TestTypes) {
 				assert.Equal(t, "str", p1.String_)
-				assert.Equal(t, []byte{1}, p1.Binary)
+				assert.BytesEqual(t, []byte{1}, p1.Binary)
 			},
 		},
 		{
 			name:   "case_zero_len_binary",
 			update: func(p0 *TestTypes) { p0.Binary = []byte{} },
-			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, []byte{}, p1.Binary) },
+			test:   func(t *testing.T, p1 *TestTypes) { assert.BytesEqual(t, []byte{}, p1.Binary) },
 		},
 		{
 			name:   "case_enum",
@@ -125,7 +124,7 @@ func TestDecode(t *testing.T) {
 		{
 			name:   "case_struct",
 			update: func(p0 *TestTypes) { p0.S = &Msg{Type: vInt32} },
-			test:   func(t *testing.T, p1 *TestTypes) { assert.Equal(t, &Msg{Type: vInt32}, p1.S) },
+			test:   func(t *testing.T, p1 *TestTypes) { assert.DeepEqual(t, &Msg{Type: vInt32}, p1.S) },
 		},
 		{
 			name: "case_map",
@@ -138,12 +137,12 @@ func TestDecode(t *testing.T) {
 				p0.MS = map[int32][]int32{101: {4, 5, 6}}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
-				assert.Equal(t, map[int32]int32{vInt32: vInt32 - 1, 1: 2}, p1.M0)
-				assert.Equal(t, map[int32]string{vInt32 - 2: "hello", 1: "2"}, p1.M1)
-				assert.Equal(t, map[int32]*Msg{vInt32 - 3: {}, 1: {Type: 2}}, p1.M2)
-				assert.Equal(t, map[string]*Msg{"hello": {Type: vInt32 - 4}}, p1.M3)
-				assert.Equal(t, map[int32][]int32{100: {1, 2, 3}}, p1.ML)
-				assert.Equal(t, map[int32][]int32{101: {4, 5, 6}}, p1.MS)
+				assert.DeepEqual(t, map[int32]int32{vInt32: vInt32 - 1, 1: 2}, p1.M0)
+				assert.DeepEqual(t, map[int32]string{vInt32 - 2: "hello", 1: "2"}, p1.M1)
+				assert.DeepEqual(t, map[int32]*Msg{vInt32 - 3: {}, 1: {Type: 2}}, p1.M2)
+				assert.DeepEqual(t, map[string]*Msg{"hello": {Type: vInt32 - 4}}, p1.M3)
+				assert.DeepEqual(t, map[int32][]int32{100: {1, 2, 3}}, p1.ML)
+				assert.DeepEqual(t, map[int32][]int32{101: {4, 5, 6}}, p1.MS)
 			},
 		},
 		{
@@ -154,9 +153,9 @@ func TestDecode(t *testing.T) {
 				p0.L2 = []*Msg{nil, {Type: vInt32}}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
-				assert.Equal(t, []int32{1, 2}, p1.L0)
-				assert.Equal(t, []string{"hello", "world"}, p1.L1)
-				assert.Equal(t, []*Msg{{}, {Type: vInt32}}, p1.L2)
+				assert.DeepEqual(t, []int32{1, 2}, p1.L0)
+				assert.DeepEqual(t, []string{"hello", "world"}, p1.L1)
+				assert.DeepEqual(t, []*Msg{{}, {Type: vInt32}}, p1.L2)
 			},
 		},
 		{
@@ -167,9 +166,9 @@ func TestDecode(t *testing.T) {
 				p0.L2 = []*Msg{}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
-				assert.Equal(t, []int32{}, p1.L0)
-				assert.Equal(t, []string{}, p1.L1)
-				assert.Equal(t, []*Msg{}, p1.L2)
+				assert.DeepEqual(t, []int32{}, p1.L0)
+				assert.DeepEqual(t, []string{}, p1.L1)
+				assert.DeepEqual(t, []*Msg{}, p1.L2)
 			},
 		},
 		{
@@ -179,8 +178,8 @@ func TestDecode(t *testing.T) {
 				p0.S1 = []string{"hello", "world"}
 			},
 			test: func(t *testing.T, p1 *TestTypes) {
-				assert.Equal(t, []int32{1, 2}, p1.S0)
-				assert.Equal(t, []string{"hello", "world"}, p1.S1)
+				assert.DeepEqual(t, []int32{1, 2}, p1.S0)
+				assert.DeepEqual(t, []string{"hello", "world"}, p1.S1)
 			},
 		},
 	}
@@ -194,18 +193,18 @@ func TestDecode(t *testing.T) {
 
 			n := EncodedSize(p0)
 			b, err := Append(nil, p0)
-			require.NoError(t, err)
-			require.Equal(t, n, len(b))
+			assert.Nil(t, err)
+			assert.Equal(t, n, len(b))
 
 			// verify by gopkg thrift
 			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
-			require.NoError(t, err)
-			require.Equal(t, n, len(b))
+			assert.Nil(t, err)
+			assert.Equal(t, n, len(b))
 
 			p1 := &TestTypes{}
 			n, err = Decode(b, p1)
-			require.NoError(t, err)
-			require.Equal(t, len(b), n)
+			assert.Nil(t, err)
+			assert.Equal(t, len(b), n)
 
 			testf(t, p1) // test by testcase func
 		})
@@ -296,18 +295,18 @@ func TestDecodeOptional(t *testing.T) {
 
 			n := EncodedSize(p0)
 			b, err := Append(nil, p0)
-			require.NoError(t, err)
-			require.Equal(t, n, len(b))
+			assert.Nil(t, err)
+			assert.Equal(t, n, len(b))
 
 			// verify by gopkg thrift
 			n, err = thrift.Binary.Skip(b, thrift.TType(tSTRUCT))
-			require.NoError(t, err)
-			require.Equal(t, n, len(b))
+			assert.Nil(t, err)
+			assert.Equal(t, n, len(b))
 
 			p1 := &TestTypesOptional{}
 			n, err = Decode(b, p1)
-			require.NoError(t, err)
-			require.Equal(t, len(b), n)
+			assert.Nil(t, err)
+			assert.Equal(t, len(b), n)
 
 			testf(t, p1) // test by testcase func
 		})
@@ -324,19 +323,19 @@ func TestDecodeRequired(t *testing.T) {
 	v := true
 	p0 := &S0{}
 	b, err := Append(nil, p0)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 	p1 := &S1{}
 	_, err = Decode(b, p1)
-	require.Equal(t, newRequiredFieldNotSetException("V"), err)
+	assert.DeepEqual(t, newRequiredFieldNotSetException("V"), err)
 
 	p0.V = &v
 	b, err = Append(nil, p0)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	n, err := Decode(b, p1)
-	require.NoError(t, err)
-	require.Equal(t, len(b), n)
-	require.Equal(t, true, p1.V)
+	assert.Nil(t, err)
+	assert.Equal(t, len(b), n)
+	assert.Equal(t, true, p1.V)
 }
 
 func TestDecodeUnknownFields(t *testing.T) {
@@ -364,7 +363,7 @@ func TestDecodeUnknownFields(t *testing.T) {
 	testb := make([]byte, sz)
 	testb = appendStringField(testb[:0], 3, msg.S0)
 	assert.Equal(t, sz, len(testb))
-	assert.Equal(t, testb, p._unknownFields)
+	assert.BytesEqual(t, testb, p._unknownFields)
 }
 
 func TestDecodeNoCopy(t *testing.T) {
@@ -386,7 +385,7 @@ func TestDecodeNoCopy(t *testing.T) {
 
 	p := &Msg{}
 	_, err := Decode(b, p)
-	require.NoError(t, err)
+	assert.Nil(t, err)
 
 	assert.Equal(t, strA, p.A)
 	assert.Equal(t, strB, p.B)
@@ -408,7 +407,7 @@ func TestDecodeNoCopy(t *testing.T) {
 	}
 	p2 := &Msg2{}
 	_, err = Decode(b, p2)
-	require.Error(t, err)
+	assert.True(t, err != nil)
 	_ = p2
 }
 
@@ -421,25 +420,25 @@ func TestDecodeStringShortBuffer(t *testing.T) {
 	// io.ErrShortBuffer: decodeType
 	data := []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l'} // length=5, only 4 bytes
 	n, err := decoder.decodeType(typ, data, ptr, 1)
-	assert.Equal(t, io.ErrShortBuffer, err)
-	assert.LessOrEqual(t, n, len(data))
+	assert.True(t, err == io.ErrShortBuffer)
+	assert.True(t, n <= len(data))
 
 	// io.ErrShortBuffer: decodeStringNoCopy
 	n, err = decodeStringNoCopy(typ, data, ptr)
-	assert.Equal(t, io.ErrShortBuffer, err)
-	assert.LessOrEqual(t, n, len(data))
+	assert.True(t, err == io.ErrShortBuffer)
+	assert.True(t, n <= len(data))
 
 	// Normal case: decodeType
 	data = []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'}
 	result = ""
 	n, err = decoder.decodeType(typ, data, ptr, 1)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, len(data), n)
 	assert.Equal(t, "hello", result)
 
 	// Normal case: decodeStringNoCopy
 	n, err = decodeStringNoCopy(typ, data, ptr)
-	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, len(data), n)
 	assert.Equal(t, "hello", result)
 }
