@@ -57,10 +57,11 @@ Unmarshal_Frugal/large-4                    5838        197987 ns/op    1533.69 
 
 ### 配合 Kitex 使用
 
-#### 1. 更新 Kitex 到 v0.4.2 以上版本
+#### 1. 更新 Kitex 和 Frugal
 
 ```shell
 go get github.com/cloudwego/kitex@latest
+go get github.com/cloudwego/frugal@latest
 ```
 
 #### 2. 带上 `-thrift frugal_tag` 参数重新生成一次代码
@@ -71,18 +72,22 @@ go get github.com/cloudwego/kitex@latest
 kitex -thrift frugal_tag -service a.b.c my.thrift
 ```
 
-如果不需要编解码代码，可以带上 `-thrift template=slim` 参数
+如果不需要编解码代码，可以带上 `-thrift template=slim` 参数，大幅减少生成的代码量。
 
 ```shell
 kitex -thrift frugal_tag,template=slim -service a.b.c my.thrift
 ```
 
-#### 3. 初始化 client 和 server 时使用 `WithPayloadCodec(thrift.NewThriftFrugalCodec())` option
+注：最新版本的 thriftgo（>= v0.3.0）默认生成的 `thrift` struct tag 已兼容 Frugal，因此对于不含 `list`、`set`、`enum` 字段的结构体，`frugal_tag` 参数是可选的。
+
+#### 3. 初始化 client 和 server 时启用 Frugal 编解码
+
+使用 `thrift.NewThriftCodecWithConfig` 启用 Frugal。编解码器优先级：Frugal > FastCodec > Apache Thrift。
 
 client 示例：
 
 ```go
-package client
+package main
 
 import (
     "context"
@@ -92,8 +97,8 @@ import (
     "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
 
-func Echo() {
-    code := thrift.NewThriftCodecWithConfig(thrift.FastRead | thrift.FastWrite | thrift.FrugalRead | thrift.FrugalWrite)
+func main() {
+    codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite)
     cli := echo.MustNewClient("a.b.c", client.WithPayloadCodec(codec))
     ...
 }
@@ -113,14 +118,33 @@ import (
 )
 
 func main() {
-    code := thrift.NewThriftCodecWithConfig(thrift.FastRead | thrift.FastWrite | thrift.FrugalRead | thrift.FrugalWrite)
-    svr := c.NewServer(new(EchoImpl), server.WithPayloadCodec(code))
+    codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite)
+    svr := c.NewServer(new(EchoImpl), server.WithPayloadCodec(codec))
 
     err := svr.Run()
     if err != nil {
         log.Println(err.Error())
     }
 }
+```
+
+注：对于没有 `frugal` struct tag 的类型，Kitex 会自动 fallback 到 FastCodec 或 Apache Thrift，因此可以放心全局启用 Frugal。
+
+#### 编解码器选项
+
+| 选项 | 说明 |
+|------|------|
+| `thrift.FrugalRead` | 使用 Frugal 进行反序列化 |
+| `thrift.FrugalWrite` | 使用 Frugal 进行序列化 |
+| `thrift.FrugalReadWrite` | `FrugalRead \| FrugalWrite` 的简写 |
+| `thrift.FastRead` | 使用 FastCodec 进行反序列化 |
+| `thrift.FastWrite` | 使用 FastCodec 进行序列化 |
+| `thrift.EnableSkipDecoder` | 使用 Buffered 传输协议（无 Framed/TTHeader）时需要 |
+
+使用 Framed 或 TTHeader 传输协议时，`FrugalRead | FrugalWrite` 即可。使用 Buffered（PurePayload）传输协议时，需额外添加 `EnableSkipDecoder`：
+
+```go
+codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite | thrift.EnableSkipDecoder)
 ```
 
 ### 配合 Thriftgo 做 Thrift IDL 的编解码
@@ -139,14 +163,15 @@ struct MyStruct {
 
 #### 使用 Thriftgo 生成代码
 
-定义好需要的 Thrift 文件后，在使用 Thriftgo 生成 Go 语言代码时使用 `frugal_tag` 参数。
-示例：
+定义好需要的 Thrift 文件后，使用 Thriftgo 生成 Go 语言代码。
+
+最新版本的 thriftgo（>= v0.3.0）默认生成的 `thrift` struct tag 已兼容 Frugal。对于包含 `list`、`set`、`enum` 字段的结构体，需添加 `frugal_tag` 参数生成显式的 Frugal tag：
 
 ```shell
 thriftgo -r -o thrift -g go:frugal_tag,package_prefix=example.com/kitex_test/thrift my.thrift
 ```
 
-如果不需要编解码代码，可以带上 `template=slim` 参数
+如果不需要编解码代码，可以带上 `template=slim` 参数减少生成的代码量：
 
 ```shell
 thriftgo -r -o thrift -g go:frugal_tag,template=slim,package_prefix=example.com/kitex_test/thrift my.thrift

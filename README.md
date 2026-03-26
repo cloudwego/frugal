@@ -57,10 +57,11 @@ If you don't want any Thrift files, and you want serialize or deserialize a cust
 
 ### Using with Kitex
 
-#### 1. Update Kitex to v0.4.2 or higher version
+#### 1. Update Kitex and Frugal
 
 ```shell
 go get github.com/cloudwego/kitex@latest
+go get github.com/cloudwego/frugal@latest
 ```
 
 #### 2. Generate code with `-thrift frugal_tag` option
@@ -71,18 +72,22 @@ Example:
 kitex -thrift frugal_tag -service a.b.c my.thrift
 ```
 
-If you don't need codec code, you can use `-thrift template=slim` option.
+If you don't need codec code, you can use `-thrift template=slim` option to reduce generated code significantly.
 
 ```shell
 kitex -thrift frugal_tag,template=slim -service a.b.c my.thrift
 ```
 
-#### 3. Init clients and servers with `WithPayloadCodec(thrift.NewThriftFrugalCodec())` option
+Note: Latest thriftgo (>= v0.3.0) generates `thrift` struct tags that are compatible with Frugal by default, so `frugal_tag` is optional for structs without `list`, `set` or `enum` fields.
+
+#### 3. Init clients and servers with Frugal codec
+
+Use `thrift.NewThriftCodecWithConfig` to enable Frugal. Codec type priority: Frugal > FastCodec > Apache Thrift.
 
 Client example:
 
 ```go
-package client
+package main
 
 import (
     "context"
@@ -92,8 +97,8 @@ import (
     "github.com/cloudwego/kitex/pkg/remote/codec/thrift"
 )
 
-func Echo() {
-    code := thrift.NewThriftCodecWithConfig(thrift.FastRead | thrift.FastWrite | thrift.FrugalRead | thrift.FrugalWrite)
+func main() {
+    codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite)
     cli := echo.MustNewClient("a.b.c", client.WithPayloadCodec(codec))
     ...
 }
@@ -113,14 +118,33 @@ import (
 )
 
 func main() {
-    code := thrift.NewThriftCodecWithConfig(thrift.FastRead | thrift.FastWrite | thrift.FrugalRead | thrift.FrugalWrite)
-    svr := c.NewServer(new(EchoImpl), server.WithPayloadCodec(code))
+    codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite)
+    svr := c.NewServer(new(EchoImpl), server.WithPayloadCodec(codec))
 
     err := svr.Run()
     if err != nil {
         log.Println(err.Error())
     }
 }
+```
+
+Note: Kitex automatically falls back to FastCodec or Apache Thrift for types that don't have `frugal` struct tags, so it's safe to enable Frugal globally.
+
+#### Codec type options
+
+| Option | Description |
+|--------|-------------|
+| `thrift.FrugalRead` | Use Frugal for deserialization |
+| `thrift.FrugalWrite` | Use Frugal for serialization |
+| `thrift.FrugalReadWrite` | Shorthand for `FrugalRead \| FrugalWrite` |
+| `thrift.FastRead` | Use FastCodec for deserialization |
+| `thrift.FastWrite` | Use FastCodec for serialization |
+| `thrift.EnableSkipDecoder` | Required when using Buffered transport (no Framed/TTHeader) |
+
+For Framed or TTHeader transport, `FrugalRead | FrugalWrite` is sufficient. For Buffered (PurePayload) transport, add `EnableSkipDecoder`:
+
+```go
+codec := thrift.NewThriftCodecWithConfig(thrift.FrugalRead | thrift.FrugalWrite | thrift.EnableSkipDecoder)
 ```
 
 ### Using with Thrift IDL
@@ -140,15 +164,15 @@ struct MyStruct {
 
 #### Use Thriftgo to generate code
 
-Now we have thrift file, we can use Thriftgo with `frugal_tag` option to generate Go code.
+Now we have thrift file, we can use Thriftgo to generate Go code.
 
-Example:
+Latest thriftgo (>= v0.3.0) generates `thrift` struct tags that are compatible with Frugal by default. For structs containing `list`, `set` or `enum` fields, add `frugal_tag` to generate explicit Frugal tags:
 
 ```shell
 thriftgo -r -o thrift -g go:frugal_tag,package_prefix=example.com/kitex_test/thrift my.thrift
 ```
 
-If you don't need codec code, you can use `template=slim` option
+If you don't need codec code, you can use `template=slim` option to reduce generated code:
 
 ```shell
 thriftgo -r -o thrift -g go:frugal_tag,template=slim,package_prefix=example.com/kitex_test/thrift my.thrift
