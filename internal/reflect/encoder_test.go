@@ -128,7 +128,7 @@ func TestEncodeStructOther(t *testing.T) {
 }
 
 func TestEncodeUnknownFields(t *testing.T) {
-	type Msg1 struct { // without S0, I1
+	type Msg1 struct {
 		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
 		S1 string `thrift:"s1,4" frugal:"4,default,string"`
 
@@ -143,6 +143,33 @@ func TestEncodeUnknownFields(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, n, len(b))
 	assert.True(t, strings.Contains(string(b), string(append([]byte("helloworld")[:], byte(tSTOP)))))
+}
+
+func TestEncodeOnlyUnknownFields(t *testing.T) {
+	type Msg struct {
+		_unknownFields []byte
+	}
+	m := &Msg{_unknownFields: []byte("helloworld")}
+
+	n := EncodedSize(m)
+	b, err := Append(nil, m)
+	assert.Nil(t, err)
+	assert.Equal(t, n, len(b))
+	assert.BytesEqual(t, append([]byte("helloworld"), byte(tSTOP)), b)
+}
+
+func TestEncodeOnlyUnknownFieldsNamedType(t *testing.T) {
+	type UnknownFieldsType []byte
+	type Msg struct {
+		_unknownFields UnknownFieldsType
+	}
+	m := &Msg{_unknownFields: UnknownFieldsType("helloworld")}
+
+	n := EncodedSize(m)
+	b, err := Append(nil, m)
+	assert.Nil(t, err)
+	assert.Equal(t, n, len(b))
+	assert.BytesEqual(t, append([]byte("helloworld"), byte(tSTOP)), b)
 }
 
 func TestNestedListMapStruct(t *testing.T) {

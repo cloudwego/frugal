@@ -366,6 +366,45 @@ func TestDecodeUnknownFields(t *testing.T) {
 	assert.BytesEqual(t, testb, p._unknownFields)
 }
 
+func TestDecodeOnlyUnknownFields(t *testing.T) {
+	type Msg0 struct {
+		I0 int32  `thrift:"i0,2" frugal:"2,default,i32"`
+		S0 string `thrift:"s0,3" frugal:"3,default,string"`
+	}
+
+	roundTrip := func(t *testing.T, p any) {
+		msg := Msg0{I0: 42, S0: "hello"}
+		b, err := Append(nil, msg)
+		assert.Nil(t, err)
+
+		n, err := Decode(b, p)
+		assert.Nil(t, err)
+		assert.Equal(t, len(b), n)
+
+		b2, err := Append(nil, p)
+		assert.Nil(t, err)
+
+		msg2 := &Msg0{}
+		_, err = Decode(b2, msg2)
+		assert.Nil(t, err)
+		assert.Equal(t, msg.I0, msg2.I0)
+		assert.Equal(t, msg.S0, msg2.S0)
+	}
+
+	a := &struct {
+		_unknownFields []byte
+	}{}
+	roundTrip(t, a)
+	assert.True(t, len(a._unknownFields) > 0)
+
+	type UnknownFieldsType []byte
+	b := &struct {
+		_unknownFields UnknownFieldsType
+	}{}
+	roundTrip(t, b)
+	assert.True(t, len(b._unknownFields) > 0)
+}
+
 func TestDecodeNoCopy(t *testing.T) {
 	type Msg struct {
 		A string `frugal:"1,default,string,nocopy"`
