@@ -56,8 +56,8 @@ func appendMapHeader(t *tType, b []byte, p unsafe.Pointer) ([]byte, uint32) {
 		byte(n>>24), byte(n>>16), byte(n>>8), byte(n)), n
 }
 
-// this func will be replaced by funcs defined in append_map_gen.go
-// see init() in append_map_gen.go for details.
+// Fast-path registrations in append_map_fast.go replace this fallback for
+// supported key/value scalar combinations.
 func appendMapAnyAny(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
