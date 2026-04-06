@@ -17,10 +17,49 @@
 package reflect
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/cloudwego/frugal/internal/assert"
 )
+
+func TestAppendMapDispatchUsesPredefinedFuncsForBoolScalars(t *testing.T) {
+	type TestStruct struct {
+		M1 map[bool]bool   `frugal:"1,optional,map<bool:bool>"`
+		M2 map[bool]string `frugal:"2,optional,map<bool:string>"`
+		M3 map[string]bool `frugal:"3,optional,map<string:bool>"`
+	}
+
+	desc, err := getOrcreateStructDesc(reflect.ValueOf(&TestStruct{}))
+	assert.Nil(t, err)
+
+	appendMapAnyAnyPtr := reflect.ValueOf(appendMapAnyAny).Pointer()
+	assert.True(t, reflect.ValueOf(desc.GetField(1).Type.AppendFunc).Pointer() != appendMapAnyAnyPtr)
+	assert.True(t, reflect.ValueOf(desc.GetField(2).Type.AppendFunc).Pointer() != appendMapAnyAnyPtr)
+	assert.True(t, reflect.ValueOf(desc.GetField(3).Type.AppendFunc).Pointer() != appendMapAnyAnyPtr)
+}
+
+func TestAppendMapBoolScalarsRoundTrip(t *testing.T) {
+	type TestStruct struct {
+		M1 map[bool]bool   `frugal:"1,optional,map<bool:bool>"`
+		M2 map[bool]string `frugal:"2,optional,map<bool:string>"`
+		M3 map[string]bool `frugal:"3,optional,map<string:bool>"`
+	}
+
+	p0 := &TestStruct{
+		M1: map[bool]bool{false: true, true: false},
+		M2: map[bool]string{false: "off", true: "on"},
+		M3: map[string]bool{"disabled": false, "enabled": true},
+	}
+
+	b, err := Append(nil, p0)
+	assert.Nil(t, err)
+
+	p1 := &TestStruct{}
+	_, err = Decode(b, p1)
+	assert.Nil(t, err)
+	assert.DeepEqual(t, p0, p1)
+}
 
 func TestAppendMapAnyAny(t *testing.T) {
 	var funcs map[struct{ k, v ttype }]appendFuncType
