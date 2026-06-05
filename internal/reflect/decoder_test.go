@@ -18,6 +18,7 @@ package reflect
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"math"
 	"math/rand"
@@ -456,21 +457,22 @@ func TestDecodeStringShortBuffer(t *testing.T) {
 	var result string
 	ptr := unsafe.Pointer(&result)
 
-	// io.ErrShortBuffer: decodeType
-	data := []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l'} // length=5, only 4 bytes
-	n, err := decoder.decodeType(typ, data, ptr, 1)
-	assert.True(t, err == io.ErrShortBuffer)
-	assert.True(t, n <= len(data))
+	// header truncated: fewer than strHeaderLen bytes to even read the length.
+	// this is a genuine short buffer, not corrupted data.
+	for _, data := range [][]byte{nil, {0x00}, {0x00, 0x00, 0x00}} {
+		n, err := decoder.decodeType(typ, data, ptr, 1)
+		assert.True(t, err == io.ErrShortBuffer)
+		assert.True(t, n <= len(data))
 
-	// io.ErrShortBuffer: decodeStringNoCopy
-	n, err = decodeStringNoCopy(typ, data, ptr)
-	assert.True(t, err == io.ErrShortBuffer)
-	assert.True(t, n <= len(data))
+		n, err = decodeStringNoCopy(typ, data, ptr)
+		assert.True(t, err == io.ErrShortBuffer)
+		assert.True(t, n <= len(data))
+	}
 
 	// Normal case: decodeType
-	data = []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'}
+	data := []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l', 'o'}
 	result = ""
-	n, err = decoder.decodeType(typ, data, ptr, 1)
+	n, err := decoder.decodeType(typ, data, ptr, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, len(data), n)
 	assert.Equal(t, "hello", result)
@@ -480,4 +482,57 @@ func TestDecodeStringShortBuffer(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(data), n)
 	assert.Equal(t, "hello", result)
+}
+
+// assertSizeLimit asserts err is a thrift SIZE_LIMIT protocol exception, i.e. a
+// decoded size that exceeds the remaining buffer (likely corrupted data).
+func assertSizeLimit(t *testing.T, err error) {
+	t.Helper()
+	var pe *thrift.ProtocolException
+	if !errors.As(err, &pe) {
+		t.Fatalf("expected *thrift.ProtocolException, got %v", err)
+	}
+	assert.Equal(t, int32(thrift.SIZE_LIMIT), pe.TypeID())
+}
+
+func TestDecodeSizeExceedsBuffer(t *testing.T) {
+	// string / binary: declared length exceeds the remaining buffer
+	decoder := &tDecoder{}
+	typ := &tType{T: tSTRING, Tag: defs.T_string}
+	var s string
+	data := []byte{0x00, 0x00, 0x00, 0x05, 'h', 'e', 'l', 'l'} // length=5, only 4 bytes
+	_, err := decoder.decodeType(typ, data, unsafe.Pointer(&s), 1)
+	assertSizeLimit(t, err)
+	_, err = decodeStringNoCopy(typ, data, unsafe.Pointer(&s))
+	assertSizeLimit(t, err)
+
+	// list: element count far exceeds the remaining buffer
+	{
+		type Msg struct {
+			L []int32 `frugal:"1,default,list<i32>"`
+		}
+		b := []byte{
+			byte(tLIST), 0x00, 0x01, // field: type=LIST id=1
+			byte(tI32),             // element type
+			0x7f, 0xff, 0xff, 0xff, // count = 2147483647
+			byte(tSTOP),
+		}
+		_, err := Decode(b, &Msg{})
+		assertSizeLimit(t, err)
+	}
+
+	// map: entry count far exceeds the remaining buffer
+	{
+		type Msg struct {
+			M map[int32]int32 `frugal:"1,default,map<i32:i32>"`
+		}
+		b := []byte{
+			byte(tMAP), 0x00, 0x01, // field: type=MAP id=1
+			byte(tI32), byte(tI32), // key type, value type
+			0x7f, 0xff, 0xff, 0xff, // count = 2147483647
+			byte(tSTOP),
+		}
+		_, err := Decode(b, &Msg{})
+		assertSizeLimit(t, err)
+	}
 }

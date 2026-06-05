@@ -34,6 +34,17 @@ func newRequiredFieldNotSetException(name string) error {
 	)
 }
 
+// newSizeExceedsBufferException is returned when a decoded length or element
+// count is larger than the remaining buffer can possibly hold. Unlike
+// io.ErrShortBuffer (which only means more bytes are needed), it signals the
+// size field itself is bogus, so the data is most likely corrupted.
+func newSizeExceedsBufferException(size, remain int) error {
+	return thrift.NewProtocolException(
+		thrift.SIZE_LIMIT,
+		fmt.Sprintf("decoded size %d exceeds remaining buffer %d, data may be corrupted", size, remain),
+	)
+}
+
 func newTypeMismatch(expect, got ttype) error {
 	return thrift.NewProtocolException(
 		thrift.INVALID_DATA,

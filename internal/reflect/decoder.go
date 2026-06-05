@@ -161,7 +161,28 @@ func decodeFixedSizeTypes(t ttype, b []byte, p unsafe.Pointer) int {
 	}
 }
 
+// minWireSize is the minimum number of bytes a value of a given wire type takes
+// in Thrift binary encoding. It is used while decoding to reject corrupted
+// container/string lengths that can not possibly fit in the remaining buffer,
+// before allocating memory for them.
+var minWireSize = [256]int8{
+	tBOOL:   1,
+	tBYTE:   1,
+	tI16:    2,
+	tI32:    4,
+	tI64:    8,
+	tDOUBLE: 8,
+	tSTRING: 4, // length header only, content may be empty
+	tSTRUCT: 1, // tSTOP only
+	tMAP:    6, // header only, may hold zero entries
+	tSET:    5, // header only, may hold zero elements
+	tLIST:   5, // header only, may hold zero elements
+}
+
 func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error) {
+	if len(b) < strHeaderLen {
+		return 0, io.ErrShortBuffer
+	}
 	l := int(int32(binary.BigEndian.Uint32(b)))
 	if l < 0 {
 		err = errNegativeSize
@@ -177,8 +198,8 @@ func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error)
 		return
 	}
 
-	if i+l-1 >= len(b) {
-		return i, io.ErrShortBuffer
+	if l > len(b)-i {
+		return i, newSizeExceedsBufferException(l, len(b)-i)
 	}
 
 	if t.Tag == defs.T_binary {
@@ -199,6 +220,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 	}
 	switch t.T {
 	case tSTRING:
+		if len(b) < strHeaderLen {
+			return 0, io.ErrShortBuffer
+		}
 		l := int(int32(binary.BigEndian.Uint32(b)))
 		if l < 0 {
 			return 0, errNegativeSize
@@ -213,8 +237,8 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			return i, nil
 		}
 
-		if i+l-1 >= len(b) {
-			return i, io.ErrShortBuffer
+		if l > len(b)-i {
+			return i, newSizeExceedsBufferException(l, len(b)-i)
 		}
 
 		x := d.Malloc(l, 1, 0)
@@ -229,6 +253,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 	case tMAP:
 		// map header
+		if len(b) < mapHeaderLen {
+			return 0, io.ErrShortBuffer
+		}
 		t0, t1, l := ttype(b[0]), ttype(b[1]), int(int32(binary.BigEndian.Uint32(b[2:])))
 		if l < 0 {
 			return 0, errNegativeSize
@@ -239,6 +266,13 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		vt := t.V
 		if t0 != kt.WT || t1 != vt.WT {
 			return 0, newTypeMismatchKV(kt.WT, vt.WT, t0, t1)
+		}
+
+		// reject corrupted lengths before allocating the map: every entry needs
+		// at least minWireSize[key]+minWireSize[value] bytes, so l entries can
+		// not fit if they exceed the remaining buffer. likely data is broken.
+		if remain := len(b) - mapHeaderLen; l > remain/(int(minWireSize[kt.WT])+int(minWireSize[vt.WT])) {
+			return mapHeaderLen, newSizeExceedsBufferException(l, remain)
 		}
 
 		// decode map
@@ -318,6 +352,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 
 	case tLIST, tSET: // NOTE: for tSET, it may be map in the future
 		// list header
+		if len(b) < listHeaderLen {
+			return 0, io.ErrShortBuffer
+		}
 		tp, l := ttype(b[0]), int(int32(binary.BigEndian.Uint32(b[1:])))
 		if l < 0 {
 			return 0, errNegativeSize
@@ -336,6 +373,14 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 			h.Zero()
 			return i, nil
 		}
+
+		// reject corrupted lengths before allocating the slice: every element
+		// needs at least minWireSize[et] bytes, so l elements can not fit if
+		// they exceed the remaining buffer. likely the data is broken.
+		if remain := len(b) - i; l > remain/int(minWireSize[et.WT]) {
+			return i, newSizeExceedsBufferException(l, remain)
+		}
+
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
 		h.Data = x
 		h.Len = l
