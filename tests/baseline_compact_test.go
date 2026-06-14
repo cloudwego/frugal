@@ -165,9 +165,9 @@ func buildCompactTree(v []byte) (int, map[uint16]interface{}) {
 			ret[lastId] = val
 			i += ni
 		case ft == 12:
-			ni, nested := buildCompactTree(v[i-1:])
+			ni, nested := buildCompactTree(v[i:])
 			ret[lastId] = nested
-			i = (i - 1) + ni
+			i += ni
 		default:
 			ret[lastId] = "[container]"
 		}
