@@ -17,6 +17,7 @@ package fuzz
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -45,7 +46,13 @@ func init() {
 	log.SetOutput(file)
 	go func() {
 		if os.Getenv(FuzzDebugEnv) == "on" {
-			log.Println(http.ListenAndServe("localhost:0", nil))
+			ln, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				log.Println("pprof listen error:", err)
+				return
+			}
+			log.Println("pprof server at", ln.Addr().String())
+			http.Serve(ln, nil)
 		}
 	}()
 }
@@ -159,3 +166,4 @@ func PrintStructTag(rt reflect.Type) {
 		}
 	}
 }
+

@@ -45,6 +45,28 @@ func DecodeObject(buf []byte, val interface{}) (int, error) {
 	return reflect.Decode(buf, val)
 }
 
+// EncodedSizeCompact measures the encoded size of val using Thrift Compact Protocol.
+func EncodedSizeCompact(val interface{}) int {
+	return reflect.EncodedSizeCompact(val)
+}
+
+// EncodeObjectCompact serializes val into buf with Thrift Compact Protocol.
+// buf must be large enough to contain the entire serialization result.
+func EncodeObjectCompact(buf []byte, w thrift.NocopyWriter, val interface{}) (int, error) {
+	ret, err := reflect.AppendCompact(buf[:0], val)
+	if len(ret) > len(buf) {
+		return 0, fmt.Errorf("index out of range [%d] with length %d.\n"+
+			"Please make sure the input will not be changed after calling EncodedSize or during EncodeObject(concurrency issues).",
+			len(ret), len(buf))
+	}
+	return len(ret), err
+}
+
+// DecodeObjectCompact deserializes buf into val with Thrift Compact Protocol.
+func DecodeObjectCompact(buf []byte, val interface{}) (int, error) {
+	return reflect.DecodeCompact(buf, val)
+}
+
 // Pretouch ...
 //
 // Deprecated: It was for JIT

@@ -113,9 +113,13 @@ type tType struct {
 	// for tSTRUCT
 	Sd *structDesc
 
-	// for tLIST, tSET, tMAP, tSTRUCT
+	// for tLIST, tSET, tMAP, tSTRUCT (Binary Protocol)
 	EncodedSizeFunc func(p unsafe.Pointer) (int, error)
 	AppendFunc      appendFuncType
+
+	// for tLIST, tSET, tMAP, tSTRUCT (Compact Protocol)
+	EncodedSizeFuncCompact func(p unsafe.Pointer) (int, error)
+	AppendFuncCompact      appendFuncType
 
 	// tMAP only
 	MapTmpVarsPool *sync.Pool // for decoder tmp vars
@@ -189,10 +193,13 @@ func newTType(x *defs.Type) *tType {
 	switch t.T {
 	case tMAP:
 		t.EncodedSizeFunc = t.encodedMapSize
+		t.EncodedSizeFuncCompact = t.encodedMapSizeCompact
 	case tLIST, tSET:
 		t.EncodedSizeFunc = t.encodedListSize
+		t.EncodedSizeFuncCompact = t.encodedListSizeCompact
 	case tSTRUCT:
 		t.EncodedSizeFunc = t.EncodedSize
+		t.EncodedSizeFuncCompact = t.encodedSizeCompact
 	}
 	if x.K != nil {
 		t.K = newTType(x.K)
@@ -203,12 +210,16 @@ func newTType(x *defs.Type) *tType {
 	switch t.T {
 	case tLIST, tSET:
 		updateListAppendFunc(t)
+		updateListAppendFuncCompact(t)
 	case tMAP:
 		updateMapAppendFunc(t)
+		updateMapAppendFuncCompact(t)
 	case tSTRUCT:
 		t.AppendFunc = appendStruct
+		t.AppendFuncCompact = appendStructCompact
 	default:
 		t.AppendFunc = appendAny
+		t.AppendFuncCompact = appendAnyCompact
 	}
 	if t.IsPointer && t.V.IsPointer {
 		// XXX: make it simple... not support it, it's not common
