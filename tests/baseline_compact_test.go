@@ -18,10 +18,12 @@ package tests
 
 import (
 	"math"
+	"sort"
 	"testing"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/cloudwego/frugal"
+	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/cloudwego/frugal/tests/baseline"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
@@ -123,8 +125,7 @@ func TestCompactBaseline_SizeEstimation(t *testing.T) {
 	require.Equal(t, mm.Bytes(), buf)
 }
 
-// buildCompactTree and compactVarint are debug helpers for TestCompactTypeSerdes.
-
+// compactVarint is a compact protocol varint decoder.
 func compactVarint(b []byte) (uint64, int) {
 	var v uint64
 	var s uint
@@ -138,10 +139,12 @@ func compactVarint(b []byte) (uint64, int) {
 	return 0, len(b)
 }
 
-func buildCompactTree(v []byte) (int, map[uint16]interface{}) {
+// buildCompactValue mirrors buildvalue for compact protocol.  The t
+// parameter is unused (type is embedded in the compact field header).  It
+// is kept for signature compatibility with buildvalue.
+func buildCompactValue(t defs.Tag, v []byte, i int) (int, interface{}) {
 	ret := make(map[uint16]interface{})
 	var lastId uint16
-	i := 0
 	for i < len(v) {
 		h := v[i]
 		ft := h & 0x0F
@@ -159,55 +162,102 @@ func buildCompactTree(v []byte) (int, map[uint16]interface{}) {
 		} else {
 			lastId += delta
 		}
-		switch {
-		case ft <= 8:
-			ni, val := buildCompactScalar(v[i:], ft)
-			ret[lastId] = val
-			i += ni
-		case ft == 12:
-			ni, nested := buildCompactTree(v[i:])
-			ret[lastId] = nested
-			i += ni
-		default:
-			ret[lastId] = "[container]"
-		}
+		ni, val := buildCompactScalar(v, i, ft)
+		i += ni
+		ret[lastId] = val
 	}
 	return i, ret
 }
 
-func buildCompactScalar(b []byte, ft uint8) (int, interface{}) {
+func buildCompactScalar(v []byte, i int, ft uint8) (int, interface{}) {
 	switch ft {
-	case 1:
+	case 0x01:
 		return 0, true
-	case 2:
+	case 0x02:
 		return 0, false
-	case 3:
-		return 1, int8(b[0])
-	case 4:
-		n, ni := compactVarint(b)
+	case 0x03:
+		return 1, int8(v[i])
+	case 0x04:
+		n, ni := compactVarint(v[i:])
 		return ni, int16(int32((n >> 1) ^ -(n & 1)))
-	case 5:
-		n, ni := compactVarint(b)
+	case 0x05:
+		n, ni := compactVarint(v[i:])
 		return ni, int32((n >> 1) ^ -(n & 1))
-	case 6:
-		n, ni := compactVarint(b)
+	case 0x06:
+		n, ni := compactVarint(v[i:])
 		return ni, int64((n >> 1) ^ -(n & 1))
-	case 7:
-		if len(b) < 8 {
-			return len(b), float64(0)
+	case 0x07:
+		if i+8 > len(v) {
+			return 0, float64(0)
 		}
 		var u uint64
 		for j := 0; j < 8; j++ {
-			u |= uint64(b[j]) << (8 * uint(j))
+			u |= uint64(v[i+j]) << (8 * uint(j))
 		}
 		return 8, math.Float64frombits(u)
-	case 8:
-		l64, ni := compactVarint(b)
+	case 0x08:
+		l64, ni := compactVarint(v[i:])
 		l := int(l64)
-		if l < 0 || ni+l > len(b) {
-			return len(b), "[truncated string]"
+		if l < 0 || i+ni+l > len(v) {
+			return len(v) - i, "[truncated string]"
 		}
-		return ni + l, string(b[ni : ni+l])
+		return ni + l, string(v[i+ni : i+ni+l])
+	case 0x0C:
+		ni, val := buildCompactValue(0, v, i)
+		return ni - i, val
+	case 0x09, 0x0A:
+		ni, val := buildCompactList(v, i)
+		return ni - i, val
+	case 0x0B:
+		ni, val := buildCompactMap(v, i)
+		return ni - i, val
 	}
 	return 0, nil
+}
+
+func buildCompactList(v []byte, i int) (int, interface{}) {
+	sn := v[i] >> 4
+	et := v[i] & 0x0F
+	i++
+	l := int(sn)
+	if sn == 0xF {
+		n, ni := compactVarint(v[i:])
+		l = int(n)
+		i += ni
+	}
+	elems := make([]interface{}, 0, l)
+	for j := 0; j < l; j++ {
+		ni, val := buildCompactScalar(v, i, et)
+		i += ni
+		elems = append(elems, val)
+	}
+	return i, elems
+}
+
+func buildCompactMap(v []byte, i int) (int, interface{}) {
+	n, ni := compactVarint(v[i:])
+	l := int(n)
+	i += ni
+	type pair struct {
+		K interface{}
+		V interface{}
+	}
+	var kt, vt uint8
+	if l > 0 {
+		kt = v[i] >> 4
+		vt = v[i] & 0x0F
+		i++
+	}
+	entries := make([]pair, 0, l)
+	for j := 0; j < l; j++ {
+		nk, kv := buildCompactScalar(v, i, kt)
+		i += nk
+		nv, vv := buildCompactScalar(v, i, vt)
+		i += nv
+		entries = append(entries, pair{K: kv, V: vv})
+	}
+	sort.Slice(entries, func(a, b int) bool {
+		return dumpval(entries[a].K) < dumpval(entries[b].K)
+	})
+	return i, entries
 }

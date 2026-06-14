@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cloudwego/frugal"
+	"github.com/cloudwego/frugal/internal/defs"
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -38,7 +39,7 @@ func TestCompactTypeSerdes(t *testing.T) {
 	require.Equal(t, len(got), ret)
 	println("--------- COMPACT BYTES ---------")
 	spew.Dump(got)
-	_, vv := buildCompactTree(got)
+	_, vv := buildCompactValue(defs.T_struct, got, 0)
 	spew.Config.SortKeys = true
 	println("--------- VALUE TREE ---------")
 	spew.Dump(vv)
