@@ -1,7 +1,5 @@
 # Frugal
 
-English | [中文](README_cn.md)
-
 A very fast dynamic Thrift serializer & deserializer without generating code.
 
 ## Features
@@ -12,7 +10,7 @@ Traditional Thrift serializer and deserializer are based on generated code which
 
 ### High Performance
 
-Based on the test cases in `frugal/tests`, Frugal's performance is 3 to 4 times better than Apache Thrift (TBinaryProtocol).
+Based on the test cases in `frugal/tests`, Frugal is about 2.5x to 3.7x faster than Apache Thrift (TBinaryProtocol) in the benchmark below.
 
 There may be variations between different test cases. Feel free to share your test cases with us.
 
@@ -78,7 +76,7 @@ If you don't need codec code, you can use `-thrift template=slim` option to redu
 kitex -thrift frugal_tag,template=slim -service a.b.c my.thrift
 ```
 
-Note: Latest thriftgo (>= v0.3.0) generates `thrift` struct tags that are compatible with Frugal by default, so `frugal_tag` is optional for structs without `list`, `set` or `enum` fields.
+Note: Kitex detects Frugal support through `frugal` struct tags, so keep `frugal_tag` when enabling the Frugal codec.
 
 #### 3. Init clients and servers with Frugal codec
 
@@ -166,7 +164,7 @@ struct MyStruct {
 
 Now we have thrift file, we can use Thriftgo to generate Go code.
 
-Latest thriftgo (>= v0.3.0) generates `thrift` struct tags that are compatible with Frugal by default. For structs containing `list`, `set` or `enum` fields, add `frugal_tag` to generate explicit Frugal tags:
+Recent thriftgo versions generate `thrift` struct tags that Frugal can read directly, including extra type information for `list`, `set`, `enum`, and maps containing them when needed. Add `frugal_tag` if you want explicit Frugal tags, or when the generated code will be used with Kitex's Frugal codec:
 
 ```shell
 thriftgo -r -o thrift -g go:frugal_tag,package_prefix=example.com/kitex_test/thrift my.thrift
@@ -224,7 +222,7 @@ type MyStruct struct {
 
 #### Add Frugal tag to struct fields
 
-Frugal tag is like `frugal:"1,default,string"`, `1` is field ID, `default` is field requiredness, `string` is field type. Field ID and requiredness is always required, but field type is only required for `list`, `set` and `enum`.
+Frugal tag is like `frugal:"1,default,string"`, `1` is field ID, `default` is field requiredness, `string` is field type. Field ID is required. Requiredness is optional and defaults to `default`. Field type is usually optional, but required for `list`, `set`, `enum`, and maps containing them.
 
 You can add Frugal tag to `MyStruct` like below:
 
@@ -262,8 +260,8 @@ type Example struct {
  MyReqI64List      []int64          `frugal:"18,required,list<i64>"`
  MyOptI64StringMap map[int64]string `frugal:"19,optional"`
  MyReqI64StringMap map[int64]string `frugal:"20,required"`
- MyOptEnum         *MyEnum          `frugal:"21,optional,i64"`
- MyReqEnum         *MyEnum          `frugal:"22,optional,i64"`
+ MyOptEnum         *MyEnum          `frugal:"21,optional,MyEnum"`
+ MyReqEnum         *MyEnum          `frugal:"22,optional,MyEnum"`
 }
 ```
 
@@ -279,7 +277,7 @@ import (
 )
 
 func main() {
-    ms := &thrift.MyStruct{
+    ms := &MyStruct{
         Msg: "my message",
         Code: 1024,
         Numbers: []int64{0, 1, 2, 3, 4},
@@ -288,7 +286,7 @@ func main() {
     buf := make([]byte, frugal.EncodedSize(ms))
     frugal.EncodeObject(buf, nil, ms)
     ...
-    got := &thrift.MyStruct{}
+    got := &MyStruct{}
     frugal.DecodeObject(buf, got)
     ...
 }

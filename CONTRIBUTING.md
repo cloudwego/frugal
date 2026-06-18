@@ -4,14 +4,14 @@
 We use github for our codebase. You can start by reading [How To Pull Request](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests).
 
 ## Without Semantic Versioning
-We keep the stable code in branch `main` like `golang.org/x`. Development base on branch `develop`. And we promise the **Forward Compatibility** by adding new package directory with suffix `v2/v3` when code has break changes.
+We keep the stable code in branch `main` like `golang.org/x`. Development is also based on branch `main`. When `main` is stable enough for release, maintainers will tag from `main`. And we promise the **Forward Compatibility** by adding new package directory with suffix `v2/v3` when code has break changes.
 
 ## Branch Organization
-We use [git-flow](https://nvie.com/posts/a-successful-git-branching-model/) as our branch organization, as known as [FDD](https://en.wikipedia.org/wiki/Feature-driven_development)
+We use `main` as our only long-lived branch.
 
 ## Bugs
 ### 1. How to Find Known Issues
-We are using [Github Issues](https://github.com/cloudwego/kitex/issues) for our public bugs. We keep a close eye on this and try to make it clear when we have an internal fix in progress. Before filing a new task, try to make sure your problem doesn't already exist.
+We are using [Github Issues](https://github.com/cloudwego/frugal/issues) for our public bugs. We keep a close eye on this and try to make it clear when we have an internal fix in progress. Before filing a new task, try to make sure your problem doesn't already exist.
 
 ### 2. Reporting New Issues
 Providing a reduced test code is a recommended way for reporting issues. Then can placed in:
@@ -26,13 +26,13 @@ Please do not report the safe disclosure of bugs to public issues. Contact us by
 
 ## Submit a Pull Request
 Before you submit your Pull Request (PR) consider the following guidelines:
-1. Search [GitHub](https://github.com/cloudwego/kitex/pulls) for an open or closed PR that relates to your submission. You don't want to duplicate existing efforts.
-2. Please submit an issue instead of PR if you have a better suggestion for format tools. We won't accept a lot of file changes directly without issue statement and assignment.
-3. Be sure that the issue describes the problem you're fixing, or documents the design for the feature you'd like to add. Before we accepting your work, we need to conduct some checks and evaluations. So, It will be better if you can discuss the design with us.
-4. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the cloudwego/kitex repo.
+1. Search [GitHub](https://github.com/cloudwego/frugal/issues) for an open or closed issue that relates to your submission. This helps avoid duplicating existing efforts.
+2. For changes other than critical bug fixes, please open an issue first and wait for confirmation from a maintainer before submitting a PR.
+3. Please make sure the issue describes the problem you're fixing, or documents the design for the feature you'd like to add. This helps maintainers evaluate the change and discuss the design before a PR is sent.
+4. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the cloudwego/frugal repo.
 5. In your forked repository, make your changes in a new git branch:
     ```
-    git checkout -b my-fix-branch develop
+    git checkout -b my-fix-branch main
     ```
 6. Create your patch, including appropriate test cases.
 7. Follow our [Style Guides](#code-style-guides).
@@ -42,7 +42,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
     ```
     git push origin my-fix-branch
     ```
-10. In GitHub, send a pull request to `kitex:develop` with a clear and unambiguous title.
+10. In GitHub, send a pull request to `frugal:main` with a clear and unambiguous title.
 
 ## Contribution Prerequisites
 - Our development environment keeps up with [Go Official](https://golang.org/project/).
