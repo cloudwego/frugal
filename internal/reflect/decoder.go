@@ -365,6 +365,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 				}
 				*(*unsafe.Pointer)(tmp) = sliceV
 				tmp = sliceV
+			} else if vt.T == tSTRUCT {
+				// v is reused from pool and Decode only updates fields present in b
+				v.SetZero()
 			}
 			if vt.FixedSize > 0 {
 				if len(b)-i < vt.FixedSize {

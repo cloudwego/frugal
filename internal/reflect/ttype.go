@@ -236,9 +236,7 @@ func encodedStringSize(p unsafe.Pointer) int {
 
 func (t *tType) EncodedSize(base unsafe.Pointer) (int, error) {
 	sd := t.Sd
-	if t.T != 0 { // not from reflect.EncodedSize
-		// for field of a struct, value of a map, or elem of a list,
-		// it's a pointer to struct pointer, then we have to convert it to struct pointer
+	if t.IsPointer {
 		base = *(*unsafe.Pointer)(base)
 	}
 	if base == nil {

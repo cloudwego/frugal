@@ -34,6 +34,28 @@ func checkEncodingRoundTrip(t *testing.T, src, dst any) {
 	assert.DeepEqual(t, src, dst)
 }
 
+func TestEncodedSizeValueStruct(t *testing.T) {
+	type Child struct {
+		S string `frugal:"1,default,string"`
+	}
+	type Empty struct{}
+	type S struct {
+		C  Child            `frugal:"1,default,Child"`
+		CL []Child          `frugal:"2,default,list<Child>"`
+		CM map[string]Child `frugal:"3,default,map<string:Child>"`
+		E  Empty            `frugal:"4,default,Empty"`
+		EL []Empty          `frugal:"5,default,list<Empty>"`
+		EM map[string]Empty `frugal:"6,default,map<string:Empty>"`
+	}
+	checkEncodingRoundTrip(t, &S{
+		C:  Child{S: "field"},
+		CL: []Child{{S: "first"}, {S: "second"}},
+		CM: map[string]Child{"key": {S: "value"}},
+		EL: []Empty{{}, {}},
+		EM: map[string]Empty{"key": {}},
+	}, &S{})
+}
+
 func TestRejectContainerPointerFields(t *testing.T) {
 	for _, v := range []any{
 		&struct {
