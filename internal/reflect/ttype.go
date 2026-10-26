@@ -108,7 +108,7 @@ type tType struct {
 
 	IsPointer  bool // true if t.Tag == defs.T_pointer
 	SimpleType bool // true if simpleTypes[t.T]
-	FixedSize  int  // typeToSize[t.T]
+	FixedSize  int  // typeToSize[t.WT]
 
 	// for tSTRUCT
 	Sd *structDesc
@@ -185,7 +185,7 @@ func newTType(x *defs.Type) *tType {
 	}
 	t.IsPointer = t.Tag == defs.T_pointer
 	t.SimpleType = simpleTypes[t.T]
-	t.FixedSize = int(typeToSize[t.T])
+	t.FixedSize = int(typeToSize[t.WT])
 	switch t.T {
 	case tMAP:
 		t.EncodedSizeFunc = t.encodedMapSize

@@ -248,6 +248,8 @@ var containerTypes = [256]bool{
 	tSET:  true,
 }
 
+// typeToSize maps wire types to their fixed byte sizes.
+// Do not add internal types like tENUM, because skipValue indexes it with wire types.
 var typeToSize = [256]int8{
 	tBOOL:   1,
 	tBYTE:   1,
@@ -255,7 +257,6 @@ var typeToSize = [256]int8{
 	tI16:    2,
 	tI32:    4,
 	tI64:    8,
-	tENUM:   4,
 }
 
 // EncodedSize returns encoded size of the field, -1 if can not be determined.

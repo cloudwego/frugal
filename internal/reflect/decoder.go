@@ -20,15 +20,22 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
+	"math/bits"
 	"reflect"
 	"sync"
 	"unsafe"
 
 	"github.com/cloudwego/frugal/internal/defs"
-	"github.com/cloudwego/gopkg/protocol/thrift"
 )
 
 const maxDepthLimit = 1023
+
+// sizeOverflows reports whether n * size overflows int (for non-negative n and size).
+func sizeOverflows(n, size int) bool {
+	hi, lo := bits.Mul(uint(n), uint(size))
+	return hi != 0 || lo > math.MaxInt
+}
 
 var decoderPool = sync.Pool{
 	New: func() interface{} {
@@ -85,17 +92,24 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 
 	i := 0
 	for {
+		// use uint so the compiler can skip bounds checks on b[i]
+		if uint(i) >= uint(len(b)) {
+			goto shortBuffer
+		}
 		tp := ttype(b[i])
 		i++
 		if tp == tSTOP {
 			break
+		}
+		if uint(len(b)-i) < fieldHeaderLen-1 {
+			goto shortBuffer
 		}
 		fid := binary.BigEndian.Uint16(b[i:])
 		i += 2
 
 		f := sd.GetField(fid)
 		if f == nil || f.Type.WT != tp {
-			n, err := thrift.Binary.Skip(b[i:], thrift.TType(tp))
+			n, err := skipValue(b[i:], tp, maxSkipDepth)
 			if err != nil {
 				return i, fmt.Errorf("skip unknown field %d of struct %s err: %w", fid, sd.rt.String(), err)
 			}
@@ -108,10 +122,15 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		p := unsafe.Add(base, f.Offset) // pointer to the field
 
 		t := f.Type
-		p = d.mallocIfPointer(t, p)
 		if t.FixedSize > 0 {
+			// check before mallocIfPointer because d.s does not zero memory
+			if t.FixedSize > len(b)-i {
+				goto shortBuffer
+			}
+			p = d.mallocIfPointer(t, p)
 			i += decodeFixedSizeTypes(t.T, b[i:], p)
 		} else {
+			p = d.mallocIfPointer(t, p)
 			var n int
 			var err error
 			if f.NoCopy {
@@ -137,12 +156,19 @@ func (d *tDecoder) Decode(b []byte, base unsafe.Pointer, sd *structDesc, maxdept
 		*(*[]byte)(unsafe.Add(base, sd.unknownFieldsOffset)) = ufs.Copy(b)
 	}
 	return i, nil
+
+	// share one return so Decode stays within the 15 returns*defers limit for open-coded defers
+shortBuffer:
+	return i, io.ErrShortBuffer
 }
 
 func decodeFixedSizeTypes(t ttype, b []byte, p unsafe.Pointer) int {
 	switch t {
-	case tBOOL, tBYTE:
-		*(*byte)(p) = b[0] // XXX: for tBOOL 1->true, 2->true/false
+	case tBOOL:
+		*(*bool)(p) = b[0] == 1
+		return 1
+	case tBYTE:
+		*(*byte)(p) = b[0]
 		return 1
 	case tDOUBLE, tI64:
 		*(*uint64)(p) = binary.BigEndian.Uint64(b)
@@ -216,6 +242,9 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		return 0, errDepthLimitExceeded
 	}
 	if t.FixedSize > 0 {
+		if len(b) < t.FixedSize {
+			return 0, io.ErrShortBuffer
+		}
 		return decodeFixedSizeTypes(t.T, b, p), nil
 	}
 	switch t.T {
@@ -274,6 +303,10 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		if remain := len(b) - mapHeaderLen; l > remain/(int(minWireSize[kt.WT])+int(minWireSize[vt.WT])) {
 			return mapHeaderLen, newSizeExceedsBufferException(l, remain)
 		}
+		if kt.IsPointer && sizeOverflows(l, kt.V.Size) ||
+			vt.IsPointer && sizeOverflows(l, vt.V.Size) {
+			return mapHeaderLen, errSizeOverflow
+		}
 
 		// decode map
 
@@ -315,6 +348,10 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 				tmp = sliceK
 			}
 			if kt.FixedSize > 0 {
+				if len(b)-i < kt.FixedSize {
+					err = io.ErrShortBuffer
+					break
+				}
 				i += decodeFixedSizeTypes(kt.T, b[i:], tmp)
 			} else {
 				if n, err = d.decodeType(kt, b[i:], tmp, maxdepth-1); err != nil {
@@ -332,6 +369,10 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 				tmp = sliceV
 			}
 			if vt.FixedSize > 0 {
+				if len(b)-i < vt.FixedSize {
+					err = io.ErrShortBuffer
+					break
+				}
 				i += decodeFixedSizeTypes(vt.T, b[i:], tmp)
 			} else {
 				if n, err = d.decodeType(vt, b[i:], tmp, maxdepth-1); err != nil {
@@ -379,6 +420,10 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		// they exceed the remaining buffer. likely the data is broken.
 		if remain := len(b) - i; l > remain/int(minWireSize[et.WT]) {
 			return i, newSizeExceedsBufferException(l, remain)
+		}
+		if sizeOverflows(l, et.Size) ||
+			et.IsPointer && sizeOverflows(l, et.V.Size) {
+			return i, errSizeOverflow
 		}
 
 		x := d.Malloc(l*et.Size, et.Align, et.MallocAbiType) // malloc for slice. make([]Type, l, l)
