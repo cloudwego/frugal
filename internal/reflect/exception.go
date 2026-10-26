@@ -25,7 +25,12 @@ import (
 var (
 	errDepthLimitExceeded = thrift.NewProtocolException(thrift.DEPTH_LIMIT, "depth limit exceeded")
 	errNegativeSize       = thrift.NewProtocolException(thrift.NEGATIVE_SIZE, "negative size")
+	errSizeOverflow       = thrift.NewProtocolException(thrift.SIZE_LIMIT, "size overflows int")
 )
+
+func newUnknownTypeException(t ttype) error {
+	return thrift.NewProtocolException(thrift.INVALID_DATA, fmt.Sprintf("unknown data type %d", t))
+}
 
 func newRequiredFieldNotSetException(name string) error {
 	return thrift.NewProtocolException(
