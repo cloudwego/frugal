@@ -19,23 +19,12 @@ package reflect
 import (
 	"strconv"
 	"testing"
-
-	"github.com/cloudwego/frugal/internal/assert"
 )
 
 func TestAppendMapFastPaths(t *testing.T) {
 
 	type EnumType int64
 	type EmptyStruct struct{}
-
-	doTest := func(t *testing.T, p0, p1 any) {
-		t.Helper()
-		b, err := Append(nil, p0)
-		assert.Nil(t, err)
-		_, err = Decode(b, p1)
-		assert.Nil(t, err)
-		assert.DeepEqual(t, p0, p1)
-	}
 
 	{
 		type TestStruct struct {
@@ -57,7 +46,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[int8]*EmptyStruct{71: {}, 72: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 
 	{
@@ -80,7 +69,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[int16]*EmptyStruct{71: {}, 72: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 	{
 		type TestStruct struct {
@@ -102,7 +91,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[int32]*EmptyStruct{71: {}, 72: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 	{
 		type TestStruct struct {
@@ -124,7 +113,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[int64]*EmptyStruct{71: {}, 72: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 	{
 		type TestStruct struct {
@@ -146,7 +135,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[EnumType]*EmptyStruct{71: {}, 72: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 	{
 		type TestStruct struct {
@@ -168,7 +157,7 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[string]*EmptyStruct{"71": {}, "72": {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 	{
 		type TestStruct struct {
@@ -190,7 +179,59 @@ func TestAppendMapFastPaths(t *testing.T) {
 			M7: map[*EmptyStruct]*EmptyStruct{{}: {}},
 		}
 		p1 := &TestStruct{}
-		doTest(t, p0, p1)
+		checkEncodingRoundTrip(t, p0, p1)
+	}
+	{
+		type TestStruct struct {
+			M1 map[float64]int8         `frugal:"1,optional,map<double:i8>"`
+			M2 map[float64]int16        `frugal:"2,optional,map<double:i16>"`
+			M3 map[float64]int32        `frugal:"3,optional,map<double:i32>"`
+			M4 map[float64]int64        `frugal:"4,optional,map<double:i64>"`
+			M5 map[float64]EnumType     `frugal:"5,optional,map<double:EnumType>"`
+			M6 map[float64]string       `frugal:"6,optional,map<double:string>"`
+			M7 map[float64]*EmptyStruct `frugal:"7,optional,map<double:EmptyStruct>"`
+			M8 map[float64]bool         `frugal:"8,optional,map<double:bool>"`
+			M9 map[float64]float64      `frugal:"9,optional,map<double:double>"`
+		}
+		p0 := &TestStruct{
+			M1: map[float64]int8{1.1: 1, 1.2: 2},
+			M2: map[float64]int16{2.1: 1, 2.2: 2},
+			M3: map[float64]int32{3.1: 1, 3.2: 2},
+			M4: map[float64]int64{4.1: 1, 4.2: 2},
+			M5: map[float64]EnumType{5.1: 1, 5.2: 2},
+			M6: map[float64]string{6.1: "1", 6.2: "2"},
+			M7: map[float64]*EmptyStruct{7.1: {}, 7.2: {}},
+			M8: map[float64]bool{8.1: true, 8.2: false},
+			M9: map[float64]float64{9.1: 0.5, 9.2: -0.5},
+		}
+		p1 := &TestStruct{}
+		checkEncodingRoundTrip(t, p0, p1)
+	}
+	{
+		type TestStruct struct {
+			M1 map[bool][]byte         `frugal:"1,optional,map<bool:binary>"`
+			M2 map[int8][]byte         `frugal:"2,optional,map<i8:binary>"`
+			M3 map[int16][]byte        `frugal:"3,optional,map<i16:binary>"`
+			M4 map[int32][]byte        `frugal:"4,optional,map<i32:binary>"`
+			M5 map[int64][]byte        `frugal:"5,optional,map<i64:binary>"`
+			M6 map[float64][]byte      `frugal:"6,optional,map<double:binary>"`
+			M7 map[EnumType][]byte     `frugal:"7,optional,map<EnumType:binary>"`
+			M8 map[string][]byte       `frugal:"8,optional,map<string:binary>"`
+			M9 map[*EmptyStruct][]byte `frugal:"9,optional,map<EmptyStruct:binary>"`
+		}
+		p0 := &TestStruct{
+			M1: map[bool][]byte{true: []byte("1"), false: []byte("22")},
+			M2: map[int8][]byte{21: []byte("1"), 22: []byte("22")},
+			M3: map[int16][]byte{31: []byte("1"), 32: []byte("22")},
+			M4: map[int32][]byte{41: []byte("1"), 42: []byte("22")},
+			M5: map[int64][]byte{51: []byte("1"), 52: []byte("22"), 53: {}},
+			M6: map[float64][]byte{6.1: []byte("1"), 6.2: []byte("22")},
+			M7: map[EnumType][]byte{71: []byte("1"), 72: []byte("22")},
+			M8: map[string][]byte{"81": []byte("1"), "82": []byte("22"), "83": {}},
+			M9: map[*EmptyStruct][]byte{{}: []byte("1")},
+		}
+		p1 := &TestStruct{}
+		checkEncodingRoundTrip(t, p0, p1)
 	}
 }
 

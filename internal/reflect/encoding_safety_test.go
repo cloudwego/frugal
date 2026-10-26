@@ -34,6 +34,18 @@ func checkEncodingRoundTrip(t *testing.T, src, dst any) {
 	assert.DeepEqual(t, src, dst)
 }
 
+func TestEncodeGrowingFloatKeyMap(t *testing.T) {
+	type S struct {
+		M map[float64]int64 `frugal:"1,default,map<double:i64>"`
+	}
+	src := &S{M: make(map[float64]int64)}
+	// test map iteration while bucket growth is in progress
+	for i := 0; i < 256; i++ {
+		src.M[float64(i)+0.5] = int64(i)
+		checkEncodingRoundTrip(t, src, &S{})
+	}
+}
+
 func TestEncodedSizeValueStruct(t *testing.T) {
 	type Child struct {
 		S string `frugal:"1,default,string"`
