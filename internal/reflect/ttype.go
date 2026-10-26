@@ -107,6 +107,7 @@ type tType struct {
 	RV reflect.Value
 
 	IsPointer  bool // true if t.Tag == defs.T_pointer
+	IsBinary   bool // true if binary or *binary
 	SimpleType bool // true if simpleTypes[t.T]
 	FixedSize  int  // typeToSize[t.WT]
 
@@ -184,6 +185,7 @@ func newTType(x *defs.Type) *tType {
 		t.MapTmpVarsPool = initOrGetMapTmpVarsPool(t)
 	}
 	t.IsPointer = t.Tag == defs.T_pointer
+	t.IsBinary = x.T == defs.T_binary || t.IsPointer && x.V.T == defs.T_binary
 	t.SimpleType = simpleTypes[t.T]
 	t.FixedSize = int(typeToSize[t.WT])
 	switch t.T {

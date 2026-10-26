@@ -61,8 +61,16 @@ func createStructDesc(rv reflect.Value) (*structDesc, error) {
 	if sd := sds.Get(abiType); sd != nil {
 		return sd, nil
 	}
+	prefetchedTypes, prefetchedDescs = nil, nil
 	sd, err := newStructDescAndPrefetch(rt)
 	if err != nil {
+		// clean up partial state if prefetch fails on a recursive type
+		for _, t := range prefetchedTypes {
+			t.Sd = nil
+		}
+		for _, t := range prefetchedDescs {
+			delete(prefetchStructDescCache, t)
+		}
 		return nil, err
 	}
 	sds.Set(abiType, sd)
@@ -74,6 +82,12 @@ func createStructDesc(rv reflect.Value) (*structDesc, error) {
 
 var prefetchStructDescCache = map[reflect.Type]*structDesc{}
 
+// recorded during createStructDesc to roll back on error
+var (
+	prefetchedTypes []*tType
+	prefetchedDescs []reflect.Type
+)
+
 func newStructDescAndPrefetch(t reflect.Type) (*structDesc, error) {
 	if sd := prefetchStructDescCache[t]; sd != nil {
 		return sd, nil
@@ -83,8 +97,8 @@ func newStructDescAndPrefetch(t reflect.Type) (*structDesc, error) {
 		return nil, err
 	}
 	prefetchStructDescCache[t] = sd
+	prefetchedDescs = append(prefetchedDescs, t)
 	if err := prefetchSubStructDesc(sd); err != nil {
-		delete(prefetchStructDescCache, t)
 		return nil, err
 	}
 	return sd, nil
@@ -122,6 +136,7 @@ func fetchStructDesc(t *tType) error {
 		return err
 	}
 	t.Sd = sd
+	prefetchedTypes = append(prefetchedTypes, t)
 	return nil
 }
 
