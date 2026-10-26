@@ -233,6 +233,10 @@ func DoResolveFields(vt reflect.Type) ([]Field, error) {
 		if rx != Optional && pt.T == T_pointer && pt.V.T != T_struct {
 			return nil, fmt.Errorf("only optional fields or structs can be pointers, not %s: %s.%s", sf.Type, vt, sf.Name)
 		}
+		// container encoders and decoders do not support pointer fields
+		if pt.T == T_pointer && (pt.V.T == T_list || pt.V.T == T_set || pt.V.T == T_map) {
+			return nil, fmt.Errorf("pointers to lists, sets or maps are not supported: %s.%s", vt, sf.Name)
+		}
 
 		// scan for the options
 		for _, opt := range ft {

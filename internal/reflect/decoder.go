@@ -25,8 +25,6 @@ import (
 	"reflect"
 	"sync"
 	"unsafe"
-
-	"github.com/cloudwego/frugal/internal/defs"
 )
 
 const maxDepthLimit = 1023
@@ -216,7 +214,7 @@ func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error)
 	}
 	i += 4
 	if l == 0 {
-		if t.Tag == defs.T_binary {
+		if t.IsBinary {
 			*(*[]byte)(p) = []byte{}
 		} else {
 			*(*string)(p) = ""
@@ -228,7 +226,7 @@ func decodeStringNoCopy(t *tType, b []byte, p unsafe.Pointer) (i int, err error)
 		return i, newSizeExceedsBufferException(l, len(b)-i)
 	}
 
-	if t.Tag == defs.T_binary {
+	if t.IsBinary {
 		*(*[]byte)(p) = unsafe.Slice(&b[i], l)
 	} else {
 		*(*string)(p) = unsafe.String(&b[i], l)
@@ -258,7 +256,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		}
 		i := 4
 		if l == 0 {
-			if t.Tag == defs.T_binary {
+			if t.IsBinary {
 				*(*[]byte)(p) = []byte{}
 			} else {
 				*(*string)(p) = ""
@@ -271,7 +269,7 @@ func (d *tDecoder) decodeType(t *tType, b []byte, p unsafe.Pointer, maxdepth int
 		}
 
 		x := d.Malloc(l, 1, 0)
-		if t.Tag == defs.T_binary {
+		if t.IsBinary {
 			*(*[]byte)(p) = unsafe.Slice((*byte)(x), l)
 		} else {
 			*(*string)(p) = unsafe.String((*byte)(x), l)

@@ -296,7 +296,7 @@ func doParseType(vt reflect.Type, def string, i *int, allowPtrs bool) (*Type, er
 
 		/* prohibit nested pointers */
 		if !allowPtrs {
-			return nil, EType(ret.V.S, "nested pointer is not allowed")
+			return nil, EType(vt, "nested pointer is not allowed")
 		}
 
 		/* parse the pointer element recursively */
