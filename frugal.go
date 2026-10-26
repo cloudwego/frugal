@@ -41,6 +41,8 @@ func EncodeObject(buf []byte, w thrift.NocopyWriter, val interface{}) (int, erro
 }
 
 // DecodeObject deserializes buf into val with Thrift Binary Protocol.
+// Strings and binary slices decoded from fields tagged with "nocopy" reference buf directly.
+// Do not modify or reuse buf while those values are in use.
 func DecodeObject(buf []byte, val interface{}) (int, error) {
 	return reflect.Decode(buf, val)
 }

@@ -16,6 +16,9 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Test packages
-        run: go test -race ./...
+        # -race enables checkptr=1 unless it is set explicitly
+        run: go test -race -gcflags=all=-d=checkptr=2 -timeout 2m ./...
       - name: Test ./tests & Benchmark
-        run: cd tests && go test -bench=. -benchmem -benchtime=100ms
+        run: cd tests && go test -timeout 2m -bench=. -benchmem -benchtime=100ms
+      - name: Race check ./tests
+        run: cd tests && go test -race -gcflags=all=-d=checkptr=2 -timeout 2m ./...

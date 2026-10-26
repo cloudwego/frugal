@@ -431,14 +431,15 @@ func TestDecodeNoCopy(t *testing.T) {
 	assert.Equal(t, strB, p.B)
 	assert.Equal(t, strC, string(p.C))
 
-	// update original buffer
-	// coz it's nocopy, the fields of p will be changed implicitly as well.
-	// update strA -> xtrA, strB -> xtrB, strC -> xtrC
-	for _, s := range []string{strA, strB, strC} {
+	// check that nocopy fields point into b without mutating string bytes
+	assert.True(t, unsafe.StringData(p.A) == &b[bytes.Index(b, []byte(strA))])
+	assert.True(t, unsafe.StringData(p.B) != &b[bytes.Index(b, []byte(strB))])
+	assert.True(t, unsafe.SliceData(p.C) == &b[bytes.Index(b, []byte(strC))])
+	for _, s := range []string{strB, strC} {
 		i := bytes.Index(b, []byte(s))
 		b[i] = 'x'
 	}
-	assert.Equal(t, "xtrA", p.A)
+	assert.Equal(t, "strA", p.A)
 	assert.Equal(t, "strB", p.B) // p.B has no `nocopy` option
 	assert.Equal(t, "xtrC", string(p.C))
 
