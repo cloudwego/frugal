@@ -144,3 +144,27 @@ func TestDecodeSizeOverflow(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeMapStructValueReset(t *testing.T) {
+	type Leaf struct {
+		S string `frugal:"1,optional,string"`
+		N *int32 `frugal:"2,optional,i32"`
+	}
+	type S struct {
+		M map[string]Leaf `frugal:"1,default,map<string:Leaf>"`
+	}
+	n := int32(7)
+	// entry "b" is empty and must not keep fields from entry "a" or pooled tmp vars
+	checkEncodingRoundTrip(t, &S{M: map[string]Leaf{"a": {S: "secret", N: &n}}}, &S{})
+	data := []byte{
+		byte(tMAP), 0, 1, byte(tSTRING), byte(tSTRUCT), 0, 0, 0, 2,
+		0, 0, 0, 1, 'a', byte(tSTRING), 0, 1, 0, 0, 0, 6, 's', 'e', 'c', 'r', 'e', 't', byte(tSTOP),
+		0, 0, 0, 1, 'b', byte(tSTOP),
+		byte(tSTOP),
+	}
+	var got S
+	_, err := Decode(data, &got)
+	assert.Nil(t, err)
+	assert.DeepEqual(t, map[string]Leaf{"a": {S: "secret"}, "b": {}}, got.M)
+	checkEncodingRoundTrip(t, &S{M: map[string]Leaf{"c": {}}}, &S{})
+}

@@ -188,12 +188,27 @@ func newStructDesc(t reflect.Type) (*structDesc, error) {
 	eface := reflect.New(t).Interface()
 	d.initFunc, d.hasInitFunc = eface.(iInitDefault)
 
-	f, ok := t.FieldByName("_unknownFields")
-	if ok && f.Type.Kind() == reflect.Slice && f.Type.Elem().Kind() == reflect.Uint8 {
-		d.hasUnknownFields = true
-		d.unknownFieldsOffset = f.Offset
-	}
+	d.unknownFieldsOffset, d.hasUnknownFields = unknownFieldsOffset(t)
 	return d, nil
+}
+
+// unknownFieldsOffset returns the byte offset of _unknownFields in t.
+// For embedded structs, it adds each struct offset and ignores pointer embeds.
+func unknownFieldsOffset(t reflect.Type) (uintptr, bool) {
+	f, ok := t.FieldByName("_unknownFields")
+	if !ok || f.Type.Kind() != reflect.Slice || f.Type.Elem().Kind() != reflect.Uint8 {
+		return 0, false
+	}
+	off := f.Offset
+	for _, i := range f.Index[:len(f.Index)-1] {
+		ef := t.Field(i)
+		if ef.Type.Kind() != reflect.Struct {
+			return 0, false
+		}
+		off += ef.Offset
+		t = ef.Type
+	}
+	return off, true
 }
 
 func (d *structDesc) Name() string {
