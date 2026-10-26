@@ -23,12 +23,21 @@ import (
 
 var mapAppendFuncs = map[struct{ k, v ttype }]appendFuncType{}
 
+// mapAppendBinaryFuncs stores fast paths for map[K][]byte by key type.
+// []byte has wire type tSTRING, but its Go slice header is larger than string.
+var mapAppendBinaryFuncs = map[ttype]appendFuncType{}
+
 func updateMapAppendFunc(t *tType) {
 	if t.T != tMAP {
 		panic("[bug] type mismatch, got: " + ttype2str(t.T))
 	}
-
-	f, ok := mapAppendFuncs[struct{ k, v ttype }{k: t.K.T, v: t.V.T}]
+	var f appendFuncType
+	var ok bool
+	if t.V.IsBinary {
+		f, ok = mapAppendBinaryFuncs[t.K.T]
+	} else {
+		f, ok = mapAppendFuncs[struct{ k, v ttype }{k: t.K.T, v: t.V.T}]
+	}
 	if ok {
 		t.AppendFunc = f
 		return
@@ -38,6 +47,10 @@ func updateMapAppendFunc(t *tType) {
 
 func registerMapAppendFunc(k, v ttype, f appendFuncType) {
 	mapAppendFuncs[struct{ k, v ttype }{k: k, v: v}] = f
+}
+
+func registerMapAppendBinaryFunc(k ttype, f appendFuncType) {
+	mapAppendBinaryFuncs[k] = f
 }
 
 func checkMapN(n uint32) error {

@@ -16,7 +16,10 @@
 
 package reflect
 
-import "unsafe"
+import (
+	"math"
+	"unsafe"
+)
 
 // Predefined fast paths for common map key/value combinations.
 
@@ -88,14 +91,15 @@ func init() {
 	registerMapAppendFunc(tI64, tMAP, appendMap_I64_Other)
 	registerMapAppendFunc(tI64, tSET, appendMap_I64_Other)
 	registerMapAppendFunc(tI64, tLIST, appendMap_I64_Other)
-	registerMapAppendFunc(tDOUBLE, tBOOL, appendMap_I64_BOOL)
-	registerMapAppendFunc(tDOUBLE, tBYTE, appendMap_I64_I08)
-	registerMapAppendFunc(tDOUBLE, tI16, appendMap_I64_I16)
-	registerMapAppendFunc(tDOUBLE, tI32, appendMap_I64_I32)
-	registerMapAppendFunc(tDOUBLE, tI64, appendMap_I64_I64)
-	registerMapAppendFunc(tDOUBLE, tDOUBLE, appendMap_I64_I64)
-	registerMapAppendFunc(tDOUBLE, tENUM, appendMap_I64_ENUM)
-	registerMapAppendFunc(tDOUBLE, tSTRING, appendMap_I64_STRING)
+	// float64 keys cannot use map[uint64] fast paths because float64 and uint64 hash differently
+	registerMapAppendFunc(tDOUBLE, tBOOL, appendMap_DOUBLE_BOOL)
+	registerMapAppendFunc(tDOUBLE, tBYTE, appendMap_DOUBLE_I08)
+	registerMapAppendFunc(tDOUBLE, tI16, appendMap_DOUBLE_I16)
+	registerMapAppendFunc(tDOUBLE, tI32, appendMap_DOUBLE_I32)
+	registerMapAppendFunc(tDOUBLE, tI64, appendMap_DOUBLE_I64)
+	registerMapAppendFunc(tDOUBLE, tDOUBLE, appendMap_DOUBLE_I64)
+	registerMapAppendFunc(tDOUBLE, tENUM, appendMap_DOUBLE_ENUM)
+	registerMapAppendFunc(tDOUBLE, tSTRING, appendMap_DOUBLE_STRING)
 	registerMapAppendFunc(tDOUBLE, tSTRUCT, appendMap_I64_Other)
 	registerMapAppendFunc(tDOUBLE, tMAP, appendMap_I64_Other)
 	registerMapAppendFunc(tDOUBLE, tSET, appendMap_I64_Other)
@@ -172,6 +176,17 @@ func init() {
 	registerMapAppendFunc(tLIST, tMAP, appendMap_Other_Other)
 	registerMapAppendFunc(tLIST, tSET, appendMap_Other_Other)
 	registerMapAppendFunc(tLIST, tLIST, appendMap_Other_Other)
+
+	registerMapAppendBinaryFunc(tBOOL, appendMap_BOOL_BINARY)
+	registerMapAppendBinaryFunc(tBYTE, appendMap_I08_BINARY)
+	registerMapAppendBinaryFunc(tI16, appendMap_I16_BINARY)
+	registerMapAppendBinaryFunc(tI32, appendMap_I32_BINARY)
+	registerMapAppendBinaryFunc(tI64, appendMap_I64_BINARY)
+	registerMapAppendBinaryFunc(tDOUBLE, appendMap_DOUBLE_BINARY)
+	registerMapAppendBinaryFunc(tENUM, appendMap_ENUM_BINARY)
+	registerMapAppendBinaryFunc(tSTRING, appendMap_STRING_BINARY)
+	// Other_STRING uses t.RV to iterate and reads the []byte data and len as a string
+	registerMapAppendBinaryFunc(tSTRUCT, appendMap_Other_STRING)
 }
 
 func appendMap_BOOL_BOOL(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
@@ -258,6 +273,20 @@ func appendMap_BOOL_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 		return b, nil
 	}
 	for k, v := range *(*map[bool]string)(p) {
+		n--
+		b = appendMapBool(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_BOOL_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[bool][]byte)(p) {
 		n--
 		b = appendMapBool(b, k)
 		b = appendUint32(b, uint32(len(v)))
@@ -380,6 +409,20 @@ func appendMap_I08_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 	return b, checkMapN(n)
 }
 
+func appendMap_I08_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[byte][]byte)(p) {
+		n--
+		b = append(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
 func appendMap_I08_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
@@ -486,6 +529,20 @@ func appendMap_I16_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 		return b, nil
 	}
 	for k, v := range *(*map[uint16]string)(p) {
+		n--
+		b = appendUint16(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_I16_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[uint16][]byte)(p) {
 		n--
 		b = appendUint16(b, k)
 		b = appendUint32(b, uint32(len(v)))
@@ -608,6 +665,20 @@ func appendMap_I32_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 	return b, checkMapN(n)
 }
 
+func appendMap_I32_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[uint32][]byte)(p) {
+		n--
+		b = appendUint32(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
 func appendMap_I32_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
@@ -722,6 +793,20 @@ func appendMap_I64_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) 
 	return b, checkMapN(n)
 }
 
+func appendMap_I64_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[uint64][]byte)(p) {
+		n--
+		b = appendUint64(b, k)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
 func appendMap_I64_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 	b, n := appendMapHeader(t, b, p)
 	if n == 0 {
@@ -740,6 +825,112 @@ func appendMap_I64_Other(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
 		if err != nil {
 			return b, err
 		}
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_I08(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]byte)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = append(b, v)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_BOOL(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]bool)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendMapBool(b, v)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_I16(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]uint16)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint16(b, v)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_I32(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]uint32)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint32(b, v)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_I64(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]uint64)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint64(b, v)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_ENUM(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]int64)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint32(b, uint32(v))
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64]string)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_DOUBLE_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[float64][]byte)(p) {
+		n--
+		b = appendUint64(b, math.Float64bits(k))
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
 	}
 	return b, checkMapN(n)
 }
@@ -828,6 +1019,20 @@ func appendMap_ENUM_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, error)
 		return b, nil
 	}
 	for k, v := range *(*map[int64]string)(p) {
+		n--
+		b = appendUint32(b, uint32(k))
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_ENUM_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[int64][]byte)(p) {
 		n--
 		b = appendUint32(b, uint32(k))
 		b = appendUint32(b, uint32(len(v)))
@@ -948,6 +1153,21 @@ func appendMap_STRING_STRING(t *tType, b []byte, p unsafe.Pointer) ([]byte, erro
 		return b, nil
 	}
 	for k, v := range *(*map[string]string)(p) {
+		n--
+		b = appendUint32(b, uint32(len(k)))
+		b = append(b, k...)
+		b = appendUint32(b, uint32(len(v)))
+		b = append(b, v...)
+	}
+	return b, checkMapN(n)
+}
+
+func appendMap_STRING_BINARY(t *tType, b []byte, p unsafe.Pointer) ([]byte, error) {
+	b, n := appendMapHeader(t, b, p)
+	if n == 0 {
+		return b, nil
+	}
+	for k, v := range *(*map[string][]byte)(p) {
 		n--
 		b = appendUint32(b, uint32(len(k)))
 		b = append(b, k...)
